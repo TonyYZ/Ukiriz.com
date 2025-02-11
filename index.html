@@ -13,6 +13,8 @@
             /* background-color: #eef7f2; */
             /* background-color: #f9f1db; */
             font-family: Consolas;
+            display: flex;
+            height: 100vh; /* Full viewport height */
         }
         .symbol {
             position: absolute;
@@ -112,6 +114,8 @@
             margin-right: 100px; /* Leave space for the vertical bar */
             flex: 1;
             padding: 20px;
+            overflow-y: auto; /* Allows vertical scrolling */
+            height: 100vh;
         }
 
         /* Content sections */
@@ -221,13 +225,24 @@
 
         .image-container {
             display: flex;
-            display: flex;
-            justify-content: center;
             justify-content: center;
         }
         .image-container img {
-            width: 30%; /* 50% of the parent container */
+            width: 10%; /* 50% of the parent container */
             height: auto; /* Maintain aspect ratio */
+        }
+
+        .image-row {
+            display: flex;         /* Align images in a row */
+            justify-content: center; /* Center images horizontally */
+            align-items: center;    /* Align images vertically */
+            gap: 10px;             /* Space between images */
+        }
+
+        .image-row img {
+            width: 20%;   /* Set a uniform width */
+            height: auto;  /* Set a uniform height */
+            object-fit: cover; /* Crop images to fit without stretching */
         }
 
     </style>
@@ -247,21 +262,45 @@
             Welcome here! <br>
             Ever wondered how divination works? <br>
             The fortune tellers somehow comprehend the meaning behind random patterns, from Tarot card suites to tea cup dregs...<br> Maybe it is because they learned the meaning of these symbols and knew how to tell a story out of them. Anyway, it is about intuition and imagination. <br><br>
-            This online platform plays with this idea, trying to make YOU the fortune teller, but in a more general sense, where you communicate with others by interpreting <br>abstract symbols. <br>Instead of teaching you an entire symbolic language, I will help you build a language by yourself. <br>
+            This online platform plays with this idea, trying to make YOU the fortune teller, but in a more general sense, where you communicate with others by <br> interpreting abstract symbols. <br>Instead of teaching you an entire symbolic language, I will help you build a language by yourself. <br>
             However, note that the set of "atoms" of your system are fixed, but how the "molecules" are structured is up to you. <br><br>
-            In the next tab, poke around the interface and see if you can piece together an expression for the word "sky", "rain", "flower", and "computer."<br>
-            As long as it makes sense to you, it should work because it is all about intuitiveness!<br><br>
 
             Here are the possible ways of combining the symbols:<br>
 
-            <div class="image-container">
+            <div class="image-row">
                 <img src="./icons/sp.png"/>
             </div>
             <br>
             The symbols connected in "series" represent spatially <b>contiguous</b> relationships: above, below, adjacent to, outside, etc.<br>
-            The symbols connected in "parallel" represent <b>composite</b> concepts. e.g. a white rock is the composite of whiteness and hardness.<br><br>
+            <p style="text-align: center">
+                Examples<br>
+                (1) a traffic light = three lights lined in a row.<br>
+                (2) a barn = a roof on top of a pile of grains.<br>
+            </p>
+            The symbols connected in "parallel" represent <b>composite</b> concepts.<br>
+            <p style="text-align: center">
+                Examples<br>
+                (1) a white rock = the composite of whiteness and hardness.<br>
+                (2) a bullet = the composite of smallness and advancing forward.<br>
+            </p>
+
+            <br>
+            <div class="image-row">
+                <img src="./icons/granary.png"/> <img src="./icons/bullet.png"/>
+            </div>
+            <br>
+            As you can see, as long as it makes sense to you, it should work because it is all about <b>intuitiveness!</b><br><br>
+
             When you are making words, make sure the symbols are connected by the magnets. Only symbols connected together count as a word. Treat them as "islands."<br>
-            To check this, you can long click on a symbol, and the entire connected island that it belongs to will be highlighted.<br>
+            To check this, you can long click on a symbol, and the entire connected island that it belongs to will be highlighted.<br><br>
+            Then, click on the <b>insight</b> button that looks like an eye and it will propose some meanings from what it sees.<br>
+            It will also ask you to put in the word and the reason behind this.<br>
+            While we only have the 9 basic symbols from the start, the eye will see what you teach it to see over time.<br><br>
+
+            In the next tab, poke around the interface and see if you can piece together your own expression for the words <b>"sky", "rain", "flower", and "computer."</b><br>
+            Remember, when you are making the expressions, try to attend to the symbols' meaning (by clicking the <b>insight</b> button) <br>
+            rather than purely by their visual resemblance to the concepts!<br><br>
+            
         </div>
         <div class="tab-content" id="tab1">
 
@@ -353,7 +392,7 @@
         // Symbol labels
         symbolLabels = [[['empty', 'medium', 'place'], ['still', 'calm', 'fixed']],
             [['protect', 'constrain'], ['come', 'pull', 'retreat']],
-            [['center', 'middle', 'inner', 'occupy', 'point', 'individual', 'barrier', 'obstacle', 'pivot', 'detached', 'separate'], ['source', 'spread', 'explode', 'radiate']],
+            [['center', 'middle', 'inner', 'occupy', 'point', 'individual', 'barrier', 'obstacle', 'unit'], ['separate', 'source', 'spread', 'explode', 'radiate']],
             [['latent', 'hidden', 'unsupported', 'supple', 'bloated'], ['decay', 'leak', 'discard', 'shed', 'loosen', 'let-go']],
             [[], ['go', 'push', 'advance']],
             [['gap', 'contain', 'enclosure', 'shell', 'surround'], ['join', 'combine', 'close', 'squeeze', 'attach']],
@@ -624,7 +663,7 @@
         }
         // Load symbols dynamically
         function loadSymbols() {
-            createSymbolCopy(180, 180, symbolGen = null, elemId = 1, offsetX = 0, offsetY = 0, tab=tab0);
+            //createSymbolCopy(180, 180, symbolGen = null, elemId = 1, offsetX = 0, offsetY = 0, tab=tab0);
 
         }
         document.addEventListener("mousemove", (e) => {
