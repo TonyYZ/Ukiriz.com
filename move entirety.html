@@ -13,8 +13,6 @@
             /* background-color: #eef7f2; */
             /* background-color: #f9f1db; */
             font-family: Consolas;
-            display: flex;
-            height: 100vh; /* Full viewport height */
         }
         .symbol {
             position: absolute;
@@ -114,8 +112,6 @@
             margin-right: 100px; /* Leave space for the vertical bar */
             flex: 1;
             padding: 20px;
-            overflow-y: auto; /* Allows vertical scrolling */
-            height: 100vh;
         }
 
         /* Content sections */
@@ -228,23 +224,9 @@
             justify-content: center;
         }
         .image-container img {
-            width: 10%; /* 50% of the parent container */
+            width: 30%; /* 50% of the parent container */
             height: auto; /* Maintain aspect ratio */
         }
-
-        .image-row {
-            display: flex;         /* Align images in a row */
-            justify-content: center; /* Center images horizontally */
-            align-items: center;    /* Align images vertically */
-            gap: 10px;             /* Space between images */
-        }
-
-        .image-row img {
-            width: 20%;   /* Set a uniform width */
-            height: auto;  /* Set a uniform height */
-            object-fit: cover; /* Crop images to fit without stretching */
-        }
-
     </style>
 </head>
 <body>
@@ -258,52 +240,21 @@
 
     <div class="content">
         <div class="tab-content" id="tab0">
-            <br><br>
             <p style="text-align: center"><h1>Divinatory Conlang on Canvas</h1></p>
             Welcome here! <br>
             Ever wondered how divination works? <br>
-            The fortune tellers somehow comprehend the meaning behind random patterns, from Tarot suits to teacup dregs...<br> Maybe it is because they learned the meaning of these symbols and knew how to tell a story out of them. Anyway, it is about intuition and imagination. <br><br>
-            This online platform plays with this idea, trying to make YOU the fortune teller, but in a more general sense: you communicate with others by <br> producing and interpreting abstract symbols. <br>Instead of teaching you an entire symbolic language, I will help you build a language by yourself. <br>
-            However, note that your system's set of "atoms" is fixed, but how the "molecules" are structured is up to you.  <br><br>
+            The fortune tellers somehow comprehend the meaning behind random patterns, from Tarot card suites to tea cup dregs...<br> Maybe it is because they learned the meaning of these symbols and knew how to tell a story out of them. Anyway, it is about intuition and imagination. <br><br>
+            This online platform plays with this idea, trying to make YOU the fortune teller, but in a more general sense, where you communicate with others by interpreting <br>abstract symbols. <br>Instead of teaching you an entire symbolic language, I will help you build a language by yourself. <br>
+            However, note that the set of "atoms" of your system are fixed, but how the "molecules" are structured is up to you. <br><br>
+            In the next tab, poke around the interface and see if you can piece together an expression for the word "sky", "rain", "flower", and "computer."<br>
+            Remember, as long as it makes sense to you, it should work because it is all about intuitiveness!<br><br>
 
             Here are the possible ways of combining the symbols:<br>
 
-            <div class="image-row">
+            <div class="image-container">
                 <img src="./icons/sp.png"/>
             </div>
-            <br>
-            The symbols connected in "series" represent spatially <b>contiguous</b> relationships: above, below, adjacent to, outside, etc.<br>
-            <p style="text-align: center">
-                Examples<br>
-                (1) a traffic light = three lights lined in a row.<br>
-                (2) a barn = a roof on top of a pile of grains.<br>
-            </p>
-            The symbols connected in "parallel" represent <b>composite</b> concepts.<br>
-            <p style="text-align: center">
-                Examples<br>
-                (1) a white rock = the composite of whiteness and hardness.<br>
-                (2) a bullet = the composite of smallness and advancing.<br>
-            </p>
 
-            <br>
-            <div class="image-row">
-                <img src="./icons/granary.png"/> <img src="./icons/bullet.png"/>
-            </div>
-            <br>
-            As you can see, as long as it makes sense to you, it should work because it is all about <b>intuitiveness!</b><br><br>
-
-            When you are making words, make sure the magnets connect the symbols. Only symbols connected count as a word. Treat them as "islands."<br>
-            To check this, you can long-click on a symbol, and the entire connected island it belongs to will be highlighted.<br><br>
-            Then, click on the <b>insight</b> button that looks like an eye, and it will propose some meanings from what it sees.<br>
-            You can understand what each basic symbol means by repetitively clicking on the <b>insight</b> button and reading different meaningful aspects of the symbols.<br>
-            While we only have the nine basic symbols from the start, the eye will see what you teach it to see over time.<br>
-            Two windows will pop up that ask you to assign the word for your symbols and the reason behind this, though I haven't implemented the validation part yet.<br><br>
-           
-            In the next tab, poke around the interface and see if you can piece together your own expression for the words <b>"sky," "rain," "flower," and "computer."</b><br>
-            Remember, when you are making the expressions, try to attend to the symbols' meaning (by clicking the <b>insight</b> button) <br>
-            rather than purely by their visual resemblance to the concepts!
-            <br><br><br><br>
-            
         </div>
         <div class="tab-content" id="tab1">
 
@@ -342,7 +293,6 @@
 
         // Initialize the first tab as active
         showTab(0);
-        const tab0 = document.getElementById("tab0");
         const tab1 = document.getElementById("tab1");
 
         let activeSymbol = null;
@@ -393,9 +343,19 @@
         palette.style.top = `55px`;
 
         // Symbol labels
+        symbolLabels = [['void', 'empty', 'sparse', 'few', 'clean', 'space'],
+            ['high', 'aloft', 'top', 'cover', 'shell', 'protect', 'roof', 'surface', 'limit', 'constrain'],
+            ['inner', 'core', 'center', 'middle', 'occupy', 'obstruct', 'barrier', 'separated', 'isolated'],
+            ['tall', 'lush', 'drifting', 'unsupported', 'detached'],
+            ['support', 'carry', 'base', 'low', 'bottom', 'floor', 'ground', 'platform', 'deep'],
+            ['enclosure', 'surface', 'periphery', 'surround', 'hollow', 'contain', 'together', 'eachother'],
+            ['recessed', 'cavity', 'shallow', 'exposed', 'incomplete'],
+            ['congested', 'teeming', 'abundant', 'enormous', 'whole'],
+            ['vague', 'monotonous', 'homogeneous', 'uniformity']
+            ]
         symbolLabels = [[['empty', 'medium', 'place'], ['still', 'calm', 'fixed']],
             [['protect', 'constrain'], ['come', 'pull', 'retreat']],
-            [['center', 'middle', 'inner', 'occupy', 'point', 'individual', 'barrier', 'obstacle', 'unit'], ['separate', 'source', 'spread', 'explode', 'radiate']],
+            [['center', 'middle', 'inner', 'occupy', 'point', 'individual', 'barrier', 'obstacle', 'pivot', 'detached', 'separate'], ['source', 'spread', 'explode', 'radiate']],
             [['latent', 'hidden', 'unsupported', 'supple', 'bloated'], ['decay', 'leak', 'discard', 'shed', 'loosen', 'let-go']],
             [[], ['go', 'push', 'advance']],
             [['gap', 'contain', 'enclosure', 'shell', 'surround'], ['join', 'combine', 'close', 'squeeze', 'attach']],
@@ -414,6 +374,58 @@
         `<svg width="49.92" height="21.44" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M21.856 20.468c-3.226-1.115-6.05-3.957-6.641-6.684-.226-1.04-.226-1.04-7.72-1.04-7.495 0-7.495 0-7.495-1.28s0-1.28 7.348-1.28c4.823 0 6.48 0 7.148-.385.35-.201.427-.508.547-.975 2.649-10.367 17.185-10.367 19.834 0 .348 1.36.348 1.36 7.695 1.36s7.348 0 7.348 1.28 0 1.28-7.495 1.28c-7.494 0-7.494 0-7.72 1.04-1.093 5.04-7.683 8.47-12.85 6.684m5.74-2.465c6.55-2.232 6.55-11.806 0-14.039-7.822-2.664-13.768 6.713-7.883 12.43 2.026 1.966 5.032 2.58 7.882 1.61"/><path d="M35.224 10.185H49.92v2.56h-7.494m-34.928.003H.003v-2.56h14.695" style="fill:#000"/></svg>`,
         `<svg width="49.92" height="21.44" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M0 16.96v-1.28h49.92v2.56H0Zm8-11.2V4.48h33.92v2.56H8Z"/></svg>`
         ];
+        /*
+        symbolData = [
+            `<svg width="49.92" height="21.44" viewBox="0 -5 49.92 26.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000;stroke-width:1.02897" d="M15.362 16.96v-1.28H49.92v2.56H15.362Z"/><path d="M0 5.371v-1.28h34.56v2.56H0z" style="fill:#000"/>
+            <line x1="-6" y1="5.3" x2="25" y2="5.3" stroke="black" stroke-width="2.57"/>
+            <path stroke="#000" stroke-width="2.57" d="M25 16.96h32"/>
+            </svg>`,
+        
+            `<svg width="49.92" height="21.44" viewBox="0 -5 49.92 26.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M0 16.96v-1.28h38.08V4.48h2.56v13.76H0Z"/>
+            <path stroke="#000" stroke-width="2.57" d="M-6 16.96h16"/></svg>`,
+
+            `<svg width="49.92" height="21.44" viewBox="0 -5 49.92 26.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M0 16.96v-1.28h23.68V4.48h2.56v11.2h23.68v2.56H0Z"/>
+            <path stroke="#000" stroke-width="2.57" d="M-6 16.96h63"/>
+            </svg>`,
+
+            `<svg width="49.92" height="21.44" viewBox="0 -5 49.92 26.44" xmlns="http://www.w3.org/2000/svg"><a transform="translate(0 -12)"><path style="fill:#000" d="M0 31.52c0-1.28 0-1.28 16.31-1.28 8.438 0 12.956-.003 14.768.024 1.676.024.91-.928.319-1.77-6.312-9.011 4.424-20.08 13.641-14.065 5.795 3.782 5.914 12.549.223 16.464-2.752 1.894-2.823 1.899-25.021 1.903C0 32.8 0 32.8 0 31.52m43.461-2.46c6.384-3.947 3.578-13.7-3.941-13.7-8.426 0-10.362 11.492-2.437 14.458 1.796.672 4.604.338 6.378-.759"/><path d="M-.007 31.517v-1.28h16.31s20.052 2.554 3.93 2.557l-20.24.003z" style="fill:#000"/></a>
+            <path stroke="#000" stroke-width="2.57" d="M-6 19.5h25"/>
+            </svg>`,
+                    
+                        `<svg width="49.92" height="21.44" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><a transform="translate(0 -12)"><path style="fill:#000" d="M0 31.52c0-1.28 0-1.28 16.31-1.28 8.438 0 12.956-.003 14.768.024 1.676.024.91-.928.319-1.77-6.312-9.011 4.424-20.08 13.641-14.065 5.795 3.782 5.914 12.549.223 16.464-2.752 1.894-2.823 1.899-25.021 1.903C0 32.8 0 32.8 0 31.52m43.461-2.46c6.384-3.947 3.578-13.7-3.941-13.7-8.426 0-10.362 11.492-2.437 14.458 1.796.672 4.604.338 6.378-.759"/><path d="M-.007 31.517v-1.28h16.31s20.052 2.554 3.93 2.557l-20.24.003z" style="fill:#000"/></a></svg>`,
+        `<svg width="49.92" height="21.44" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M9.28 11.36V4.48h2.56v11.2h38.08v2.56H9.28Z"/></svg>`,
+        `<svg width="49.92" height="21.44" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M9.28 11.36V4.48h2.56v11.2h26.24V4.48h2.56v13.76H9.28z"/></svg>`,
+        `<svg width="49.92" height="25" viewBox="0 -5 49.92 26.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M49.915 19.513c0-1.28 0-1.28-16.31-1.28-8.438 0-12.955-.003-14.768.023-1.675.025-.909-.927-.318-1.77 6.312-9.01-4.424-20.08-13.642-14.065-5.795 3.782-5.913 12.55-.223 16.465 2.752 1.893 2.824 1.899 25.021 1.903 20.24.004 20.24.004 20.24-1.276M6.454 17.052c-6.384-3.947-3.578-13.7 3.941-13.7 8.426 0 10.363 11.493 2.437 14.459-1.796.672-4.604.338-6.378-.76"/><path d="M49.922 19.51v-1.28h-16.31s-20.052 2.553-3.93 2.556l20.24.004z" style="fill:#000"/>
+            <line x1="25" y1="19.5" x2="60" y2="19.5" stroke="black" stroke-width="2.57"/></svg>`,
+        `<svg width="49.92" height="21.44" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M21.856 20.468c-3.226-1.115-6.05-3.957-6.641-6.684-.226-1.04-.226-1.04-7.72-1.04-7.495 0-7.495 0-7.495-1.28s0-1.28 7.348-1.28c4.823 0 6.48 0 7.148-.385.35-.201.427-.508.547-.975 2.649-10.367 17.185-10.367 19.834 0 .348 1.36.348 1.36 7.695 1.36s7.348 0 7.348 1.28 0 1.28-7.495 1.28c-7.494 0-7.494 0-7.72 1.04-1.093 5.04-7.683 8.47-12.85 6.684m5.74-2.465c6.55-2.232 6.55-11.806 0-14.039-7.822-2.664-13.768 6.713-7.883 12.43 2.026 1.966 5.032 2.58 7.882 1.61"/><path d="M35.224 10.185H49.92v2.56h-7.494m-34.928.003H.003v-2.56h14.695" style="fill:#000"/></svg>`,
+        `<svg width="49.92" height="21.44" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M0 16.96v-1.28h49.92v2.56H0Zm8-11.2V4.48h33.92v2.56H8Z"/></svg>`
+        
+        ]
+        */
+        const symbolDataDyn = [
+            `<svg width="49.92" height="21.44" viewBox="0 -5 49.92 26.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000;stroke-width:1.02897" d="M15.362 16.96v-1.28H49.92v2.56H15.362Z"/><path d="M0 5.371v-1.28h34.56v2.56H0z" style="fill:#000"/>
+            <line x1="-6" y1="5.3" x2="25" y2="5.3" stroke="black" stroke-width="2.57"/>
+            <path stroke="#000" stroke-width="2.57" d="M25 16.96h32"/>
+            <circle cx="25" cy="-3" r="2" fill="red"/>
+            </svg>`,
+            `<svg width="49.92" height="21.44" viewBox="0 -5 49.92 26.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M0 16.96v-1.28h38.08V4.48h2.56v13.76H0Z"/>
+            <path stroke="#000" stroke-width="2.57" d="M-6 16.96h16"/>
+            <circle cx="39.5" cy="-1" r="2" fill="red"/></svg>`,
+
+            `<svg width="49.92" height="21.44" viewBox="0 -5 49.92 26.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M0 16.96v-1.28h23.68V4.48h2.56v11.2h23.68v2.56H0Z"/>
+            <path stroke="#000" stroke-width="2.57" d="M-6 16.96h63"/>
+            <circle cx="25" cy="-1" r="2" fill="red"/>
+            </svg>`,
+
+            `<svg width="49.92" height="21.44" viewBox="0 -5 49.92 26.44" xmlns="http://www.w3.org/2000/svg"><a transform="translate(0 -12)"><path style="fill:#000" d="M0 31.52c0-1.28 0-1.28 16.31-1.28 8.438 0 12.956-.003 14.768.024 1.676.024.91-.928.319-1.77-6.312-9.011 4.424-20.08 13.641-14.065 5.795 3.782 5.914 12.549.223 16.464-2.752 1.894-2.823 1.899-25.021 1.903C0 32.8 0 32.8 0 31.52m43.461-2.46c6.384-3.947 3.578-13.7-3.941-13.7-8.426 0-10.362 11.492-2.437 14.458 1.796.672 4.604.338 6.378-.759"/><path d="M-.007 31.517v-1.28h16.31s20.052 2.554 3.93 2.557l-20.24.003z" style="fill:#000"/></a>
+            <path stroke="#000" stroke-width="2.57" d="M-6 19.5h25"/>
+            <circle cx="39.5" cy="-3" r="2" fill="red"/>
+            </svg>`,
+
+        `<svg width="49.92" height="25" viewBox="0 -5 49.92 26.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M49.915 19.513c0-1.28 0-1.28-16.31-1.28-8.438 0-12.955-.003-14.768.023-1.675.025-.909-.927-.318-1.77 6.312-9.01-4.424-20.08-13.642-14.065-5.795 3.782-5.913 12.55-.223 16.465 2.752 1.893 2.824 1.899 25.021 1.903 20.24.004 20.24.004 20.24-1.276M6.454 17.052c-6.384-3.947-3.578-13.7 3.941-13.7 8.426 0 10.363 11.493 2.437 14.459-1.796.672-4.604.338-6.378-.76"/><path d="M49.922 19.51v-1.28h-16.31s-20.052 2.553-3.93 2.556l20.24.004z" style="fill:#000"/>
+            <line x1="25" y1="19.5" x2="60" y2="19.5" stroke="black" stroke-width="2.57"/>
+                <circle cx="10" cy="-3" r="2" fill="red"/></svg>`,
+        ];
 
         const dotData = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><circle cx="5" cy="5" r="5" fill="red"/></svg>`;
         const dotOffsetXData = [0, 45, 0, 46, -45, 0, -46, 0, 0];
@@ -431,46 +443,22 @@
                 // Increment the angle by 90 degrees
                 selectedSymbols.forEach(selectedSymbol => {
                     selectedSymbol.angle = (selectedSymbol.angle + 90) % 360;
-                    console.log(selectedSymbol.angle);
-                    if (selectedSymbol.elemId === 1) {
+                    if (selectedSymbol.elemId === 1 || selectedSymbol.elemId === 3) {
                         if (selectedSymbol.angle === 90) {
-                            selectedSymbol.elemId = 4;
-                            selectedSymbol.innerHTML = symbolData[4];
+                            selectedSymbol.angle = 270;
                         }
-                        if (selectedSymbol.angle === 270) {
-                            selectedSymbol.elemId = 4;
-                            selectedSymbol.innerHTML = symbolData[4];
-                        }
-                    } else if (selectedSymbol.elemId === 3) {
-                        if (selectedSymbol.angle === 90) {
-                            selectedSymbol.elemId = 6;
-                            selectedSymbol.innerHTML = symbolData[6];
-                        }
-                        if (selectedSymbol.angle === 270) {
-                            selectedSymbol.elemId = 6;
-                            selectedSymbol.innerHTML = symbolData[6];
-                        }
-                    } else if (selectedSymbol.elemId === 4) {
-                        if (selectedSymbol.angle === 90) {
-                            selectedSymbol.elemId = 1;
-                            selectedSymbol.innerHTML = symbolData[1];
-                        }
-                        if (selectedSymbol.angle === 270) {
-                            selectedSymbol.elemId = 1;
-                            selectedSymbol.innerHTML = symbolData[1];
-                        }
-                    }else if (selectedSymbol.elemId === 6) {
-                        if (selectedSymbol.angle === 90) {
-                            selectedSymbol.elemId = 3;
-                            selectedSymbol.innerHTML = symbolData[3];
-                        }
-                        if (selectedSymbol.angle === 270) {
-                            selectedSymbol.elemId = 3;
-                            selectedSymbol.innerHTML = symbolData[3];
+                        if (selectedSymbol.angle === 180) {
+                            selectedSymbol.angle = 0;
                         }
                     }
-                    selectedSymbol.querySelector('svg').setAttribute('width', '100%');
-                    selectedSymbol.querySelector('svg').setAttribute('height', '100%');
+                    if (selectedSymbol.elemId === 4 || selectedSymbol.elemId === 6) {
+                        if (selectedSymbol.angle === 90) {
+                            selectedSymbol.angle = 270;
+                        }
+                        if (selectedSymbol.angle === 180) {
+                            selectedSymbol.angle = 0;
+                        }
+                    }
                     selectedSymbol.style.transform = `rotate(${selectedSymbol.angle}deg)`;
                     if(selectedSymbol.isDynamic) updateDotPosition(selectedSymbol.dot);
                 });
@@ -665,105 +653,150 @@
         }
         // Load symbols dynamically
         function loadSymbols() {
-            //createSymbolCopy(180, 180, symbolGen = null, elemId = 1, offsetX = 0, offsetY = 0, tab=tab0);
+            /*
+            for (let i = 0; i < 9; i++) {
+                const symbolGen = document.createElement("div");
+                symbolGen.elemId = i;
+                symbolGen.innerHTML = symbolData[i];
+                symbolGen.querySelector('svg').setAttribute('width', '100%');
+                symbolGen.querySelector('svg').setAttribute('height', '100%');
+                symbolGen.classList.add("symbol");
 
-        }
-        document.addEventListener("mousemove", (e) => {
-            if (activeSymbol) {
-                x = e.clientX - activeSymbol.offsetX;
-                y = e.clientY - activeSymbol.offsetY;
-                activeSymbol.style.left = `${x}px`;
-                activeSymbol.style.top = `${y}px`;
-                activeSymbol.selected = true;
-                endLongPress();
-                eyeButton.isActivated = false;
-                eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
-                removeLabelInputs();
-
-                if (!activeSymbol.moving) {
-                    // Cut connections
-                    for (let i = 0; i < symbolGraph.get(activeSymbol).length; i++) {
-                        entryLst = symbolGraph.get(activeSymbol)[i];
-                        if (entryLst.length !== 0) {
-                            // for (const entry in entryLst) {
-                            for (let j = 0; j < entryLst.length; j++) {
-                                entry = entryLst[j];
-                                targetEntry = symbolGraph.get(entry[0])[entry[1]];
-                                console.log(`targetEntry ${j}`);
-                                console.log(targetEntry);
-                                symbolGraph.get(entry[0])[entry[1]] = targetEntry.filter(sublist => sublist[0] !== activeSymbol);
-                            }
-                            symbolGraph.get(activeSymbol)[i] = [];
-                        }
-                    }
-                    activeSymbol.moving = true;
-                }
-                if (!activeSymbol.classList.contains("framed")) {
-                    activeSymbol.classList.add("framed");
+                if (i === 8) {
+                    // Center symbol
+                    symbolGen.style.right = `${centerX}px`; // Offset by half symbol width
+                    symbolGen.style.bottom = `${centerY}px`;  // Offset by half symbol height
+                } else {
+                    // Symbols around the circle
+                    const angle = (positions[i] * (2 * Math.PI)) / 8; // Divide the circle into 8 parts
+                    const x = centerX - radius * Math.cos(angle); // Offset by half symbol width
+                    const y = centerY - radius * Math.sin(angle); // Offset by half symbol height
+                    symbolGen.style.right = `${x}px`;
+                    symbolGen.style.bottom = `${y}px`;
                 }
 
-                checkConnections(activeSymbol);
-                if (activeSymbol.isDynamic) updateDotPosition(activeSymbol.dot);
-                // console.log("mouse move " + activeSymbol.elemId);
-            }
-        });
-
-        document.addEventListener("mouseup", (e) => {
-            wheel.style.backgroundImage = "url(./icons/wheel/wheel.png)";
-            const clickedElemType = e.target.tagName;
-            if (selectedSymbols.size !== 0 && clickedElemType == 'HTML') {
-                selectedSymbols.forEach(selectedSymbol => {
-                    rect = selectedSymbol.getBoundingClientRect();
-
-                    // console.log('x1:' + rect.left + ' y1:' + rect.top + ' x2:' + rect.right + ' y2:' + rect.bottom + ' mousex:' + e.clientX + ' mousey:' + e.clientY)
-                    if (! (rect.left < e.clientX && e.clientX < rect.right && rect.top < e.clientY && e.clientY < rect.bottom)) {
-                        selectedSymbol.classList.remove("framed");
-                        selectedSymbols.delete(selectedSymbol);
-                        selectedSymbol.selected = false;
-                        selectedSymbol = null;
-                        if (eyeButton.isActivated) {
-                            eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
-                            removeLabelInputs();
-                        }
+                // Add pressing event listener to the symbol
+                symbolGen.addEventListener("mousedown", (e) => {
+                    if (!isGenerating) {
+                        isGenerating = true;
+                        createSymbolCopy(e.clientX, e.clientY, symbolGen);
                     }
                 });
-            }
-            if (activeSymbol) {
-                activeSymbol.style.cursor = "grab";
-                if (activeSymbol.selected) {  // released after moving or released without moving for selection
-                    if (!activeSymbol.classList.contains("framed")) {
-                        activeSymbol.classList.add("framed");
-                    }
-                    selectedSymbols.add(activeSymbol);
-                    console.log(`moving ${activeSymbol.moving} readyActive ${readyActive}`)
-                    if (readyActive !== null && activeSymbol.moving) {
-                        console.log('load the link into graph');
-                        symbolGraph.get(readyTarget)[readyTargetSide].push([readyActive, readyActiveSide]);
-                        symbolGraph.get(readyActive)[readyActiveSide].push([readyTarget, readyTargetSide]);
-                    }
-                    // console.log("frame add " + activeSymbol.elemId);
-                } else {  // released without moving for cancelling selection
-                    // console.log("frame remove " + activeSymbol.elemId);
-                    activeSymbol.classList.remove("framed");
-                    selectedSymbols.delete(activeSymbol);
-                }
-                activeSymbol.moving = false;
-                activeSymbol = null;
-                isGenerating = false;
-                endLongPress();
-            }
 
-            // Throw away the symbol into the swirl
-            rect = removeButton.getBoundingClientRect();
-            if (rect.left < e.clientX && e.clientX < rect.right && rect.top < e.clientY && e.clientY < rect.bottom) {
-                if (selectedSymbols.size != 0) {
+                tab1.appendChild(symbolGen);
+                
+            }
+            */
+            document.addEventListener("mousemove", (e) => {
+                if (activeSymbol) {
+
+                    endLongPress();
+                    if (selectedSymbols.size !== 0) {
+                        if (selectedSymbols.size === 1) {
+                            console.log('alalala');
+                            if (!activeSymbol.moving) {
+                                // Cut connections
+                                for (let i = 0; i < symbolGraph.get(activeSymbol).length; i++) {
+                                    entryLst = symbolGraph.get(activeSymbol)[i];
+                                    if (entryLst.length !== 0) {
+                                        // for (const entry in entryLst) {
+                                        for (let j = 0; j < entryLst.length; j++) {
+                                            entry = entryLst[j];
+                                            targetEntry = symbolGraph.get(entry[0])[entry[1]];
+                                            console.log(`targetEntry ${j}`);
+                                            console.log(targetEntry);
+                                            symbolGraph.get(entry[0])[entry[1]] = targetEntry.filter(sublist => sublist[0] !== activeSymbol);
+                                        }
+                                        symbolGraph.get(activeSymbol)[i] = [];
+                                    }
+                                }
+                                activeSymbol.moving = true;
+                            }
+                        }
+                        selectedSymbols.forEach(selectedSymbol => {
+                            if (selectedSymbol == activeSymbol) {
+                                console.log(`active symbol ${activeSymbol.elemId}`);
+                                x = e.clientX - activeSymbol.offsetX;
+                                y = e.clientY - activeSymbol.offsetY;
+                            } else {
+                                x = e.clientX - activeSymbol.offsetX + parseFloat(selectedSymbol.style.left) - parseFloat(activeSymbol.style.left);
+                                y = e.clientY - activeSymbol.offsetY + parseFloat(selectedSymbol.style.top) - parseFloat(activeSymbol.style.top);
+                            }
+                            selectedSymbol.style.left = `${x}px`;
+                            selectedSymbol.style.top = `${y}px`;
+
+                            selectedSymbol.selected = true;
+
+                            if (!selectedSymbol.classList.contains("framed")) {
+                                selectedSymbol.classList.add("framed");
+                            }
+
+                            
+                            if (selectedSymbol.isDynamic) updateDotPosition(selectedSymbol.dot);
+                        });
+                    }
+                    checkConnections(activeSymbol);
+                }
+            });
+
+            document.addEventListener("mouseup", (e) => {
+                wheel.style.backgroundImage = "url(./icons/wheel/wheel.png)";
+                const clickedElemType = e.target.tagName;
+                if (selectedSymbols.size !== 0 && clickedElemType == 'HTML') {
                     selectedSymbols.forEach(selectedSymbol => {
-                        if (selectedSymbol.isDynamic) selectedSymbol.dot.remove();
-                        selectedSymbol.remove();
+                        rect = selectedSymbol.getBoundingClientRect();
+
+                        // console.log('x1:' + rect.left + ' y1:' + rect.top + ' x2:' + rect.right + ' y2:' + rect.bottom + ' mousex:' + e.clientX + ' mousey:' + e.clientY)
+                        if (! (rect.left < e.clientX && e.clientX < rect.right && rect.top < e.clientY && e.clientY < rect.bottom)) {
+                            selectedSymbol.classList.remove("framed");
+                            selectedSymbols.delete(selectedSymbol);
+                            selectedSymbol.selected = false;
+                            selectedSymbol = null;
+                        }
                     });
                 }
-            }
-        });
+                if (activeSymbol) {
+                    activeSymbol.style.cursor = "grab";
+                    if (activeSymbol.selected) {  // released after moving or released without moving for selection
+                        if (!activeSymbol.classList.contains("framed")) {
+                            activeSymbol.classList.add("framed");
+                        }
+
+                        console.log(`moving ${activeSymbol.moving} readyActive ${readyActive}`)
+                        if (readyActive !== null && activeSymbol.moving) {
+                            console.log('load the link into graph');
+                            symbolGraph.get(readyTarget)[readyTargetSide].push([readyActive, readyActiveSide]);
+                            symbolGraph.get(readyActive)[readyActiveSide].push([readyTarget, readyTargetSide]);
+                        }
+                        // console.log("frame add " + activeSymbol.elemId);
+                    } else {  // released without moving for cancelling selection
+                        // console.log("frame remove " + activeSymbol.elemId);
+                        activeSymbol.classList.remove("framed");
+                        selectedSymbols.delete(activeSymbol);
+                    }
+                    activeSymbol.moving = false;
+                    console.log(`active symbol null ${activeSymbol.elemId}`);
+                    activeSymbol = null;
+                    isGenerating = false;
+                    endLongPress();
+                }
+
+                // Throw away the symbol into the swirl
+                rect = removeButton.getBoundingClientRect();
+                if (rect.left < e.clientX && e.clientX < rect.right && rect.top < e.clientY && e.clientY < rect.bottom) {
+                    if (selectedSymbols.size != 0) {
+                        selectedSymbols.forEach(selectedSymbol => {
+                            if (selectedSymbol.isDynamic) selectedSymbol.dot.remove();
+                            selectedSymbol.remove();
+                        });
+                    }
+                    if (eyeButton.isActivated) {
+                        eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
+                        removeLabelInputs();
+                    }
+                }
+            });
+        }
 
         function getRandomSubset(words, count) {
             return words.sort(() => Math.random() - 0.5).slice(0, count);
@@ -776,27 +809,26 @@
             selectedSymbols.forEach(selectedSymbol => {
                 // Check if label already exists
                 if (!selectedSymbol.querySelector('.symbol-label')) {
-                    words = symbolLabels[selectedSymbol.elemIdTrue][Number(selectedSymbol.isDynamic)].slice();
+                    words = symbolLabels[selectedSymbol.elemId][Number(selectedSymbol.isDynamic)];
                     if (getDir(selectedSymbol) === 0 && !selectedSymbol.isDynamic) {
-                        if (selectedSymbol.elemIdTrue === 1 || selectedSymbol.elemIdTrue === 3) words.push(...["right", "barrier"]);
-                        if (selectedSymbol.elemIdTrue === 4 || selectedSymbol.elemIdTrue === 6) words.push(...["left", "barrier"]);
+                        if (selectedSymbol.elemId === 1 || selectedSymbol.elemId === 3) words.push(...["right", "barrier"]);
+                        if (selectedSymbol.elemId === 4 || selectedSymbol.elemId === 6) words.push(...["left", "barrier"]);
                     }
                     if (getDir(selectedSymbol) === 1) {
-                        if (selectedSymbol.elemIdTrue === 1) {
+                        if (selectedSymbol.elemId === 1) {
                             if (selectedSymbol.isDynamic) {
                                 words.push(...['gravity', 'fall', 'descend']);
                             } else {
                                 words.push(...['top', 'roof', 'high', 'aloft']);
                             }
                         }
-                        if (selectedSymbol.elemIdTrue === 3) {
+                        if (selectedSymbol.elemId === 3) {
                             if (!selectedSymbol.isDynamic) {
                                 words.push(...['aerial', 'suspend', 'tall', 'float']);
                             }
                         }
-                        if (selectedSymbol.elemIdTrue === 4) {
+                        if (selectedSymbol.elemId === 4) {
                             if (selectedSymbol.isDynamic) {
-                                console.log('fly highhhhh');
                                 words.push(...['ascend', 'rise', 'climb']);
                             } else {
                                 words.push(...['low', 'ground', 'platform', 'base', 'deep', 'carry', 'load']);
@@ -967,7 +999,7 @@
         }
 
         // Create a new copy of the symbol being clicked
-        function createSymbolCopy(mouseX, mouseY, symbolGen = null, elemId = -1, offsetX = -1, offsetY = -1, tab=tab1) {
+        function createSymbolCopy(mouseX, mouseY, symbolGen = null, elemId = -1, offsetX = -1, offsetY = -1) {
             // Create the copy
             const symbol = document.createElement('div');
             symbol.ondragstart = (e) => e.preventDefault();
@@ -978,8 +1010,7 @@
             symbol.classList.add('symbol');
 
             if (symbolGen !== null) {
-                symbol.elemId = symbolGen.elemId;
-                symbol.elemIdTrue = symbol.elemId;
+                symbol.elemId = symbolGen.elemId
                 symbol.innerHTML = symbolGen.innerHTML;
 
                 // Set the initial position to where the user clicked
@@ -987,7 +1018,6 @@
                 symbol.style.bottom =  symbolGen.style.bottom; // Adjust for symbol size
             } else {
                 symbol.elemId = elemId;
-                symbol.elemIdTrue = symbol.elemId;
                 symbol.innerHTML = symbolData[symbol.elemId];
                 symbol.style.left = `${mouseX - offsetX}px`;
                 symbol.style.top = `${mouseY - offsetY}px`;
@@ -1001,35 +1031,42 @@
             // Add pressing event listener to the symbol
             symbol.addEventListener("mousedown", (e) => {
                 activeSymbol = symbol;
-                selectedSymbols.forEach(selectedSymbol => {
+                console.log(`active symbol assign ${activeSymbol.elemId}`);
+                if (!selectedSymbols.has(symbol)) {
+                    selectedSymbols.forEach(selectedSymbol => {
                     if (selectedSymbol !== null && selectedSymbol !== symbol) {
                         selectedSymbol.selected = false;
                         selectedSymbol.classList.remove("framed");
                         selectedSymbols.delete(selectedSymbol);
                     }
-                });
+                    });
+                    selectedSymbols.add(symbol);
+                }
+
                 symbol.offsetX = e.clientX - symbol.offsetLeft;
                 symbol.offsetY = e.clientY - symbol.offsetTop;
                 symbol.selected = !symbol.selected;
                 symbol.style.cursor = "grabbing";
                 startLongPress(symbol);
-                // console.log("mouse down " + activeSymbol.elemId);
             });
 
             /* if horizontal: left, right, top perpendicular, bottom perpendicular, top parallel, bottom parallel */
             /* if vertical: top, down, left perpendicular, right perpendicular, left parallel, right parallel */
             symbolGraph.set(symbol, [[], [], [], [], [], []]);
+            tab1.appendChild(symbol);
 
-            tab.appendChild(symbol);
-
-            if (selectedSymbols.size !== 0) {
-                selectedSymbols.forEach(selectedSymbol => {
-                    selectedSymbol.selected = false;
-                    selectedSymbol.classList.remove("framed");
-                    selectedSymbols.delete(selectedSymbol);
-                });
-            }
+            if (!selectedSymbols.has(symbol)) {
+                    selectedSymbols.forEach(selectedSymbol => {
+                    if (selectedSymbol !== null && selectedSymbol !== symbol) {
+                        selectedSymbol.selected = false;
+                        selectedSymbol.classList.remove("framed");
+                        selectedSymbols.delete(selectedSymbol);
+                    }
+                    });
+                    selectedSymbols.add(symbol);
+                }
             activeSymbol = symbol;
+            console.log(`active symbol assign2 ${activeSymbol.elemId}`);
             if (symbolGen !== null) {
                 symbol.offsetX = mouseX - symbol.offsetLeft;
                 symbol.offsetY = mouseY - symbol.offsetTop;
@@ -1039,11 +1076,8 @@
                 console.log(mouseX);
             }
 
-            if (tab !== tab0) {
-                symbol.selected = !symbol.selected;
-                symbol.style.cursor = "grabbing";
-            }
-            return symbol;
+            symbol.selected = !symbol.selected;
+            symbol.style.cursor = "grabbing";
         }
 
         // Find all the symbols that are connected to one symbol
