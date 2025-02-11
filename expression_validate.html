@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conlang Validator</title>
+</head>
+<body>
+    <h2>Create Your Word</h2>
+    <input type="text" id="word" placeholder="Enter your word">
+    <textarea id="justification" placeholder="Enter your justification"></textarea>
+    <button onclick="checkValidity()">✔</button>
+    <p id="result"></p>
+
+    <script>
+        async function checkValidity() {
+            let word = document.getElementById("word").value;
+            let justification = document.getElementById("justification").value;
+
+            let response = await fetch("YOUR_HUGGINGFACE_SPACE_API", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ inputs: [word, justification] })
+            });
+
+            let data = await response.json();
+            document.getElementById("result").innerText = data[0];  // Show Yes/No
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+Symbol Meanings:
+- ġ: empty, medium, place
+- ċ: still, calm, fixed
+- g: top, roof, high, protect, constrain
+- c: descend, pull, gravity
+- r: center, point, pivot
+- l: source, spread, radiate
+- v: tall, hidden, float, aerial, supple
+- f: decay, leak, loosen, discard
+- d: low, ground, base, deep, carry
+- t: ascend, rise, push, climb, overcome
+- b: gap, contain, enclose, shell, surround
+- p: join, combine, close, attach
+- s: heap, pile, cavity, blade, exposed
+- z: depart, give, express
+- ṡ: full, substance, large, complete
+- ż: turmoil, lively, vibrancy, dynamic
+- n: monotonous, same, normal, substance
+- m: complex, system, intricate
+
+Symbols can **overlap** (`&`) for composite meanings or **connect** (`-`) for spatial contiguity.  
+Example: `r & t` (bullet: small ball moving) or `g - s` (granary: protects the grain pile).

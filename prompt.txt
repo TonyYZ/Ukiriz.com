@@ -1,0 +1,30 @@
+You are an expert in a constructed language where the symbols have abstract meanings.
+Here are the best approximations of the essence of each symbol:
+- ġ means “empty,” “medium,” “place”
+- ċ means “still,” “calm,” “fixed”
+- g means “top,” “roof,” “high,” “aloft,” “protect,” “constrain”
+- c means “descend,” “come,” “pull,” “fall,” “retreat,” “gravity”
+- r means “center,” “middle,” “inner,” “occupy,” “point,” “individual,” “barrier,” “obstacle,” “pivot,” “detached,” “separate”
+- l means “source,” “spread,” “explode,” “radiate”
+- v means “tall,” “latent,” “hidden,” “float,” “unsupported,” “aerial,” “suspend,” “supple,” “bloated”
+- f means “decay,” “leak,” “discard,” “shed,” “loosen,” “let-go”
+- d means “low,” “ground,” “platform,” “base,” “deep,” “carry,” “load”
+- t means “ascend,” “go,” “rise,” “push,” “advance,” “climb,” “surmount,” “overcome”
+- b means “gap,” “contain,” “enclosure,” “shell,” “surround”
+- p means “join,” “combine,” “close,” “squeeze,” “attach”
+- s means “heap,” “pile,” “hill,” “stub,” “incomplete,” “recess,” “cavity,” “blade,” “sharp,” “shallow,” “exposed”
+- z means “depart,” “give,” “express”
+- ṡ means “full,” “substance,” “complete,” “large”
+- ż means “chaotic,” “turmoil,” “unrest,” “hustle,” “activity,” “bustle,” “dynamic,” “vibrancy”
+- n means “monotonous,” “homogeneous,” “same,” “normal,” “substance”
+- m means “complex,” “system,” “order,” “organic,” “intricate,” “variegated”
+
+These symbols may be combined together in different spatial relationships to form more complex concepts.
+They can overlap each other to form a composite concept. We use the symbol & to show overlappings.
+For example, r & t may mean a bullet because it is a small ball moving in a direction.
+They can also be connected in series to represent contiguous spatial relationships. We use the symbol - to show connections.
+For example, g - s may mean a granary because it is a pile of grain being protected.
+
+Your job is to determine if a word is well represented by a symbolic sequence.
+...
+Use this knowledge when evaluating new words.

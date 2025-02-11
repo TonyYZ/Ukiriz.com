@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drag and Connect Symbols</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #f4f4f9;
+            /* background-color: #262626; */
+            /* background-color: #eef7f2; */
+            /* background-color: #f9f1db; */
+            font-family: Consolas;
+        }
+        .symbol {
+            position: absolute;
+            width: 117px; /* Full width = 156 */
+            height: 50.25px; /* Full height = 67 */
+            cursor: grab;
+            user-select: none;
+        }
+        .symbol img {
+            width: 100%;
+            height: 100%;
+        }
+
+        .dot {
+            position: absolute;
+            width: 5px; /* Full width = 156 */
+            height: 5px; /* Full height = 67 */
+            cursor: grab;
+            user-select: none;
+        }
+
+        /* Highlight connections */
+        .framed {
+            outline: 2px solid #00B0F0;
+        }
+
+        /* Basic styles for the button */
+        .button {
+            position: fixed; /* Enables top and left positioning */
+            background-size: contain; /* Ensure the image covers the entire button */
+            background-repeat: no-repeat;
+            background-position: center;
+            border: none;
+            border-radius: 5px; /* Optional: Makes the button rounded */
+            cursor: pointer;
+            opacity: 1;
+            transition: opacity 0.2s;
+        }
+
+        /* Add hover effect */
+        .button:hover {
+            opacity: 0.5;
+        }
+
+        .logo {
+            position: fixed; /* Allows precise positioning using top and left */
+            width: 250px; /* Adjust size as needed */
+            height: auto; /* Maintain aspect ratio */
+            margin-bottom: 20px;
+        }
+
+        .wheel {
+            position: fixed;
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            cursor: pointer;
+        }
+
+        /* Vertical bar styles */
+        .vertical-bar {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 280px;
+            height: 100%;
+            background-color: #00B0F0; /* Blue background */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 200px;
+        }
+
+        /* Tab styles */
+        .tab {
+            color: white;
+            text-align: center;
+            line-height: 100px;
+            font-size: 40px;
+            font-family: Consolas, "Courier New", monospace; /* Set font to match labels */
+            width: 280px;
+            height: 100px; /* Make taller for rectangular shape */
+            padding: 0; /* No extra padding */
+            cursor: pointer;
+            margin: 0px 0; /* Spacing between buttons */
+            transition: background-color 0.3s;
+            border-radius: 0; /* Remove rounded corners */
+        }
+
+        .tab:hover {
+            background-color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Content container */
+        .content {
+            margin-left: auto; /* Push content to the left of the vertical bar */
+            margin-right: 100px; /* Leave space for the vertical bar */
+            flex: 1;
+            padding: 20px;
+        }
+
+        /* Content sections */
+        .tab-content {
+            display: none; /* Hide all content by default */
+        }
+
+        .tab-content.active {
+            display: block; /* Show active tab content */
+        }
+
+        /* Color palette styles */
+        .palette {
+            position: fixed;
+            display: flex;
+            justify-content: center;
+            margin: 20px auto;
+            gap: 10px;
+        }
+
+        .color {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid #ccc;
+        }
+
+        .color:hover {
+            border: 2px solid black;
+        }
+
+
+        .progress-ring {
+            position: absolute;
+            width: 50px; /* Ensure this matches the SVG width */
+            height: 50px; /* Ensure this matches the SVG height */
+            transform: rotate(-90deg);
+            visibility: hidden;
+        }
+  
+        .progress-ring circle {
+            fill: none;
+            stroke: transparent;
+            stroke-width: 5;
+            stroke-dasharray: 157; /* Full circle length */
+            stroke-dashoffset: 157; /* Start fully hidden */
+            transition: stroke-dashoffset 0s, stroke 0s;
+        }
+
+        /* Style for the label */
+        .symbol-label {
+            position: absolute;
+            background: white;
+            border: 1px solid black;
+            padding: 4px 8px;
+            border-radius: 5px;
+            font-size: 14px;
+            font-family: Consolas, "Courier New", monospace; /* Set font to match labels */
+            cursor: pointer;
+        }
+
+        /* Style for the input box */
+        .label-input {
+            position: absolute;
+            border: 1px solid black;
+            padding: 5px;
+            font-size: 14px;
+            font-family: Consolas, "Courier New", monospace; /* Set font to match labels */
+            border-radius: 5px;
+        }
+
+        /* Auto-resizing textarea */
+        .label-textarea {
+            position: absolute;
+            width: 165px;
+            min-height: 40px;
+            max-width: 200px;
+            border: 1px solid black;
+            padding: 5px;
+            font-size: 14px;
+            font-family: Consolas, "Courier New", monospace;
+            border-radius: 5px;
+            resize: none;
+            overflow: hidden;
+        }
+
+        /* Style the submit button */
+        .submit-button {
+            position: absolute;
+            background-color: white; /* Green */
+            color: black;
+            border: 1px solid black;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 27px;
+            height: 27px;
+            line-height: 27px;
+            text-align: center;
+        }
+
+        /* Hover effect */
+        .submit-button:hover {
+            opacity: 0.5;
+        }
+
+        .image-container {
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="vertical-bar">
+        <img src="./icons/iti.svg" alt="Logo" class="logo" id="logo">
+        <div class="tab" onclick="showTab(0)">Home</div>
+        <div class="tab" onclick="showTab(1)">Craft</div>
+        <div class="tab" onclick="showTab(2)">Library</div>
+        <div class="tab" onclick="showTab(3)">Share</div>
+    </div>
+
+    <div class="content">
+        <div class="tab-content" id="tab0">
+            <p style="text-align: center"><h1>Divinatory Conlang on Canvas</h1></p>
+            Welcome here! <br>
+            Ever wondered how divination works? <br>
+            The fortune tellers somehow comprehend the meaning behind random patterns, from Tarot card suites to tea cup dregs...<br> Maybe it is because they learned the meaning of these symbols and knew how to tell a story out of them. Anyway, it is about intuition and imagination. <br><br>
+            This online platform plays with this idea, trying to make YOU the fortune teller, but in a more general sense, where you communicate with others by interpreting <br>abstract symbols. <br>Instead of teaching you an entire symbolic language, I will help you build a language by yourself. <br>
+            However, note that the set of "atoms" of your system are fixed, but how the "molecules" are structured is up to you. <br><br>
+            In the next tab, poke around the interface and see if you can piece together an expression for the word "sky", "rain", "flower", and "computer."<br>
+            Remember, as long as it makes sense to you, it should work because it is all about intuitiveness!<br><br>
+
+            Here are the possible ways of combining the symbols:<br>
+
+            <div class="image-container">
+                <img src="./icons/sp.png"/>
+            </div>
+
+        </div>
+        <div class="tab-content" id="tab1">
+
+            <!-- Color palette -->
+            
+            <div class="palette" id="palette">
+                <div class="color" style="background-color: #5cb3cc;"></div>
+                <div class="color" style="background-color: #D00000;"></div>
+                <div class="color" style="background-color: #d6a01d;"></div>
+                <div class="color" style="background-color: white;"></div>
+                <div class="color" style="background-color: #3B3838;"></div>
+            </div>
+          <p></p>
+        </div>
+        <div class="tab-content" id="tab2">
+          <h1>Welcome to Tab 2</h1>
+          <p>This is the content for Tab 2.</p>
+        </div>
+        <div class="tab-content" id="tab3">
+          <h1>Welcome to Tab 3</h1>
+          <p>This is the content for Tab 3.</p>
+        </div>
+    </div>
+
+    <script>
+        // Switching between tabs
+        function showTab(tabIndex) {
+            // Hide all tab content
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => content.classList.remove('active'));
+
+            // Show the selected tab content
+            const activeContent = document.getElementById(`tab${tabIndex}`);
+            activeContent.classList.add('active');
+        }
+
+        // Initialize the first tab as active
+        showTab(0);
+        const tab1 = document.getElementById("tab1");
+
+        let activeSymbol = null;
+        let selectedSymbols = new Set();
+        let isGenerating = false;
+        let readyActive = null;
+        let readyActiveSide = null;
+        let readyTarget = null;
+        let readyTargetSide = null;
+
+        const symbolGraph = new Map();
+        const scale = 0.75;
+        const SNAP_DISTANCE = 30 * scale; // Pixel distance for snapping
+
+        let selectedColor = null;
+        const positions = [2, 1, 0, 7, 3, 4, 5, 6]; // Angle 0 = to the right
+        // Circle layout parameters
+        const radius = 150; // Radius of the circle
+        const centerX = 450; // Center of the canvas (half of canvas width)
+        const centerY = 200; // Center of the canvas (half of canvas height)
+
+        const symbolScale = 0.75;
+        const symbolWidth = 156;
+        const symbolHeight = 67;
+
+        const calX = 1;
+        const calY = 6.7 * symbolScale;
+        const calInvY = 7 * symbolScale;
+        const calCan1 = 4 * symbolScale;
+        const calCan2 = 3.5 * symbolScale;
+
+
+        // Long press variables
+        let progress = 0;
+        let interval;
+        let ring = null;
+        let circle = null;
+        const pressDuration = 1000; // 1 second to complete the bar
+        const totalSteps = pressDuration / 10;
+
+        // Set the x and y coordinates dynamically using JavaScript
+        const logo = document.getElementById('logo');
+        logo.style.right = `10px`; // Set the x position
+        logo.style.top = `30px`; // Set the y position
+
+        const palette = document.getElementById('palette');
+        palette.style.left = `685px`;
+        palette.style.top = `55px`;
+
+        // Symbol labels
+        symbolLabels = [['void', 'empty', 'sparse', 'few', 'clean', 'space'],
+            ['high', 'aloft', 'top', 'cover', 'shell', 'protect', 'roof', 'surface', 'limit', 'constrain'],
+            ['inner', 'core', 'center', 'middle', 'occupy', 'obstruct', 'barrier', 'separated', 'isolated'],
+            ['tall', 'lush', 'drifting', 'unsupported', 'detached'],
+            ['support', 'carry', 'base', 'low', 'bottom', 'floor', 'ground', 'platform', 'deep'],
+            ['enclosure', 'surface', 'periphery', 'surround', 'hollow', 'contain', 'together', 'eachother'],
+            ['recessed', 'cavity', 'shallow', 'exposed', 'incomplete'],
+            ['congested', 'teeming', 'abundant', 'enormous', 'whole'],
+            ['vague', 'monotonous', 'homogeneous', 'uniformity']
+            ]
+        symbolLabels = [[['empty', 'medium', 'place'], ['still', 'calm', 'fixed']],
+            [['protect', 'constrain'], ['come', 'pull', 'retreat']],
+            [['center', 'middle', 'inner', 'occupy', 'point', 'individual', 'barrier', 'obstacle', 'pivot', 'detached', 'separate'], ['source', 'spread', 'explode', 'radiate']],
+            [['latent', 'hidden', 'unsupported', 'supple', 'bloated'], ['decay', 'leak', 'discard', 'shed', 'loosen', 'let-go']],
+            [[], ['go', 'push', 'advance']],
+            [['gap', 'contain', 'enclosure', 'shell', 'surround'], ['join', 'combine', 'close', 'squeeze', 'attach']],
+            [['heap', 'pile', 'hill', 'stub', 'incomplete', 'recess', 'cavity', 'blade', 'sharp', 'shallow', 'exposed'], ['depart', 'give', 'express']],
+            [['full', 'substance', 'complete', 'large'], ['chaotic', 'turmoil', 'unrest', 'hustle', 'activity', 'bustle', 'dynamic', 'vibrancy']],
+            [['monotonous', 'homogeneous', 'same', 'normal', 'substance'], ['complex', 'system', 'order', 'organic', 'intricate', 'variegated']]];
+
+        // Symbol data (position on circle)
+        symbolData = [`<svg width="49.92" height="21.44" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000;stroke-width:1.02897" d="M15.362 16.96v-1.28H49.92v2.56H15.362Z"/><path d="M0 5.371v-1.28h34.56v2.56H0z" style="fill:#000"/></svg>`,
+        `<svg width="49.92" height="21.44" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M0 16.96v-1.28h38.08V4.48h2.56v13.76H0Z"/></svg>`,
+        `<svg width="49.92" height="21.44" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M0 16.96v-1.28h23.68V4.48h2.56v11.2h23.68v2.56H0Z"/></svg>`,
+        `<svg width="49.92" height="21.44" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><a transform="translate(0 -12)"><path style="fill:#000" d="M0 31.52c0-1.28 0-1.28 16.31-1.28 8.438 0 12.956-.003 14.768.024 1.676.024.91-.928.319-1.77-6.312-9.011 4.424-20.08 13.641-14.065 5.795 3.782 5.914 12.549.223 16.464-2.752 1.894-2.823 1.899-25.021 1.903C0 32.8 0 32.8 0 31.52m43.461-2.46c6.384-3.947 3.578-13.7-3.941-13.7-8.426 0-10.362 11.492-2.437 14.458 1.796.672 4.604.338 6.378-.759"/><path d="M-.007 31.517v-1.28h16.31s20.052 2.554 3.93 2.557l-20.24.003z" style="fill:#000"/></a></svg>`,
+        `<svg width="49.92" height="21.44" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M9.28 11.36V4.48h2.56v11.2h38.08v2.56H9.28Z"/></svg>`,
+        `<svg width="49.92" height="21.44" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M9.28 11.36V4.48h2.56v11.2h26.24V4.48h2.56v13.76H9.28z"/></svg>`,
+        `<svg width="49.92" height="21.44" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M49.915 19.513c0-1.28 0-1.28-16.31-1.28-8.438 0-12.955-.003-14.768.023-1.675.025-.909-.927-.318-1.77 6.312-9.01-4.424-20.08-13.642-14.065-5.795 3.782-5.913 12.55-.223 16.465 2.752 1.893 2.824 1.899 25.021 1.903 20.24.004 20.24.004 20.24-1.276M6.454 17.052c-6.384-3.947-3.578-13.7 3.941-13.7 8.426 0 10.363 11.493 2.437 14.459-1.796.672-4.604.338-6.378-.76"/><path d="M49.922 19.51v-1.28h-16.31s-20.052 2.553-3.93 2.556l20.24.004z" style="fill:#000"/></svg>`,
+        `<svg width="49.92" height="21.44" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M21.856 20.468c-3.226-1.115-6.05-3.957-6.641-6.684-.226-1.04-.226-1.04-7.72-1.04-7.495 0-7.495 0-7.495-1.28s0-1.28 7.348-1.28c4.823 0 6.48 0 7.148-.385.35-.201.427-.508.547-.975 2.649-10.367 17.185-10.367 19.834 0 .348 1.36.348 1.36 7.695 1.36s7.348 0 7.348 1.28 0 1.28-7.495 1.28c-7.494 0-7.494 0-7.72 1.04-1.093 5.04-7.683 8.47-12.85 6.684m5.74-2.465c6.55-2.232 6.55-11.806 0-14.039-7.822-2.664-13.768 6.713-7.883 12.43 2.026 1.966 5.032 2.58 7.882 1.61"/><path d="M35.224 10.185H49.92v2.56h-7.494m-34.928.003H.003v-2.56h14.695" style="fill:#000"/></svg>`,
+        `<svg width="49.92" height="21.44" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M0 16.96v-1.28h49.92v2.56H0Zm8-11.2V4.48h33.92v2.56H8Z"/></svg>`
+        ];
+        /*
+        symbolData = [
+            `<svg width="49.92" height="21.44" viewBox="0 -5 49.92 26.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000;stroke-width:1.02897" d="M15.362 16.96v-1.28H49.92v2.56H15.362Z"/><path d="M0 5.371v-1.28h34.56v2.56H0z" style="fill:#000"/>
+            <line x1="-6" y1="5.3" x2="25" y2="5.3" stroke="black" stroke-width="2.57"/>
+            <path stroke="#000" stroke-width="2.57" d="M25 16.96h32"/>
+            </svg>`,
+        
+            `<svg width="49.92" height="21.44" viewBox="0 -5 49.92 26.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M0 16.96v-1.28h38.08V4.48h2.56v13.76H0Z"/>
+            <path stroke="#000" stroke-width="2.57" d="M-6 16.96h16"/></svg>`,
+
+            `<svg width="49.92" height="21.44" viewBox="0 -5 49.92 26.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M0 16.96v-1.28h23.68V4.48h2.56v11.2h23.68v2.56H0Z"/>
+            <path stroke="#000" stroke-width="2.57" d="M-6 16.96h63"/>
+            </svg>`,
+
+            `<svg width="49.92" height="21.44" viewBox="0 -5 49.92 26.44" xmlns="http://www.w3.org/2000/svg"><a transform="translate(0 -12)"><path style="fill:#000" d="M0 31.52c0-1.28 0-1.28 16.31-1.28 8.438 0 12.956-.003 14.768.024 1.676.024.91-.928.319-1.77-6.312-9.011 4.424-20.08 13.641-14.065 5.795 3.782 5.914 12.549.223 16.464-2.752 1.894-2.823 1.899-25.021 1.903C0 32.8 0 32.8 0 31.52m43.461-2.46c6.384-3.947 3.578-13.7-3.941-13.7-8.426 0-10.362 11.492-2.437 14.458 1.796.672 4.604.338 6.378-.759"/><path d="M-.007 31.517v-1.28h16.31s20.052 2.554 3.93 2.557l-20.24.003z" style="fill:#000"/></a>
+            <path stroke="#000" stroke-width="2.57" d="M-6 19.5h25"/>
+            </svg>`,
+                    
+                        `<svg width="49.92" height="21.44" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><a transform="translate(0 -12)"><path style="fill:#000" d="M0 31.52c0-1.28 0-1.28 16.31-1.28 8.438 0 12.956-.003 14.768.024 1.676.024.91-.928.319-1.77-6.312-9.011 4.424-20.08 13.641-14.065 5.795 3.782 5.914 12.549.223 16.464-2.752 1.894-2.823 1.899-25.021 1.903C0 32.8 0 32.8 0 31.52m43.461-2.46c6.384-3.947 3.578-13.7-3.941-13.7-8.426 0-10.362 11.492-2.437 14.458 1.796.672 4.604.338 6.378-.759"/><path d="M-.007 31.517v-1.28h16.31s20.052 2.554 3.93 2.557l-20.24.003z" style="fill:#000"/></a></svg>`,
+        `<svg width="49.92" height="21.44" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M9.28 11.36V4.48h2.56v11.2h38.08v2.56H9.28Z"/></svg>`,
+        `<svg width="49.92" height="21.44" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M9.28 11.36V4.48h2.56v11.2h26.24V4.48h2.56v13.76H9.28z"/></svg>`,
+        `<svg width="49.92" height="25" viewBox="0 -5 49.92 26.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M49.915 19.513c0-1.28 0-1.28-16.31-1.28-8.438 0-12.955-.003-14.768.023-1.675.025-.909-.927-.318-1.77 6.312-9.01-4.424-20.08-13.642-14.065-5.795 3.782-5.913 12.55-.223 16.465 2.752 1.893 2.824 1.899 25.021 1.903 20.24.004 20.24.004 20.24-1.276M6.454 17.052c-6.384-3.947-3.578-13.7 3.941-13.7 8.426 0 10.363 11.493 2.437 14.459-1.796.672-4.604.338-6.378-.76"/><path d="M49.922 19.51v-1.28h-16.31s-20.052 2.553-3.93 2.556l20.24.004z" style="fill:#000"/>
+            <line x1="25" y1="19.5" x2="60" y2="19.5" stroke="black" stroke-width="2.57"/></svg>`,
+        `<svg width="49.92" height="21.44" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M21.856 20.468c-3.226-1.115-6.05-3.957-6.641-6.684-.226-1.04-.226-1.04-7.72-1.04-7.495 0-7.495 0-7.495-1.28s0-1.28 7.348-1.28c4.823 0 6.48 0 7.148-.385.35-.201.427-.508.547-.975 2.649-10.367 17.185-10.367 19.834 0 .348 1.36.348 1.36 7.695 1.36s7.348 0 7.348 1.28 0 1.28-7.495 1.28c-7.494 0-7.494 0-7.72 1.04-1.093 5.04-7.683 8.47-12.85 6.684m5.74-2.465c6.55-2.232 6.55-11.806 0-14.039-7.822-2.664-13.768 6.713-7.883 12.43 2.026 1.966 5.032 2.58 7.882 1.61"/><path d="M35.224 10.185H49.92v2.56h-7.494m-34.928.003H.003v-2.56h14.695" style="fill:#000"/></svg>`,
+        `<svg width="49.92" height="21.44" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M0 16.96v-1.28h49.92v2.56H0Zm8-11.2V4.48h33.92v2.56H8Z"/></svg>`
+        
+        ]
+        */
+        const symbolDataDyn = [
+            `<svg width="49.92" height="21.44" viewBox="0 -5 49.92 26.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000;stroke-width:1.02897" d="M15.362 16.96v-1.28H49.92v2.56H15.362Z"/><path d="M0 5.371v-1.28h34.56v2.56H0z" style="fill:#000"/>
+            <line x1="-6" y1="5.3" x2="25" y2="5.3" stroke="black" stroke-width="2.57"/>
+            <path stroke="#000" stroke-width="2.57" d="M25 16.96h32"/>
+            <circle cx="25" cy="-3" r="2" fill="red"/>
+            </svg>`,
+            `<svg width="49.92" height="21.44" viewBox="0 -5 49.92 26.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M0 16.96v-1.28h38.08V4.48h2.56v13.76H0Z"/>
+            <path stroke="#000" stroke-width="2.57" d="M-6 16.96h16"/>
+            <circle cx="39.5" cy="-1" r="2" fill="red"/></svg>`,
+
+            `<svg width="49.92" height="21.44" viewBox="0 -5 49.92 26.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M0 16.96v-1.28h23.68V4.48h2.56v11.2h23.68v2.56H0Z"/>
+            <path stroke="#000" stroke-width="2.57" d="M-6 16.96h63"/>
+            <circle cx="25" cy="-1" r="2" fill="red"/>
+            </svg>`,
+
+            `<svg width="49.92" height="21.44" viewBox="0 -5 49.92 26.44" xmlns="http://www.w3.org/2000/svg"><a transform="translate(0 -12)"><path style="fill:#000" d="M0 31.52c0-1.28 0-1.28 16.31-1.28 8.438 0 12.956-.003 14.768.024 1.676.024.91-.928.319-1.77-6.312-9.011 4.424-20.08 13.641-14.065 5.795 3.782 5.914 12.549.223 16.464-2.752 1.894-2.823 1.899-25.021 1.903C0 32.8 0 32.8 0 31.52m43.461-2.46c6.384-3.947 3.578-13.7-3.941-13.7-8.426 0-10.362 11.492-2.437 14.458 1.796.672 4.604.338 6.378-.759"/><path d="M-.007 31.517v-1.28h16.31s20.052 2.554 3.93 2.557l-20.24.003z" style="fill:#000"/></a>
+            <path stroke="#000" stroke-width="2.57" d="M-6 19.5h25"/>
+            <circle cx="39.5" cy="-3" r="2" fill="red"/>
+            </svg>`,
+
+        `<svg width="49.92" height="25" viewBox="0 -5 49.92 26.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M49.915 19.513c0-1.28 0-1.28-16.31-1.28-8.438 0-12.955-.003-14.768.023-1.675.025-.909-.927-.318-1.77 6.312-9.01-4.424-20.08-13.642-14.065-5.795 3.782-5.913 12.55-.223 16.465 2.752 1.893 2.824 1.899 25.021 1.903 20.24.004 20.24.004 20.24-1.276M6.454 17.052c-6.384-3.947-3.578-13.7 3.941-13.7 8.426 0 10.363 11.493 2.437 14.459-1.796.672-4.604.338-6.378-.76"/><path d="M49.922 19.51v-1.28h-16.31s-20.052 2.553-3.93 2.556l20.24.004z" style="fill:#000"/>
+            <line x1="25" y1="19.5" x2="60" y2="19.5" stroke="black" stroke-width="2.57"/>
+                <circle cx="10" cy="-3" r="2" fill="red"/></svg>`,
+        ];
+
+        const dotData = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><circle cx="5" cy="5" r="5" fill="red"/></svg>`;
+        const dotOffsetXData = [0, 45, 0, 46, -45, 0, -46, 0, 0];
+        const dotOffsetYData = [0, 0, 0, -8, 0, 0, -8, -8, 0];
+
+        const turnButton = document.createElement("div");
+        turnButton.classList.add("button");
+        turnButton.style.width = `149px`;
+        turnButton.style.height = `142px`;
+        turnButton.style.backgroundImage = "url('./icons/turn.png')";
+        turnButton.style.left = `40px`;
+        turnButton.style.top = `30px`;
+        turnButton.addEventListener("click", (e) => {
+            if (selectedSymbols.size != 0) {
+                // Increment the angle by 90 degrees
+                selectedSymbols.forEach(selectedSymbol => {
+                    selectedSymbol.angle = (selectedSymbol.angle + 90) % 360;
+                    if (selectedSymbol.elemId === 1 || selectedSymbol.elemId === 3) {
+                        if (selectedSymbol.angle === 90) {
+                            selectedSymbol.angle = 270;
+                        }
+                        if (selectedSymbol.angle === 180) {
+                            selectedSymbol.angle = 0;
+                        }
+                    }
+                    if (selectedSymbol.elemId === 4 || selectedSymbol.elemId === 6) {
+                        if (selectedSymbol.angle === 90) {
+                            selectedSymbol.angle = 270;
+                        }
+                        if (selectedSymbol.angle === 180) {
+                            selectedSymbol.angle = 0;
+                        }
+                    }
+                    selectedSymbol.style.transform = `rotate(${selectedSymbol.angle}deg)`;
+                    if(selectedSymbol.isDynamic) updateDotPosition(selectedSymbol.dot);
+                });
+            }
+            if (eyeButton.isActivated) {
+                eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
+                removeLabelInputs();
+            }
+        });
+        tab1.appendChild(turnButton);
+
+        const dotButton = document.createElement("div");
+        dotButton.classList.add("button");
+        dotButton.style.width = `143px`;
+        dotButton.style.height = `94px`;
+        dotButton.style.backgroundImage = "url('./icons/dot.png')";
+        dotButton.style.left = `200px`;
+        dotButton.style.top = `55px`;
+        tab1.appendChild(dotButton);
+        dotButton.addEventListener("mouseup", (e) => {
+            if (selectedSymbols.size != 0) {
+                // Increment the angle by 90 degrees
+                selectedSymbols.forEach(selectedSymbol => {
+                    selectedSymbol.isDynamic = !selectedSymbol.isDynamic;
+                    if (selectedSymbol.isDynamic) {
+                        const dot = document.createElement('div');
+                        dot.innerHTML = dotData;
+                        dot.classList.add('dot');
+                        selectedSymbol.dot = dot;
+                        dot.parent = selectedSymbol;
+                        updateDotPosition(dot);
+                        tab1.appendChild(dot);
+                    } else {
+                        selectedSymbol.dot.remove();
+                    }
+                    
+                });
+            }
+            if (eyeButton.isActivated) {
+                eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
+                removeLabelInputs();
+            }
+        })
+
+        function updateDotPosition(dot) {
+            symbol = dot.parent;
+            rect = symbol.getBoundingClientRect();
+            switch (symbol.angle) {
+                case 0: 
+                    dot.style.left = `${parseFloat(rect.left) + (symbolWidth / 2 + dotOffsetXData[symbol.elemId]) * symbolScale - 5}px`;
+                    dot.style.top = `${parseFloat(rect.top) + dotOffsetYData[symbol.elemId] * symbolScale - 12}px`;
+                    break;
+                case 90:
+                    dot.style.left = `${parseFloat(rect.right) - dotOffsetYData[symbol.elemId] * symbolScale}px`;
+                    dot.style.top = `${parseFloat(rect.top) + (symbolWidth / 2 + dotOffsetXData[symbol.elemId]) * symbolScale - 10}px`;
+                    break;
+                case 180: 
+                    dot.style.left = `${parseFloat(rect.right) - (symbolWidth / 2 + dotOffsetXData[symbol.elemId]) * symbolScale - 5}px`;
+                    dot.style.top = `${parseFloat(rect.bottom) - dotOffsetYData[symbol.elemId] * symbolScale - 7}px`;
+                    break;
+                case 270:
+                    dot.style.left = `${parseFloat(rect.left) + dotOffsetYData[symbol.elemId] * symbolScale - 10}px`;
+                    dot.style.top = `${parseFloat(rect.bottom) - (symbolWidth / 2 + dotOffsetXData[symbol.elemId]) * symbolScale - 7}px`;
+                    break;
+            }
+        }
+        const eyeButton = document.createElement("div");
+        eyeButton.isActivated = false;
+        eyeButton.classList.add("button");
+        eyeButton.style.width = `150px`;
+        eyeButton.style.height = `106px`;
+        eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
+        eyeButton.style.left = `510px`;
+        eyeButton.style.top = `40px`;
+        tab1.appendChild(eyeButton);
+        eyeButton.addEventListener("mouseup", (e) => {
+            eyeButton.isActivated = !eyeButton.isActivated;
+            if (eyeButton.isActivated) {
+                eyeButton.style.backgroundImage = "url('./icons/eye_blue.png')";
+                if (selectedSymbols.size !== 0) {
+                    showSimpleLabel();
+                    showTextInput();
+                }
+            } else {
+                eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
+                removeLabelInputs();
+            }
+        })
+
+        const removeButton = document.createElement("div");
+        removeButton.isActivated = false;
+        removeButton.classList.add("button");
+        removeButton.style.width = `168.75px`;
+        removeButton.style.height = `119.25px`;
+        removeButton.style.backgroundImage = "url('./icons/astray.png')";
+        removeButton.style.left = `340px`;
+        removeButton.style.top = `40px`;
+        tab1.appendChild(removeButton);
+        removeButton.addEventListener("mouseup", (e) => {
+            if (selectedSymbols.size != 0) {
+                selectedSymbols.forEach(selectedSymbol => {
+                    if (selectedSymbol.isDynamic) selectedSymbol.dot.remove();
+                    selectedSymbol.remove();
+                });
+            }
+            if (eyeButton.isActivated) {
+                eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
+                removeLabelInputs();
+            }
+        })
+
+        // Handle color selection
+        palette.addEventListener("click", (e) => {
+        if (e.target.classList.contains("color")) {
+            selectedColor = e.target.style.backgroundColor; // Set the selected color
+            if (selectedSymbols.size != 0) {
+                selectedSymbols.forEach(selectedSymbol => {
+                    const svgElement = selectedSymbol.querySelector("svg");
+                    const paths = svgElement.querySelectorAll("path"); // Get the first shape inside the SVG
+                    paths.forEach((path) => {
+                        path.setAttribute("style", "fill:" + selectedColor); // Change the fill attribute
+                    });
+                });
+            }
+            console.log(`Selected color: ${selectedColor}`);
+        }
+        });
+
+        const wheel = document.createElement("div"); // Your wheel sprite
+        wheel.classList.add("wheel");
+        wheel.style.left = `50px`; // Set the x position
+        wheel.style.bottom = `40px`; // Set the y position
+        wheel.style.width = `290.67px`;
+        wheel.style.height = `292.33px`;
+        wheel.style.backgroundImage = "url('./icons/wheel/wheel.png')";
+        wheelCenterX = parseFloat(wheel.style.left) + parseFloat(wheel.style.width) / 2;  // right x
+        wheelCenterY = window.innerHeight - parseFloat(wheel.style.bottom) - parseFloat(wheel.style.height) / 2;
+        console.log(`wheel center x: ${wheelCenterX}, wheel center y: ${wheelCenterY} ${window.innerHeight} ${parseFloat(wheel.style.bottom)}`);
+        const centerRadius = 36; // Define center circle radius
+        tab1.appendChild(wheel);
+        wheel.addEventListener("mousedown", (e) => {
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+
+            // Calculate the distance from the center
+            const dx = mouseX - wheelCenterX;
+            const dy = mouseY - wheelCenterY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < centerRadius) {
+                console.log("Clicked center!");
+                wheel.style.backgroundImage = `url(./icons/wheel/wheel8.png)`;
+                createSymbolCopy(mouseX, mouseY, null, 8, symbolWidth * symbolScale / 2, symbolHeight * symbolScale / 2);
+                return; // Center circle detected
+            } 
+
+            // Calculate the angle in degrees (0° at the right, counterclockwise)
+            let angle = Math.atan2(dy, dx) * (180 / Math.PI) + 67.5;
+            angle = angle % 360;
+            if (angle < 0) angle += 360; // Convert negative angles
+
+            // Determine sector (each is 45°)
+            let sectorIndex = Math.floor(angle / 45);
+            console.log("Clicked sector:", sectorIndex);
+            if (sectorIndex < 4) sectorIndex = 3 - sectorIndex;
+            wheel.style.backgroundImage = `url(./icons/wheel/wheel${sectorIndex}.png)`;
+            if (!isGenerating) {
+                isGenerating = true;
+                createSymbolCopy(mouseX, mouseY, null, sectorIndex, symbolWidth * symbolScale / 2, symbolHeight * symbolScale / 2);
+            }
+        });
+
+        wheel.addEventListener("mouseup", (event) => {
+            wheel.style.backgroundImage = "url(./icons/wheel/wheel.png)";
+        });
+
+        window.addEventListener("resize", () => {
+            wheelCenterX = parseFloat(wheel.style.left) + parseFloat(wheel.style.width) / 2;  // right x
+            wheelCenterY = window.innerHeight - parseFloat(wheel.style.bottom) - parseFloat(wheel.style.height) / 2;
+            console.log(`wheel center x: ${wheelCenterX}, wheel center y: ${wheelCenterY}`);
+        });
+
+        function removeLabelInputs() {
+            const labels = document.querySelectorAll('.symbol-label');
+            labels.forEach(label => label.remove());
+            const inputs = document.querySelectorAll('input');
+            inputs.forEach(input => input.remove());
+            const textareas = document.querySelectorAll('textarea');
+            textareas.forEach(textarea => textarea.remove());
+            const buttons = document.querySelectorAll('.submit-button');
+            buttons.forEach(button => button.remove());
+        }
+        // Load symbols dynamically
+        function loadSymbols() {
+            /*
+            for (let i = 0; i < 9; i++) {
+                const symbolGen = document.createElement("div");
+                symbolGen.elemId = i;
+                symbolGen.innerHTML = symbolData[i];
+                symbolGen.querySelector('svg').setAttribute('width', '100%');
+                symbolGen.querySelector('svg').setAttribute('height', '100%');
+                symbolGen.classList.add("symbol");
+
+                if (i === 8) {
+                    // Center symbol
+                    symbolGen.style.right = `${centerX}px`; // Offset by half symbol width
+                    symbolGen.style.bottom = `${centerY}px`;  // Offset by half symbol height
+                } else {
+                    // Symbols around the circle
+                    const angle = (positions[i] * (2 * Math.PI)) / 8; // Divide the circle into 8 parts
+                    const x = centerX - radius * Math.cos(angle); // Offset by half symbol width
+                    const y = centerY - radius * Math.sin(angle); // Offset by half symbol height
+                    symbolGen.style.right = `${x}px`;
+                    symbolGen.style.bottom = `${y}px`;
+                }
+
+                // Add pressing event listener to the symbol
+                symbolGen.addEventListener("mousedown", (e) => {
+                    if (!isGenerating) {
+                        isGenerating = true;
+                        createSymbolCopy(e.clientX, e.clientY, symbolGen);
+                    }
+                });
+
+                tab1.appendChild(symbolGen);
+                
+            }
+            */
+            document.addEventListener("mousemove", (e) => {
+                if (activeSymbol) {
+                    x = e.clientX - activeSymbol.offsetX;
+                    y = e.clientY - activeSymbol.offsetY;
+                    activeSymbol.style.left = `${x}px`;
+                    activeSymbol.style.top = `${y}px`;
+                    activeSymbol.selected = true;
+                    endLongPress();
+                    eyeButton.isActivated = false;
+                    eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
+                    removeLabelInputs();
+
+                    if (!activeSymbol.moving) {
+                        // Cut connections
+                        for (let i = 0; i < symbolGraph.get(activeSymbol).length; i++) {
+                            entryLst = symbolGraph.get(activeSymbol)[i];
+                            if (entryLst.length !== 0) {
+                                // for (const entry in entryLst) {
+                                for (let j = 0; j < entryLst.length; j++) {
+                                    entry = entryLst[j];
+                                    targetEntry = symbolGraph.get(entry[0])[entry[1]];
+                                    console.log(`targetEntry ${j}`);
+                                    console.log(targetEntry);
+                                    symbolGraph.get(entry[0])[entry[1]] = targetEntry.filter(sublist => sublist[0] !== activeSymbol);
+                                }
+                                symbolGraph.get(activeSymbol)[i] = [];
+                            }
+                        }
+                        activeSymbol.moving = true;
+                    }
+                    if (!activeSymbol.classList.contains("framed")) {
+                        activeSymbol.classList.add("framed");
+                    }
+
+                    checkConnections(activeSymbol);
+                    if (activeSymbol.isDynamic) updateDotPosition(activeSymbol.dot);
+                    // console.log("mouse move " + activeSymbol.elemId);
+                }
+            });
+
+            document.addEventListener("mouseup", (e) => {
+                wheel.style.backgroundImage = "url(./icons/wheel/wheel.png)";
+                const clickedElemType = e.target.tagName;
+                if (selectedSymbols.size !== 0 && clickedElemType == 'HTML') {
+                    selectedSymbols.forEach(selectedSymbol => {
+                        rect = selectedSymbol.getBoundingClientRect();
+
+                        // console.log('x1:' + rect.left + ' y1:' + rect.top + ' x2:' + rect.right + ' y2:' + rect.bottom + ' mousex:' + e.clientX + ' mousey:' + e.clientY)
+                        if (! (rect.left < e.clientX && e.clientX < rect.right && rect.top < e.clientY && e.clientY < rect.bottom)) {
+                            selectedSymbol.classList.remove("framed");
+                            selectedSymbols.delete(selectedSymbol);
+                            selectedSymbol.selected = false;
+                            selectedSymbol = null;
+                        }
+                    });
+                }
+                if (activeSymbol) {
+                    activeSymbol.style.cursor = "grab";
+                    if (activeSymbol.selected) {  // released after moving or released without moving for selection
+                        if (!activeSymbol.classList.contains("framed")) {
+                            activeSymbol.classList.add("framed");
+                        }
+                        selectedSymbols.add(activeSymbol);
+                        console.log(`moving ${activeSymbol.moving} readyActive ${readyActive}`)
+                        if (readyActive !== null && activeSymbol.moving) {
+                            console.log('load the link into graph');
+                            symbolGraph.get(readyTarget)[readyTargetSide].push([readyActive, readyActiveSide]);
+                            symbolGraph.get(readyActive)[readyActiveSide].push([readyTarget, readyTargetSide]);
+                        }
+                        // console.log("frame add " + activeSymbol.elemId);
+                    } else {  // released without moving for cancelling selection
+                        // console.log("frame remove " + activeSymbol.elemId);
+                        activeSymbol.classList.remove("framed");
+                        selectedSymbols.delete(activeSymbol);
+                    }
+                    activeSymbol.moving = false;
+                    activeSymbol = null;
+                    isGenerating = false;
+                    endLongPress();
+                }
+
+                // Throw away the symbol into the swirl
+                rect = removeButton.getBoundingClientRect();
+                if (rect.left < e.clientX && e.clientX < rect.right && rect.top < e.clientY && e.clientY < rect.bottom) {
+                    if (selectedSymbols.size != 0) {
+                        selectedSymbols.forEach(selectedSymbol => {
+                            if (selectedSymbol.isDynamic) selectedSymbol.dot.remove();
+                            selectedSymbol.remove();
+                        });
+                    }
+                    if (eyeButton.isActivated) {
+                        eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
+                        removeLabelInputs();
+                    }
+                }
+            });
+        }
+
+        function getRandomSubset(words, count) {
+            return words.sort(() => Math.random() - 0.5).slice(0, count);
+        }
+        function getRandomFloat(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+        // Function to create labels for selected symbols
+        function showSimpleLabel() {
+            selectedSymbols.forEach(selectedSymbol => {
+                // Check if label already exists
+                if (!selectedSymbol.querySelector('.symbol-label')) {
+                    words = symbolLabels[selectedSymbol.elemId][Number(selectedSymbol.isDynamic)];
+                    if (getDir(selectedSymbol) === 0 && !selectedSymbol.isDynamic) {
+                        if (selectedSymbol.elemId === 1 || selectedSymbol.elemId === 3) words.push(...["right", "barrier"]);
+                        if (selectedSymbol.elemId === 4 || selectedSymbol.elemId === 6) words.push(...["left", "barrier"]);
+                    }
+                    if (getDir(selectedSymbol) === 1) {
+                        if (selectedSymbol.elemId === 1) {
+                            if (selectedSymbol.isDynamic) {
+                                words.push(...['gravity', 'fall', 'descend']);
+                            } else {
+                                words.push(...['top', 'roof', 'high', 'aloft']);
+                            }
+                        }
+                        if (selectedSymbol.elemId === 3) {
+                            if (!selectedSymbol.isDynamic) {
+                                words.push(...['aerial', 'suspend', 'tall', 'float']);
+                            }
+                        }
+                        if (selectedSymbol.elemId === 4) {
+                            if (selectedSymbol.isDynamic) {
+                                words.push(...['ascend', 'rise', 'climb']);
+                            } else {
+                                words.push(...['low', 'ground', 'platform', 'base', 'deep', 'carry', 'load']);
+                            }
+                        }
+                    }
+                    let subset = getRandomSubset(words, 1);
+
+                    console.log(subset);
+                    subset.forEach(word => {
+                        const label = document.createElement('div');
+                        label.classList.add('symbol-label');
+                        // Position the label near the symbol
+                        label.style.left = `${selectedSymbol.offsetLeft + getRandomFloat(-30, 40)}px`;
+                        label.style.top = `${selectedSymbol.offsetTop + getRandomFloat(0, 20)}px`;
+
+                        // Add event listener to remove label on click
+                        label.addEventListener('click', function () {
+                            label.remove();
+                        });
+
+                        tab1.appendChild(label);
+                        label.textContent = word; // Default text
+                    });
+                }
+            });
+        }
+
+
+        // Function to create a text input near the symbol
+        function showTextInput() {
+            marginX = 0;
+            marginY = 10000;
+            selectedSymbols.forEach(selectedSymbol => {
+                symbolX = parseFloat(selectedSymbol.style.left);
+                symbolY = parseFloat(selectedSymbol.style.top);
+                if (symbolX > marginX) {
+                    marginX = symbolX;
+                }
+                if (symbolY < marginY) {
+                    marginY = symbolY;
+                }
+            });
+            console.log(marginX);
+            const input = document.createElement('input');
+            input.classList.add('label-input');
+            input.type = 'text';
+            input.placeholder = "What word is this?";
+
+            // Position the input near the symbol
+            input.x = marginX + symbolWidth * symbolScale + 5;
+            input.y = marginY;
+            input.style.left = `${input.x}px`;
+            input.style.top = `${input.y}px`;
+
+            tab1.appendChild(input);
+            input.focus();
+
+            const textarea = document.createElement('textarea');
+            textarea.classList.add('label-textarea');
+            textarea.placeholder = 'Why?';
+            
+            // Position the textarea near the symbol
+            textarea.x = marginX + symbolWidth * symbolScale + 5;
+            textarea.y = marginY + 30;
+            textarea.style.left = `${textarea.x}px`;
+            textarea.style.top = `${textarea.y}px`;
+
+            tab1.appendChild(textarea);
+            textarea.focus();
+
+            // Adjust height dynamically as user types
+            textarea.addEventListener('input', function () {
+                textarea.style.height = 'auto'; // Reset height first
+                textarea.style.height = `${textarea.scrollHeight}px`; // Set new height based on content
+                submitButton.style.top = `${marginY + 35 + textarea.scrollHeight}px`;
+            });
+
+            // Create the submit button
+            const submitButton = document.createElement("button");
+            submitButton.classList.add("submit-button");
+            submitButton.innerHTML = "✔"; // Checkmark icon
+            
+            submitButton.style.left = `${marginX + symbolWidth * symbolScale + 5}px`; // Position to the right of the textbox
+            submitButton.style.top = `${marginY + 35 + textarea.scrollHeight}px`;
+
+            // Append elements to the document
+            tab1.appendChild(input);
+            tab1.appendChild(textarea);
+            tab1.appendChild(submitButton);
+
+            // Handle button click event
+            submitButton.addEventListener("click", () => {
+                console.log("Submitted:", textarea.value); // Handle submission logic here
+                input.remove();
+                textarea.remove();
+                submitButton.remove();
+            });
+        }
+        
+
+
+        function startLongPress(symbol) {
+            ring = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                        // Append the circle to the SVG
+            ring.appendChild(circle);
+            tab1.appendChild(ring);
+            
+            symbolCenterX = parseFloat(symbol.style.left) + symbolWidth * symbolScale / 2;
+            symbolCenterY = parseFloat(symbol.style.top) + symbolHeight * symbolScale / 2;
+
+            // Create the SVG element with the desired attributes
+            
+            ring.style.left = symbolCenterX - 25;
+            ring.style.top = symbolCenterY - 25;
+            ring.setAttribute("class", "progress-ring");
+            ring.setAttribute("width", "50");
+            ring.setAttribute("height", "50");
+            ring.setAttribute("viewBox", `${symbolCenterX - 27} ${symbolCenterY - 27} 54 54`);
+
+            // Create the circle element
+
+            circle.setAttribute("cx", symbolCenterX.toString());
+            circle.setAttribute("cy", symbolCenterY.toString());
+            circle.setAttribute("r", "25");
+            circle.setAttribute("stroke-width", "5");
+    
+            ring.style.visibility = "visible";
+
+            circle.style.stroke = "#00B0F0";
+            progress = 0;
+            circle.style.strokeDashoffset = 157; // Reset
+            console.log(circle);
+            console.log(ring);
+            interval = setInterval(() => {
+                progress += 1; 
+                const offset = 157 * (1 - progress / totalSteps); // More precise calculation
+                circle.style.strokeDashoffset = offset;
+        
+                if (progress >= totalSteps) {
+                    clearInterval(interval);
+                    triggerLongPress(symbol);
+                }
+            }, 10);
+        }
+    
+        function endLongPress() {
+            if (ring !== null && circle !== null) {
+                clearInterval(interval);
+                ring.style.visibility = "hidden";
+                circle.style.strokeDashoffset = 157;
+                circle.style.stroke = "transparent";
+                ring = null;
+                circle = null;
+            }
+        }
+    
+        function triggerLongPress(symbol) {
+            circle.style.stroke = "#FFC000";
+            selectedSymbols = getMolecule(symbol);
+            selectedSymbols.forEach(selectedSymbol => {
+                selectedSymbol.selected = true;
+                if (!selectedSymbol.classList.contains("framed")) {
+                    selectedSymbol.classList.add("framed");
+                }
+            });
+        }
+
+        // Create a new copy of the symbol being clicked
+        function createSymbolCopy(mouseX, mouseY, symbolGen = null, elemId = -1, offsetX = -1, offsetY = -1) {
+            // Create the copy
+            const symbol = document.createElement('div');
+            symbol.ondragstart = (e) => e.preventDefault();
+            symbol.selected = false;
+            symbol.moving = false;
+            symbol.angle = 0;
+            symbol.isDynamic = false;
+            symbol.classList.add('symbol');
+
+            if (symbolGen !== null) {
+                symbol.elemId = symbolGen.elemId
+                symbol.innerHTML = symbolGen.innerHTML;
+
+                // Set the initial position to where the user clicked
+                symbol.style.right = symbolGen.style.right; // Adjust for symbol size
+                symbol.style.bottom =  symbolGen.style.bottom; // Adjust for symbol size
+            } else {
+                symbol.elemId = elemId;
+                symbol.innerHTML = symbolData[symbol.elemId];
+                symbol.style.left = `${mouseX - offsetX}px`;
+                symbol.style.top = `${mouseY - offsetY}px`;
+            }
+
+            symbol.querySelector('svg').setAttribute('width', '100%');
+            symbol.querySelector('svg').setAttribute('height', '100%');
+    
+            // Add dragging functionality
+            let isDragging = false;
+            // Add pressing event listener to the symbol
+            symbol.addEventListener("mousedown", (e) => {
+                activeSymbol = symbol;
+                selectedSymbols.forEach(selectedSymbol => {
+                    if (selectedSymbol !== null && selectedSymbol !== symbol) {
+                        selectedSymbol.selected = false;
+                        selectedSymbol.classList.remove("framed");
+                        selectedSymbols.delete(selectedSymbol);
+                    }
+                });
+                symbol.offsetX = e.clientX - symbol.offsetLeft;
+                symbol.offsetY = e.clientY - symbol.offsetTop;
+                symbol.selected = !symbol.selected;
+                symbol.style.cursor = "grabbing";
+                startLongPress(symbol);
+                // console.log("mouse down " + activeSymbol.elemId);
+            });
+
+            /* if horizontal: left, right, top perpendicular, bottom perpendicular, top parallel, bottom parallel */
+            /* if vertical: top, down, left perpendicular, right perpendicular, left parallel, right parallel */
+            symbolGraph.set(symbol, [[], [], [], [], [], []]);
+            tab1.appendChild(symbol);
+
+            if (selectedSymbols.size !== 0) {
+                selectedSymbols.forEach(selectedSymbol => {
+                    selectedSymbol.selected = false;
+                    selectedSymbol.classList.remove("framed");
+                    selectedSymbols.delete(selectedSymbol);
+                });
+            }
+            activeSymbol = symbol;
+            if (symbolGen !== null) {
+                symbol.offsetX = mouseX - symbol.offsetLeft;
+                symbol.offsetY = mouseY - symbol.offsetTop;
+            } else {
+                symbol.offsetX = offsetX;
+                symbol.offsetY = offsetY;
+                console.log(mouseX);
+            }
+
+            symbol.selected = !symbol.selected;
+            symbol.style.cursor = "grabbing";
+        }
+
+        // Find all the symbols that are connected to one symbol
+        function getMolecule(symbol, graph) {
+            const visited = new Set();
+            const stack = [symbol];
+
+            while (stack.length > 0) {
+                const current = stack.pop();
+                if (!visited.has(current)) {
+                    visited.add(current);
+                    console.log(`visit`);
+                    console.log(symbolGraph);
+                    console.log(current);
+                    for (let i = 0; i < symbolGraph.get(current).length; i++) {  // every side
+                        for (const entry of symbolGraph.get(current)[i]) {
+                            if (entry.length !== 0){
+                                stack.push(entry[0]);
+                            }
+                        }
+                    }
+                }
+            }
+            return visited;
+        }
+
+        // Check for snapping connections
+        function checkConnections(active) {
+            let targetX;
+            let targetY;
+            readyActive = null;
+            readyTarget = null;
+            readyActiveSide = null;
+            readyTargetSide = null;
+            for (const target of symbolGraph.keys()) {
+                if (target === active) continue; // Skip the active symbol itself
+                activeJunctions = getAbsJunctions(active);
+                targetJunctions = getAbsJunctions(target);
+
+                targetJunctions.forEach((targetCoord, index) => {
+                    switch (index) {
+                        case 0: // connected at the left / top start
+                            if (getDir(active) === getDir(target)) { // active right >=< target left
+                                snapToSymbol(active, target, activeJunctions[1].x, activeJunctions[1].y, targetCoord.x, targetCoord.y, 1, 0);
+                            } else {
+                                const [first, second, , fourth] = activeJunctions;  // valid coordinates for connecting
+                                snapToSymbol(active, target, first.x, first.y, targetCoord.x, targetCoord.y, 0, 0, '始');
+                                if (getDir(active) === 0) {  // target 
+                                    snapToSymbol(active, target, second.x, second.y, targetCoord.x, targetCoord.y, 1, 0, '始');
+                                } else {
+                                    snapToSymbol(active, target, second.x, second.y, targetCoord.x, targetCoord.y + calY, 1, 0, 'heihei');
+                                }
+                                snapToSymbol(active, target, fourth.x, fourth.y, targetCoord.x, targetCoord.y, 3, 0, '始');
+                            }
+                            break;
+                        case 1:  // connected at the right / bottom end
+                            if (getDir(active) === getDir(target)) {
+                                snapToSymbol(active, target, activeJunctions[0].x, activeJunctions[0].y, targetCoord.x, targetCoord.y, 0, 1, "snap to the right");
+                            } else {
+                                const [first, second, third] = activeJunctions.slice(0, 3);  // valid coordinates for connecting
+                                if (getDir(active) === 1) {
+                                    snapToSymbol(active, target, first.x, first.y, targetCoord.x, targetCoord.y, 0, 1, '末');
+                                } else {
+                                    snapToSymbol(active, target, first.x, first.y, targetCoord.x, targetCoord.y - calY, 0, 1, 'meimei');
+                                }
+                                snapToSymbol(active, target, second.x, second.y, targetCoord.x, targetCoord.y, 1, 1, '末');
+                                snapToSymbol(active, target, third.x, third.y, targetCoord.x, targetCoord.y, 2, 1, '末');
+                            }
+                            break;
+                        case 2:  // perpendicular: inserted at the top / left center
+                            if (getDir(active) !== getDir(target)) {
+                                if (getDir(active) === 0) {  // horizontal active inserted on vertical target 上
+                                    snapToSymbol(active, target, activeJunctions[1].x, activeJunctions[1].y, targetCoord.x, targetCoord.y, 1, 2, "卜");
+                                } else {
+                                    snapToSymbol(active, target, activeJunctions[1].x, activeJunctions[1].y, targetCoord.x, targetCoord.y, 1, 2, "上");
+                                }
+                            }
+                            break;
+                        case 3:  // perpendicular: inserted at bottom / right center 下
+                            if (getDir(active) !== getDir(target)) {
+                                snapToSymbol(active, target, activeJunctions[0].x, activeJunctions[0].y, targetCoord.x, targetCoord.y, 0, 3, "下");
+                            }
+                            break;
+                    }
+                });
+
+                if (getDir(active) === getDir(target)) {  // parallel
+                    if (getDir(active) === 0) {
+                        targetX = parseInt(target.style.left);
+                        targetY = parseInt(target.style.top) - (symbolHeight - 7) * symbolScale;
+                        if (symbolGraph.get(target)[4].length === 0) {
+                            snapToSymbol(active, target, parseInt(active.style.left), parseInt(active.style.top), targetX, targetY, 5, 4);
+                        }
+                        targetY = parseInt(target.style.top) + (symbolHeight - 4) * symbolScale;
+                        if (symbolGraph.get(target)[3].length === 0) {
+                            snapToSymbol(active, target, parseInt(active.style.left), parseInt(active.style.top), targetX, targetY, 4, 5);
+                        }
+                    }
+                    if (getDir(active) === 1) {
+                        targetX = parseInt(target.style.left) - (symbolHeight - 7) * symbolScale;
+                        targetY = parseInt(target.style.top);
+                        if (symbolGraph.get(target)[0].length === 0) {
+                            snapToSymbol(active, target, parseInt(active.style.left), parseInt(active.style.top), targetX, targetY, 5, 4);
+                        }
+                        targetX = parseInt(target.style.left) + (symbolHeight - 4) * symbolScale;
+                        if (symbolGraph.get(target)[1].length === 0) {
+                            snapToSymbol(active, target, parseInt(active.style.left), parseInt(active.style.top), targetX, targetY, 4, 5);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Get the offset for the symbol when connected to another symbol (side 0 = left, 1 = right)
+        function getRelJunctions(symbol) {
+            let junctions; // [start, end, middle_1, middle_2]
+            switch (symbol.elemId) {
+                case 0:
+                    junctions = [{x: 1, y: 13}, {x: symbolWidth - calX, y: 49}, {x: symbolWidth / 2, y: 13}, {x: symbolWidth / 2, y: 56}];
+                    break;
+                case 1:
+                    junctions = [{x: 1, y: 49}, {x: symbolWidth - calX, y: 49}, {x: symbolWidth / 2, y: 50}, {x: symbolWidth / 2, y: 56}];
+                    break;
+                case 2:
+                    junctions = [{x: 1, y: 49}, {x: symbolWidth - calX, y: 49}, {x: symbolWidth / 2, y: 14}, {x: symbolWidth / 2, y: 56}];
+                    break;
+                case 3:
+                    junctions = [{x: 1, y: 57}, {x: symbolWidth - calX, y: 57}, {x: symbolWidth / 2, y: 56}, {x: symbolWidth / 2, y: 64}];
+                    break;
+                case 4:
+                    junctions = [{x: 1, y: 49}, {x: symbolWidth - calX, y: 49}, {x: symbolWidth / 2, y: 50}, {x: symbolWidth / 2, y: 56}];
+                    break;
+                case 5:
+                    junctions = [{x: 1, y: 49}, {x: symbolWidth - calX, y: 49}, {x: symbolWidth / 2, y: 50}, {x: symbolWidth / 2, y: 56}];
+                    break;
+                case 6:
+                    junctions = [{x: 1, y: 57}, {x: symbolWidth - calX, y: 57}, {x: symbolWidth / 2, y: 56}, {x: symbolWidth / 2, y: 64}];
+                    break;
+                case 7:
+                    junctions = [{x: 1, y: 32}, {x: symbolWidth - calX, y: 32}, {x: symbolWidth / 2, y: 3}, {x: symbolWidth / 2, y: 64}];
+                    break;
+                case 8:
+                    junctions = [{x: 1, y: 49}, {x: symbolWidth - calX, y: 49}, {x: symbolWidth / 2, y: 13}, {x: symbolWidth / 2, y: 56}];
+                    break;
+            }
+            return junctions;
+        }
+
+        function getAbsJunctions(symbol) {
+            relJunctions = getRelJunctions(symbol);
+            rect = symbol.getBoundingClientRect();
+            if (symbol.angle === 0) {
+                absJunctions = [{x: rect.left + relJunctions[0].x * symbolScale, y: rect.top + relJunctions[0].y * symbolScale},
+                                {x: rect.left + relJunctions[1].x * symbolScale, y: rect.top + relJunctions[1].y * symbolScale},
+                                {x: rect.left + relJunctions[2].x * symbolScale, y: rect.top + relJunctions[2].y * symbolScale},
+                                {x: rect.left + relJunctions[3].x * symbolScale, y: rect.top + relJunctions[3].y * symbolScale}];
+            }
+            if (symbol.angle === 180) {
+                absJunctions = [{x: rect.right - relJunctions[1].x * symbolScale, y: rect.bottom - relJunctions[1].y * symbolScale - calInvY},
+                                {x: rect.right - relJunctions[0].x * symbolScale, y: rect.bottom - relJunctions[0].y * symbolScale - calInvY},
+                                {x: rect.right - relJunctions[3].x * symbolScale, y: rect.bottom - relJunctions[3].y * symbolScale},
+                                {x: rect.right - relJunctions[2].x * symbolScale, y: rect.bottom - relJunctions[2].y * symbolScale}];
+            }
+            if (symbol.angle === 90) {
+                absJunctions = [{x: rect.right - relJunctions[0].y * symbolScale, y: rect.top + relJunctions[0].x * symbolScale},
+                                {x: rect.right - relJunctions[1].y * symbolScale, y: rect.top + relJunctions[1].x * symbolScale},
+                                {x: rect.right - relJunctions[3].y * symbolScale, y: rect.top + relJunctions[3].x * symbolScale},
+                                {x: rect.right - relJunctions[2].y * symbolScale, y: rect.top + relJunctions[2].x * symbolScale}];
+            }
+            if (symbol.angle === 270) {
+                absJunctions = [{x: rect.left + relJunctions[1].y * symbolScale + calInvY, y: rect.bottom - relJunctions[1].x * symbolScale},
+                                {x: rect.left + relJunctions[0].y * symbolScale + calInvY, y: rect.bottom - relJunctions[0].x * symbolScale},
+                                {x: rect.left + relJunctions[2].y * symbolScale, y: rect.bottom - relJunctions[2].x * symbolScale},
+                                {x: rect.left + relJunctions[3].y * symbolScale, y: rect.bottom - relJunctions[3].x * symbolScale}];
+            }
+            if (symbol.elemId === 2) {
+                if (symbol.angle === 0) {
+                    absJunctions[2].x += calCan1;
+                    absJunctions[3].x += calCan1;
+                }
+                if (symbol.angle === 270) {
+                    absJunctions[2].y -= calCan1;
+                    absJunctions[3].y -= calCan1;
+                }
+                if (symbol.angle === 90) {
+                    absJunctions[2].y -= calCan2;
+                    absJunctions[3].y -= calCan2;
+                }
+                if (symbol.angle === 180) {
+                    absJunctions[2].x += calCan2;
+                    absJunctions[3].x += calCan2;
+                }
+            }
+
+            return absJunctions;
+        }
+
+        function getDist(x1, y1, x2, y2) {
+            return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+        }
+
+        function getDir(symbol) {
+            if (symbol.angle === 0 || symbol.angle === 180) {
+                return 0;  // horizontal
+            }
+            if (symbol.angle === 90 || symbol.angle === 270) {
+                return 1;  // vertical
+            }
+        }
+
+
+        // Snap active symbol to target
+        function snapToSymbol(active, target, activeX, activeY, targetX, targetY, activeSide, targetSide, msg = "") {
+            if (targetSide > 1 && symbolGraph.get(target)[targetSide].length > 0) {  // if trying to connect to 2, 3, 4, or 5, and there is already an element occupying
+                console.log(`targetSide ${targetSide} length ${symbolGraph.get(target)[targetSide].length}`);
+                return;
+            }
+            if (symbolGraph.get(target)[targetSide].length !== 0) {
+                let hasOverlap = false;
+                for (const entry of symbolGraph.get(target)[targetSide]) {
+                    if (getDir(entry[0]) === getDir(active) && entry[1] === activeSide) {
+                        hasOverlap = true;
+                    }
+                }
+                if (hasOverlap) {
+                    console.log('hasOverlap');
+                    return;
+                }
+            }
+            if (getDist(activeX, activeY, targetX, targetY) < SNAP_DISTANCE) {
+                const newX = parseInt(active.style.left) + targetX - activeX;
+                const newY = parseInt(active.style.top) + targetY - activeY;
+                if (msg !== "") {
+                    console.log(`${msg} activeX: ${activeX} activeY: ${activeY} targetX: ${targetX} targetY: ${targetY}`);
+                }
+                active.style.left = `${newX}px`;
+                active.style.top = `${newY}px`;
+                // complete the linkage only when the mouse is released from the active symbol
+                readyActive = active;
+                readyTarget = target;
+                readyActiveSide = activeSide;
+                readyTargetSide = targetSide;
+                console.log(`link detected active side ${readyActiveSide} target side ${readyTargetSide}`);
+            }
+        }
+
+        // Add an event listener for clicks on the document
+        document.addEventListener("click", (event) => {
+            // Get the mouse coordinates
+            const x = event.clientX; // X-coordinate relative to the viewport
+            const y = event.clientY; // Y-coordinate relative to the viewport
+
+            // Print the coordinates to the console
+            console.log(`Mouse clicked at: X = ${x}, Y = ${y}`);
+            console.log(symbolGraph);
+        });
+        loadSymbols();
+    </script>
+</body>
+</html>

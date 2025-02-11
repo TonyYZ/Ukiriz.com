@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drag and Connect Symbols</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #f4f4f9;
+            font-family: Arial, sans-serif;
+        }
+        #canvas {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            border: 2px solid #ccc;
+            overflow: hidden;
+        }
+        .symbol {
+            position: absolute;
+            width: 80px; /* Symbol size */
+            height: 80px;
+            cursor: grab;
+            user-select: none;
+        }
+        .symbol img {
+            width: 100%;
+            height: 100%;
+        }
+        /* Highlight connections */
+        .connected {
+            outline: 2px solid green;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas"></div>
+
+    <script>
+        const canvas = document.getElementById("canvas");
+        let activeSymbol = null;
+
+        const SNAP_DISTANCE = 30; // Pixel distance for snapping
+        let symbols = [];
+
+        // Load symbols dynamically
+        function loadSymbols() {
+            for (let i = 0; i < 9; i++) {
+                const symbol = document.createElement("div");
+                symbol.classList.add("symbol");
+                symbol.style.left = `${50 + i * 50}px`; // Spread symbols
+                symbol.style.top = "100px";
+
+                // Replace 'elements.png' with cropped individual symbols
+                symbol.innerHTML = `<img src="elements/element${i}.png" alt="Symbol ${i + 1}">`;
+
+                // Dragging logic
+                let offsetX, offsetY;
+
+                symbol.addEventListener("mousedown", (e) => {
+                    activeSymbol = symbol;
+                    offsetX = e.clientX - symbol.offsetLeft;
+                    offsetY = e.clientY - symbol.offsetTop;
+                    symbol.style.cursor = "grabbing";
+                });
+
+                document.addEventListener("mousemove", (e) => {
+                    if (activeSymbol) {
+                        const x = e.clientX - offsetX;
+                        const y = e.clientY - offsetY;
+                        activeSymbol.style.left = `${x}px`;
+                        activeSymbol.style.top = `${y}px`;
+                        checkConnections(activeSymbol);
+                    }
+                });
+
+                document.addEventListener("mouseup", () => {
+                    if (activeSymbol) activeSymbol.style.cursor = "grab";
+                    activeSymbol = null;
+                });
+
+                canvas.appendChild(symbol);
+                symbols.push(symbol);
+            }
+        }
+
+        // Check for snapping connections
+        function checkConnections(active) {
+            symbols.forEach((symbol) => {
+                if (symbol === active) return; // Skip the active symbol itself
+
+                const activeRect = active.getBoundingClientRect();
+                const symbolRect = symbol.getBoundingClientRect();
+
+                // Compare positions: check ending point (right side) vs starting point (left side)
+                if (Math.abs(activeRect.right - symbolRect.left) < SNAP_DISTANCE &&
+                    Math.abs(activeRect.top - symbolRect.top) < SNAP_DISTANCE) {
+                    snapToSymbol(active, symbol);
+                }
+            });
+        }
+
+        // Snap active symbol to target
+        function snapToSymbol(active, target) {
+            const targetRect = target.getBoundingClientRect();
+            active.style.left = `${targetRect.left + targetRect.width}px`;
+            active.style.top = `${targetRect.top}px`;
+
+            active.classList.add("connected");
+            target.classList.add("connected");
+        }
+
+        loadSymbols();
+    </script>
+</body>
+</html>
