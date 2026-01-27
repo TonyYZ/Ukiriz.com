@@ -358,9 +358,10 @@
             When you are making words, make sure the magnets connect the symbols. Only symbols connected count as a word. Treat them as "islands."<br>
             To check this, you can long-click on a symbol, and the entire connected island it belongs to will be highlighted.<br><br>
             Then, click on the <b>insight</b> button that looks like an eye, and it will propose some meanings from what it sees.<br>
-            You can understand what each basic symbol means by repetitively clicking on the <b>insight</b> button and reading different meaningful aspects of the symbols.<br>
-            While we only have the nine basic symbols from the start, the eye will see what you teach it to see over time.<br>
-            Two windows will pop up that ask you to assign the word for your symbols and the reason behind this, though I haven't implemented the validation part yet.<br><br>
+            You can learn what each basic symbol means by clicking on the <b>insight</b> button and reading different meaningful aspects of the symbols.<br>
+            While we only have the nine basic symbols from the start, <b>insight</b> will see what you teach it to see over time.<br>
+            A window will pop up to ask you to assign the word for your symbols and the reason behind this, and the system will check if it makes sense.<br>
+            If so, the new word you created will be available in the library.<br><br>
            
             In the next tab, poke around the interface and see if you can piece together your own expression for the words <b>"sky," "rain," "flower," and "computer."</b><br>
             Remember, when you are making the expressions, try to attend to the symbols' meaning (by clicking the <b>insight</b> button) <br>
@@ -449,8 +450,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, getDocs, setDoc, getDoc, updateDoc, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        
 
         const firebaseConfig = {
             apiKey: "AIzaSyDcnYVyHx8ZgE_kKquLctcA3Q5LuSagZUE",
@@ -1491,6 +1490,11 @@
                     eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
                     removeLabelInputs();
                 }
+                if (eyeButton2.isActivated) {
+                    eyeButton2.isActivated = false;
+                    eyeButton2.style.backgroundImage = "url('./icons/eye_black.png')";
+                    removeLabelInputs();
+                }
             }
             if (selectedEmoji) {
                 rect = selectedEmoji.getBoundingClientRect();
@@ -1523,6 +1527,12 @@
                         eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
                         removeLabelInputs();
                     }
+                    if (eyeButton2.isActivated) {
+                        eyeButton2.isActivated = false;
+                        eyeButton2.style.backgroundImage = "url('./icons/eye_black.png')";
+                        removeLabelInputs();
+                    }
+
                     activeSymbol.classList.remove("framed");
                     selectedSymbols.delete(activeSymbol);
                 }
@@ -2146,7 +2156,12 @@
                     eyeButton.isActivated = false;
                     eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
                     removeLabelInputs();
-                }                
+                }
+                if (eyeButton2.isActivated) {
+                    eyeButton2.isActivated = false;
+                    eyeButton2.style.backgroundImage = "url('./icons/eye_black.png')";
+                    removeLabelInputs();
+                }
             }
             if (symbolX === null) {
                 activeSymbol = symbol;
