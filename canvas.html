@@ -1568,7 +1568,7 @@
             // Throw away the symbol into the swirl
             rect = removeButton.getBoundingClientRect();
             if (rect.left < e.clientX && e.clientX < rect.right && rect.top < e.clientY && e.clientY < rect.bottom) {
-                if (selectedSymbols.size != 0) {
+                if (selectedSymbols && selectedSymbols.size != 0) {
                     selectedSymbols.forEach(selectedSymbol => {
                         if (selectedSymbol.isDynamic) selectedSymbol.dot.remove();
                         selectedSymbol.remove();
@@ -1578,7 +1578,7 @@
             // Throw away the symbol into the swirl
             rect = removeButton2.getBoundingClientRect();
             if (rect.left < e.clientX && e.clientX < rect.right && rect.top < e.clientY && e.clientY < rect.bottom) {
-                if (selectedSymbols.size != 0) {
+                if (selectedSymbols && selectedSymbols.size != 0) {
                     selectedSymbols.forEach(selectedSymbol => {
                         if (selectedSymbol.isDynamic) selectedSymbol.dot.remove();
                         selectedSymbol.remove();
