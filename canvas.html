@@ -168,6 +168,20 @@
             outline: 10px dashed #00B0F0;
         }
 
+        #quota-badge{
+            position: fixed;
+            top: 12px;
+            right: calc(var(--sidebar-w) + 24px); /* ✅ 躲开右侧栏 */
+            z-index: 100000;                      /* ✅ 盖在内容上，但低于/高于栏都行 */
+            padding: 6px 10px;
+            border-radius: 5px;
+            border: 1px solid #000;
+            background: rgba(255,255,255,0.9);
+            font-size: 16px;
+            font-family: sans-serif;
+            pointer-events: none;                 /* 可选：不挡点击 */
+        }
+
         /* Color palette styles */
         .palette {
             position: fixed;
@@ -396,6 +410,7 @@
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
 </head>
 <body>
+    <div id="quota-badge" class="quota-badge">GPT checks: --/--</div>
     <div class="vertical-bar">
         <img src="./icons/iti.svg" alt="Logo" class="logo" id="logo">
         <div class="tab" id="tab-header0" onclick="showTab(0)">Home</div>
@@ -458,6 +473,7 @@
             <br><br><br><br>
 
         </div>
+
         <div class="tab-content" id="tab1">
 
             <div id="craftCanvas"> </div>
@@ -630,14 +646,6 @@
         let clickOnlyEmoji = null;
         let selectionClickHandled = false;
 
-        window.getDebugState = () => ({
-            dragGroup,
-            dragLeader,
-            dragSnapLock,
-            pendingSnapDelta,
-            currentRoomId,
-        });
-
         // Import Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, setPersistence, browserLocalPersistence, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -802,6 +810,7 @@
                     if (user) {
                     currentUser = user;
                     console.log("User is signed in:", user.uid);
+                    await refreshQuotaBadge();
                     unsub();
                     resolve(user);
                     return;
@@ -897,9 +906,9 @@
                 const data = docSnap.data();
 
                 if (data.type === "emoji") {
-                const el = await createEmoji(data.content, data.x, data.y, docSnap.id);
-                el.dataset.ownerUid = data.ownerUid || "";
-                continue;
+                    const el = await createEmoji(data.content, data.x, data.y, docSnap.id);
+                    el.dataset.ownerUid = data.ownerUid || "";
+                    continue;
                 }
 
                 if (data.type === "symbol") {
@@ -1974,11 +1983,22 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     type: "emoji",
+                    uid: currentUser?.uid || null,
                     text: userInput
                 })
                 });
 
                 const data = await response.json();
+
+                if (typeof data.used === "number" && typeof data.limit === "number") {
+                    updateQuotaBadge(data.used, data.limit);
+                }
+
+                if (data.ok === false && data.code === "QUOTA_EXCEEDED") {
+                    showFeedback(data.message || "You have reached today's quota.", true);
+                    return;
+                }
+
                 await createEmoji(data.result);
             } catch (error) {
                 console.error(error);
@@ -3311,6 +3331,33 @@
             return [foundIds, elimBasic, representatives, hasDuplicateExpression];
         }
 
+        function updateQuotaBadge(used, limit) {
+            const el = document.getElementById("quota-badge");
+            if (!el) return;
+            const remaining = Math.max(0, limit - used);
+            el.textContent = `GPT checks: ${used}/${limit} (left ${remaining})`;
+        }
+
+        async function refreshQuotaBadge() {
+            if (!currentUser?.uid) return;
+            try {
+                const resp = await fetch("https://divinatory-conlang.zhouyt-tony2018.workers.dev/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    type: "quotaStatus",
+                    uid: currentUser.uid
+                })
+                });
+                const data = await resp.json();
+                if (data.ok && typeof data.used === "number" && typeof data.limit === "number") {
+                    updateQuotaBadge(data.used, data.limit);
+                }
+            } catch (e) {
+                console.warn("refreshQuotaBadge failed", e);
+            }
+        }
+
         let rightMost;
         let topMost;
 
@@ -3469,9 +3516,9 @@
                     showFeedback('Please fill in all fields!', true);
                     return;
                 }
-console.warn("[submit] library size =", library?.size);
-console.warn("[submit] library has word?", word, library?.has(word));
-console.warn("[submit] library keys =", [...(library?.keys?.() || [])]);
+                console.warn("[submit] library size =", library?.size);
+                console.warn("[submit] library has word?", word, library?.has(word));
+                console.warn("[submit] library keys =", [...(library?.keys?.() || [])]);
                 if (library.has(word)) {
                     showFeedback('You have already defined the word!', true);
                     return;
@@ -3484,18 +3531,29 @@ console.warn("[submit] library keys =", [...(library?.keys?.() || [])]);
 
                 try {
                     const response = await fetch("https://divinatory-conlang.zhouyt-tony2018.workers.dev/", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        type: "conlang",
-                        word,
-                        definition,
-                        justification
-                    })
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            type: "conlang",
+                            uid: currentUser?.uid || null,
+                            word,
+                            definition,
+                            justification
+                        })
                     });
 
                     const data = await response.json();
-                    showFeedback(data.result, false);
+
+                    if (typeof data.used === "number" && typeof data.limit === "number") {
+                        updateQuotaBadge(data.used, data.limit);
+                    }
+
+                    if (data.ok === false && data.code === "QUOTA_EXCEEDED") {
+                    showFeedback(data.message || "You have reached today's quota.", true);
+                    return;
+                    }
+
+                    showFeedback(data.result || data.error || "No response", false);
                 } catch (error) {
                     console.error(error);
                     alert("Validation failed.");
@@ -4630,7 +4688,6 @@ console.warn("[submit] library keys =", [...(library?.keys?.() || [])]);
         }
 
         async function generateUniqueId(svgString) {
-            console.log(`used string ${svgString}`);
             // Ensure consistent encoding
             const encoder = new TextEncoder();
             const data = encoder.encode(svgString.trim());  // Trim to avoid whitespace inconsistencies
