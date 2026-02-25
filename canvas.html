@@ -170,7 +170,7 @@
 
         #quota-badge{
             position: fixed;
-            top: 12px;
+            top: 24px;
             right: calc(var(--sidebar-w) + 24px); /* ✅ 躲开右侧栏 */
             z-index: 100000;                      /* ✅ 盖在内容上，但低于/高于栏都行 */
             padding: 6px 10px;
@@ -3335,7 +3335,7 @@
             const el = document.getElementById("quota-badge");
             if (!el) return;
             const remaining = Math.max(0, limit - used);
-            el.textContent = `GPT checks: ${used}/${limit} (left ${remaining})`;
+            el.textContent = `Quota spent: ${used}/${limit} (left ${remaining})`;
         }
 
         async function refreshQuotaBadge() {
