@@ -172,14 +172,18 @@
             position: fixed;
             top: 24px;
             right: calc(var(--sidebar-w) + 24px); /* ✅ 躲开右侧栏 */
-            z-index: 100000;                      /* ✅ 盖在内容上，但低于/高于栏都行 */
+            z-index: 1000000;                      /* ✅ 盖在内容上，但低于/高于栏都行 */
             padding: 6px 10px;
             border-radius: 5px;
             border: 1px solid #000;
             background: rgba(255,255,255,0.9);
             font-size: 16px;
             font-family: sans-serif;
-            pointer-events: none;                 /* 可选：不挡点击 */
+            pointer-events: auto;                 /* 可选：不挡点击 */
+        }
+
+        #quota-badge * {
+            pointer-events: auto;
         }
 
         /* Color palette styles */
@@ -244,6 +248,7 @@
         /* Style for the input box */
         .label-input {
             position: absolute;
+            width: 200px;
             border: 1px solid black;
             padding: 5px;
             font-size: 16px;
@@ -255,7 +260,7 @@
         /* Auto-resizing textarea */
         .label-textarea {
             position: absolute;
-            width: 167px;
+            width: 200px;
             min-height: 40px;
             max-width: 200px;
             border: 1px solid black;
@@ -410,7 +415,7 @@
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
 </head>
 <body>
-    <div id="quota-badge" class="quota-badge">Quota spent: --/--</div>
+    <div id="quota-badge" class="quota-badge">Credits spent: --/--</div>
     <div class="vertical-bar">
         <img src="./icons/iti.svg" alt="Logo" class="logo" id="logo">
         <div class="tab" id="tab-header0" onclick="showTab(0)">Home</div>
@@ -486,7 +491,7 @@
                     <div class="color" style="background-color: #D00000;"></div>
                     <div class="color" style="background-color: #d6a01d;"></div>
                     <div class="color" style="background-color: white;"></div>
-                    <div class="color" style="background-color: #3B3838;"></div>
+                    <div class="color" style="background-color: black;"></div>
                 </div>
             </div>
           <p></p>
@@ -503,7 +508,7 @@
             <div id="chatCanvas"> </div>
             <div id="chatControls">
                 <!-- Input box at the bottom of the page -->
-                <input type="text" id="message-input" placeholder="Say something in emoji..." />
+                <input type="text" id="message-input" placeholder="Say something in emoji..." maxlength="32"/>
             </div>
           <p></p>
         </div>
@@ -1326,6 +1331,9 @@
         let pendingSnapDelta = null; // {dx, dy}
         let snapCooldownUntil = 0; // ms, prevents immediate re-snap after unlock
 
+        let longPressStartedAt = 0;
+        let longPressFired = false;
+
         let acc = 0;
         let moleculeString = "";
         let selectedColor = null;
@@ -1975,6 +1983,10 @@
             const messageBox = document.getElementById('message-input');
             const userInput = messageBox.value;
 
+            if (userInput === "") {
+                return;
+            }
+
             messageBox.value = '';
 
             try {
@@ -1990,8 +2002,15 @@
 
                 const data = await response.json();
 
+                console.warn("[client] usage", data.usage);
+
                 if (typeof data.used === "number" && typeof data.limit === "number") {
                     updateQuotaBadge(data.used, data.limit);
+                }
+
+                if (data.code === "RATE_LIMITED") {
+                    alert(data.message);
+                    return;
                 }
 
                 if (data.ok === false && data.code === "QUOTA_EXCEEDED") {
@@ -2734,7 +2753,7 @@
             const activeTab = document.querySelector(".tab-content.active");
             const existingInput = activeTab?.querySelector(".label-input");
 
-            endLongPress();
+            endLongPress(true);
             wheel.style.backgroundImage = "url(./icons/wheel/wheel.png)";
             wheel2.style.backgroundImage = "url(./icons/wheel/wheel.png)";
 
@@ -2750,7 +2769,7 @@
                 // Click (no drag) toggles if:
                 // - started from multi-selection (marquee), OR
                 // - started as single selection (only 1 selected on mousedown)
-                const clickToggle = !released._dragged && (released._downWasInMulti || released._downWasSelected);
+                const clickToggle = !longPressFired && !released._dragged && (released._downWasInMulti || released._downWasSelected);
 
                 if (clickToggle) {
                     selectionClickHandled = true;
@@ -3000,6 +3019,7 @@
                 }
             }
 
+            longPressFired = false;
         });
 
         let marqueeActive = false;   // 当前是否在框选手势中
@@ -3334,8 +3354,87 @@
         function updateQuotaBadge(used, limit) {
             const el = document.getElementById("quota-badge");
             if (!el) return;
+
             const remaining = Math.max(0, limit - used);
-            el.textContent = `Quota spent: ${used}/${limit} (left ${remaining})`;
+
+            // short code for display, full UID copied
+            const uid = currentUser?.uid || "";
+            const code = uid ? uid.slice(0, 10) : "…";
+
+            const kofiUrl = "https://ko-fi.com/ukiriz"; // 换成你的 Ko-fi 链接
+
+            el.innerHTML = `
+            <div><strong>Credits</strong>: ${used}/${limit} (left ${remaining})</div>
+
+            <div style="margin-top:4px; font-size:12px;">
+                Support code:
+                <span id="support-code" style="text-decoration: underline; cursor: pointer;">
+                ${code}
+                </span>
+                <span style="opacity:0.8;">(click to copy UID)</span>
+            </div>
+
+            <div style="margin-top:6px; font-size:12px;">
+                <a id="kofi-link" href="${kofiUrl}" target="_blank" rel="noopener noreferrer"
+                style="text-decoration: underline; color: inherit;">
+                ☕ Support on Ko-fi
+                </a>
+            </div>
+            `;
+
+            const sc = document.getElementById("support-code");
+            if (sc && uid) {
+                sc.onclick = async () => {
+                const text = `UID:${uid}`;
+
+                try {
+                    // modern clipboard API
+                    await navigator.clipboard.writeText(text);
+                    console.log("[copy] clipboard API success:", text);
+                } catch (err) {
+                    console.warn("[copy] clipboard API failed, fallback:", err);
+
+                    // fallback
+                    const ta = document.createElement("textarea");
+                    ta.value = text;
+                    ta.style.position = "fixed";
+                    ta.style.left = "-9999px";
+                    ta.style.top = "-9999px";
+                    document.body.appendChild(ta);
+                    ta.focus();
+                    ta.select();
+
+                    const ok = document.execCommand("copy");
+                    document.body.removeChild(ta);
+
+                    console.log("[copy] execCommand result:", ok, text);
+
+                    if (!ok) {
+                    // last resort: prompt user
+                    window.prompt("Copy this UID:", text);
+                    }
+                }
+
+                // visual feedback
+                const old = sc.textContent;
+                sc.textContent = `${old} ✓`;
+                setTimeout(() => (sc.textContent = old), 1200);
+                };
+                sc.onmousedown = (e) => e.stopPropagation();
+                sc.onmouseup   = (e) => e.stopPropagation();
+            }
+
+            const kofi = document.getElementById("kofi-link");
+            if (kofi) {
+                kofi.onmousedown = (e) => e.stopPropagation();
+                kofi.onmouseup   = (e) => e.stopPropagation();
+                kofi.onclick     = (e) => e.stopPropagation();
+            }
+        }
+
+        function getSupportCode() {
+            const uid = currentUser?.uid || "";
+            return uid ? uid.slice(0, 10) : "";
         }
 
         async function refreshQuotaBadge() {
@@ -3344,14 +3443,11 @@
                 const resp = await fetch("https://divinatory-conlang.zhouyt-tony2018.workers.dev/", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    type: "quotaStatus",
-                    uid: currentUser.uid
-                })
+                body: JSON.stringify({ type: "quotaStatus", uid: currentUser.uid })
                 });
                 const data = await resp.json();
                 if (data.ok && typeof data.used === "number" && typeof data.limit === "number") {
-                    updateQuotaBadge(data.used, data.limit);
+                updateQuotaBadge(data.used, data.limit);
                 }
             } catch (e) {
                 console.warn("refreshQuotaBadge failed", e);
@@ -3402,6 +3498,7 @@
             input.classList.add("label-input", "removable");
             input.type = "text";
             input.placeholder = "What word is this?";
+            input.maxLength = 22;
 
             // locate input in the canvas-local coordinate system
             input.x = rightMost + 5;
@@ -3423,6 +3520,7 @@
             const textarea = document.createElement('textarea');
             textarea.classList.add('label-textarea', 'removable');
             textarea.placeholder = 'Why?';
+            textarea.maxLength = 100;
 
             // Position the textarea near the symbol
             textarea.x = rightMost + 5;
@@ -3544,8 +3642,16 @@
 
                     const data = await response.json();
 
+                    console.warn("[client] usage", data.usage);
+
+
                     if (typeof data.used === "number" && typeof data.limit === "number") {
                         updateQuotaBadge(data.used, data.limit);
+                    }
+
+                    if (data.code === "RATE_LIMITED") {
+                        alert(data.message);
+                        return;
                     }
 
                     if (data.ok === false && data.code === "QUOTA_EXCEEDED") {
@@ -3613,7 +3719,7 @@
                 const text = feedback;
                 let index = 0;
                 const speed = 10; // Speed of typing in milliseconds
-                const maxLineLen = 20;
+                const maxLineLen = 22;
                 let lineIndex = 0;
                 let passed;
                 function type(onComplete) {
@@ -3703,6 +3809,9 @@
 
 
         function startLongPress(left, top, width, height, symbol=null, node=null) {
+            longPressStartedAt = performance.now();
+            longPressFired = false;
+
             ring = document.createElementNS("http://www.w3.org/2000/svg", "svg");
             circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
                         // Append the circle to the SVG
@@ -3746,6 +3855,7 @@
 
                 if (progress >= totalSteps) {
                     clearInterval(interval);
+                    longPressFired = true;
                     if (symbol === null) {
                         triggerLongPressNode(node);
                     } else {
@@ -3755,7 +3865,9 @@
             }, 10);
         }
 
-        function endLongPress() {
+        function endLongPress(force = false) {
+            if (!force && performance.now() - longPressStartedAt < 80) return;
+
             if (ring !== null && circle !== null) {
                 clearInterval(interval);
                 ring.style.visibility = "hidden";
@@ -3777,7 +3889,8 @@
             dragLeader = null;
 
             let results = getMolecule(symbol, new Set([]), representatives=representatives);
-            selectedSymbols = results.visited;
+            selectedSymbols.clear();
+            results.visited.forEach(s => selectedSymbols.add(s));
             if (results.leftStr !== "") moleculeString += results.leftStr + " - "
             moleculeString += results.centerStrs.join(" & ");
             if (results.rightStr !== "") moleculeString += " - " + results.rightStr
@@ -5182,10 +5295,13 @@
         }
 
         function clearChatUI() {
-            const canvas = chatCanvas();
-            if (canvas) canvas.innerHTML = "";
-        }
+        const canvas = chatCanvas();
+        if (!canvas) return;
 
+        // remove only chat objects, keep marquee box and other overlays
+        canvas.querySelectorAll(".symbol-label, .symbol, .dot, .typing-effect, .removable, .progress-ring")
+                .forEach(el => el.remove());
+        }
 
         async function switchRoom(roomId) {
             currentRoomId = roomId;
