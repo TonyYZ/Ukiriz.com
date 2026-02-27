@@ -368,13 +368,52 @@
             box-shadow: none;
         }
 
+
+        /* World: solid ocean color, no background animation */
         #world {
             position: relative;
-            width: 82vw;
-            height: 100vh;
-            background: #f4f4f9;
+            width: calc(100vw - var(--sidebar-w));
+            height: calc(100vh + 39px);
+            margin: -20px;
+            background: #00b0f050; /* solid */
             overflow: hidden;
             cursor: grab;
+        }
+
+        .foam{
+        position:absolute;
+        width: 22px;
+        height: 10px;
+        pointer-events:none;
+        image-rendering: pixelated;
+
+        /* 3 bumps wave */
+        background:
+            /* bump 1 */
+            linear-gradient(#fff 0 0) 0px 6px / 2px 2px no-repeat,
+            linear-gradient(#fff 0 0) 2px 4px / 2px 2px no-repeat,
+            linear-gradient(#fff 0 0) 4px 2px / 2px 2px no-repeat,
+            linear-gradient(#fff 0 0) 6px 4px / 2px 2px no-repeat,
+            linear-gradient(#fff 0 0) 8px 6px / 2px 2px no-repeat,
+
+            /* bump 2 */
+            linear-gradient(#fff 0 0) 8px 6px / 2px 2px no-repeat,
+            linear-gradient(#fff 0 0) 10px 4px / 2px 2px no-repeat,
+            linear-gradient(#fff 0 0) 12px 2px / 2px 2px no-repeat,
+            linear-gradient(#fff 0 0) 14px 4px / 2px 2px no-repeat,
+            linear-gradient(#fff 0 0) 16px 6px / 2px 2px no-repeat;
+
+        animation: foamBob var(--dur, 1.6s) steps(6) infinite;
+        animation-delay: var(--delay, 0s);
+        opacity: var(--alpha, 0.85);
+        }
+
+        @keyframes foamBob{
+        0%   { transform: translateY(0px); opacity: 0.0; }
+        15%  { opacity: var(--alpha, 0.85); }
+        50%  { transform: translateY(calc(-1 * var(--rise, 10px))); opacity: 1.0; }
+        85%  { opacity: var(--alpha, 0.85); }
+        100% { transform: translateY(0px); opacity: 0.0; }
         }
 
         #world.dragging {
@@ -474,7 +513,11 @@
 
             In the next tab, poke around the interface and see if you can piece together your own expression for the words <b>"sky," "rain," "flower," and "computer."</b><br>
             Remember, when you are making the expressions, try to attend to the symbols' meaning (by clicking the <b>insight</b> button) <br>
-            rather than purely by their visual resemblance to the concepts!
+            rather than purely by their visual resemblance to the concepts! <br>
+
+            And then, you can chat with others using the expressions you have just created. They probably have different interpretations of the same symbols, and it's fine! <br>
+            You can post a problem you had, or just have a casual chat. <br>
+            What's important is building spirtitual connections with these symbols and be inspired by them!
             <br><br><br><br>
 
         </div>
@@ -4467,7 +4510,21 @@
             edges: {
                 smooth: false
             },
-            physics: { enabled: true }
+            physics: {
+                    enabled: true,
+                    solver: "barnesHut",         // 默认就是它
+                barnesHut: {
+                    gravitationalConstant: -500, // 数值越“负”(绝对值越大) -> 排斥越强；把绝对值调小会更“挤”
+                    springLength: 100,            // 边的理想长度；小一点会更紧凑
+                    springConstant: 0.02,         // 弹簧强度；小一点整体更松
+                    damping: 1,                // 阻尼；大一点更快停、更不抖
+                    avoidOverlap: 0               // 需要避免重叠可调到 0.2~1
+                },
+                stabilization: {
+                    enabled: true,
+                    iterations: 600
+                }
+            }
         };
 
         async function initNodes() {
@@ -4830,6 +4887,7 @@
             const world = document.getElementById("world");
             const content = document.getElementById("worldContent");
 
+
             // Now the world is displayed, we can safely measure it
             const W = world.offsetWidth;
             const H = world.offsetHeight;
@@ -4843,6 +4901,7 @@
 
             worldRendered = true;
         }
+
 
         function createIslandSVG(islandData) {
             const blockSize = 20;
@@ -5104,7 +5163,7 @@
             const highlight = document.createElementNS(svgNS, "path");
             highlight.setAttribute("d", d);
             highlight.setAttribute("fill", "none");
-            highlight.setAttribute("stroke", "#00B0F0");       // 你想要的选中颜色
+            highlight.setAttribute("stroke", "#000000");       // 你想要的选中颜色
             highlight.setAttribute("stroke-width", String(highlightW)); // 比原来粗一点
             highlight.setAttribute("stroke-linejoin", "round");
             highlight.setAttribute("stroke-linecap", "round");
@@ -5129,6 +5188,71 @@
             return svg;
         }
 
+        function initFoam(worldEl, worldContentEl, count = 60) {
+            // Remove old foams to avoid duplicates
+            worldContentEl.querySelectorAll(".foam").forEach(el => el.remove());
+
+            const W = worldEl.clientWidth;
+            const H = worldEl.clientHeight;
+
+            // We'll maintain a padded area around the viewport in content-coordinates
+            const PAD = 600; // increase if you pan far/fast
+
+            for (let i = 0; i < count; i++) {
+                const f = document.createElement("div");
+                f.className = "foam";
+
+                // Position in a big area centered around the initial viewport
+                const x = (Math.random() * (W + 2 * PAD)) - PAD;
+                const y = (Math.random() * (H + 2 * PAD)) - PAD;
+
+                f.style.left = `${x}px`;
+                f.style.top  = `${y}px`;
+
+                // Random animation params => not synced
+                f.style.setProperty("--rise", `${6 + Math.random() * 18}px`);
+                f.style.setProperty("--dur", `${1.2 + Math.random() * 2.2}s`);
+                f.style.setProperty("--delay", `${Math.random() * 3.0}s`);
+                f.style.opacity = `${0.45 + Math.random() * 0.55}`;
+
+                // Store for wrap logic
+                f._pad = PAD;
+
+                worldContentEl.appendChild(f);
+            }
+        }
+
+        function recycleFoam(worldEl, worldContentEl, offsetX, offsetY) {
+            const W = worldEl.clientWidth;
+            const H = worldEl.clientHeight;
+
+            // Visible rect in content coords:
+            // screenX = contentX + offsetX  => contentX = screenX - offsetX
+            const vx0 = -offsetX;
+            const vy0 = -offsetY;
+            const vx1 = vx0 + W;
+            const vy1 = vy0 + H;
+
+            // how far outside viewport before we recycle
+            const PAD = 600;
+
+            const foams = worldContentEl.querySelectorAll(".foam");
+            foams.forEach(f => {
+                let x = parseFloat(f.style.left) || 0;
+                let y = parseFloat(f.style.top) || 0;
+
+                // If too far left/right, wrap around
+                if (x < vx0 - PAD) x = vx1 + Math.random() * PAD;
+                else if (x > vx1 + PAD) x = vx0 - Math.random() * PAD;
+
+                // If too far up/down, wrap around
+                if (y < vy0 - PAD) y = vy1 + Math.random() * PAD;
+                else if (y > vy1 + PAD) y = vy0 - Math.random() * PAD;
+
+                f.style.left = `${x}px`;
+                f.style.top  = `${y}px`;
+            });
+        }
 
         function enableWorldPanning() {
             if (worldPanningEnabled) return;
@@ -5136,6 +5260,9 @@
 
             const world = document.getElementById("world");
             const content = document.getElementById("worldContent");
+            const foamHost = content;
+
+            initFoam(world, content, 80);
 
             let offsetX = 0, offsetY = 0;
             let dragging = false;
@@ -5144,6 +5271,8 @@
 
             function setTransform() {
                 content.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+
+                recycleFoam(world, content, offsetX, offsetY);
             }
 
             world.addEventListener("pointerdown", (e) => {
@@ -5249,8 +5378,8 @@
 
                 // 点到空白：取消选中（并隐藏 Chat）
                 if (!upIsland) {
-                deselectIsland();
-                return;
+                    deselectIsland();
+                    return;
                 }
 
                 // 必须按下和抬起在同一个岛上才算“点击岛屿”
@@ -5258,8 +5387,8 @@
 
                 // 再点一次同一个：取消
                 if (selectedIsland === upIsland) {
-                deselectIsland();
-                return;
+                    deselectIsland();
+                    return;
                 }
 
                 // 切换选中
