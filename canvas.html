@@ -933,7 +933,7 @@
           tldrTitle: 'TL;DR — 3 步开始',
           home: '欢迎',
           insight: '洞察',
-          craft: '制作',
+          craft: '工作台',
           library: '词库',
           world: '世界',
           chat: '聊天',
@@ -1351,13 +1351,31 @@
       // Load emojis on page load
       window.onload = loadObj;
 
-      function generateColor(uid) {
-        let hash = 0;
+      function hash32(uid) {
+        // FNV-1a 32-bit hash (stable, decent distribution)
+        let h = 0x811c9dc5;
         for (let i = 0; i < uid.length; i++) {
-          hash = uid.charCodeAt(i) + ((hash << 5) - hash);
+          h ^= uid.charCodeAt(i);
+          h = Math.imul(h, 0x01000193);
         }
-        const color = `hsl(${hash % 360}, 70%, 60%)`; // Hue varies, but saturation & lightness are fixed
-        return color;
+        return h >>> 0; // unsigned
+      }
+
+      function generateColor(uid) {
+        const h = hash32(uid);
+
+        // Use a stable "index" from hash (0..65535)
+        const idx = h & 0xffff;
+
+        // Golden angle spread
+        const GOLDEN_ANGLE = 137.50776405003785;
+        const hue = (idx * GOLDEN_ANGLE) % 360;
+
+        // Optional: vary sat/light a bit to further separate close hues
+        const sat = 62 + ((h >>> 16) % 18); // 62..79
+        const light = 48 + ((h >>> 24) % 18); // 48..65
+
+        return `hsl(${hue.toFixed(0)}, ${sat}%, ${light}%)`;
       }
 
       // Initialize Firebase Authentication
@@ -1914,16 +1932,6 @@
       const UNSNAP_DISTANCE = 40 * scale; // can be：+4 / +8
       let dragSnapLock = null; // { targetId, targetSide, activeSide }
 
-      function setDragSnapLock(v, reason = '') {
-        if (v) {
-          console.warn('[SET dragSnapLock]', reason, v);
-          console.trace();
-        } else {
-          console.warn('[CLR dragSnapLock]', reason);
-        }
-        dragSnapLock = v;
-      }
-
       let groupDragActive = false;
       let pendingSnapDelta = null; // {dx, dy}
       let snapCooldownUntil = 0; // ms, prevents immediate re-snap after unlock
@@ -2116,7 +2124,7 @@
           leftSide: ['左'],
           gravity: ['重', '坠', '落', '下'],
           roof: ['上方', '顶', '高'],
-          aerial: ['悬空', '虚', '浮'],
+          aerial: ['悬空'],
           ascend: ['上', '升'],
           ground: ['低', '下方', '地', '平台'],
         },
@@ -2202,16 +2210,22 @@
 
       const turnButton = document.createElement('div');
       turnButton.classList.add('button');
+      turnButton.id = 'turn-button';
       turnButton.style.width = `149px`;
       turnButton.style.height = `142px`;
       turnButton.style.backgroundImage = "url('./icons/turn.png')";
       turnButton.style.left = `40px`;
       turnButton.style.top = `30px`;
+
       turnButton.addEventListener('click', async (e) => {
         if (selectedSymbols.size != 0) {
           // Increment the angle by 90 degrees
           for (const selectedSymbol of selectedSymbols) {
             await rotateSymbol(selectedSymbol, 90);
+
+            if (selectedSymbol.isDynamic && selectedSymbol.dot) {
+              updateDotPositionLocal(selectedSymbol.dot);
+            }
           }
         }
 
@@ -2229,6 +2243,10 @@
           for (const selectedSymbol of selectedSymbols) {
             if (!canEditElement(selectedSymbol)) continue; // skip others
             await rotateSymbol(selectedSymbol, 90, true);
+
+            if (selectedSymbol.isDynamic && selectedSymbol.dot) {
+              updateDotPositionLocal(selectedSymbol.dot);
+            }
           }
         }
 
@@ -2733,7 +2751,9 @@
 
           const data = await response.json();
 
-          console.warn('[client] usage', data.usage);
+          //console.warn('[client] usage', data.usage);
+          //console.warn('[client] lang', data.debugLang);
+          //console.warn('[client] result', data.result);
 
           if (typeof data.used === 'number' && typeof data.limit === 'number') {
             updateQuotaBadge(data.used, data.limit);
@@ -2871,7 +2891,7 @@
             dragLeader = emoji;
             dragGroup = new Map();
 
-            setDragSnapLock(null, 'start drag');
+            dragSnapLock = null;
             pendingSnapDelta = null;
             readyActive = readyTarget = null;
             readyActiveSide = readyTargetSide = null;
@@ -3083,7 +3103,7 @@
         // ✅ also reset group-drag runtime flags to avoid lingering behavior
         groupDragActive = false;
         pendingSnapDelta = null;
-        setDragSnapLock(null, 'cancel drag');
+        dragSnapLock = null;
 
         // optional but usually correct: clear snap candidate
         readyActive = readyTarget = null;
@@ -3191,7 +3211,7 @@
               const jumpDy = pt.y - dragSnapLock.localY0;
               applyDeltaToGroup(jumpDx, jumpDy);
 
-              setDragSnapLock(null, 'unlock');
+              dragSnapLock = null;
 
               for (const [el, off] of dragGroup.entries()) {
                 off.dx = off.dx0;
@@ -3230,18 +3250,15 @@
             pendingSnapDelta = null;
 
             if (!dragSnapLock) {
-              setDragSnapLock(
-                {
-                  clientX0: e.clientX,
-                  clientY0: e.clientY,
-                  localX0: pt.x,
-                  localY0: pt.y,
-                  activeSide: readyActiveSide,
-                  targetSide: readyTargetSide,
-                  targetEl: readyTarget,
-                },
-                'snap applied',
-              );
+              dragSnapLock = {
+                clientX0: e.clientX,
+                clientY0: e.clientY,
+                localX0: pt.x,
+                localY0: pt.y,
+                activeSide: readyActiveSide,
+                targetSide: readyTargetSide,
+                targetEl: readyTarget,
+              };
             }
           }
 
@@ -3746,7 +3763,7 @@
           dragGroupSet = null;
           groupDragActive = false;
           pendingSnapDelta = null;
-          setDragSnapLock(null, 'end drag');
+          dragSnapLock = null;
           readyActive = readyTarget = null;
           readyActiveSide = readyTargetSide = null;
         }
@@ -4441,14 +4458,6 @@
           }
         };
 
-        function endsWithLatinLetter(s) {
-          if (!s) return false;
-          // get last non-newline char
-          const t = s.replace(/\n+$/, '');
-          const last = t.slice(-1);
-          return /[A-Za-z]$/.test(last);
-        }
-
         function showFeedback(feedback, manualFailed = false) {
           console.log(`foundIds init ${foundIds}`);
           // Create the div element
@@ -4507,8 +4516,13 @@
               const len = span.textContent.length;
 
               if (len > 0 && len % maxLineLen === 0) {
-                // If the current line ends with a Latin letter, add hyphen before newline
-                if (endsWithLatinLetter(span.textContent)) {
+                const lastChar = span.textContent.replace(/\n+$/, '').slice(-1);
+                const nextChar = text.charAt(index); // the first char after the newline
+
+                const lastIsLatin = /[A-Za-z]/.test(lastChar);
+                const nextIsLatin = /[A-Za-z]/.test(nextChar);
+
+                if (lastIsLatin && nextIsLatin) {
                   span.textContent += '-';
                 }
                 span.textContent += '\n';
@@ -4828,7 +4842,7 @@
             dragLeader = symbol;
             dragGroup = new Map();
 
-            setDragSnapLock(null, 'start drag');
+            dragSnapLock = null;
             pendingSnapDelta = null;
             readyActive = readyTarget = null;
             readyActiveSide = readyTargetSide = null;
