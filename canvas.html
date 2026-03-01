@@ -805,7 +805,7 @@
             <p>
             欢迎来到这里。<br>
             你有没有想过：占卜为什么“看起来能看出东西”？<br>
-            塔罗牌、茶渣、云纹、硬币的正反……它们本身并没有固定意义，但占卜师却能从随机图案里讲出一个故事。
+            甲骨、星象、纸牌、硬币的正反……它们本身并没有固定意义，但占卜师却能从随机图案里讲出一个故事。
             也许这背后有神秘力量；也许只是因为他们擅长自圆其说，把线索“连成一条线”。
             </p>
 
@@ -4427,7 +4427,7 @@
             const data = await response.json();
 
             console.warn('[client] usage', data.usage);
-            console.warn('[client] lang', data.debugLang);
+            // console.warn('[client] lang', data.debugLang);
 
             if (typeof data.used === 'number' && typeof data.limit === 'number') {
               updateQuotaBadge(data.used, data.limit);
@@ -4504,8 +4504,7 @@
           let index = 0;
           const speed = 10; // Speed of typing in milliseconds
 
-          const maxLineLen = currentLang === 'zh' ? 20 : 24;
-          console.warn('maxlinelen', maxLineLen);
+          const maxLineLen = currentLang === 'zh' ? 14 : 24;
           let lineIndex = 0;
           let passed;
           function type(onComplete) {
@@ -5731,14 +5730,6 @@
           if (!exists) {
             // Synthesized nodes need svg to rebuild the image
             if (!sn.svg) continue;
-
-            // Better debug (do not stringify via '+')
-            console.warn('[load node]', {
-              id: sn.id,
-              word: sn.word,
-              hasPattern: !!sn.pattern,
-              parsedPattern,
-            });
 
             nodes.add({
               id: sn.id,
