@@ -546,6 +546,19 @@
       .no-text-select * {
         user-select: none !important;
       }
+
+      .vis-tooltip {
+        font-family:
+          Consolas,
+          'DejaVu Sans Mono',
+          'Noto Sans Mono',
+          'Liberation Mono',
+          'Courier New',
+          /* CJK monospace fallback later */ 'Sarasa Mono SC',
+          'Source Han Mono SC',
+          'Noto Sans Mono CJK SC',
+          monospace !important;
+      }
     </style>
     <script
       type="text/javascript"
@@ -622,167 +635,167 @@
       const I18N = {
         en: {
           homeHTML: `
-            <h1 style="text-align: center">Divinatory Conlang on Canvas</h1>
-            <br>
-            <p>
-            Welcome!<br />
-            Ever wondered how divination works?<br />
-            Fortune tellers interpret meaning in random patterns—from Tarot cards to teacup dregs.
-            Maybe there’s a divine spirit hidden behind it. Maybe they simply know how to tell a
-            story from what they see.
-            </p>
+                  <h1 style="text-align: center">Divinatory Conlang on Canvas</h1>
+                  <br>
+                  <p>
+                  Welcome!<br />
+                  Ever wondered how divination works?<br />
+                  Fortune tellers interpret meaning in random patterns—from Tarot cards to teacup dregs.
+                  Maybe there’s a divine spirit hidden behind it. Maybe they simply know how to tell a
+                  story from what they see.
+                  </p>
 
-            <p>
-            Either way, they train their intuition to access whatever knowledge lies “on the other
-            side.” This platform plays with that idea: it invites <b>you</b> to become the fortune
-            teller —— in a broader sense. Here, you glimpse the meaning of life by producing and
-            interpreting abstract symbols. Instead of teaching you a complete symbolic language, I’ll
-            help you build one yourself.
-            </p>
+                  <p>
+                  Either way, they train their intuition to access whatever knowledge lies “on the other
+                  side.” This platform plays with that idea: it invites <b>you</b> to become the fortune
+                  teller —— in a broader sense. Here, you glimpse the meaning of life by producing and
+                  interpreting abstract symbols. Instead of teaching you a complete symbolic language, I’ll
+                  help you build one yourself.
+                  </p>
 
-            <p>
-            You’ll see how intuition can be built step by step.<br />
-            Note: your language’s “atoms” are fixed, but how the “molecules” are structured is up to
-            you. The atoms are designed by me, inspired by the Yijing trigrams.
-            </p>
-
-
-            <div
-            style="
-                max-width: 680px;
-                margin: 18px auto 22px auto;
-                padding: 14px 16px;
-                background: white;
-                border: 1px solid black;
-                border-radius: 10px;
-                box-shadow: 0 4px 0 rgba(0, 0, 0, 0.08);
-                font-family: inherit;
-            "
-            >
-            <div style="text-align: center; font-size: 18px; margin-bottom: 10px">
-                <b>TL;DR — How to start</b>
-            </div>
-
-            <div style="font-size: 14px; line-height: 1.45">
-                <div style="margin-bottom: 8px">
-                <b>1) Build a word:</b> In <b>Craft</b>, drag symbols and let the magnets snap them
-                together.
-                </div>
-                <div style="margin-bottom: 8px">
-                <b>2) Check + learn:</b> <b>Click and hold</b> to highlight the connected cluster,
-                then press <b>Insight</b> (the eye).
-                </div>
-                <div style="margin-bottom: 10px">
-                <b>3) Name + save:</b> Enter a word + your reasoning. If it passes, it appears in the
-                <b>Library</b> → use it in <b>Chat</b>.
-                </div>
-
-                <div
-                style="
-                    text-align: center;
-                    padding-top: 8px;
-                    border-top: 1px dashed rgba(0, 0, 0, 0.35);
-                "
-                >
-                Starter challenge: <b>sky</b>, <b>rain</b>, <b>flower</b>, <b>computer</b>.
-                </div>
-            </div>
-            </div>
+                  <p>
+                  You’ll see how intuition can be built step by step.<br />
+                  Note: your language’s “atoms” are fixed, but how the “molecules” are structured is up to
+                  you. The atoms are designed by me, inspired by the Yijing trigrams.
+                  </p>
 
 
-            <p>Here are the main ways of combining the symbols:</p>
+                  <div
+                  style="
+                      max-width: 680px;
+                      margin: 18px auto 22px auto;
+                      padding: 14px 16px;
+                      background: white;
+                      border: 1px solid black;
+                      border-radius: 10px;
+                      box-shadow: 0 4px 0 rgba(0, 0, 0, 0.08);
+                      font-family: inherit;
+                  "
+                  >
+                  <div style="text-align: center; font-size: 18px; margin-bottom: 10px">
+                      <b>TL;DR — How to start</b>
+                  </div>
 
-            <div class="image-row">
-                <img
-                class="i18n-img"
-                data-src-en="./icons/sp.png"
-                data-src-zh="./icons/sp-zh.png"
-                src="./icons/sp.png"
-                alt="Symbol Combinations"
-                />
-            </div>
+                  <div style="font-size: 14px; line-height: 1.45">
+                      <div style="margin-bottom: 8px">
+                      <b>1) Build a word:</b> In <b>Craft</b>, drag symbols and let the magnets snap them
+                      together.
+                      </div>
+                      <div style="margin-bottom: 8px">
+                      <b>2) Check + learn:</b> <b>Click and hold</b> to highlight the connected cluster,
+                      then press <b>Insight</b> (the eye).
+                      </div>
+                      <div style="margin-bottom: 10px">
+                      <b>3) Name + save:</b> Enter a word + your reasoning. If it passes, it appears in the
+                      <b>Library</b> → use it in <b>Chat</b>.
+                      </div>
 
-            <p>
-            Symbols connected in <b>series</b> represent contiguous spatial relationships: above,
-            below, adjacent to, inside/outside, etc.
-            </p>
+                      <div
+                      style="
+                          text-align: center;
+                          padding-top: 8px;
+                          border-top: 1px dashed rgba(0, 0, 0, 0.35);
+                      "
+                      >
+                      Starter challenge: <b>sky</b>, <b>rain</b>, <b>flower</b>, <b>computer</b>.
+                      </div>
+                  </div>
+                  </div>
 
-            <p style="text-align: center">
-            <b>Examples</b><br />
-            (1) A traffic light = three lights lined up in a row.<br />
-            (2) A barn = a roof on top of a pile of grains.
-            </p>
 
-            <p>Symbols connected in <b>parallel</b> represent <b>composite</b> concepts.</p>
+                  <p>Here are the main ways of combining the symbols:</p>
 
-            <p style="text-align: center">
-            <b>Examples</b><br />
-            (1) A white rock = the composite of whiteness and hardness.<br />
-            (2) A bullet = the composite of smallness and advancing.
-            </p>
+                  <div class="image-row">
+                      <img
+                      class="i18n-img"
+                      data-src-en="./icons/sp.png"
+                      data-src-zh="./icons/sp-zh.png"
+                      src="./icons/sp.png"
+                      alt="Symbol Combinations"
+                      />
+                  </div>
 
-            <div class="image-row">
-                <img
-                class="i18n-img"
-                data-src-en="./icons/granary.png"
-                data-src-zh="./icons/granary-zh.png"
-                src="./icons/granary.png"
-                alt="Granary example"
-                />
-                <img
-                class="i18n-img"
-                data-src-en="./icons/bullet.png"
-                data-src-zh="./icons/bullet-zh.png"
-                src="./icons/bullet.png"
-                alt="Bullet example"
-                />
-            </div>
+                  <p>
+                  Symbols connected in <b>series</b> represent contiguous spatial relationships: above,
+                  below, adjacent to, inside/outside, etc.
+                  </p>
 
-            <p>
-            As long as it makes sense to you, it works—because it’s all about <b>intuitiveness</b>.
-            </p>
+                  <p style="text-align: center">
+                  <b>Examples</b><br />
+                  (1) A traffic light = three lights lined up in a row.<br />
+                  (2) A barn = a roof on top of a pile of grains.
+                  </p>
 
-            <p>
-            When you make a word, make sure the magnets connect the symbols. Only symbols that are
-            actually connected count as a word. To check this, <b>click and hold</b> a symbol and the
-            entire connected cluster it belongs to will be highlighted.
-            </p>
+                  <p>Symbols connected in <b>parallel</b> represent <b>composite</b> concepts.</p>
 
-            <p>
-            Then click the <b>insight</b> button (the eye). It will suggest meanings based on what it
-            “sees.” You can learn what each basic symbol means by clicking <b>insight</b> and reading
-            the different aspects it proposes. While we only have nine basic symbols to start,
-            <b>insight</b> will learn what you teach it over time.
-            </p>
+                  <p style="text-align: center">
+                  <b>Examples</b><br />
+                  (1) A white rock = the composite of whiteness and hardness.<br />
+                  (2) A bullet = the composite of smallness and advancing.
+                  </p>
 
-            <p>
-            A window will pop up asking you to name your word and explain your reasoning, and the
-            system will check if it makes sense. If it does, the new word you created will appear in
-            the Library.
-            </p>
+                  <div class="image-row">
+                      <img
+                      class="i18n-img"
+                      data-src-en="./icons/granary.png"
+                      data-src-zh="./icons/granary-zh.png"
+                      src="./icons/granary.png"
+                      alt="Granary example"
+                      />
+                      <img
+                      class="i18n-img"
+                      data-src-en="./icons/bullet.png"
+                      data-src-zh="./icons/bullet-zh.png"
+                      src="./icons/bullet.png"
+                      alt="Bullet example"
+                      />
+                  </div>
 
-            <p>
-            In the next tab, poke around the interface and see if you can build your own expressions
-            for
-            <b>“sky,” “rain,” “flower,” and “computer.”</b><br />
-            Try to attend to the symbols’ meanings (via <b>insight</b>) rather than relying purely on
-            visual resemblance.
-            </p>
+                  <p>
+                  As long as it makes sense to you, it works—because it’s all about <b>intuitiveness</b>.
+                  </p>
 
-            <p>
-            After that, you can communicate with others using emojis or the expressions you’ve
-            created. You can post a problem you have, or just chat. Others may interpret the same
-            symbols differently—and that’s fine. What matters is resonating with the symbols and
-            being inspired by them.
-            </p>
+                  <p>
+                  When you make a word, make sure the magnets connect the symbols. Only symbols that are
+                  actually connected count as a word. To check this, <b>click and hold</b> a symbol and the
+                  entire connected cluster it belongs to will be highlighted.
+                  </p>
 
-            <p>
-            <i>P.S.</i> Since LLM calls cost money, there’s a daily limit on how many times you can
-            validate a symbol or generate emojis (<b>100 credits/day</b>). If you’d like to support
-            me, you can donate on Ko-fi to upgrade (<b>$5 → 1000 credits/day for one month</b>).
-            </p>
-            <br /><br /><br /><br />
-          `,
+                  <p>
+                  Then click the <b>insight</b> button (the eye). It will suggest meanings based on what it
+                  “sees.” You can learn what each basic symbol means by clicking <b>insight</b> and reading
+                  the different aspects it proposes. While we only have nine basic symbols to start,
+                  <b>insight</b> will learn what you teach it over time.
+                  </p>
+
+                  <p>
+                  A window will pop up asking you to name your word and explain your reasoning, and the
+                  system will check if it makes sense. If it does, the new word you created will appear in
+                  the Library.
+                  </p>
+
+                  <p>
+                  In the next tab, poke around the interface and see if you can build your own expressions
+                  for
+                  <b>“sky,” “rain,” “flower,” and “computer.”</b><br />
+                  Try to attend to the symbols’ meanings (via <b>insight</b>) rather than relying purely on
+                  visual resemblance.
+                  </p>
+
+                  <p>
+                  After that, you can communicate with others using emojis or the expressions you’ve
+                  created. You can post a problem you have, or just chat. Others may interpret the same
+                  symbols differently—and that’s fine. What matters is resonating with the symbols and
+                  being inspired by them.
+                  </p>
+
+                  <p>
+                  <i>P.S.</i> Since LLM calls cost money, there’s a daily limit on how many times you can
+                  validate a symbol or generate emojis (<b>100 credits/day</b>). If you’d like to support
+                  me, you can donate on Ko-fi to upgrade (<b>$5 → 1000 credits/day for one month</b>).
+                  </p>
+                  <br /><br /><br /><br />
+                `,
           tldrTitle: 'TL;DR — How to start',
           home: 'Home',
           insight: 'Insight',
@@ -800,136 +813,136 @@
         },
         zh: {
           homeHTML: `
-            <h1 style="text-align:center;">卦言画布 </h1>
+                  <h1 style="text-align:center;">卦言画布 </h1>
 
-            <p>
-            欢迎来到这里。<br>
-            你有没有想过：占卜为什么“看起来能看出东西”？<br>
-            甲骨、星象、纸牌、硬币的正反……它们本身并没有固定意义，但占卜师却能从随机图案里讲出一个故事。
-            也许这背后有神秘力量；也许只是因为他们擅长自圆其说，把线索“连成一条线”。
-            </p>
+                  <p>
+                  欢迎来到这里。<br>
+                  你有没有想过：占卜为什么“看起来能看出东西”？<br>
+                  甲骨、星象、纸牌、硬币的正反……它们本身并没有固定意义，但占卜师却能从随机图案里讲出一个故事。
+                  也许这背后有神秘力量；也许只是因为他们擅长自圆其说，把线索“连成一条线”。
+                  </p>
 
-            <p>
-            这个平台在玩同一个想法：让你成为“占卜师”——更广义地说，成为一个能运用抽象符号并以此窥探生活意义的人。<br>
-            我不会直接教你一整套符号语言；相反，我会帮你从零开始把语言“自己造出来”。你会看到直觉是如何一步步被训练和积累的。
-            </p>
+                  <p>
+                  这个平台在玩同一个想法：让你成为“占卜师”——更广义地说，成为一个能运用抽象符号并以此窥探生活意义的人。<br>
+                  我不会直接教你一整套符号语言；相反，我会帮你从零开始把语言“自己造出来”。你会看到直觉是如何一步步被训练和积累的。
+                  </p>
 
-            <p>
-            你的语言“原子”（基础符号）是固定的；但“分子”（组合方式）完全由你决定。<br>
-            这些基础符号由我设计，灵感来自《易经》八卦。
-            </p>
+                  <p>
+                  你的语言“原子”（基础符号）是固定的；但“分子”（组合方式）完全由你决定。<br>
+                  这些基础符号由我设计，灵感来自《易经》八卦。
+                  </p>
 
-            <!-- TL;DR card -->
-            <div style="
-            max-width: 680px;
-            margin: 18px auto 22px auto;
-            padding: 14px 16px;
-            background: white;
-            border: 1px solid black;
-            border-radius: 10px;
-            box-shadow: 0 4px 0 rgba(0,0,0,0.08);
-            font-family: inherit;
-            ">
-            <div style="text-align:center; font-size:18px; margin-bottom:10px;">
-                <b>太长不看 — 三步上手</b>
-            </div>
+                  <!-- TL;DR card -->
+                  <div style="
+                  max-width: 680px;
+                  margin: 18px auto 22px auto;
+                  padding: 14px 16px;
+                  background: white;
+                  border: 1px solid black;
+                  border-radius: 10px;
+                  box-shadow: 0 4px 0 rgba(0,0,0,0.08);
+                  font-family: inherit;
+                  ">
+                  <div style="text-align:center; font-size:18px; margin-bottom:10px;">
+                      <b>太长不看 — 三步上手</b>
+                  </div>
 
-            <div style="font-size:14px; line-height:1.5;">
-                <div style="margin-bottom:8px;">
-                <b>1）造一个词：</b>去 <b>Craft</b>，把符号拖到画布上，让磁吸把它们“吸在一起”。
-                </div>
-                <div style="margin-bottom:8px;">
-                <b>2）检查 + 学习：</b><b>长按</b>任意符号，会高亮它所在的<b>连通组</b>；然后点 <b>洞察</b>（眼睛按钮）看系统给的含义提示。
-                </div>
-                <div style="margin-bottom:10px;">
-                <b>3）命名 + 保存：</b>输入这个组合对应的词，以及你的理由。通过检查后，它会出现在 <b>词库</b>，之后就能在 <b>聊天</b> 里用它交流。
-                </div>
+                  <div style="font-size:14px; line-height:1.5;">
+                      <div style="margin-bottom:8px;">
+                      <b>1）造一个词：</b>去 <b>Craft</b>，把符号拖到画布上，让磁吸把它们“吸在一起”。
+                      </div>
+                      <div style="margin-bottom:8px;">
+                      <b>2）检查 + 学习：</b><b>长按</b>任意符号，会高亮它所在的<b>连通组</b>；然后点 <b>洞察</b>（眼睛按钮）看系统给的含义提示。
+                      </div>
+                      <div style="margin-bottom:10px;">
+                      <b>3）命名 + 保存：</b>输入这个组合对应的词，以及你的理由。通过检查后，它会出现在 <b>词库</b>，之后就能在 <b>聊天</b> 里用它交流。
+                      </div>
 
-                <div style="text-align:center; padding-top:8px; border-top:1px dashed rgba(0,0,0,0.35);">
-                新手挑战：<b>“天空 / 雨 / 花 / 电脑”</b>
-                </div>
-            </div>
-            </div>
+                      <div style="text-align:center; padding-top:8px; border-top:1px dashed rgba(0,0,0,0.35);">
+                      新手挑战：<b>“天空 / 雨 / 花 / 电脑”</b>
+                      </div>
+                  </div>
+                  </div>
 
-            <p><b>符号怎么组合？</b>主要有两种方式：</p>
+                  <p><b>符号怎么组合？</b>主要有两种方式：</p>
 
-            <div class="image-row">
-                <img
-                class="i18n-img"
-                data-src-en="./icons/sp.png"
-                data-src-zh="./icons/sp-zh.png"
-                src="./icons/sp.png"
-                alt="符合组合方式"
-                />
-            </div>
+                  <div class="image-row">
+                      <img
+                      class="i18n-img"
+                      data-src-en="./icons/sp.png"
+                      data-src-zh="./icons/sp-zh.png"
+                      src="./icons/sp.png"
+                      alt="符合组合方式"
+                      />
+                  </div>
 
-            <p>
-            <b>串联</b>表示空间上的<b>相邻/连续关系</b>：上下、左右、内部/外部、贴近、覆盖……<br>
-            </p>
+                  <p>
+                  <b>串联</b>表示空间上的<b>相邻/连续关系</b>：上下、左右、内部/外部、贴近、覆盖……<br>
+                  </p>
 
-            <p style="text-align:center;">
-            <b>例子</b><br>
-            （1）交通灯 = 三盏灯排成一列。<br>
-            （2）谷仓 = “屋顶”在“谷物堆”上面。
-            </p>
+                  <p style="text-align:center;">
+                  <b>例子</b><br>
+                  （1）交通灯 = 三盏灯排成一列。<br>
+                  （2）谷仓 = “屋顶”在“谷物堆”上面。
+                  </p>
 
-            <p>
-            <b>并联</b>表示<b>复合概念</b>：把多个性质/含义“叠加到一起”。<br>
-            </p>
+                  <p>
+                  <b>并联</b>表示<b>复合概念</b>：把多个性质/含义“叠加到一起”。<br>
+                  </p>
 
-            <p style="text-align:center;">
-            <b>例子</b><br>
-            （1）白色的石头 = “白” + “硬”。<br>
-            （2）子弹 = “小” + “前进/冲击”。
-            </p>
+                  <p style="text-align:center;">
+                  <b>例子</b><br>
+                  （1）白色的石头 = “白” + “硬”。<br>
+                  （2）子弹 = “小” + “前进/冲击”。
+                  </p>
 
-            <div class="image-row">
-                <img
-                class="i18n-img"
-                data-src-en="./icons/granary.png"
-                data-src-zh="./icons/granary-zh.png"
-                src="./icons/granary.png"
-                alt="粮仓示例"
-                />
-                <img
-                class="i18n-img"
-                data-src-en="./icons/bullet.png"
-                data-src-zh="./icons/bullet-zh.png"
-                src="./icons/bullet.png"
-                alt="子弹示例"
-                />
-            </div>
+                  <div class="image-row">
+                      <img
+                      class="i18n-img"
+                      data-src-en="./icons/granary.png"
+                      data-src-zh="./icons/granary-zh.png"
+                      src="./icons/granary.png"
+                      alt="粮仓示例"
+                      />
+                      <img
+                      class="i18n-img"
+                      data-src-en="./icons/bullet.png"
+                      data-src-zh="./icons/bullet-zh.png"
+                      src="./icons/bullet.png"
+                      alt="子弹示例"
+                      />
+                  </div>
 
-            <p>
-            只要这个组合对你来说讲得通，它就能成立——因为这里追求的核心就是 <b>直觉上的合理性</b>。
-            </p>
+                  <p>
+                  只要这个组合对你来说讲得通，它就能成立——因为这里追求的核心就是 <b>直觉上的合理性</b>。
+                  </p>
 
-            <p>
-            当你在造词时，请确保符号之间真的被“磁吸连接”起来：<b>只有连在一起的符号才算一个词</b>。<br>
-            你可以<b>长按</b>某个符号来检查：它所在的整块<b>连通组</b>会被高亮。
-            </p>
+                  <p>
+                  当你在造词时，请确保符号之间真的被“磁吸连接”起来：<b>只有连在一起的符号才算一个词</b>。<br>
+                  你可以<b>长按</b>某个符号来检查：它所在的整块<b>连通组</b>会被高亮。
+                  </p>
 
-            <p>
-            然后点击 <b>洞察</b>（眼睛按钮），系统会根据它“看到”的结构给出一些含义建议。<br>
-            你也可以反过来用它学习每个基础符号：多点几次洞察，读一读它给的不同角度，你会逐渐形成自己的理解。<br>
-            虽然一开始只有九个基础符号，但 <b>洞察</b> 会随着你不断命名与解释，逐渐“学会”你教它的东西。
-            </p>
+                  <p>
+                  然后点击 <b>洞察</b>（眼睛按钮），系统会根据它“看到”的结构给出一些含义建议。<br>
+                  你也可以反过来用它学习每个基础符号：多点几次洞察，读一读它给的不同角度，你会逐渐形成自己的理解。<br>
+                  虽然一开始只有九个基础符号，但 <b>洞察</b> 会随着你不断命名与解释，逐渐“学会”你教它的东西。
+                  </p>
 
-            <p>
-            当你准备好保存新词时，会弹出窗口让你输入：<b>这个词是什么</b>，以及<b>你为什么这么命名</b>。系统会检查你的解释是否自洽。<br>
-            通过后，这个新词会出现在 <b>词库</b>。
-            </p>
+                  <p>
+                  当你准备好保存新词时，会弹出窗口让你输入：<b>这个词是什么</b>，以及<b>你为什么这么命名</b>。系统会检查你的解释是否自洽。<br>
+                  通过后，这个新词会出现在 <b>词库</b>。
+                  </p>
 
-            <p>
-            接下来你就可以用你造出来的词去和别人交流：可以在 <b>世界的岛屿</b> 里发 emoji，也可以发你自己造出来的表达。<br>
-            别人的解释可能跟你不一样——没关系。重要的是你和这些符号产生共鸣，并从它们那里得到启发。
-            </p>
+                  <p>
+                  接下来你就可以用你造出来的词去和别人交流：可以在 <b>世界的岛屿</b> 里发 emoji，也可以发你自己造出来的表达。<br>
+                  别人的解释可能跟你不一样——没关系。重要的是你和这些符号产生共鸣，并从它们那里得到启发。
+                  </p>
 
-            <p>
-            <i>P.S.</i> 因为调用大模型要花钱，每天能验证/生成的次数有限（<b>100 credits/day</b>）。<br>
-            你也可以通过 Ko-fi 支持我：<b>$5 → 1000 credits/day（持续 1 个月）</b>。
-            </p>
-          `,
+                  <p>
+                  <i>P.S.</i> 因为调用大模型要花钱，每天能验证/生成的次数有限（<b>100 credits/day</b>）。<br>
+                  你也可以通过 Ko-fi 支持我：<b>$5 → 1000 credits/day（持续 1 个月）</b>。
+                  </p>
+                `,
           tldrTitle: 'TL;DR — 3 步开始',
           home: '欢迎',
           insight: '洞察',
@@ -2086,26 +2099,26 @@
 
       const SYMBOL_TITLES = {
         en: [
-          'Based on Trigram Kun ☷. Empty and still.',
-          'Based on Trigram Gen ☶. Constrain and fall.',
-          'Based on Trigram Kan ☵. Occupy and radiate.',
-          'Based on Trigram Xun ☴. Airy and leak.',
-          'Based on Trigram Zhen ☳. Load and rise.',
-          'Based on Trigram Li ☲. Contain and attach.',
-          'Based on Trigram Dui ☱. Broken and express.',
-          'Based on Trigram Qian ☰. Multiple and vibrant.',
-          'A uniquely Ítí symbol. It is always balancing all elements, so it can be either monotonous or filled with variegated order.',
+          'Based on Trigram Kun ☷. Empty and still. Grapheme: ġ (static), ċ (dynamic). Phoneme: [ɣ] (static), [x] (dynamic).',
+          'Based on Trigram Gen ☶. Constrain and fall. Grapheme: g (static), c (dynamic). Phoneme: [g] (static), [k] (dynamic).',
+          'Based on Trigram Kan ☵. Occupy and radiate. Grapheme: l (static), r (dynamic). Phoneme: [l] (static), [ɾ] (dynamic).',
+          'Based on Trigram Xun ☴. Airy and leak. Grapheme: v (static), f (dynamic). Phoneme: [v] (static), [f] (dynamic).',
+          'Based on Trigram Zhen ☳. Load and rise. Grapheme: d (static), t (dynamic). Phoneme: [d] (static), [t] (dynamic).',
+          'Based on Trigram Li ☲. Contain and attach. Grapheme: b (static), p (dynamic). Phoneme: [b] (static), [p] (dynamic).',
+          'Based on Trigram Dui ☱. Broken and express. Grapheme: s (static), z (dynamic). Phoneme: [s] (static), [t͡s] (dynamic).',
+          'Based on Trigram Qian ☰. Multiple and vibrant. Grapheme: ṡ (static), ż (dynamic). Phoneme: [ʃ] (static), [t͡ʃ] (dynamic).',
+          'A uniquely Ítí symbol. It is always balancing all elements, so it can be either monotonous or filled with variegated order. Grapheme: n (static), m (dynamic). Phoneme: [n] (static), [m] (dynamic).',
         ],
         zh: [
-          '取象自坤卦 ☷：空虚、安静。',
-          '取象自艮卦 ☶：覆盖、下降。',
-          '取象自坎卦 ☵：阻隔、分离。',
-          '取象自巽卦 ☴：虚浮、泄漏。',
-          '取象自震卦 ☳：承载、上升。',
-          '取象自离卦 ☲：容纳、依附。',
-          '取象自兑卦 ☱：破缺、发出。',
-          '取象自乾卦 ☰：丰富、活动。',
-          'Ítí 的特殊符号（太极）：在诸元素之间维持平衡，因此既可能“单调”，也可能呈现“繁复的秩序”。',
+          '取象自坤卦 ☷：空虚、安静。文：ġ（静）/ ċ（动）。音：[ɣ]（静）/ [x]（动）。',
+          '取象自艮卦 ☶：覆盖、下降。文：g（静）/ c（动）。音：[g]（静）/ [k]（动）。',
+          '取象自坎卦 ☵：阻隔、分离。文：l（静）/ r（动）。音：[l]（静）/ [ɾ]（动）。',
+          '取象自巽卦 ☴：虚浮、泄漏。文：v（静）/ f（动）。音：[v]（静）/ [f]（动）。',
+          '取象自震卦 ☳：承载、上升。文：d（静）/ t（动）。音：[d]（静）/ [t]（动）。',
+          '取象自离卦 ☲：容纳、依附。文：b（静）/ p（动）。音：[b]（静）/ [p]（动）。',
+          '取象自兑卦 ☱：破缺、发出。文：s（静）/ z（动）。音：[s]（静）/ [t͡s]（动）。',
+          '取象自乾卦 ☰：丰富、活动。文：ṡ（静）/ ż（动）。音：[ʃ]（静）/ [t͡ʃ]（动）。',
+          'Ítí 的特殊符号（太极）：在诸元素之间维持平衡，因此既可能“单调”，也可能呈现“繁复的秩序”。文：n（静）/ m（动）。音：[n]（静）/ [m]（动）。',
         ],
       };
 
@@ -4148,21 +4161,21 @@
         const t = I18N[currentLang];
 
         el.innerHTML = `
-            <div><strong>${t.credits(used, limit)}</strong></div>
+                  <div><strong>${t.credits(used, limit)}</strong></div>
 
-            <div style="margin-top:4px; font-size:12px;">
-            ${t.supportCode}:
-            <span id="support-code" style="text-decoration: underline; cursor: pointer;">${code}</span>
-            <span style="opacity:0.8;">${t.clickToCopy}</span>
-            </div>
+                  <div style="margin-top:4px; font-size:12px;">
+                  ${t.supportCode}:
+                  <span id="support-code" style="text-decoration: underline; cursor: pointer;">${code}</span>
+                  <span style="opacity:0.8;">${t.clickToCopy}</span>
+                  </div>
 
-            <div style="margin-top:6px; font-size:12px;">
-            <a id="kofi-link" href="${kofiUrl}" target="_blank" rel="noopener noreferrer"
-                style="text-decoration: underline; color: inherit;">
-                ${t.supportOnKofi}
-            </a>
-            </div>
-        `;
+                  <div style="margin-top:6px; font-size:12px;">
+                  <a id="kofi-link" href="${kofiUrl}" target="_blank" rel="noopener noreferrer"
+                      style="text-decoration: underline; color: inherit;">
+                      ${t.supportOnKofi}
+                  </a>
+                  </div>
+              `;
 
         const sc = document.getElementById('support-code');
         if (sc && uid) {
