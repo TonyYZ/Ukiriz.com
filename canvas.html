@@ -1859,6 +1859,26 @@
         return g;
       }
 
+      function matchAllPatternsOnSelection(selectedSymbols, pattern) {
+        const remaining = new Set(selectedSymbols);
+        const matches = [];
+
+        while (true) {
+          const m = matchPatternOnSelection(remaining, pattern);
+          if (!m) break;
+
+          matches.push(m);
+
+          // consume matched symbols so we can find another disjoint instance
+          for (const s of m) remaining.delete(s);
+
+          // safety: prevent infinite loop if something weird happens
+          if (remaining.size === 0) break;
+        }
+
+        return matches; // array of Set<symbol>, possibly []
+      }
+
       function matchPatternOnSelection(selectedSymbols, pattern) {
         // 把 selectedSymbols 变成数组，方便用 index 表示
         const sel = [...selectedSymbols];
@@ -4068,23 +4088,32 @@
         const selectionGraph = buildSubgraphFromSelection(currentGraph, selectedSymbols);
 
         for (const [storedWord, [storedId, storedGraph]] of library) {
-          let foundMatching = matchPatternOnSelection(selectedSymbols, storedGraph);
-          if (areSetsEqual(foundMatching, selectedSymbols)) hasDuplicateExpression = true;
+          // find ALL disjoint matches of this storedGraph inside current selection
+          const matches = matchAllPatternsOnSelection(selectedSymbols, storedGraph);
 
-          if (foundMatching != null) {
+          // duplicate-expression means: the ENTIRE current selection equals ONE stored expression
+          // (same behavior as you wanted before)
+          if (matches.some((m) => areSetsEqual(m, selectedSymbols))) {
+            hasDuplicateExpression = true;
+          }
+
+          // for each match group, create one label
+          for (const foundMatching of matches) {
             let avgX = 0,
               avgY = 0;
             let lastSymbol;
 
-            // 取任意一个 symbol 找到共同 canvas
+            // pick any symbol in this match to find its canvas
             const first = foundMatching.values().next().value;
             const canvas = getCanvasForElem(first);
+            if (!canvas) continue;
+
             const canvasRect = canvas.getBoundingClientRect();
 
             for (const symbol of foundMatching) {
               const rect = symbol.getBoundingClientRect();
 
-              // ✅ 视口坐标 -> canvas 局部坐标
+              // viewport -> canvas-local
               const cx = rect.left - canvasRect.left + rect.width / 2;
               const cy = rect.top - canvasRect.top + rect.height / 2;
 
