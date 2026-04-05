@@ -7662,7 +7662,9 @@
         if (node.word && node.title && node.title !== word) {
           const titleText = String(node.title).trim();
           const prefix = `${String(node.word).trim()}.`;
-          definition = titleText.startsWith(prefix) ? titleText.slice(prefix.length).trim() : titleText;
+          definition = titleText.startsWith(prefix)
+            ? titleText.slice(prefix.length).trim()
+            : titleText;
         }
         return { word, definition };
       }
@@ -7672,78 +7674,173 @@
         if (!allNodes.length) return [];
 
         const { levelById, parentsById } = computeLibraryTreeLevels();
-        const columns = new Map();
+        const nodeById = new Map(allNodes.map((node) => [node.id, node]));
+        const adjacency = new Map(allNodes.map((node) => [node.id, new Set()]));
+        for (const edge of edges.get()) {
+          if (!adjacency.has(edge.from) || !adjacency.has(edge.to)) continue;
+          adjacency.get(edge.from).add(edge.to);
+          adjacency.get(edge.to).add(edge.from);
+        }
+
+        const visited = new Set();
+        const components = [];
         for (const node of allNodes) {
-          const level = levelById.get(node.id) || 0;
-          if (!columns.has(level)) columns.set(level, []);
-          columns.get(level).push(node);
-        }
-
-        const sortedLevels = [...columns.keys()].sort((a, b) => a - b);
-        const orderById = new Map();
-        let changed = true;
-        let safety = 0;
-
-        for (const level of sortedLevels) {
-          columns
-            .get(level)
-            .sort((a, b) => (a.word || a.title || a.id).localeCompare(b.word || b.title || b.id))
-            .forEach((node, index) => orderById.set(node.id, index));
-        }
-
-        while (changed && safety < 6) {
-          changed = false;
-          safety += 1;
-          for (const level of sortedLevels.slice(1)) {
-            const colNodes = columns.get(level);
-            const before = colNodes.map((n) => n.id).join('|');
-            colNodes.sort((a, b) => {
-              const aParents = parentsById.get(a.id) || [];
-              const bParents = parentsById.get(b.id) || [];
-              const aCenter = aParents.length
-                ? aParents.reduce((sum, id) => sum + (orderById.get(id) || 0), 0) / aParents.length
-                : orderById.get(a.id) || 0;
-              const bCenter = bParents.length
-                ? bParents.reduce((sum, id) => sum + (orderById.get(id) || 0), 0) / bParents.length
-                : orderById.get(b.id) || 0;
-              if (aCenter !== bCenter) return aCenter - bCenter;
-              return (a.word || a.title || a.id).localeCompare(b.word || b.title || b.id);
-            });
-            colNodes.forEach((node, index) => orderById.set(node.id, index));
-            if (before !== colNodes.map((n) => n.id).join('|')) changed = true;
+          if (visited.has(node.id)) continue;
+          const queue = [node.id];
+          visited.add(node.id);
+          const componentIds = [];
+          while (queue.length) {
+            const currentId = queue.shift();
+            componentIds.push(currentId);
+            for (const neighborId of adjacency.get(currentId) || []) {
+              if (visited.has(neighborId)) continue;
+              visited.add(neighborId);
+              queue.push(neighborId);
+            }
           }
+          components.push(componentIds);
         }
 
-        const levelCellCols = Math.max(1, Math.ceil(Math.sqrt(sortedLevels.length)));
-        const levelCellWidth = 340;
-        const levelCellHeight = 260;
-        const nodeColGap = 118;
-        const nodeRowGap = 92;
+        const componentLayouts = components.map((componentIds) => {
+          const columns = new Map();
+          const componentNodes = componentIds.map((id) => nodeById.get(id)).filter(Boolean);
+          for (const node of componentNodes) {
+            const level = levelById.get(node.id) || 0;
+            if (!columns.has(level)) columns.set(level, []);
+            columns.get(level).push(node);
+          }
+
+          const sortedLevels = [...columns.keys()].sort((a, b) => a - b);
+          const orderById = new Map();
+          let changed = true;
+          let safety = 0;
+
+          for (const level of sortedLevels) {
+            columns
+              .get(level)
+              .sort((a, b) => (a.word || a.title || a.id).localeCompare(b.word || b.title || b.id))
+              .forEach((node, index) => orderById.set(node.id, index));
+          }
+
+          while (changed && safety < 8) {
+            changed = false;
+            safety += 1;
+            for (const level of sortedLevels.slice(1)) {
+              const colNodes = columns.get(level);
+              const before = colNodes.map((n) => n.id).join('|');
+              colNodes.sort((a, b) => {
+                const aParents = (parentsById.get(a.id) || []).filter((id) =>
+                  componentIds.includes(id),
+                );
+                const bParents = (parentsById.get(b.id) || []).filter((id) =>
+                  componentIds.includes(id),
+                );
+                const aCenter = aParents.length
+                  ? aParents.reduce((sum, id) => sum + (orderById.get(id) || 0), 0) /
+                    aParents.length
+                  : orderById.get(a.id) || 0;
+                const bCenter = bParents.length
+                  ? bParents.reduce((sum, id) => sum + (orderById.get(id) || 0), 0) /
+                    bParents.length
+                  : orderById.get(b.id) || 0;
+                if (aCenter !== bCenter) return aCenter - bCenter;
+                return (a.word || a.title || a.id).localeCompare(b.word || b.title || b.id);
+              });
+              colNodes.forEach((node, index) => orderById.set(node.id, index));
+              if (before !== colNodes.map((n) => n.id).join('|')) changed = true;
+            }
+          }
+
+          const colGap = 165;
+          const rowGap = 84;
+          const relative = [];
+
+          for (const [levelIndex, level] of sortedLevels.entries()) {
+            const colNodes = columns.get(level);
+            const totalHeight = Math.max(0, (colNodes.length - 1) * rowGap);
+            const startY = -totalHeight / 2;
+            colNodes.forEach((node, index) => {
+              const x = levelIndex * colGap;
+              const y = startY + index * rowGap;
+              relative.push({ id: node.id, x, y });
+            });
+          }
+
+          const minX = Math.min(...relative.map((n) => n.x));
+          const maxX = Math.max(...relative.map((n) => n.x));
+          const minY = Math.min(...relative.map((n) => n.y));
+          const maxY = Math.max(...relative.map((n) => n.y));
+          const padX = 70;
+          const padY = 55;
+
+          return {
+            nodes: relative,
+            width: maxX - minX + padX * 2,
+            height: maxY - minY + padY * 2,
+            rootLevel: Math.min(...sortedLevels, 0),
+          };
+        });
+
+        componentLayouts.sort((a, b) => {
+          const areaA = a.width * a.height;
+          const areaB = b.width * b.height;
+          return areaB - areaA;
+        });
+
+        const blockCols = Math.max(1, Math.ceil(Math.sqrt(componentLayouts.length)));
+        const blockGapX = 0;
+        const blockGapY = 0;
+        const columnWidths = new Array(blockCols).fill(0);
+        const rowHeights = [];
+
+        componentLayouts.forEach((layout, index) => {
+          const col = index % blockCols;
+          const row = Math.floor(index / blockCols);
+          columnWidths[col] = Math.max(columnWidths[col], layout.width);
+          rowHeights[row] = Math.max(rowHeights[row] || 0, layout.height);
+        });
+
+        const columnOffsets = [];
+        let runningX = 0;
+        for (let i = 0; i < columnWidths.length; i++) {
+          columnOffsets[i] = runningX;
+          runningX += columnWidths[i] + blockGapX;
+        }
+
+        const rowOffsets = [];
+        let runningY = 0;
+        for (let i = 0; i < rowHeights.length; i++) {
+          rowOffsets[i] = runningY;
+          runningY += rowHeights[i] + blockGapY;
+        }
+
         const updates = [];
-
-        sortedLevels.forEach((level, levelIndex) => {
-          const colNodes = columns.get(level);
-          const cellCol = levelIndex % levelCellCols;
-          const cellRow = Math.floor(levelIndex / levelCellCols);
-          const localCols = Math.max(1, Math.ceil(Math.sqrt(colNodes.length)));
-          const localRows = Math.max(1, Math.ceil(colNodes.length / localCols));
-          const cellOriginX = cellCol * levelCellWidth;
-          const cellOriginY = cellRow * levelCellHeight;
-          const blockWidth = Math.max(0, (localCols - 1) * nodeColGap);
-          const blockHeight = Math.max(0, (localRows - 1) * nodeRowGap);
-          const startX = cellOriginX - blockWidth / 2;
-          const startY = cellOriginY - blockHeight / 2;
-
-          colNodes.forEach((node, index) => {
-            const localCol = index % localCols;
-            const localRow = Math.floor(index / localCols);
+        componentLayouts.forEach((layout, index) => {
+          const col = index % blockCols;
+          const row = Math.floor(index / blockCols);
+          const baseX = columnOffsets[col];
+          const baseY = rowOffsets[row];
+          for (const node of layout.nodes) {
             updates.push({
               id: node.id,
-              x: startX + localCol * nodeColGap,
-              y: startY + localRow * nodeRowGap,
+              x: baseX + node.x,
+              y: baseY + node.y,
             });
-          });
+          }
         });
+
+        if (!updates.length) return updates;
+
+        const minX = Math.min(...updates.map((u) => u.x));
+        const maxX = Math.max(...updates.map((u) => u.x));
+        const minY = Math.min(...updates.map((u) => u.y));
+        const maxY = Math.max(...updates.map((u) => u.y));
+        const offsetX = (minX + maxX) / 2;
+        const offsetY = (minY + maxY) / 2;
+        for (const update of updates) {
+          update.x -= offsetX;
+          update.y -= offsetY;
+        }
 
         return updates;
       }
