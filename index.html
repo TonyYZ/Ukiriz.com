@@ -42,17 +42,22 @@
       border: 1px solid rgba(255, 255, 255, 0.2);
       color: black;
       box-shadow: 0 0 15px rgba(0,0,0,0.2);
-      cursor: grab;
+      cursor: default;
       user-select: none;
     }
 
-    .window:active {
+    .window.dragging {
       cursor: grabbing;
     }
 
     .window:hover {
       transform: scale(1.03);
       z-index: 2;
+    }
+
+    .window a {
+      cursor: pointer;
+      -webkit-user-drag: none;
     }
   </style>
 </head>
@@ -67,18 +72,21 @@
   </header>
 
   <script>
+    let topWindowZ = 10;
+
     const projects = [
       { title: "Akaemo", description: "A 2d platformer: you become a red bouncy ball!", image: "./icons/akaemo.gif", scale: 50, link: "https://tonyyz.itch.io/akaemo"},
       { title: "Divinatory Canvas", description: "A canvas to create your own divinatory language.", image: "./icons/bullet.png", scale: 100, link: "canvas.html"},
       { title: "Ete", description: "The automated scribe for conlang ítí", image: "./icons/ete.png", scale: 70, link: "ete.html"},
-      { title: "Latinized Ítí", description: "A Latin script for ítí with fancy and elegant diacritics", image: "./icons/xiaoyaoyou_latinized.png", scale: 100, link: "latinized.html"}
+      { title: "Latinized Ítí", description: "A Latin script for ítí with fancy and elegant diacritics", image: "./icons/xiaoyaoyou_latinized.png", scale: 100, link: "latinized.html"},
+      { title: "Picture Talk", description: "A canvas for co-creating SVG artworks with LLM", image: "./icons/emoi.png", scale: 100, link: "picture_talk.html"}
     ];
 
     projects.forEach((project) => {
       const win = document.createElement("div");
       win.className = "window";
       win.innerHTML = `
-        <h3><a href="${project.link}" style="color: black; text-decoration: none;" target="_blank">${project.title}</a></h3>
+        <h3><a href="${project.link}" style="color: black; text-decoration: none;" target="_blank" draggable="false">${project.title}</a></h3>
         <p>${project.description}</p>
         <img src="${project.image}" draggable="false" style="display: block; margin: 0 auto 10px auto; width:${project.scale}%;" alt="${project.title}" />
       `;
@@ -95,17 +103,33 @@
 
     function makeDraggable(el) {
       let isDragging = false;
+      let didDrag = false;
       let offsetX, offsetY;
+      let startX = 0;
+      let startY = 0;
+
+      function bringToFront() {
+        topWindowZ += 1;
+        el.style.zIndex = topWindowZ;
+      }
 
       el.addEventListener("mousedown", (e) => {
+        e.preventDefault();
         isDragging = true;
+        didDrag = false;
+        startX = e.clientX;
+        startY = e.clientY;
         offsetX = e.clientX - el.offsetLeft;
         offsetY = e.clientY - el.offsetTop;
-        el.style.zIndex = 999; // bring to front
+        el.classList.add("dragging");
+        bringToFront();
       });
 
       document.addEventListener("mousemove", (e) => {
         if (isDragging) {
+          if (Math.abs(e.clientX - startX) > 3 || Math.abs(e.clientY - startY) > 3) {
+            didDrag = true;
+          }
           el.style.left = `${e.clientX - offsetX}px`;
           el.style.top = `${e.clientY - offsetY}px`;
         }
@@ -113,7 +137,18 @@
 
       document.addEventListener("mouseup", () => {
         isDragging = false;
+        el.classList.remove("dragging");
+        setTimeout(() => {
+          didDrag = false;
+        }, 0);
       });
+
+      el.addEventListener("click", (e) => {
+        if (didDrag) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }, true);
     }
   </script>
 </body>
