@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Drag and Connect Symbols</title>
+    <title>Divinatory Canvas</title>
     <style>
       :root {
         --mono-en: Consolas, 'Courier New', ui-monospace, SFMono-Regular, Menlo, Monaco;
@@ -146,8 +146,9 @@
         margin-right: var(--sidebar-w); /* Leave space for the vertical bar */
         flex: 1;
         padding: 20px;
-        overflow-y: auto; /* Allows vertical scrolling */
+        overflow: hidden;
         height: 100vh;
+        box-sizing: border-box;
       }
 
       /* Content sections */
@@ -160,6 +161,20 @@
         display: block; /* Show active tab content */
       }
 
+      #tab2 {
+        position: relative;
+        overflow: hidden;
+      }
+
+      #tab0 {
+        width: calc(100% + 20px);
+        height: calc(100% + 40px);
+        margin: -20px -20px -20px 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        box-sizing: border-box;
+      }
+
       #craftCanvas {
         position: relative;
         width: 100%;
@@ -168,8 +183,36 @@
 
       #chatCanvas {
         position: relative;
-        min-width: 100%;
-        min-height: 100%;
+        width: 24000px;
+        height: 24000px;
+        min-width: 24000px;
+        min-height: 24000px;
+        background: #f4f4f9;
+      }
+
+      #tab4 {
+        position: relative;
+        width: calc(100% + 40px);
+        height: calc(100% + 40px);
+        margin: -20px -20px 0 -20px;
+        overflow: scroll;
+        background: #f4f4f9;
+        min-width: 0;
+        box-sizing: border-box;
+      }
+
+      #chatControls {
+        position: sticky;
+        left: 0;
+        bottom: 0;
+        width: 0;
+        height: 0;
+        z-index: 20;
+        pointer-events: none;
+      }
+
+      #chatControls > * {
+        pointer-events: auto;
       }
 
       .marquee-box {
@@ -192,59 +235,35 @@
 
       /* language toggle pill (matches badge style) */
       .lang-toggle {
-        position: relative;
-        display: inline-block;
+        display: inline-flex;
+        align-items: center;
         z-index: 100000;
       }
 
-      /* the circle */
       .lang-circle {
-        width: 43px;
-        height: 43px;
-        border-radius: 50%;
-        background: white;
-        border: 2px solid #ccc;
-        cursor: pointer;
-        font-family: inherit;
-        font-size: 16px;
-        line-height: 1;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        user-select: none;
+        display: none;
       }
 
-      /* dropdown bubble */
       .lang-menu {
-        position: absolute;
-        top: 0;
-
-        right: calc(100% + 8px);
-        left: auto;
-
+        position: static;
         background: white;
         border: 2px solid #ccc;
-        border-radius: 10px;
+        border-radius: 999px;
         padding: 6px;
-        display: none;
+        display: inline-flex;
         gap: 6px;
         white-space: nowrap;
-
         z-index: 1000002;
-      }
-
-      .lang-toggle.open .lang-menu {
-        display: flex;
       }
 
       .lang-item {
         border: 1px solid rgba(0, 0, 0, 0.2);
         background: transparent;
-        border-radius: 8px;
+        border-radius: 999px;
         padding: 6px 10px;
         cursor: pointer;
         font-family: inherit;
-        font-size: 12px;
+        font-size: 13px;
       }
       .lang-item:hover {
         background: rgba(0, 0, 0, 0.06);
@@ -328,6 +347,12 @@
         border-width: 3px; /* Thicker border when clicked */
       }
 
+      .symbol-label.user-created-label {
+        background: #fff1bf;
+        border-color: #c78a00;
+        box-shadow: 0 0 0 2px rgba(199, 138, 0, 0.18);
+      }
+
       /* Style for the input box */
       .label-input {
         position: absolute;
@@ -395,10 +420,10 @@
 
       #message-input {
         position: absolute;
-        bottom: 80px;
+        bottom: 110px;
         left: 400px;
         padding: 10px;
-        width: 400px;
+        width: 500px;
         font-size: 30px; /* Larger font size */
         background-color: transparent; /* Transparent background */
         border: none; /* No border */
@@ -409,6 +434,23 @@
       #message-input::placeholder {
         font-style: italic; /* Italicize the placeholder text */
         color: gray; /* Gray color for the placeholder */
+      }
+
+      #symbol-message-input {
+        position: absolute;
+        bottom: 58px;
+        left: 400px;
+        padding: 10px;
+        width: 500px;
+        font-size: 30px;
+        background-color: transparent;
+        border: none;
+        color: black;
+      }
+
+      #symbol-message-input::placeholder {
+        font-style: italic;
+        color: gray;
       }
 
       #cursor {
@@ -447,6 +489,76 @@
         border: none;
         background: transparent;
         box-shadow: none;
+      }
+
+      #libraryTreeView {
+        position: absolute;
+        inset: 0;
+        display: none;
+        overflow: auto;
+        background: transparent;
+      }
+
+      #libraryTreeSurface {
+        position: relative;
+        min-width: 100%;
+        min-height: 100%;
+      }
+
+      #libraryTreeSvg {
+        position: absolute;
+        inset: 0;
+        overflow: visible;
+        pointer-events: none;
+      }
+
+      .library-tree-card {
+        position: absolute;
+        min-width: 180px;
+        min-height: 74px;
+        padding: 12px 14px;
+        border: 3px solid black;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.96);
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 12px;
+        text-align: left;
+      }
+
+      .library-tree-card.basic {
+        background: rgba(255, 255, 255, 0.84);
+      }
+
+      .library-tree-card-image {
+        width: 42px;
+        height: 42px;
+        flex: 0 0 auto;
+        object-fit: contain;
+        box-sizing: border-box;
+      }
+
+      .library-tree-card-text {
+        min-width: 0;
+        flex: 1 1 auto;
+      }
+
+      .library-tree-card-word {
+        font-size: 16px;
+        line-height: 1.2;
+        word-break: break-word;
+        max-width: 100%;
+        font-weight: 700;
+      }
+
+      .library-tree-card-definition {
+        margin-top: 4px;
+        font-size: 13px;
+        line-height: 1.25;
+        word-break: break-word;
+        max-width: 100%;
       }
 
       /* World: solid ocean color, no background animation */
@@ -517,6 +629,13 @@
         top: 0;
         transform: translate(0px, 0px);
         will-change: transform;
+      }
+
+      .world-boundary {
+        position: absolute;
+        inset: 0;
+        border: 3px solid rgba(0, 0, 0, 0.28);
+        pointer-events: none;
       }
 
       .island {
@@ -622,7 +741,13 @@
           <input
             type="text"
             id="message-input"
-            placeholder="Say something in emoji..."
+            placeholder="Type a message to turn into emoji..."
+            maxlength="32"
+          />
+          <input
+            type="text"
+            id="symbol-message-input"
+            placeholder="Type a message to turn into symbol..."
             maxlength="32"
           />
         </div>
@@ -986,15 +1111,12 @@
         // 3) If you render quota badge text, refresh it
         refreshQuotaBadge?.();
 
-        const wrap = document.getElementById('lang-toggle');
-        const btn = document.getElementById('lang-btn');
-
-        // when setting language:
         document.getElementById('lang-en')?.classList.toggle('active', currentLang === 'en');
         document.getElementById('lang-zh')?.classList.toggle('active', currentLang === 'zh');
 
         refreshBasicTooltips?.();
         if (network) network.redraw();
+        if (libraryViewMode === 'tree') renderLibraryTreeView?.();
 
         refreshI18nImages();
         document.body.classList.toggle('lang-zh', currentLang === 'zh');
@@ -1016,8 +1138,17 @@
         return SYMBOL_TITLES[lang]?.[i] || SYMBOL_TITLES.en?.[i] || '';
       }
 
+      function tBasicNodeWord(i) {
+        const lang = getLang();
+        return BASIC_NODE_WORDS[lang]?.[i] || BASIC_NODE_WORDS.en?.[i] || '';
+      }
+
       function refreshBasicTooltips() {
-        if (!nodes) return;
+        try {
+          if (!nodes) return;
+        } catch {
+          return;
+        }
 
         const updates = [];
         for (const id of basicNodeIds) {
@@ -1029,6 +1160,7 @@
 
           updates.push({
             id,
+            word: tBasicNodeWord(idx),
             title: tSymbolTitle(idx),
           });
         }
@@ -1047,17 +1179,6 @@
         });
       }
 
-      document.addEventListener('click', (e) => {
-        const btn = e.target.closest('#lang-btn');
-        if (!btn) return;
-
-        e.stopPropagation();
-        const wrap = btn.closest('#lang-toggle');
-        if (!wrap) return;
-
-        wrap.classList.toggle('open');
-      });
-
       // 点击其它地方自动关闭
       document.addEventListener('click', (e) => {
         const wrap = document.getElementById('lang-toggle');
@@ -1074,10 +1195,34 @@
         const zh = e.target.closest('#lang-zh');
         if (!en && !zh) return;
 
-        e.stopPropagation(); // avoid triggering the "click outside to close" logic early
+        e.stopPropagation();
+        setLang(en ? 'en' : 'zh');
+      });
 
-        setLang(en ? 'en' : 'zh'); // ✅ switch language
-        document.getElementById('lang-toggle')?.classList.remove('open'); // close menu
+      document.addEventListener('keydown', async (e) => {
+        if (!(e.ctrlKey || e.metaKey)) return;
+        if (e.altKey) return;
+        if (isEditableTextTarget(e.target)) return;
+
+        const key = e.key.toLowerCase();
+
+        if (key === 'c') {
+          const clipboard = getSelectedSymbolClipboard();
+          if (clipboard.symbols.length === 0) return;
+
+          e.preventDefault();
+          copiedSymbolSnapshots = clipboard.symbols;
+          copiedSymbolLinks = clipboard.links;
+          symbolPasteCount = 0;
+          return;
+        }
+
+        if (key === 'v') {
+          if (copiedSymbolSnapshots.length === 0) return;
+
+          e.preventDefault();
+          await pasteCopiedSymbols();
+        }
       });
 
       const tabHeaders = [
@@ -1096,9 +1241,15 @@
       let worldRendered = false;
       let worldPanningEnabled = false;
       let worldSelectionEnabled = false;
+      let worldPanController = null;
+      let chatViewportBound = false;
 
       // Switching between tabs
       window.showTab = function (tabIndex) {
+        if (tabHeadersActivated[4] && tabIndex !== 4) {
+          saveChatViewportState();
+        }
+
         // Clear alpha animation
         clearInterval(activeTabInterval);
         tabHeaders.forEach((h) => h.classList.remove('tab-active'));
@@ -1164,6 +1315,20 @@
           marqueeChatEnabled = true;
         }
 
+        if (!chatViewportBound) {
+          document.getElementById('tab4')?.addEventListener('scroll', () => {
+            if (!tabHeadersActivated[4]) return;
+            saveChatViewportState();
+          });
+          chatViewportBound = true;
+        }
+
+        if (tabIndex === 4) {
+          requestAnimationFrame(() => {
+            restoreChatViewportState();
+          });
+        }
+
         // if have not selected an island, cannot open the chat
         if (tabIndex === 4 && !selectedIsland) {
           return;
@@ -1209,10 +1374,119 @@
         craftControls()?.appendChild(el);
       }
 
+      function getChatViewportStorageKey(roomId = currentRoomId) {
+        return `chatViewport:${roomId || 'default'}`;
+      }
+
+      function saveChatViewportState() {
+        const tab = tab4 || document.getElementById('tab4');
+        if (!tab || !currentRoomId) return;
+
+        localStorage.setItem(
+          getChatViewportStorageKey(),
+          JSON.stringify({
+            scrollLeft: tab.scrollLeft,
+            scrollTop: tab.scrollTop,
+          }),
+        );
+      }
+
+      function getChatCanvasItemsForViewport() {
+        const canvas = chatCanvas();
+        if (!canvas) return [];
+
+        return Array.from(canvas.querySelectorAll('.symbol, .symbol-label, .dot')).filter(
+          (el) => el.parentElement === canvas,
+        );
+      }
+
+      function getDensestChatViewportCenter(tab, items) {
+        if (!items.length) return null;
+
+        const viewportW = tab.clientWidth || 800;
+        const viewportH = tab.clientHeight || 600;
+        const halfW = viewportW / 2;
+        const halfH = viewportH / 2;
+
+        const centers = items.map((el) => {
+          const left = parseFloat(el.style.left) || 0;
+          const top = parseFloat(el.style.top) || 0;
+          const width = el.offsetWidth || 0;
+          const height = el.offsetHeight || 0;
+          return {
+            x: left + width / 2,
+            y: top + height / 2,
+          };
+        });
+
+        let best = null;
+
+        for (const pivot of centers) {
+          const cluster = centers.filter(
+            (pt) => Math.abs(pt.x - pivot.x) <= halfW && Math.abs(pt.y - pivot.y) <= halfH,
+          );
+
+          const avgX = cluster.reduce((sum, pt) => sum + pt.x, 0) / cluster.length;
+          const avgY = cluster.reduce((sum, pt) => sum + pt.y, 0) / cluster.length;
+
+          if (
+            !best ||
+            cluster.length > best.count ||
+            (cluster.length === best.count &&
+              Math.hypot(avgX - pivot.x, avgY - pivot.y) < best.scatter)
+          ) {
+            best = {
+              count: cluster.length,
+              x: avgX,
+              y: avgY,
+              scatter: Math.hypot(avgX - pivot.x, avgY - pivot.y),
+            };
+          }
+        }
+
+        return best ? { x: best.x, y: best.y } : null;
+      }
+
+      function restoreChatViewportState() {
+        const tab = tab4 || document.getElementById('tab4');
+        const canvas = chatCanvas();
+        if (!tab || !canvas) return;
+
+        const savedRaw = localStorage.getItem(getChatViewportStorageKey());
+        if (savedRaw) {
+          try {
+            const saved = JSON.parse(savedRaw);
+            if (Number.isFinite(saved?.scrollLeft) && Number.isFinite(saved?.scrollTop)) {
+              tab.scrollLeft = saved.scrollLeft;
+              tab.scrollTop = saved.scrollTop;
+              return;
+            }
+          } catch {}
+        }
+
+        const items = getChatCanvasItemsForViewport();
+        const densest = getDensestChatViewportCenter(tab, items);
+
+        if (densest) {
+          tab.scrollLeft = Math.max(0, densest.x - tab.clientWidth / 2);
+          tab.scrollTop = Math.max(0, densest.y - tab.clientHeight / 2);
+        } else {
+          tab.scrollLeft = Math.max(0, (canvas.scrollWidth - tab.clientWidth) / 2);
+          tab.scrollTop = Math.max(0, (canvas.scrollHeight - tab.clientHeight) / 2);
+        }
+      }
+
+      window.addEventListener('beforeunload', () => {
+        saveChatViewportState();
+      });
+
       let activeSymbol = null;
       let activeEmoji = null;
       let selectedSymbols = new Set();
       let selectedEmojis = new Set();
+      let copiedSymbolSnapshots = [];
+      let copiedSymbolLinks = [];
+      let symbolPasteCount = 0;
       let dragGroup = null; // Map<elem, {dx, dy}>
       let dragLeader = null; // activeSymbol or activeEmoji
       let isGenerating = false;
@@ -1220,6 +1494,8 @@
       let readyActiveSide = null;
       let readyTarget = null;
       let readyTargetSide = null;
+      let pendingSnapCandidates = [];
+      let pendingSnapLinks = [];
       let clickOnlySymbol = null;
       let clickOnlyEmoji = null;
       let selectionClickHandled = false;
@@ -1238,6 +1514,7 @@
         collection,
         addDoc,
         getDocs,
+        onSnapshot,
         setDoc,
         getDoc,
         updateDoc,
@@ -1269,7 +1546,7 @@
       const objDocRef = (id, roomId = currentRoomId) => doc(db, 'rooms', roomId, 'objs', id);
 
       // Function to Save Emoji
-      async function saveObj(type, content, x, y) {
+      async function saveObj(type, content, x, y, extraData = {}) {
         const ownerUid = currentUser?.uid || null; // must have signed in already
         const docRef = await addDoc(objsColRef(), {
           type,
@@ -1278,6 +1555,7 @@
           y,
           ownerUid, // ✅ NEW
           createdAt: serverTimestamp?.(), // optional, if you already import it
+          ...extraData,
         });
         return docRef.id;
       }
@@ -1286,6 +1564,7 @@
         if (!id || !currentRoomId) {
           return;
         }
+        markLocalSymbolMutation(id, 900);
         try {
           await updateDoc(objDocRef(id), { x, y });
         } catch (e) {
@@ -1312,6 +1591,25 @@
         }
       }
 
+      async function updateSymbolColor(id, color) {
+        try {
+          await updateDoc(objDocRef(id), { 'content.color': color });
+        } catch (e) {
+          if (e.code === 'not-found') return;
+          throw e;
+        }
+      }
+
+      async function updateSymbolState(id, patch) {
+        markLocalSymbolMutation(id, 900);
+        try {
+          await updateDoc(objDocRef(id), patch);
+        } catch (e) {
+          if (e.code === 'not-found') return;
+          throw e;
+        }
+      }
+
       async function persistLink(aId, aSide, bId, bSide) {
         if (!tabHeadersActivated[4]) return;
 
@@ -1319,23 +1617,33 @@
         const aRef = objDocRef(aId);
         const bRef = objDocRef(bId);
 
-        await updateDoc(aRef, {
-          links: arrayUnion({ otherId: bId, mySide: aSide, otherSide: bSide }),
-        });
-        await updateDoc(bRef, {
-          links: arrayUnion({ otherId: aId, mySide: bSide, otherSide: aSide }),
-        });
+        return trackSymbolOp(
+          [aId, bId],
+          (async () => {
+            await updateDoc(aRef, {
+              links: arrayUnion({ otherId: bId, mySide: aSide, otherSide: bSide }),
+            });
+            await updateDoc(bRef, {
+              links: arrayUnion({ otherId: aId, mySide: bSide, otherSide: aSide }),
+            });
+          })(),
+        );
       }
 
       // Remove link on both docs: A -- B
       async function removeLink(aId, aSide, bId, bSide) {
-        await updateDoc(objDocRef(aId), {
-          links: arrayRemove({ otherId: bId, mySide: aSide, otherSide: bSide }),
-        }).catch(() => {});
+        return trackSymbolOp(
+          [aId, bId],
+          (async () => {
+            await updateDoc(objDocRef(aId), {
+              links: arrayRemove({ otherId: bId, mySide: aSide, otherSide: bSide }),
+            }).catch(() => {});
 
-        await updateDoc(objDocRef(bId), {
-          links: arrayRemove({ otherId: aId, mySide: bSide, otherSide: aSide }),
-        }).catch(() => {});
+            await updateDoc(objDocRef(bId), {
+              links: arrayRemove({ otherId: aId, mySide: bSide, otherSide: aSide }),
+            }).catch(() => {});
+          })(),
+        );
       }
 
       async function removeLinksBeforeDelete(symbolId) {
@@ -1394,6 +1702,7 @@
       // Initialize Firebase Authentication
       const auth = getAuth();
       let currentUser = null;
+      let cachedUserColor = null;
 
       await setPersistence(auth, browserLocalPersistence);
 
@@ -1459,6 +1768,7 @@
 
       async function boot() {
         await restoreAnonymousSession();
+        await assignUserColor().catch(console.error);
 
         // ✅ set language BEFORE initNodes
         currentLang = localStorage.getItem('lang') || 'en';
@@ -1479,15 +1789,19 @@
 
       // Function to assign and store color if not already assigned
       async function assignUserColor() {
+        if (cachedUserColor) return cachedUserColor;
+
         const userRef = doc(db, 'users', currentUser.uid); // Reference to user's Firestore document
         const userSnap = await getDoc(userRef);
 
         if (userSnap.exists()) {
-          return userSnap.data().color; // Return existing color
+          cachedUserColor = userSnap.data().color;
+          return cachedUserColor; // Return existing color
         } else {
           const newColor = generateColor(currentUser.uid);
           await setDoc(userRef, { color: newColor });
-          return newColor;
+          cachedUserColor = newColor;
+          return cachedUserColor;
         }
       }
 
@@ -1512,27 +1826,226 @@
       }
 
       // Keep this map at module scope if you want
-      let symbolById = new Map();
+      var symbolById = new Map();
+      var emojiById = new Map();
+      var roomObjDataById = new Map();
+      var pendingLocalChatSymbolsByNonce = new Map();
+      var pendingLocalChatEmojisByNonce = new Map();
+      var roomObjsUnsubscribe = null;
+      var roomSyncQueue = Promise.resolve();
+      var pendingChatViewportRestoreRoomId = null;
+      const pendingOpsBySymbolId = new Map();
 
-      // Function to Load emojis and symbols
-      async function loadObj() {
-        const querySnapshot = await getDocs(objsColRef());
+      function makeClientNonce(prefix) {
+        return `${prefix}:${currentUser?.uid || 'guest'}:${Date.now()}:${Math.random().toString(36).slice(2, 9)}`;
+      }
 
-        // Clear maps (important when switching rooms)
-        symbolById = new Map();
+      function markLocalSymbolMutation(symbolOrId, durationMs = 700) {
+        let symbol = symbolOrId;
+        if (typeof symbolOrId === 'string') {
+          symbol = symbolById.get(symbolOrId);
+        }
+        if (!symbol) return;
+        symbol._suppressRemoteUntil = Date.now() + durationMs;
+      }
 
-        // 1) First pass: create DOM elements and register them
-        for (const docSnap of querySnapshot.docs) {
-          const data = docSnap.data();
+      function shouldSuppressRemoteVisualUpdate(symbol, ownerUid = '') {
+        if (!symbol) return false;
+        if (!ownerUid || ownerUid !== currentUser?.uid) return false;
+        return Date.now() < (symbol._suppressRemoteUntil || 0);
+      }
 
-          if (data.type === 'emoji') {
-            const el = await createEmoji(data.content, data.x, data.y, docSnap.id);
-            el.dataset.ownerUid = data.ownerUid || '';
-            continue;
+      function trackSymbolOp(ids, promise) {
+        const trackedIds = (ids || []).filter(Boolean);
+        for (const id of trackedIds) {
+          if (!pendingOpsBySymbolId.has(id)) {
+            pendingOpsBySymbolId.set(id, new Set());
           }
+          pendingOpsBySymbolId.get(id).add(promise);
+        }
 
-          if (data.type === 'symbol') {
-            const symbol = await createSymbolCopy(
+        promise.finally(() => {
+          for (const id of trackedIds) {
+            const set = pendingOpsBySymbolId.get(id);
+            if (!set) continue;
+            set.delete(promise);
+            if (set.size === 0) pendingOpsBySymbolId.delete(id);
+          }
+        });
+
+        return promise;
+      }
+
+      async function waitForPendingSymbolOps(ids) {
+        const ops = [];
+        for (const id of ids || []) {
+          const set = pendingOpsBySymbolId.get(id);
+          if (!set) continue;
+          ops.push(...set);
+        }
+        if (ops.length) {
+          await Promise.allSettled(ops);
+        }
+      }
+
+      function removeChatSymbolElement(symbol) {
+        if (!symbol) return;
+
+        if (activeSymbol === symbol) activeSymbol = null;
+        if (clickOnlySymbol === symbol) clickOnlySymbol = null;
+        selectedSymbols.delete(symbol);
+        symbol.selected = false;
+        symbol.classList.remove('framed');
+
+        if (symbol.dot) {
+          symbol.dot.remove();
+          symbol.dot = null;
+        }
+
+        currentGraph.removeSymbol(symbol);
+        symbol.remove();
+      }
+
+      function removeChatEmojiElement(emoji) {
+        if (!emoji) return;
+
+        if (activeEmoji === emoji) activeEmoji = null;
+        if (clickOnlyEmoji === emoji) clickOnlyEmoji = null;
+        selectedEmojis.delete(emoji);
+        emoji.selected = false;
+        emoji.classList.remove('active');
+        emoji.remove();
+      }
+
+      function adoptExistingChatSymbol(existing, symbol) {
+        if (!existing || existing === symbol) return;
+
+        const existingSelected = selectedSymbols.has(existing);
+        const existingWasActive = activeSymbol === existing;
+        const existingWasClickOnly = clickOnlySymbol === existing;
+
+        if (existing.dot && !symbol.dot) {
+          symbol.dot = existing.dot;
+          symbol.dot.parent = symbol;
+        } else if (existing.dot) {
+          existing.dot.remove();
+        }
+
+        removeChatSymbolElement(existing);
+
+        if (existingSelected) {
+          symbol.selected = true;
+          symbol.classList.add('framed');
+          selectedSymbols.add(symbol);
+        }
+        if (existingWasActive) {
+          activeSymbol = symbol;
+        }
+        if (existingWasClickOnly) {
+          clickOnlySymbol = symbol;
+        }
+      }
+
+      function adoptExistingChatEmoji(existing, emoji) {
+        if (!existing || existing === emoji) return;
+
+        const existingSelected = selectedEmojis.has(existing);
+        const existingWasActive = activeEmoji === existing;
+        const existingWasClickOnly = clickOnlyEmoji === existing;
+
+        removeChatEmojiElement(existing);
+
+        if (existingSelected) {
+          emoji.selected = true;
+          emoji.classList.add('active');
+          selectedEmojis.add(emoji);
+        }
+        if (existingWasActive) {
+          activeEmoji = emoji;
+        }
+        if (existingWasClickOnly) {
+          clickOnlyEmoji = emoji;
+        }
+      }
+
+      function rebuildChatSymbolLinks() {
+        for (const symbol of symbolById.values()) {
+          currentGraph.addSymbol(symbol, [[], [], [], [], [], []]);
+        }
+
+        for (const [docId, data] of roomObjDataById.entries()) {
+          if (data.type !== 'symbol') continue;
+
+          const a = symbolById.get(docId);
+          if (!a) continue;
+          if (shouldSuppressRemoteVisualUpdate(a, data.ownerUid || '')) continue;
+
+          const links = data.links || [];
+          for (const lk of links) {
+            const b = symbolById.get(lk.otherId);
+            if (!b) continue;
+            if (
+              shouldSuppressRemoteVisualUpdate(b, roomObjDataById.get(lk.otherId)?.ownerUid || '')
+            )
+              continue;
+
+            if (docId < lk.otherId) {
+              const aConns = currentGraph.getSymbolConnections(a);
+              const bConns = currentGraph.getSymbolConnections(b);
+              if (!aConns || !bConns) continue;
+
+              if (!aConns[lk.mySide].some(([nbr, s]) => nbr === b && s === lk.otherSide)) {
+                aConns[lk.mySide].push([b, lk.otherSide]);
+              }
+              if (!bConns[lk.otherSide].some(([nbr, s]) => nbr === a && s === lk.mySide)) {
+                bConns[lk.otherSide].push([a, lk.mySide]);
+              }
+            }
+          }
+        }
+      }
+
+      function hasLocalChatDragInProgress() {
+        if (activeSymbol && getCanvasForElem(activeSymbol) === chatCanvas()) return true;
+        if (activeEmoji && getCanvasForElem(activeEmoji) === chatCanvas()) return true;
+        if (!dragGroup) return false;
+
+        for (const el of dragGroup.keys()) {
+          if (getCanvasForElem(el) === chatCanvas()) return true;
+        }
+        return false;
+      }
+
+      async function upsertChatEmojiFromDoc(docId, data) {
+        let emoji = emojiById.get(docId);
+        if (!emoji) {
+          const localNonce = data.clientNonce;
+          if (localNonce && pendingLocalChatEmojisByNonce.has(localNonce)) {
+            emoji = pendingLocalChatEmojisByNonce.get(localNonce);
+            pendingLocalChatEmojisByNonce.delete(localNonce);
+          } else {
+            emoji = await createEmoji(data.content, data.x, data.y, docId);
+          }
+          emojiById.set(docId, emoji);
+        }
+
+        emoji.dataset.ownerUid = data.ownerUid || '';
+        emoji.textContent = data.content || '';
+        emoji.x = data.x ?? emoji.x ?? 0;
+        emoji.y = data.y ?? emoji.y ?? 0;
+        emoji.style.left = `${emoji.x}px`;
+        emoji.style.top = `${emoji.y}px`;
+      }
+
+      async function upsertChatSymbolFromDoc(docId, data) {
+        let symbol = symbolById.get(docId);
+        if (!symbol) {
+          const localNonce = data.clientNonce;
+          if (localNonce && pendingLocalChatSymbolsByNonce.has(localNonce)) {
+            symbol = pendingLocalChatSymbolsByNonce.get(localNonce);
+            pendingLocalChatSymbolsByNonce.delete(localNonce);
+          } else {
+            symbol = createSymbolCopy(
               null,
               null,
               data.content.elemId,
@@ -1541,56 +2054,133 @@
               data.y,
               data.content.color,
               data.content.angle,
-              docSnap.id,
+              docId,
             );
+          }
+          symbolById.set(docId, symbol);
+        }
 
-            symbol.dataset.ownerUid = data.ownerUid || '';
+        if (!currentGraph.hasSymbol(symbol)) {
+          currentGraph.addSymbol(symbol, [[], [], [], [], [], []]);
+        }
 
-            // Register in id -> element map
-            symbolById.set(docSnap.id, symbol);
+        symbol.dataset.ownerUid = data.ownerUid || '';
+        symbol.dataset.id = docId;
+        const suppressVisual = shouldSuppressRemoteVisualUpdate(symbol, data.ownerUid || '');
+        if (!suppressVisual) {
+          symbol.elemId = data.content.elemId;
+          symbol.elemIdTrue = data.content.elemIdTrue || data.content.elemId;
+          symbol.innerHTML = symbolData[symbol.elemId];
+          symbol.style.left = `${data.x}px`;
+          symbol.style.top = `${data.y}px`;
+          symbol.angle = data.content.angle ?? 0;
+          symbol.style.transform = `rotate(${symbol.angle}deg)`;
+          dyeColor(symbol, data.content.color ?? '');
+        }
 
-            // IMPORTANT: ensure it exists in currentGraph with empty adjacency list
-            currentGraph.addSymbol(symbol, [[], [], [], [], [], []]);
+        const dotX = data.content.dotX;
+        const dotY = data.content.dotY;
+        if (!suppressVisual && dotX !== null && dotY !== null) {
+          if (!symbol.dot) {
+            const dot = document.createElement('div');
+            dot.innerHTML = dotData;
+            dot.classList.add('dot');
+            dot.parent = symbol;
+            symbol.dot = dot;
+            appendToChatCanvas(dot);
+          }
+          symbol.isDynamic = true;
+          symbol.dot.style.left = `${dotX}px`;
+          symbol.dot.style.top = `${dotY}px`;
+        } else if (!suppressVisual && symbol.dot) {
+          symbol.dot.remove();
+          symbol.dot = null;
+          symbol.isDynamic = false;
+        } else if (!suppressVisual) {
+          symbol.isDynamic = false;
+        }
+      }
 
-            // Restore dot if exists
-            if (data.content.dotX !== null) {
-              symbol.isDynamic = true;
-              const dot = document.createElement('div');
-              dot.innerHTML = dotData;
-              dot.classList.add('dot');
-              symbol.dot = dot;
-              dot.parent = symbol;
-              dot.style.left = `${data.content.dotX}px`;
-              dot.style.top = `${data.content.dotY}px`;
-              appendToChatCanvas(dot);
+      async function applyRoomSnapshot(querySnapshot, roomId) {
+        if (roomId !== currentRoomId) return;
+
+        for (const change of querySnapshot.docChanges()) {
+          const docId = change.doc.id;
+          const data = change.doc.data();
+
+          if (change.type === 'removed') {
+            const prev = roomObjDataById.get(docId);
+            roomObjDataById.delete(docId);
+
+            if ((prev?.type || data?.type) === 'symbol') {
+              removeChatSymbolElement(symbolById.get(docId));
+              symbolById.delete(docId);
+            } else {
+              removeChatEmojiElement(emojiById.get(docId));
+              emojiById.delete(docId);
             }
+            continue;
+          }
+
+          const existingSymbol = symbolById.get(docId);
+          if (
+            data.type === 'symbol' &&
+            existingSymbol &&
+            shouldSuppressRemoteVisualUpdate(existingSymbol, data.ownerUid || '')
+          ) {
+            const prev = roomObjDataById.get(docId) || {};
+            roomObjDataById.set(docId, {
+              ...data,
+              links: prev.links ?? data.links ?? [],
+            });
+          } else {
+            roomObjDataById.set(docId, data);
+          }
+
+          if (data.type === 'emoji') {
+            await upsertChatEmojiFromDoc(docId, data);
+          } else if (data.type === 'symbol') {
+            await upsertChatSymbolFromDoc(docId, data);
           }
         }
 
-        // 2) Second pass: rebuild links in currentGraph
-        for (const docSnap of querySnapshot.docs) {
-          const data = docSnap.data();
-          if (data.type !== 'symbol') continue;
+        if (!hasLocalChatDragInProgress()) {
+          rebuildChatSymbolLinks();
+        }
 
-          const a = symbolById.get(docSnap.id);
-          if (!a) continue;
-
-          const links = data.links || [];
-          for (const lk of links) {
-            const b = symbolById.get(lk.otherId);
-            if (!b) continue; // neighbor not loaded (should be rare)
-
-            // Avoid duplicates: only add one direction using id ordering
-            if (docSnap.id < lk.otherId) {
-              const aConns = currentGraph.getSymbolConnections(a);
-              const bConns = currentGraph.getSymbolConnections(b);
-              if (!aConns || !bConns) continue;
-
-              aConns[lk.mySide].push([b, lk.otherSide]);
-              bConns[lk.otherSide].push([a, lk.mySide]);
-            }
+        if (pendingChatViewportRestoreRoomId === roomId) {
+          pendingChatViewportRestoreRoomId = null;
+          if (tabHeadersActivated[4]) {
+            requestAnimationFrame(() => restoreChatViewportState());
           }
         }
+      }
+
+      function subscribeToRoom(roomId) {
+        if (roomObjsUnsubscribe) {
+          roomObjsUnsubscribe();
+          roomObjsUnsubscribe = null;
+        }
+
+        pendingChatViewportRestoreRoomId = roomId;
+        roomSyncQueue = Promise.resolve();
+
+        roomObjsUnsubscribe = onSnapshot(
+          objsColRef(roomId),
+          (snapshot) => {
+            roomSyncQueue = roomSyncQueue
+              .then(() => applyRoomSnapshot(snapshot, roomId))
+              .catch(console.error);
+          },
+          (error) => {
+            console.error('Room subscription failed:', error);
+          },
+        );
+      }
+
+      // Function to Load emojis and symbols
+      async function loadObj() {
+        subscribeToRoom(currentRoomId);
       }
 
       // Function to delete a document
@@ -1634,6 +2224,8 @@
               elemIdTrue: n.elemIdTrue ?? null,
               isDynamic: !!n.isDynamic,
               angle: n.angle ?? 0,
+              relLeft: n.relLeft ?? null,
+              relTop: n.relTop ?? null,
             }))
           : [];
 
@@ -1672,6 +2264,8 @@
             elemIdTrue: n.elemIdTrue,
             isDynamic: !!n.isDynamic,
             angle: n.angle ?? 0,
+            relLeft: n.relLeft ?? null,
+            relTop: n.relTop ?? null,
           });
         }
 
@@ -1696,6 +2290,62 @@
         }
 
         return pg;
+      }
+
+      function serializeSelectionLayout(layout) {
+        if (!layout || !Array.isArray(layout.nodes)) return null;
+
+        return {
+          nodes: layout.nodes.map((n) => ({
+            elemId: n.elemId ?? null,
+            elemIdTrue: n.elemIdTrue ?? null,
+            angle: n.angle ?? 0,
+            isDynamic: !!n.isDynamic,
+            color: n.color ?? null,
+            left: n.left ?? 0,
+            top: n.top ?? 0,
+          })),
+          links: Array.isArray(layout.links)
+            ? layout.links.map((l) => ({
+                from: l.from,
+                fromSide: l.fromSide,
+                to: l.to,
+                toSide: l.toSide,
+              }))
+            : [],
+        };
+      }
+
+      function deserializeSelectionLayout(raw) {
+        if (!raw || !Array.isArray(raw.nodes)) return null;
+
+        return {
+          nodes: raw.nodes.map((n) => ({
+            elemId: n.elemId ?? n.elemIdTrue ?? null,
+            elemIdTrue: n.elemIdTrue ?? n.elemId ?? null,
+            angle: n.angle ?? 0,
+            isDynamic: !!n.isDynamic,
+            color: n.color ?? null,
+            left: n.left ?? 0,
+            top: n.top ?? 0,
+          })),
+          links: Array.isArray(raw.links)
+            ? raw.links
+                .filter(
+                  (l) =>
+                    typeof l?.from === 'number' &&
+                    typeof l?.fromSide === 'number' &&
+                    typeof l?.to === 'number' &&
+                    typeof l?.toSide === 'number',
+                )
+                .map((l) => ({
+                  from: l.from,
+                  fromSide: l.fromSide,
+                  to: l.to,
+                  toSide: l.toSide,
+                }))
+            : [],
+        };
       }
 
       class SymbolGraph {
@@ -1828,6 +2478,13 @@
       function snapshotSelectionAsPattern(fullGraph, selectedSymbols) {
         const g = new PatternGraph();
         const indexOf = new Map(); // DOM symbol -> node index
+        let minLeft = Infinity;
+        let minTop = Infinity;
+
+        for (const sym of selectedSymbols) {
+          minLeft = Math.min(minLeft, parseFloat(sym.style.left) || 0);
+          minTop = Math.min(minTop, parseFloat(sym.style.top) || 0);
+        }
 
         // 1) 节点
         for (const sym of selectedSymbols) {
@@ -1837,6 +2494,8 @@
               elemIdTrue: sym.elemIdTrue,
               isDynamic: !!sym.isDynamic,
               angle: sym.angle,
+              relLeft: (parseFloat(sym.style.left) || 0) - minLeft,
+              relTop: (parseFloat(sym.style.top) || 0) - minTop,
             }),
           );
         }
@@ -1859,6 +2518,36 @@
         return g;
       }
 
+      function snapshotSelectionAsLayout(fullGraph, selectedSymbols) {
+        const orderedSymbols = Array.from(selectedSymbols);
+        const indexOf = new Map(orderedSymbols.map((symbol, index) => [symbol, index]));
+        const links = [];
+
+        orderedSymbols.forEach((symbol, from) => {
+          const conns = fullGraph.getSymbolConnections(symbol) || [[], [], [], [], [], []];
+          for (let fromSide = 0; fromSide < conns.length; fromSide++) {
+            for (const [neighbor, toSide] of conns[fromSide]) {
+              const to = indexOf.get(neighbor);
+              if (to == null || from >= to) continue;
+              links.push({ from, fromSide, to, toSide });
+            }
+          }
+        });
+
+        return {
+          nodes: orderedSymbols.map((symbol) => ({
+            elemId: symbol.elemId,
+            elemIdTrue: symbol.elemIdTrue,
+            angle: symbol.angle ?? 0,
+            isDynamic: !!symbol.isDynamic,
+            color: symbol.color ?? null,
+            left: parseFloat(symbol.style.left) || 0,
+            top: parseFloat(symbol.style.top) || 0,
+          })),
+          links,
+        };
+      }
+
       function matchAllPatternsOnSelection(selectedSymbols, pattern) {
         const remaining = new Set(selectedSymbols);
         const matches = [];
@@ -1877,6 +2566,38 @@
         }
 
         return matches; // array of Set<symbol>, possibly []
+      }
+
+      function getConnectedSymbolComponents(symbols, graph) {
+        const symbolSet = symbols instanceof Set ? symbols : new Set(symbols);
+        const components = [];
+        const visited = new Set();
+
+        for (const start of symbolSet) {
+          if (visited.has(start)) continue;
+
+          const component = new Set();
+          const stack = [start];
+          visited.add(start);
+
+          while (stack.length > 0) {
+            const symbol = stack.pop();
+            component.add(symbol);
+
+            const conns = graph.getSymbolConnections(symbol) || [[], [], [], [], [], []];
+            for (const side of conns) {
+              for (const [neighbor] of side) {
+                if (!symbolSet.has(neighbor) || visited.has(neighbor)) continue;
+                visited.add(neighbor);
+                stack.push(neighbor);
+              }
+            }
+          }
+
+          components.push(component);
+        }
+
+        return components;
       }
 
       function matchPatternOnSelection(selectedSymbols, pattern) {
@@ -2142,6 +2863,11 @@
         ],
       };
 
+      const BASIC_NODE_WORDS = {
+        en: ['Kun', 'Gen', 'Kan', 'Xun', 'Zhen', 'Li', 'Dui', 'Qian', 'Taiji'],
+        zh: ['坤', '艮', '坎', '巽', '震', '离', '兑', '乾', '太极'],
+      };
+
       const EXTRA = {
         en: {
           rightSide: ['right side'],
@@ -2184,10 +2910,10 @@
       const dotDataMini = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><circle cx="2" cy="2" r="2" fill="red"/></svg>`;
       const dotOffsetXData = [0, 45, 0, 46, -45, 0, -46, 0, 0];
       const dotOffsetYData = [0, 0, 0, -8, 0, 0, -8, -8, 0];
+      let latestPointerClientX = null;
+      let latestPointerClientY = null;
 
-      async function rotateSymbol(symbol, addAngle, inChat = false) {
-        detachSymbol(symbol);
-
+      function applySymbolRotationLocal(symbol, addAngle) {
         symbol.angle = (symbol.angle + addAngle) % 360;
         if (symbol.elemId === 1) {
           if (symbol.angle === 90) {
@@ -2226,18 +2952,312 @@
             symbol.innerHTML = symbolData[3];
           }
         }
-        // symbol.querySelector('svg').setAttribute('width', '100%');
-        // symbol.querySelector('svg').setAttribute('height', '100%');
+
         symbol.style.transform = `rotate(${symbol.angle}deg)`;
         dyeColor(symbol, symbol.color);
+      }
+
+      async function persistSymbolVisualState(symbol, includePosition = false) {
+        if (!symbol?.dataset?.id) return;
+
+        const patch = {
+          'content.angle': symbol.angle,
+          'content.elemId': symbol.elemId,
+        };
+
+        if (includePosition) {
+          patch.x = parseFloat(symbol.style.left);
+          patch.y = parseFloat(symbol.style.top);
+        }
+
+        if (symbol.isDynamic && symbol.dot) {
+          updateDotPositionLocal(symbol.dot);
+          patch['content.dotX'] = parseFloat(symbol.dot.style.left);
+          patch['content.dotY'] = parseFloat(symbol.dot.style.top);
+        }
+
+        await updateSymbolState(symbol.dataset.id, patch);
+      }
+
+      function snapshotSymbolConnections(symbol) {
+        return (currentGraph.getSymbolConnections(symbol) || []).map((arr) => arr.slice());
+      }
+
+      async function syncSymbolLinksRemote(symbol, previousSnapshot) {
+        const aId = symbol?.dataset?.id;
+        if (!aId) return;
+
+        const oldKeys = new Set();
+        const newKeys = new Set();
+
+        for (let side = 0; side < (previousSnapshot || []).length; side++) {
+          for (const [nbr, nbrSide] of previousSnapshot[side] || []) {
+            const bId = nbr?.dataset?.id;
+            if (!bId) continue;
+            oldKeys.add(`${side}|${bId}|${nbrSide}`);
+          }
+        }
+
+        const currentSnapshot = snapshotSymbolConnections(symbol);
+        for (let side = 0; side < currentSnapshot.length; side++) {
+          for (const [nbr, nbrSide] of currentSnapshot[side] || []) {
+            const bId = nbr?.dataset?.id;
+            if (!bId) continue;
+            newKeys.add(`${side}|${bId}|${nbrSide}`);
+          }
+        }
+
+        for (const key of oldKeys) {
+          if (newKeys.has(key)) continue;
+          const [side, bId, nbrSide] = key.split('|');
+          await removeLink(aId, Number(side), bId, Number(nbrSide));
+        }
+
+        for (const key of newKeys) {
+          if (oldKeys.has(key)) continue;
+          const [side, bId, nbrSide] = key.split('|');
+          await persistLink(aId, Number(side), bId, Number(nbrSide));
+        }
+      }
+
+      async function trySnapAndCommitSymbol(symbol, inChat = false) {
+        resetPendingSnapState();
+        checkConnections(symbol);
+
+        let snapped = false;
+        const linksToCommit = pendingSnapLinks.filter((link) => link.active === symbol);
+        if (linksToCommit.length > 0) {
+          for (const link of linksToCommit) {
+            if (violatesConflicts(link.target, link.targetSide)) continue;
+            commitLink(link.active, link.activeSide, link.target, link.targetSide);
+            snapped = true;
+
+            if (inChat) {
+              const aId = link.active.dataset?.id;
+              const bId = link.target.dataset?.id;
+              if (aId && bId) {
+                await persistLink(aId, link.activeSide, bId, link.targetSide);
+              }
+            }
+          }
+        } else if (readyActive === symbol && readyTarget) {
+          if (!violatesConflicts(readyTarget, readyTargetSide)) {
+            commitLink(readyActive, readyActiveSide, readyTarget, readyTargetSide);
+            snapped = true;
+
+            if (inChat) {
+              const aId = readyActive.dataset?.id;
+              const bId = readyTarget.dataset?.id;
+              if (aId && bId) {
+                await persistLink(aId, readyActiveSide, bId, readyTargetSide);
+              }
+            }
+          }
+        }
+
+        resetPendingSnapState();
+        return snapped;
+      }
+
+      function isConnectionAlignedByPlacement(a, aSide, b, bSide, tolerance = 4) {
+        if (!a || !b) return false;
+
+        const aLeft = parseFloat(a.style.left) || 0;
+        const aTop = parseFloat(a.style.top) || 0;
+        const bLeft = parseFloat(b.style.left) || 0;
+        const bTop = parseFloat(b.style.top) || 0;
+
+        if (getDir(a) === getDir(b)) {
+          if (getDir(a) === 0) {
+            if (aSide === Side.PAR_BOT && bSide === Side.PAR_TOP) {
+              return (
+                Math.abs(aLeft - bLeft) <= tolerance &&
+                Math.abs(aTop - (bTop - (symbolHeight - 7) * symbolScale)) <= tolerance
+              );
+            }
+            if (aSide === Side.PAR_TOP && bSide === Side.PAR_BOT) {
+              return (
+                Math.abs(aLeft - bLeft) <= tolerance &&
+                Math.abs(aTop - (bTop + (symbolHeight - 4) * symbolScale)) <= tolerance
+              );
+            }
+          } else {
+            if (aSide === Side.PAR_BOT && bSide === Side.PAR_TOP) {
+              return (
+                Math.abs(aLeft - (bLeft - (symbolHeight - 7) * symbolScale)) <= tolerance &&
+                Math.abs(aTop - bTop) <= tolerance
+              );
+            }
+            if (aSide === Side.PAR_TOP && bSide === Side.PAR_BOT) {
+              return (
+                Math.abs(aLeft - (bLeft + (symbolHeight - 4) * symbolScale)) <= tolerance &&
+                Math.abs(aTop - bTop) <= tolerance
+              );
+            }
+          }
+        }
+
+        const aJ = getAbsJunctions(a)?.[aSide];
+        const bJ = getAbsJunctions(b)?.[bSide];
+        if (!aJ || !bJ) return false;
+        return getDist(aJ.x, aJ.y, bJ.x, bJ.y) <= tolerance;
+      }
+
+      function pruneInvalidConnectionsForSymbol(symbol, tolerance = 4) {
+        const conns = currentGraph.getSymbolConnections(symbol);
+        if (!conns) return;
+
+        for (let side = 0; side < conns.length; side++) {
+          const lst = conns[side] || [];
+          for (let i = lst.length - 1; i >= 0; i--) {
+            const [nbr, nbrSide] = lst[i];
+            if (isConnectionAlignedByPlacement(symbol, side, nbr, nbrSide, tolerance)) continue;
+
+            lst.splice(i, 1);
+            const back = currentGraph.getSymbolConnections(nbr)?.[nbrSide] || [];
+            currentGraph.getSymbolConnections(nbr)[nbrSide] = back.filter(
+              ([x, s]) => !(x === symbol && s === side),
+            );
+          }
+        }
+      }
+
+      async function reconcileSymbolConnectivityAfterTurn(symbol, inChat = false) {
+        await trySnapAndCommitSymbol(symbol, inChat);
+        pruneInvalidConnectionsForSymbol(symbol, 4);
+
+        resetPendingSnapState();
+        checkConnections(symbol);
+        await trySnapAndCommitSymbol(symbol, inChat);
+        pruneInvalidConnectionsForSymbol(symbol, 4);
+      }
+
+      function beginWheelSpawnDrag(symbol, clientX, clientY) {
+        if (!symbol) return;
+        markLocalSymbolMutation(symbol, 1500);
+
+        dragLeader = null;
+        dragGroup = null;
+        activeSymbol = symbol;
+        symbol.style.cursor = 'grabbing';
+        symbol.moving = false;
+        symbol._downClientX = clientX;
+        symbol._downClientY = clientY;
+        symbol._dragged = true;
+        symbol._downWasSelected = true;
+        symbol._downWasInMulti = false;
+        symbol._downTotalSelected = 1;
+
+        const canvas = getCanvasForElem(symbol);
+        const pointerX = latestPointerClientX ?? clientX;
+        const pointerY = latestPointerClientY ?? clientY;
+        const { x: localX, y: localY } = clientToLocal(canvas, pointerX, pointerY);
+
+        symbol.offsetX = (symbolWidth * symbolScale) / 2;
+        symbol.offsetY = (symbolHeight * symbolScale) / 2;
+        symbol.style.zIndex = '1000003';
+        symbol.style.left = `${localX - symbol.offsetX}px`;
+        symbol.style.top = `${localY - symbol.offsetY}px`;
+
+        if (symbol.isDynamic && symbol.dot) {
+          updateDotPositionLocal(symbol.dot);
+        }
+      }
+
+      async function rotateConnectedSelection(symbols, addAngle, inChat = false) {
+        const group = Array.from(symbols);
+        if (group.length === 0) return;
+
+        const groupSet = new Set(group);
+        const centers = group.map((symbol) => ({
+          symbol,
+          x: (parseFloat(symbol.style.left) || 0) + (symbolWidth * symbolScale) / 2,
+          y: (parseFloat(symbol.style.top) || 0) + (symbolHeight * symbolScale) / 2,
+        }));
+
+        const pivotX = centers.reduce((sum, item) => sum + item.x, 0) / centers.length;
+        const pivotY = centers.reduce((sum, item) => sum + item.y, 0) / centers.length;
+
+        for (const symbol of group) {
+          cutConnectionsOutside(symbol, groupSet);
+        }
+
+        for (const { symbol, x, y } of centers) {
+          const dx = x - pivotX;
+          const dy = y - pivotY;
+          const nextCenterX = pivotX - dy;
+          const nextCenterY = pivotY + dx;
+
+          symbol.style.left = `${nextCenterX - (symbolWidth * symbolScale) / 2}px`;
+          symbol.style.top = `${nextCenterY - (symbolHeight * symbolScale) / 2}px`;
+          applySymbolRotationLocal(symbol, addAngle);
+
+          if (symbol.isDynamic && symbol.dot) {
+            updateDotPositionLocal(symbol.dot);
+          }
+        }
+
+        let snapped = false;
+        groupDragActive = true;
+        dragGroupSet = groupSet;
+        pendingSnapDelta = null;
+        resetPendingSnapState();
+
+        for (const symbol of group) {
+          checkConnections(symbol);
+          if (pendingSnapDelta) break;
+        }
+
+        if (pendingSnapDelta) {
+          applyDeltaToGroup(pendingSnapDelta.dx, pendingSnapDelta.dy);
+          snapped = true;
+
+          if (readyActive && readyTarget) {
+            commitLink(readyActive, readyActiveSide, readyTarget, readyTargetSide);
+            if (inChat) {
+              const aId = readyActive.dataset?.id;
+              const bId = readyTarget.dataset?.id;
+              if (aId && bId) {
+                await persistLink(aId, readyActiveSide, bId, readyTargetSide);
+              }
+            }
+          }
+        }
+
+        groupDragActive = false;
+        dragGroupSet = null;
+        pendingSnapDelta = null;
+        resetPendingSnapState();
 
         if (inChat) {
-          if (symbol.isDynamic && symbol.dot) {
-            updateDotPositionLocal(symbol.dot); // instant UI update
-            await persistDotPosition(symbol.dot); // one DB write
+          for (const symbol of group) {
+            await persistSymbolVisualState(symbol, true);
           }
-          await updateSymbolAngle(symbol.dataset.id, symbol.angle);
-          await updateSymbolElemId(symbol.dataset.id, symbol.elemId);
+        }
+
+        return snapped;
+      }
+
+      async function rotateSymbol(symbol, addAngle, inChat = false) {
+        const previousSnapshot = snapshotSymbolConnections(symbol);
+        const pendingIds = [symbol.dataset?.id];
+        for (const side of previousSnapshot) {
+          for (const [nbr] of side || []) {
+            if (nbr?.dataset?.id) pendingIds.push(nbr.dataset.id);
+          }
+        }
+        await waitForPendingSymbolOps(pendingIds);
+        markLocalSymbolMutation(symbol, 1200);
+        detachSymbolLocal(symbol);
+        resetPendingSnapState();
+        applySymbolRotationLocal(symbol, addAngle);
+        await reconcileSymbolConnectivityAfterTurn(symbol, inChat);
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        await reconcileSymbolConnectivityAfterTurn(symbol, inChat);
+
+        if (inChat) {
+          await persistSymbolVisualState(symbol, true);
+          await syncSymbolLinksRemote(symbol, previousSnapshot);
         }
       }
 
@@ -2252,12 +3272,16 @@
 
       turnButton.addEventListener('click', async (e) => {
         if (selectedSymbols.size != 0) {
-          // Increment the angle by 90 degrees
-          for (const selectedSymbol of selectedSymbols) {
-            await rotateSymbol(selectedSymbol, 90);
+          const group = new Set(selectedSymbols);
+          if (group.size > 1 && isSelectionConnected(group, currentGraph)) {
+            await rotateConnectedSelection(group, 90, false);
+          } else {
+            for (const selectedSymbol of group) {
+              await rotateSymbol(selectedSymbol, 90);
 
-            if (selectedSymbol.isDynamic && selectedSymbol.dot) {
-              updateDotPositionLocal(selectedSymbol.dot);
+              if (selectedSymbol.isDynamic && selectedSymbol.dot) {
+                updateDotPositionLocal(selectedSymbol.dot);
+              }
             }
           }
         }
@@ -2273,12 +3297,18 @@
       const turnButton2 = turnButton.cloneNode(true);
       turnButton2.addEventListener('click', async (e) => {
         if (selectedSymbols.size !== 0) {
-          for (const selectedSymbol of selectedSymbols) {
-            if (!canEditElement(selectedSymbol)) continue; // skip others
-            await rotateSymbol(selectedSymbol, 90, true);
+          const group = new Set(
+            Array.from(selectedSymbols).filter((symbol) => canEditElement(symbol)),
+          );
+          if (group.size > 1 && isSelectionConnected(group, currentGraph)) {
+            await rotateConnectedSelection(group, 90, true);
+          } else {
+            for (const selectedSymbol of group) {
+              await rotateSymbol(selectedSymbol, 90, true);
 
-            if (selectedSymbol.isDynamic && selectedSymbol.dot) {
-              updateDotPositionLocal(selectedSymbol.dot);
+              if (selectedSymbol.isDynamic && selectedSymbol.dot) {
+                updateDotPositionLocal(selectedSymbol.dot);
+              }
             }
           }
         }
@@ -2413,6 +3443,7 @@
       async function persistDotPosition(dot) {
         const symbol = dot.parent;
         if (!tabHeadersActivated[4]) return;
+        markLocalSymbolMutation(symbol, 900);
 
         const x = parseFloat(dot.style.left);
         const y = parseFloat(dot.style.top);
@@ -2683,7 +3714,10 @@
       );
       const centerRadius = 36; // Define center circle radius
 
-      wheel.addEventListener('mousedown', async (e) => {
+      wheel.addEventListener('mousedown', (e) => {
+        wheel.style.zIndex = '0';
+        latestPointerClientX = e.clientX;
+        latestPointerClientY = e.clientY;
         const mouseX = e.clientX;
         const mouseY = e.clientY;
 
@@ -2694,7 +3728,8 @@
 
         if (distance < centerRadius) {
           wheel.style.backgroundImage = `url(./icons/wheel/wheel8.png)`;
-          await createSymbolCopy(mouseX, mouseY, 8);
+          const symbol = createSymbolCopy(mouseX, mouseY, 8);
+          beginWheelSpawnDrag(symbol, mouseX, mouseY);
           return; // Center circle detected
         }
 
@@ -2709,19 +3744,24 @@
         wheel.style.backgroundImage = `url(./icons/wheel/wheel${sectorIndex}.png)`;
         if (!isGenerating) {
           isGenerating = true;
-          await createSymbolCopy(mouseX, mouseY, sectorIndex);
+          const symbol = createSymbolCopy(mouseX, mouseY, sectorIndex);
+          beginWheelSpawnDrag(symbol, mouseX, mouseY);
         }
       });
 
       wheel.addEventListener('mouseup', (event) => {
+        wheel.style.zIndex = '1';
         wheel.style.backgroundImage = 'url(./icons/wheel/wheel.png)';
       });
 
-      appendToCraftControls(wheel);
+      tab1.appendChild(wheel);
 
       const wheel2 = wheel.cloneNode(true);
-      wheel2.addEventListener('mousedown', async (e) => {
+      wheel2.addEventListener('mousedown', (e) => {
         document.body.classList.add('no-text-select'); // prevent textbox selection
+        wheel2.style.zIndex = '0';
+        latestPointerClientX = e.clientX;
+        latestPointerClientY = e.clientY;
 
         const mouseX = e.clientX;
         const mouseY = e.clientY;
@@ -2734,7 +3774,8 @@
         if (distance < centerRadius) {
           console.log('Clicked center!');
           wheel2.style.backgroundImage = `url(./icons/wheel/wheel8.png)`;
-          await createSymbolCopy(mouseX, mouseY, 8);
+          const symbol = createSymbolCopy(mouseX, mouseY, 8);
+          beginWheelSpawnDrag(symbol, mouseX, mouseY);
           return; // Center circle detected
         }
 
@@ -2749,15 +3790,21 @@
         wheel2.style.backgroundImage = `url(./icons/wheel/wheel${sectorIndex}.png)`;
         if (!isGenerating) {
           isGenerating = true;
-          const symbol = await createSymbolCopy(mouseX, mouseY, sectorIndex);
+          const symbol = createSymbolCopy(mouseX, mouseY, sectorIndex);
+          beginWheelSpawnDrag(symbol, mouseX, mouseY);
         }
       });
 
       wheel2.addEventListener('mouseup', (event) => {
         document.body.classList.remove('no-text-select');
+        wheel2.style.zIndex = '1';
         wheel2.style.backgroundImage = 'url(./icons/wheel/wheel.png)';
       });
-      appendToChatControls(wheel2);
+      window.addEventListener('mouseup', () => {
+        wheel.style.zIndex = '1';
+        wheel2.style.zIndex = '1';
+      });
+      tab4.appendChild(wheel2);
 
       // Function to handle the message when Enter is pressed
       async function handleMessage() {
@@ -2809,12 +3856,432 @@
         }
       }
 
+      function findLibraryEntry(word) {
+        const normalized = String(word || '').trim();
+        if (!normalized) return null;
+        if (library.has(normalized)) return { word: normalized, entry: library.get(normalized) };
+
+        const lowered = normalized.toLowerCase();
+        for (const [storedWord, entry] of library.entries()) {
+          if (String(storedWord).toLowerCase() === lowered) {
+            return { word: storedWord, entry };
+          }
+        }
+
+        return null;
+      }
+
+      function getSymbolBoxSizeForAngle(angle) {
+        if (angle === 90 || angle === 270) {
+          return {
+            width: symbolHeight * symbolScale,
+            height: symbolWidth * symbolScale,
+          };
+        }
+
+        return {
+          width: symbolWidth * symbolScale,
+          height: symbolHeight * symbolScale,
+        };
+      }
+
+      function getLocalJunctionsForNode(nodeInfo) {
+        const relJunctions = getRelJunctions({ elemId: nodeInfo.elemId });
+        const { width, height } = getSymbolBoxSizeForAngle(nodeInfo.angle);
+        let localJunctions;
+
+        if (nodeInfo.angle === 0) {
+          localJunctions = [
+            { x: relJunctions[0].x * symbolScale, y: relJunctions[0].y * symbolScale },
+            { x: relJunctions[1].x * symbolScale, y: relJunctions[1].y * symbolScale },
+            { x: relJunctions[2].x * symbolScale, y: relJunctions[2].y * symbolScale },
+            { x: relJunctions[3].x * symbolScale, y: relJunctions[3].y * symbolScale },
+          ];
+        }
+        if (nodeInfo.angle === 180) {
+          localJunctions = [
+            {
+              x: width - relJunctions[1].x * symbolScale,
+              y: height - relJunctions[1].y * symbolScale - calInvY,
+            },
+            {
+              x: width - relJunctions[0].x * symbolScale,
+              y: height - relJunctions[0].y * symbolScale - calInvY,
+            },
+            {
+              x: width - relJunctions[3].x * symbolScale,
+              y: height - relJunctions[3].y * symbolScale,
+            },
+            {
+              x: width - relJunctions[2].x * symbolScale,
+              y: height - relJunctions[2].y * symbolScale,
+            },
+          ];
+        }
+        if (nodeInfo.angle === 90) {
+          localJunctions = [
+            { x: width - relJunctions[0].y * symbolScale, y: relJunctions[0].x * symbolScale },
+            { x: width - relJunctions[1].y * symbolScale, y: relJunctions[1].x * symbolScale },
+            { x: width - relJunctions[3].y * symbolScale, y: relJunctions[3].x * symbolScale },
+            { x: width - relJunctions[2].y * symbolScale, y: relJunctions[2].x * symbolScale },
+          ];
+        }
+        if (nodeInfo.angle === 270) {
+          localJunctions = [
+            {
+              x: relJunctions[1].y * symbolScale + calInvY,
+              y: height - relJunctions[1].x * symbolScale,
+            },
+            {
+              x: relJunctions[0].y * symbolScale + calInvY,
+              y: height - relJunctions[0].x * symbolScale,
+            },
+            { x: relJunctions[2].y * symbolScale, y: height - relJunctions[2].x * symbolScale },
+            { x: relJunctions[3].y * symbolScale, y: height - relJunctions[3].x * symbolScale },
+          ];
+        }
+
+        if (nodeInfo.elemId === 2 && localJunctions) {
+          if (nodeInfo.angle === 0) {
+            localJunctions[2].x += calCan1;
+            localJunctions[3].x += calCan1;
+          }
+          if (nodeInfo.angle === 270) {
+            localJunctions[2].y -= calCan1;
+            localJunctions[3].y -= calCan1;
+          }
+          if (nodeInfo.angle === 90) {
+            localJunctions[2].y -= calCan2;
+            localJunctions[3].y -= calCan2;
+          }
+          if (nodeInfo.angle === 180) {
+            localJunctions[2].x += calCan2;
+            localJunctions[3].x += calCan2;
+          }
+        }
+
+        return localJunctions;
+      }
+
+      function getPatternNodeDir(nodeInfo) {
+        return nodeInfo.angle === 0 || nodeInfo.angle === 180 ? 0 : 1;
+      }
+
+      function getPatternSpawnOrigin() {
+        const canvas = chatCanvas();
+        const container = tab4 || canvas;
+        return {
+          left: (canvas?.scrollLeft || 0) + Math.max(80, (container?.clientWidth || 800) * 0.32),
+          top: (canvas?.scrollTop || 0) + Math.max(80, (container?.clientHeight || 600) * 0.28),
+        };
+      }
+
+      function collectPatternLinks(pattern) {
+        const links = [];
+        const seen = new Set();
+
+        for (let from = 0; from < pattern.nodes.length; from++) {
+          for (let fromSide = 0; fromSide < 6; fromSide++) {
+            for (const [to, toSide] of pattern.adj[from][fromSide] || []) {
+              const key = `${from}|${fromSide}|${to}|${toSide}`;
+              const reverseKey = `${to}|${toSide}|${from}|${fromSide}`;
+              if (seen.has(key) || seen.has(reverseKey)) continue;
+              seen.add(key);
+              links.push({ from, fromSide, to, toSide });
+            }
+          }
+        }
+
+        return links;
+      }
+
+      async function enableDynamicDotForSpawnedSymbol(symbol) {
+        symbol.isDynamic = true;
+        const dot = document.createElement('div');
+        dot.innerHTML = dotData;
+        dot.classList.add('dot');
+        dot.parent = symbol;
+        symbol.dot = dot;
+        updateDotPositionLocal(dot);
+        appendToChatCanvas(dot);
+        if (symbol._pendingIdPromise) await symbol._pendingIdPromise;
+        await persistDotPosition(dot);
+      }
+
+      function alignSpawnedSymbols(
+        anchorSymbol,
+        anchorNodeInfo,
+        anchorSide,
+        nextSymbol,
+        nextNodeInfo,
+        nextSide,
+      ) {
+        const anchorLeft = parseFloat(anchorSymbol.style.left) || 0;
+        const anchorTop = parseFloat(anchorSymbol.style.top) || 0;
+
+        if (
+          anchorSide >= 4 &&
+          nextSide >= 4 &&
+          getPatternNodeDir(anchorNodeInfo) === getPatternNodeDir(nextNodeInfo)
+        ) {
+          if (getPatternNodeDir(anchorNodeInfo) === 0) {
+            nextSymbol.style.left = `${anchorLeft}px`;
+            nextSymbol.style.top = `${
+              anchorTop +
+              (anchorSide === Side.PAR_TOP && nextSide === Side.PAR_BOT
+                ? -(symbolHeight - 7) * symbolScale
+                : (symbolHeight - 4) * symbolScale)
+            }px`;
+            return;
+          }
+
+          nextSymbol.style.left = `${
+            anchorLeft +
+            (anchorSide === Side.PAR_TOP && nextSide === Side.PAR_BOT
+              ? -(symbolHeight - 7) * symbolScale
+              : (symbolHeight - 4) * symbolScale)
+          }px`;
+          nextSymbol.style.top = `${anchorTop}px`;
+          return;
+        }
+
+        const anchorJunctions = getAbsJunctions(anchorSymbol);
+        const nextJunctions = getAbsJunctions(nextSymbol);
+        const anchorPoint = anchorJunctions?.[anchorSide];
+        const nextPoint = nextJunctions?.[nextSide];
+        if (!anchorPoint || !nextPoint) return;
+
+        const left = parseFloat(nextSymbol.style.left) || 0;
+        const top = parseFloat(nextSymbol.style.top) || 0;
+        nextSymbol.style.left = `${left + anchorPoint.x - nextPoint.x}px`;
+        nextSymbol.style.top = `${top + anchorPoint.y - nextPoint.y}px`;
+
+        if (nextSymbol.dot) {
+          updateDotPositionLocal(nextSymbol.dot);
+        }
+      }
+
+      async function spawnPatternOnChatCanvas(word) {
+        const found = findLibraryEntry(word);
+        if (!found) {
+          showFeedback?.(`No saved symbol expression found for "${word}".`, true);
+          return;
+        }
+
+        const pattern = found.entry?.[1];
+        const layout = found.entry?.[2] || null;
+        if (!pattern?.nodes?.length) {
+          showFeedback?.(`"${found.word}" does not have a saved symbol expression yet.`, true);
+          return;
+        }
+
+        const sourceNodes =
+          layout?.nodes?.length === pattern.nodes.length ? layout.nodes : pattern.nodes;
+        const sourceLinks = layout?.links?.length ? layout.links : collectPatternLinks(pattern);
+        const placed = new Array(sourceNodes.length);
+        const origin = getPatternSpawnOrigin();
+        const hasSavedLayout = pattern.nodes.every(
+          (node) => Number.isFinite(node?.relLeft) && Number.isFinite(node?.relTop),
+        );
+
+        clearAllSymbolSelection();
+        clearAllEmojiSelection();
+
+        if (layout?.nodes?.length === pattern.nodes.length) {
+          const minLeft = Math.min(...layout.nodes.map((node) => node.left ?? 0));
+          const minTop = Math.min(...layout.nodes.map((node) => node.top ?? 0));
+
+          for (let i = 0; i < layout.nodes.length; i++) {
+            const node = layout.nodes[i];
+            placed[i] = await createSymbolCopy(
+              null,
+              null,
+              node.elemId ?? node.elemIdTrue,
+              node.elemIdTrue,
+              origin.left + ((node.left ?? 0) - minLeft),
+              origin.top + ((node.top ?? 0) - minTop),
+              node.color ?? null,
+              node.angle ?? 0,
+            );
+
+            if (node.isDynamic) {
+              await enableDynamicDotForSpawnedSymbol(placed[i]);
+            }
+          }
+        } else if (hasSavedLayout) {
+          for (let i = 0; i < pattern.nodes.length; i++) {
+            const node = pattern.nodes[i];
+            placed[i] = await createSymbolCopy(
+              null,
+              null,
+              node.elemIdTrue,
+              node.elemIdTrue,
+              origin.left + node.relLeft,
+              origin.top + node.relTop,
+              null,
+              node.angle ?? 0,
+            );
+
+            if (node.isDynamic) {
+              await enableDynamicDotForSpawnedSymbol(placed[i]);
+            }
+          }
+        } else {
+          const rootInfo = {
+            elemId: pattern.nodes[0].elemIdTrue,
+            elemIdTrue: pattern.nodes[0].elemIdTrue,
+            angle: pattern.nodes[0].angle ?? 0,
+            isDynamic: !!pattern.nodes[0].isDynamic,
+          };
+
+          placed[0] = await createSymbolCopy(
+            null,
+            null,
+            rootInfo.elemId,
+            rootInfo.elemIdTrue,
+            origin.left,
+            origin.top,
+            null,
+            rootInfo.angle,
+          );
+
+          if (rootInfo.isDynamic) {
+            await enableDynamicDotForSpawnedSymbol(placed[0]);
+          }
+
+          const queue = [0];
+          const seenNodes = new Set([0]);
+
+          while (queue.length > 0) {
+            const currentIndex = queue.shift();
+            const currentSymbol = placed[currentIndex];
+            const currentInfo = {
+              elemId: pattern.nodes[currentIndex].elemIdTrue,
+              elemIdTrue: pattern.nodes[currentIndex].elemIdTrue,
+              angle: pattern.nodes[currentIndex].angle ?? 0,
+              isDynamic: !!pattern.nodes[currentIndex].isDynamic,
+            };
+
+            for (let currentSide = 0; currentSide < 6; currentSide++) {
+              for (const [neighborIndex, neighborSide] of pattern.adj[currentIndex][currentSide] ||
+                []) {
+                if (placed[neighborIndex]) continue;
+
+                const neighborInfo = {
+                  elemId: pattern.nodes[neighborIndex].elemIdTrue,
+                  elemIdTrue: pattern.nodes[neighborIndex].elemIdTrue,
+                  angle: pattern.nodes[neighborIndex].angle ?? 0,
+                  isDynamic: !!pattern.nodes[neighborIndex].isDynamic,
+                };
+
+                placed[neighborIndex] = await createSymbolCopy(
+                  null,
+                  null,
+                  neighborInfo.elemId,
+                  neighborInfo.elemIdTrue,
+                  origin.left + 40,
+                  origin.top + 40,
+                  null,
+                  neighborInfo.angle,
+                );
+
+                if (neighborInfo.isDynamic) {
+                  await enableDynamicDotForSpawnedSymbol(placed[neighborIndex]);
+                }
+
+                alignSpawnedSymbols(
+                  currentSymbol,
+                  currentInfo,
+                  currentSide,
+                  placed[neighborIndex],
+                  neighborInfo,
+                  neighborSide,
+                );
+
+                if (!seenNodes.has(neighborIndex)) {
+                  seenNodes.add(neighborIndex);
+                  queue.push(neighborIndex);
+                }
+              }
+            }
+          }
+
+          for (let i = 0; i < sourceNodes.length; i++) {
+            if (placed[i]) continue;
+            const fallbackInfo = sourceNodes[i];
+            placed[i] = await createSymbolCopy(
+              null,
+              null,
+              fallbackInfo.elemId ?? fallbackInfo.elemIdTrue,
+              fallbackInfo.elemIdTrue,
+              origin.left + i * 35,
+              origin.top + i * 35,
+              fallbackInfo.color ?? null,
+              fallbackInfo.angle,
+            );
+
+            if (fallbackInfo.isDynamic) {
+              await enableDynamicDotForSpawnedSymbol(placed[i]);
+            }
+          }
+        }
+
+        for (const link of sourceLinks) {
+          const fromSymbol = placed[link.from];
+          const toSymbol = placed[link.to];
+          if (!fromSymbol || !toSymbol) continue;
+
+          commitLink(fromSymbol, link.fromSide, toSymbol, link.toSide);
+
+          if (fromSymbol._pendingIdPromise) await fromSymbol._pendingIdPromise;
+          if (toSymbol._pendingIdPromise) await toSymbol._pendingIdPromise;
+
+          const fromId = fromSymbol.dataset?.id;
+          const toId = toSymbol.dataset?.id;
+          if (fromId && toId) {
+            await persistLink(fromId, link.fromSide, toId, link.toSide);
+          }
+        }
+
+        placed.forEach((symbol) => {
+          symbol.selected = true;
+          symbol.classList.add('framed');
+          selectedSymbols.add(symbol);
+        });
+
+        activeSymbol = null;
+      }
+
+      async function handleSymbolMessage() {
+        const messageBox = document.getElementById('symbol-message-input');
+        const userInput = messageBox.value.trim();
+
+        if (userInput === '') return;
+
+        messageBox.value = '';
+
+        try {
+          await spawnPatternOnChatCanvas(userInput);
+        } catch (error) {
+          console.error(error);
+          alert('Symbol rendering failed.');
+        }
+      }
+
       // Add event listener to the input box for the Enter key
       document.getElementById('message-input').addEventListener('keydown', function (event) {
         if (event.key === 'Enter') {
           handleMessage();
         }
       });
+
+      document
+        .getElementById('symbol-message-input')
+        .addEventListener('keydown', function (event) {
+          if (event.key === 'Enter') {
+            handleSymbolMessage();
+          }
+        });
 
       function floatLabel(label) {
         const maxDistance = 20; // Maximum distance from the original position
@@ -2839,6 +4306,103 @@
             label.style.transform = `translate(${x}px, ${y}px)`;
           }
         }, 100);
+      }
+
+      function boxesOverlap(a, b, padding = 12) {
+        return !(
+          a.right + padding <= b.left ||
+          a.left >= b.right + padding ||
+          a.bottom + padding <= b.top ||
+          a.top >= b.bottom + padding
+        );
+      }
+
+      function clampLabelPosition(x, y, label, canvas) {
+        const maxX = Math.max(0, canvas.clientWidth - label.offsetWidth);
+        const maxY = Math.max(0, canvas.clientHeight - label.offsetHeight);
+
+        return {
+          x: Math.min(Math.max(0, x), maxX),
+          y: Math.min(Math.max(0, y), maxY),
+        };
+      }
+
+      function getLabelBox(x, y, label) {
+        return {
+          left: x,
+          top: y,
+          right: x + label.offsetWidth,
+          bottom: y + label.offsetHeight,
+        };
+      }
+
+      function collectOccupiedLabelBoxes(canvas, pendingBoxes = []) {
+        const occupied = [];
+        canvas.querySelectorAll('.symbol-label').forEach((existingLabel) => {
+          const left = parseFloat(existingLabel.style.left);
+          const top = parseFloat(existingLabel.style.top);
+          if (!Number.isFinite(left) || !Number.isFinite(top)) return;
+
+          occupied.push(getLabelBox(left, top, existingLabel));
+        });
+
+        pendingBoxes.forEach((box) => occupied.push(box));
+        return occupied;
+      }
+
+      function findScatteredLabelPosition(label, anchorX, anchorY, canvas, pendingBoxes = []) {
+        const occupiedBoxes = collectOccupiedLabelBoxes(canvas, pendingBoxes);
+        const candidates = [];
+        const baseAngle = getRandomFloat(0, Math.PI * 2);
+        const angleStep = Math.PI / 6;
+        const radii = [30, 44, 58, 74, 92, 112, 136];
+
+        for (const radius of radii) {
+          for (let i = 0; i < 12; i++) {
+            const angle = baseAngle + i * angleStep + getRandomFloat(-0.12, 0.12);
+            const radialJitter = getRandomFloat(-6, 6);
+            const tangentJitter = getRandomFloat(-10, 10);
+            const distance = radius + radialJitter;
+            const x =
+              anchorX +
+              Math.cos(angle) * distance -
+              label.offsetWidth / 2 +
+              Math.cos(angle + Math.PI / 2) * tangentJitter;
+            const y =
+              anchorY +
+              Math.sin(angle) * distance -
+              label.offsetHeight / 2 +
+              Math.sin(angle + Math.PI / 2) * tangentJitter;
+
+            candidates.push({ x, y });
+          }
+        }
+
+        let bestCandidate = null;
+        let bestOverlapCount = Infinity;
+        let bestDistance = Infinity;
+
+        for (const candidate of candidates) {
+          const clamped = clampLabelPosition(candidate.x, candidate.y, label, canvas);
+          const box = getLabelBox(clamped.x, clamped.y, label);
+          const overlapCount = occupiedBoxes.filter((occupied) =>
+            boxesOverlap(box, occupied),
+          ).length;
+          const distance = Math.hypot(clamped.x - anchorX, clamped.y - anchorY);
+
+          if (overlapCount === 0) return clamped;
+
+          if (
+            overlapCount < bestOverlapCount ||
+            (overlapCount === bestOverlapCount && distance < bestDistance)
+          ) {
+            bestCandidate = clamped;
+            bestOverlapCount = overlapCount;
+            bestDistance = distance;
+          }
+        }
+
+        return bestCandidate || clampLabelPosition(anchorX, anchorY, label, canvas);
       }
 
       function buildDragGroupSet(draggedEl) {
@@ -2926,8 +4490,7 @@
 
             dragSnapLock = null;
             pendingSnapDelta = null;
-            readyActive = readyTarget = null;
-            readyActiveSide = readyTargetSide = null;
+            resetPendingSnapState();
             dragGroupStarted = false;
             dragGroupSet = null;
 
@@ -2962,12 +4525,30 @@
 
         if (emojiId !== null) {
           emoji.dataset.id = emojiId;
+          emojiById.set(emojiId, emoji);
         } else {
+          const clientNonce = tabHeadersActivated[4] ? makeClientNonce('emoji') : null;
+          if (clientNonce) {
+            emoji.dataset.clientNonce = clientNonce;
+            pendingLocalChatEmojisByNonce.set(clientNonce, emoji);
+          }
           // after you created the DOM element `symbol`
           emoji.dataset.id = ''; // not ready yet
           emoji._pendingIdPromise = (async () => {
-            const docId = await saveObj('emoji', emojiResponse, emoji.x, emoji.y);
+            const docId = await saveObj(
+              'emoji',
+              emojiResponse,
+              emoji.x,
+              emoji.y,
+              clientNonce ? { clientNonce } : {},
+            );
+            const existing = emojiById.get(docId);
+            if (existing && existing !== emoji) {
+              adoptExistingChatEmoji(existing, emoji);
+            }
             emoji.dataset.id = docId;
+            emojiById.set(docId, emoji);
+            if (clientNonce) pendingLocalChatEmojisByNonce.delete(clientNonce);
             return docId;
           })();
         }
@@ -3117,10 +4698,7 @@
           }
         }
 
-        readyActive = null;
-        readyTarget = null;
-        readyActiveSide = null;
-        readyTargetSide = null;
+        resetPendingSnapState();
       }
 
       function cancelDraggingState() {
@@ -3139,8 +4717,7 @@
         dragSnapLock = null;
 
         // optional but usually correct: clear snap candidate
-        readyActive = readyTarget = null;
-        readyActiveSide = readyTargetSide = null;
+        resetPendingSnapState();
       }
 
       function applyDeltaToGroup(dx, dy) {
@@ -3162,6 +4739,9 @@
       }
 
       document.addEventListener('mousemove', async (e) => {
+        latestPointerClientX = e.clientX;
+        latestPointerClientY = e.clientY;
+
         if (clickOnlySymbol && !clickOnlySymbol._dragged) {
           const dx = e.clientX - (clickOnlySymbol._downClientX ?? e.clientX);
           const dy = e.clientY - (clickOnlySymbol._downClientY ?? e.clientY);
@@ -3272,8 +4852,7 @@
             performance.now() > snapCooldownUntil
           ) {
             pendingSnapDelta = null;
-            readyActive = readyTarget = null;
-            readyActiveSide = readyTargetSide = null;
+            resetPendingSnapState();
 
             checkConnections(dragLeader);
           }
@@ -3408,7 +4987,9 @@
 
           checkConnections(activeSymbol);
 
-          const snappedCandidate = readyActive === activeSymbol && readyTarget != null;
+          const snappedCandidate =
+            pendingSnapLinks.some((link) => link.active === activeSymbol) ||
+            (readyActive === activeSymbol && readyTarget != null);
           if (!activeSymbol.moving && !snappedCandidate) {
             // Cut connections
             const conns = currentGraph.getSymbolConnections(activeSymbol) || [];
@@ -3538,6 +5119,85 @@
           bConns[bSide].push([a, aSide]);
       }
 
+      function resetPendingSnapState() {
+        readyActive = null;
+        readyTarget = null;
+        readyActiveSide = null;
+        readyTargetSide = null;
+        pendingSnapCandidates = [];
+        pendingSnapLinks = [];
+      }
+
+      function registerPendingSnapCandidate(candidate) {
+        const existingIndex = pendingSnapCandidates.findIndex(
+          (c) =>
+            c.active === candidate.active &&
+            c.target === candidate.target &&
+            c.activeSide === candidate.activeSide &&
+            c.targetSide === candidate.targetSide,
+        );
+
+        if (existingIndex >= 0) {
+          if (candidate.dist < pendingSnapCandidates[existingIndex].dist) {
+            pendingSnapCandidates[existingIndex] = candidate;
+          }
+          return;
+        }
+
+        pendingSnapCandidates.push(candidate);
+      }
+
+      function applyPendingSnapCandidates(active) {
+        const candidates = pendingSnapCandidates
+          .filter((c) => c.active === active)
+          .sort((a, b) => a.dist - b.dist);
+
+        if (candidates.length === 0) {
+          pendingSnapLinks = [];
+          return false;
+        }
+
+        const selected = [];
+        const usedActiveSides = new Set();
+        const tolerance = 8;
+
+        for (const candidate of candidates) {
+          if (usedActiveSides.has(candidate.activeSide)) continue;
+
+          if (
+            selected.length > 0 &&
+            (Math.abs(candidate.dx - selected[0].dx) > tolerance ||
+              Math.abs(candidate.dy - selected[0].dy) > tolerance)
+          ) {
+            continue;
+          }
+
+          selected.push(candidate);
+          usedActiveSides.add(candidate.activeSide);
+        }
+
+        if (selected.length === 0) {
+          pendingSnapLinks = [];
+          return false;
+        }
+
+        const dx = selected.reduce((sum, candidate) => sum + candidate.dx, 0) / selected.length;
+        const dy = selected.reduce((sum, candidate) => sum + candidate.dy, 0) / selected.length;
+        const oldX = parseFloat(active.style.left) || 0;
+        const oldY = parseFloat(active.style.top) || 0;
+
+        active.style.left = `${oldX + dx}px`;
+        active.style.top = `${oldY + dy}px`;
+
+        pendingSnapLinks = selected;
+        const first = selected[0];
+        readyActive = first.active;
+        readyTarget = first.target;
+        readyActiveSide = first.activeSide;
+        readyTargetSide = first.targetSide;
+        return true;
+      }
+
       function violatesConflicts(target, targetSide) {
         const conns = currentGraph.getSymbolConnections(target) || [];
         const conflicts = SIDE_CONFLICTS.get(targetSide) || [];
@@ -3609,27 +5269,51 @@
             }
           }
 
-          // --- 3) Commit link ONLY if the released symbol is selected and is the snap candidate ---
-          if (shouldBeSelected && readyActive && readyTarget && readyActive === released) {
-            if (violatesConflicts(readyTarget, readyTargetSide)) {
-              console.warn('[COMMIT BLOCKED] conflict', {
-                targetElem: readyTarget.elemIdTrue,
-                targetSide: readyTargetSide,
-              });
-            } else {
-              commitLink(readyActive, readyActiveSide, readyTarget, readyTargetSide);
+          // --- 3) Commit all compatible snap candidates for this released symbol ---
+          if (shouldBeSelected) {
+            const linksToCommit = pendingSnapLinks.filter((link) => link.active === released);
 
-              // Persist only if both ids exist
-              const aId = readyActive.dataset?.id;
-              const bId = readyTarget.dataset?.id;
-              if (aId && bId) {
-                persistLink(aId, readyActiveSide, bId, readyTargetSide).catch(console.error);
+            if (linksToCommit.length > 0) {
+              for (const link of linksToCommit) {
+                if (violatesConflicts(link.target, link.targetSide)) {
+                  console.warn('[COMMIT BLOCKED] conflict', {
+                    targetElem: link.target.elemIdTrue,
+                    targetSide: link.targetSide,
+                  });
+                  continue;
+                }
+
+                commitLink(link.active, link.activeSide, link.target, link.targetSide);
+
+                const aId = link.active.dataset?.id;
+                const bId = link.target.dataset?.id;
+                if (aId && bId) {
+                  persistLink(aId, link.activeSide, bId, link.targetSide).catch(console.error);
+                }
+              }
+            } else if (readyActive && readyTarget && readyActive === released) {
+              if (violatesConflicts(readyTarget, readyTargetSide)) {
+                console.warn('[COMMIT BLOCKED] conflict', {
+                  targetElem: readyTarget.elemIdTrue,
+                  targetSide: readyTargetSide,
+                });
+              } else {
+                commitLink(readyActive, readyActiveSide, readyTarget, readyTargetSide);
+
+                const aId = readyActive.dataset?.id;
+                const bId = readyTarget.dataset?.id;
+                if (aId && bId) {
+                  persistLink(aId, readyActiveSide, bId, readyTargetSide).catch(console.error);
+                }
               }
             }
 
-            // Clear candidate after using it (avoid accidental re-commit)
-            readyActive = readyTarget = null;
-            readyActiveSide = readyTargetSide = null;
+            if (
+              linksToCommit.length > 0 ||
+              (readyActive && readyTarget && readyActive === released)
+            ) {
+              resetPendingSnapState();
+            }
           }
 
           // --- 4) Persist position / dot only for single drag (not group drag) ---
@@ -3797,8 +5481,7 @@
           groupDragActive = false;
           pendingSnapDelta = null;
           dragSnapLock = null;
-          readyActive = readyTarget = null;
-          readyActiveSide = readyTargetSide = null;
+          resetPendingSnapState();
         }
 
         let rect;
@@ -3991,6 +5674,155 @@
         selectedEmojis.clear();
       }
 
+      function getSelectedSymbolClipboard() {
+        const editableSelection = Array.from(selectedSymbols).filter((symbol) =>
+          canEditElement(symbol),
+        );
+        if (editableSelection.length === 0) return { symbols: [], links: [] };
+
+        const indexBySymbol = new Map(editableSelection.map((symbol, index) => [symbol, index]));
+        const links = [];
+
+        editableSelection.forEach((symbol, fromIndex) => {
+          const conns = currentGraph.getSymbolConnections(symbol) || [[], [], [], [], [], []];
+
+          for (let fromSide = 0; fromSide < conns.length; fromSide++) {
+            for (const [neighbor, toSide] of conns[fromSide]) {
+              const toIndex = indexBySymbol.get(neighbor);
+              if (toIndex == null || fromIndex >= toIndex) continue;
+
+              links.push({ fromIndex, fromSide, toIndex, toSide });
+            }
+          }
+        });
+
+        return {
+          symbols: editableSelection.map((symbol) => ({
+            elemId: symbol.elemId,
+            elemIdTrue: symbol.elemIdTrue,
+            color: symbol.color ?? null,
+            angle: symbol.angle ?? 0,
+            isDynamic: !!symbol.isDynamic,
+            left: parseFloat(symbol.style.left) || 0,
+            top: parseFloat(symbol.style.top) || 0,
+          })),
+          links,
+        };
+      }
+
+      function getActiveSymbolPasteCanvas() {
+        if (tabHeadersActivated[4]) return chatCanvas();
+        if (tabHeadersActivated[1]) return craftCanvas();
+        return null;
+      }
+
+      function isEditableTextTarget(target) {
+        if (!target) return false;
+        return (
+          target.closest('input, textarea, [contenteditable="true"]') !== null ||
+          target.isContentEditable
+        );
+      }
+
+      async function pasteCopiedSymbols() {
+        if (copiedSymbolSnapshots.length === 0) return;
+
+        const canvas = getActiveSymbolPasteCanvas();
+        if (!canvas) return;
+
+        const usingChatCanvas = canvas === chatCanvas();
+        const canvasRect = canvas.getBoundingClientRect();
+        const offsetStep = 30;
+        const pasteOffset = offsetStep * (symbolPasteCount + 1);
+        const newlyPasted = [];
+
+        clearAllSymbolSelection();
+        clearAllEmojiSelection();
+
+        for (const snapshot of copiedSymbolSnapshots) {
+          const targetLeft = snapshot.left + pasteOffset;
+          const targetTop = snapshot.top + pasteOffset;
+
+          let pastedSymbol;
+
+          if (usingChatCanvas) {
+            pastedSymbol = await createSymbolCopy(
+              null,
+              null,
+              snapshot.elemId,
+              snapshot.elemIdTrue,
+              targetLeft,
+              targetTop,
+              snapshot.color,
+              snapshot.angle,
+            );
+          } else {
+            const clientX = canvasRect.left + targetLeft + (symbolWidth * symbolScale) / 2;
+            const clientY = canvasRect.top + targetTop + (symbolHeight * symbolScale) / 2;
+            pastedSymbol = await createSymbolCopy(
+              clientX,
+              clientY,
+              snapshot.elemId,
+              snapshot.elemIdTrue,
+              null,
+              null,
+              snapshot.color,
+              snapshot.angle,
+            );
+          }
+
+          if (snapshot.isDynamic) {
+            pastedSymbol.isDynamic = true;
+            const dot = document.createElement('div');
+            dot.innerHTML = dotData;
+            dot.classList.add('dot');
+            dot.parent = pastedSymbol;
+            pastedSymbol.dot = dot;
+
+            updateDotPositionLocal(dot);
+            if (usingChatCanvas) appendToChatCanvas(dot);
+            if (!usingChatCanvas) appendToCraftCanvas(dot);
+
+            if (usingChatCanvas) {
+              if (pastedSymbol._pendingIdPromise) await pastedSymbol._pendingIdPromise;
+              await persistDotPosition(dot);
+            }
+          }
+
+          newlyPasted.push(pastedSymbol);
+        }
+
+        for (const link of copiedSymbolLinks) {
+          const fromSymbol = newlyPasted[link.fromIndex];
+          const toSymbol = newlyPasted[link.toIndex];
+          if (!fromSymbol || !toSymbol) continue;
+
+          commitLink(fromSymbol, link.fromSide, toSymbol, link.toSide);
+
+          if (usingChatCanvas) {
+            if (fromSymbol._pendingIdPromise) await fromSymbol._pendingIdPromise;
+            if (toSymbol._pendingIdPromise) await toSymbol._pendingIdPromise;
+
+            const fromId = fromSymbol.dataset?.id;
+            const toId = toSymbol.dataset?.id;
+            if (fromId && toId) {
+              await persistLink(fromId, link.fromSide, toId, link.toSide);
+            }
+          }
+        }
+
+        symbolPasteCount += 1;
+        newlyPasted.forEach((symbol) => {
+          symbol.selected = true;
+          symbol.classList.add('framed');
+          selectedSymbols.add(symbol);
+        });
+
+        activeSymbol = null;
+        dragLeader = null;
+        dragGroup = null;
+      }
+
       function getRandomSubset(words, count) {
         return words.sort(() => Math.random() - 0.5).slice(0, count);
       }
@@ -4075,7 +5907,7 @@
             const cy = rect.top - canvasRect.top + rect.height / 2;
 
             for (const word of subset) {
-              labelData.push([word, cx, cy, selectedSymbol]);
+              labelData.push([word, cx, cy, selectedSymbol, false]);
             }
           }
         });
@@ -4085,11 +5917,14 @@
         const representatives = new Map();
         let hasDuplicateExpression = false;
 
-        const selectionGraph = buildSubgraphFromSelection(currentGraph, selectedSymbols);
+        const selectionComponents = getConnectedSymbolComponents(selectedSymbols, currentGraph);
 
         for (const [storedWord, [storedId, storedGraph]] of library) {
-          // find ALL disjoint matches of this storedGraph inside current selection
-          const matches = matchAllPatternsOnSelection(selectedSymbols, storedGraph);
+          const matches = [];
+          for (const component of selectionComponents) {
+            if (component.size < storedGraph.nodes.length) continue;
+            matches.push(...matchAllPatternsOnSelection(component, storedGraph));
+          }
 
           // duplicate-expression means: the ENTIRE current selection equals ONE stored expression
           // (same behavior as you wanted before)
@@ -4126,7 +5961,7 @@
             avgX /= foundMatching.size;
             avgY /= foundMatching.size;
 
-            labelData.push([storedWord, avgX, avgY, lastSymbol]);
+            labelData.push([storedWord, avgX, avgY, lastSymbol, true]);
             foundIds.add(storedId);
 
             for (const symbol of foundMatching) {
@@ -4135,22 +5970,48 @@
           }
         }
 
+        const pendingBoxesByCanvas = new Map();
+
         labelData.forEach((labelDataSub) => {
           const label = document.createElement('div');
           label.classList.add('symbol-label', 'removable');
-          // Position the label near the symbol
-          label.x = labelDataSub[1] + getRandomFloat(-100, 20);
-          label.y = labelDataSub[2] + getRandomFloat(-30, 0);
-
-          if (labelDataSub[3].labels === undefined) {
-            labelDataSub[3].labels = new Set([label]);
-          } else {
-            labelDataSub[3].labels.add(label);
+          if (labelDataSub[4]) {
+            label.classList.add('user-created-label');
           }
-          label.offsetX = label.x - parseFloat(labelDataSub[3].style.left);
-          label.offsetY = label.y - parseFloat(labelDataSub[3].style.top);
+          label.textContent = labelDataSub[0];
+
+          const anchorSymbol = labelDataSub[3];
+          const canvas = getCanvasForElem(anchorSymbol);
+          if (!canvas) return;
+
+          label.style.visibility = 'hidden';
+          canvas.appendChild(label);
+
+          const pendingBoxes = pendingBoxesByCanvas.get(canvas) || [];
+          const position = findScatteredLabelPosition(
+            label,
+            labelDataSub[1],
+            labelDataSub[2],
+            canvas,
+            pendingBoxes,
+          );
+
+          label.x = position.x;
+          label.y = position.y;
           label.style.left = `${label.x}px`;
           label.style.top = `${label.y}px`;
+          label.style.visibility = '';
+
+          pendingBoxes.push(getLabelBox(label.x, label.y, label));
+          pendingBoxesByCanvas.set(canvas, pendingBoxes);
+
+          if (anchorSymbol.labels === undefined) {
+            anchorSymbol.labels = new Set([label]);
+          } else {
+            anchorSymbol.labels.add(label);
+          }
+          label.offsetX = label.x - parseFloat(anchorSymbol.style.left);
+          label.offsetY = label.y - parseFloat(anchorSymbol.style.top);
 
           // 1) avoid triggering global logic when clicked on labels
           label.addEventListener(
@@ -4167,9 +6028,6 @@
             label.remove();
           });
 
-          if (tabHeadersActivated[1]) appendToCraftCanvas(label);
-          if (tabHeadersActivated[4]) appendToChatCanvas(label);
-          label.textContent = labelDataSub[0]; // Default text
           floatLabel(label);
         });
         return [foundIds, elimBasic, representatives, hasDuplicateExpression];
@@ -4632,6 +6490,7 @@
                 }, 1000); // Adjust timing as needed (1s cycle: 0.5s fade in, 0.5s fade out)
 
                 const pattern = snapshotSelectionAsPattern(currentGraph, selectedSymbols);
+                const layout = snapshotSelectionAsLayout(currentGraph, selectedSymbols);
                 let id = await synthNode(
                   selectedSymbols,
                   word,
@@ -4640,7 +6499,7 @@
                   elimBasic,
                   pattern,
                 );
-                library.set(word, [id, pattern]);
+                library.set(word, [id, pattern, layout]);
                 console.log('library');
                 console.log(library);
               }
@@ -4767,7 +6626,7 @@
       const MULTI_OCCUPANCY = new Set([Side.START, Side.END]);
 
       // Create a new copy of the symbol being clicked
-      async function createSymbolCopy(
+      function createSymbolCopy(
         mouseX,
         mouseY,
         elemId = null,
@@ -4778,7 +6637,9 @@
         symbolAngle = null,
         symbolId = null,
       ) {
-        const { x, y } = clientToLocal(craftCanvas(), mouseX, mouseY);
+        const spawnCanvas =
+          symbolX !== null ? chatCanvas() : tabHeadersActivated[4] ? chatCanvas() : craftCanvas();
+        const { x, y } = clientToLocal(spawnCanvas, mouseX, mouseY);
         let offsetX = (symbolWidth * symbolScale) / 2;
         let offsetY = (symbolHeight * symbolScale) / 2;
 
@@ -4810,8 +6671,24 @@
           dyeColor(symbol, symbolColor);
         } else if (tabHeadersActivated[4]) {
           // newly created in the chat interface
-          symbolColor = await assignUserColor();
+          symbolColor = cachedUserColor || generateColor(currentUser?.uid || 'guest');
           dyeColor(symbol, symbolColor);
+          assignUserColor()
+            .then(async (resolvedColor) => {
+              if (!symbol.isConnected) return;
+              if (symbol.dataset?.ownerUid && symbol.dataset.ownerUid !== currentUser?.uid) return;
+              if (resolvedColor && resolvedColor !== symbol.color) {
+                dyeColor(symbol, resolvedColor);
+              }
+              if (resolvedColor) {
+                const id =
+                  symbol.dataset?.id || (await symbol._pendingIdPromise?.catch(() => null));
+                if (id) {
+                  await updateSymbolColor(id, resolvedColor);
+                }
+              }
+            })
+            .catch(console.error);
         } // otherwise, newly created in the craft interface
 
         if (symbolAngle !== null) {
@@ -4885,8 +6762,7 @@
 
             dragSnapLock = null;
             pendingSnapDelta = null;
-            readyActive = readyTarget = null;
-            readyActiveSide = readyTargetSide = null;
+            resetPendingSnapState();
             dragGroupStarted = false;
             dragGroupSet = null;
 
@@ -4922,7 +6798,11 @@
         if (tabHeadersActivated[1]) appendToCraftCanvas(symbol);
         if (tabHeadersActivated[4] || symbolX !== null) appendToChatCanvas(symbol);
 
-        if (selectedSymbols.size !== 0) {
+        if (tabHeadersActivated[4] && symbolX === null) {
+          symbol.style.zIndex = '100';
+        }
+
+        if (symbolX === null && selectedSymbols.size !== 0) {
           selectedSymbols.forEach((selectedSymbol) => {
             selectedSymbol.selected = false;
             selectedSymbol.classList.remove('framed');
@@ -4951,14 +6831,21 @@
             elemId: elemId,
             elemIdTrue: elemIdTrue,
             color: symbolColor,
-            angle: 0,
+            angle: symbol.angle,
             dotX: null,
             dotY: null,
           };
 
           if (symbolId !== null) {
             symbol.dataset.id = symbolId;
+            symbolById.set(symbolId, symbol);
           } else {
+            const clientNonce =
+              tabHeadersActivated[4] && symbolX === null ? makeClientNonce('symbol') : null;
+            if (clientNonce) {
+              symbol.dataset.clientNonce = clientNonce;
+              pendingLocalChatSymbolsByNonce.set(clientNonce, symbol);
+            }
             // after you created the DOM element `symbol`
             symbol.dataset.id = ''; // not ready yet
             symbol._pendingIdPromise = (async () => {
@@ -4967,8 +6854,15 @@
                 symbolPacket,
                 parseFloat(symbol.style.left),
                 parseFloat(symbol.style.top),
+                clientNonce ? { clientNonce } : {},
               );
+              const existing = symbolById.get(docId);
+              if (existing && existing !== symbol) {
+                adoptExistingChatSymbol(existing, symbol);
+              }
               symbol.dataset.id = docId;
+              symbolById.set(docId, symbol);
+              if (clientNonce) pendingLocalChatSymbolsByNonce.delete(clientNonce);
               return docId;
             })();
           }
@@ -5085,10 +6979,7 @@
       function checkConnections(active) {
         let targetX;
         let targetY;
-        readyActive = null;
-        readyTarget = null;
-        readyActiveSide = null;
-        readyTargetSide = null;
+        resetPendingSnapState();
         for (const target of currentGraph.getSymbols()) {
           // Skip the active symbol itself
           if (target === active) continue;
@@ -5338,6 +7229,10 @@
               }
             }
           }
+        }
+
+        if (!groupDragActive) {
+          applyPendingSnapCandidates(active);
         }
       }
 
@@ -5596,21 +7491,25 @@
         const dx = targetX - activeX;
         const dy = targetY - activeY;
 
-        // Record candidate connection (mouse up will finalize)
-        readyActive = active;
-        readyTarget = target;
-        readyActiveSide = activeSide;
-        readyTargetSide = targetSide;
-
         // ---- 3) Group drag: request a delta for the whole group ----
         if (groupDragActive) {
+          readyActive = active;
+          readyTarget = target;
+          readyActiveSide = activeSide;
+          readyTargetSide = targetSide;
           pendingSnapDelta = { dx, dy };
           return;
         }
 
-        // ---- 4) Single drag: move immediately ----
-        active.style.left = `${oldX + dx}px`;
-        active.style.top = `${oldY + dy}px`;
+        registerPendingSnapCandidate({
+          active,
+          target,
+          activeSide,
+          targetSide,
+          dx,
+          dy,
+          dist: getDist(activeX, activeY, targetX, targetY),
+        });
       }
 
       // Add an event listener for clicks on the document
@@ -5632,6 +7531,11 @@
       let container = document.getElementById('network');
       let data = { nodes: nodes, edges: edges };
       let basicNodeIds = new Set();
+      const LIBRARY_VIEW_MODE_KEY = 'libraryViewMode';
+      let libraryViewMode = 'network';
+      let libraryTreeView = null;
+      let libraryTreeSurface = null;
+      let libraryTreeSvg = null;
       let options = {
         nodes: {
           shape: 'circularImage',
@@ -5671,7 +7575,422 @@
         },
       };
 
+      const LIBRARY_NETWORK_ICON = "url('./icons/network.png')";
+      const LIBRARY_TREE_ICON = "url('./icons/techtree.png')";
+      const LIBRARY_ARRANGE_ICON = "url('./icons/organize.png')";
+
+      function loadSavedLibraryViewMode() {
+        try {
+          const saved = localStorage.getItem(LIBRARY_VIEW_MODE_KEY);
+          if (saved === 'network' || saved === 'tree') libraryViewMode = saved;
+        } catch {}
+      }
+
+      function saveLibraryViewMode() {
+        try {
+          localStorage.setItem(LIBRARY_VIEW_MODE_KEY, libraryViewMode);
+        } catch {}
+      }
+
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
+
+      function setLibraryModeButtonIcon() {
+        if (!modeNodeButton) return;
+        modeNodeButton.style.backgroundImage =
+          libraryViewMode === 'network' ? LIBRARY_NETWORK_ICON : LIBRARY_TREE_ICON;
+        modeNodeButton.title =
+          libraryViewMode === 'network' ? 'Switch to tree view' : 'Switch to network view';
+      }
+
+      function computeLibraryTreeLevels() {
+        const nodeIds = nodes.getIds();
+        const nodeSet = new Set(nodeIds);
+        const parentsById = new Map();
+        const childrenById = new Map();
+        const indegree = new Map();
+
+        for (const id of nodeIds) {
+          parentsById.set(id, []);
+          childrenById.set(id, []);
+          indegree.set(id, 0);
+        }
+
+        for (const edge of edges.get()) {
+          if (!nodeSet.has(edge.from) || !nodeSet.has(edge.to)) continue;
+          parentsById.get(edge.to).push(edge.from);
+          childrenById.get(edge.from).push(edge.to);
+          indegree.set(edge.to, (indegree.get(edge.to) || 0) + 1);
+        }
+
+        const queue = [];
+        const levelById = new Map();
+        for (const id of nodeIds) {
+          if ((indegree.get(id) || 0) === 0) {
+            queue.push(id);
+            levelById.set(id, 0);
+          }
+        }
+
+        while (queue.length) {
+          const current = queue.shift();
+          const currentLevel = levelById.get(current) || 0;
+          for (const child of childrenById.get(current) || []) {
+            levelById.set(child, Math.max(levelById.get(child) || 0, currentLevel + 1));
+            indegree.set(child, (indegree.get(child) || 0) - 1);
+            if ((indegree.get(child) || 0) === 0) queue.push(child);
+          }
+        }
+
+        for (const id of nodeIds) {
+          if (!levelById.has(id)) {
+            const parents = parentsById.get(id) || [];
+            const inferred = parents.length
+              ? Math.max(...parents.map((p) => levelById.get(p) || 0)) + 1
+              : 0;
+            levelById.set(id, inferred);
+          }
+        }
+
+        return { levelById, parentsById };
+      }
+
+      function getLibraryTreeCardContent(node) {
+        const word = node.word || node.title || '(unnamed)';
+        let definition = '';
+        if (node.word && node.title && node.title !== word) {
+          const titleText = String(node.title).trim();
+          const prefix = `${String(node.word).trim()}.`;
+          definition = titleText.startsWith(prefix) ? titleText.slice(prefix.length).trim() : titleText;
+        }
+        return { word, definition };
+      }
+
+      function computeLibraryNetworkArrangePositions() {
+        const allNodes = nodes.get();
+        if (!allNodes.length) return [];
+
+        const { levelById, parentsById } = computeLibraryTreeLevels();
+        const columns = new Map();
+        for (const node of allNodes) {
+          const level = levelById.get(node.id) || 0;
+          if (!columns.has(level)) columns.set(level, []);
+          columns.get(level).push(node);
+        }
+
+        const sortedLevels = [...columns.keys()].sort((a, b) => a - b);
+        const orderById = new Map();
+        let changed = true;
+        let safety = 0;
+
+        for (const level of sortedLevels) {
+          columns
+            .get(level)
+            .sort((a, b) => (a.word || a.title || a.id).localeCompare(b.word || b.title || b.id))
+            .forEach((node, index) => orderById.set(node.id, index));
+        }
+
+        while (changed && safety < 6) {
+          changed = false;
+          safety += 1;
+          for (const level of sortedLevels.slice(1)) {
+            const colNodes = columns.get(level);
+            const before = colNodes.map((n) => n.id).join('|');
+            colNodes.sort((a, b) => {
+              const aParents = parentsById.get(a.id) || [];
+              const bParents = parentsById.get(b.id) || [];
+              const aCenter = aParents.length
+                ? aParents.reduce((sum, id) => sum + (orderById.get(id) || 0), 0) / aParents.length
+                : orderById.get(a.id) || 0;
+              const bCenter = bParents.length
+                ? bParents.reduce((sum, id) => sum + (orderById.get(id) || 0), 0) / bParents.length
+                : orderById.get(b.id) || 0;
+              if (aCenter !== bCenter) return aCenter - bCenter;
+              return (a.word || a.title || a.id).localeCompare(b.word || b.title || b.id);
+            });
+            colNodes.forEach((node, index) => orderById.set(node.id, index));
+            if (before !== colNodes.map((n) => n.id).join('|')) changed = true;
+          }
+        }
+
+        const levelCellCols = Math.max(1, Math.ceil(Math.sqrt(sortedLevels.length)));
+        const levelCellWidth = 340;
+        const levelCellHeight = 260;
+        const nodeColGap = 118;
+        const nodeRowGap = 92;
+        const updates = [];
+
+        sortedLevels.forEach((level, levelIndex) => {
+          const colNodes = columns.get(level);
+          const cellCol = levelIndex % levelCellCols;
+          const cellRow = Math.floor(levelIndex / levelCellCols);
+          const localCols = Math.max(1, Math.ceil(Math.sqrt(colNodes.length)));
+          const localRows = Math.max(1, Math.ceil(colNodes.length / localCols));
+          const cellOriginX = cellCol * levelCellWidth;
+          const cellOriginY = cellRow * levelCellHeight;
+          const blockWidth = Math.max(0, (localCols - 1) * nodeColGap);
+          const blockHeight = Math.max(0, (localRows - 1) * nodeRowGap);
+          const startX = cellOriginX - blockWidth / 2;
+          const startY = cellOriginY - blockHeight / 2;
+
+          colNodes.forEach((node, index) => {
+            const localCol = index % localCols;
+            const localRow = Math.floor(index / localCols);
+            updates.push({
+              id: node.id,
+              x: startX + localCol * nodeColGap,
+              y: startY + localRow * nodeRowGap,
+            });
+          });
+        });
+
+        return updates;
+      }
+
+      function estimateLibraryTreeCardSize(node) {
+        const { word, definition } = getLibraryTreeCardContent(node);
+        const longest = Math.max(word.length, definition.length || 0);
+        const width = clamp(200 + Math.max(0, longest - 14) * 5.5, 200, 420);
+        const usableTextWidth = Math.max(120, width - 86);
+        const charsPerLine = Math.max(14, Math.floor(usableTextWidth / 7.2));
+        const definitionLines = definition
+          ? Math.max(1, Math.ceil(definition.length / charsPerLine))
+          : 0;
+        const height = 70 + Math.max(0, definitionLines - 1) * 17;
+        return { width, height };
+      }
+
+      function renderLibraryTreeView() {
+        if (!libraryTreeSurface || !libraryTreeSvg) return;
+
+        libraryTreeSurface.querySelectorAll('.library-tree-card').forEach((el) => el.remove());
+        libraryTreeSvg.innerHTML = '';
+
+        const allNodes = nodes.get();
+        if (!allNodes.length) {
+          libraryTreeSurface.style.width = '100%';
+          libraryTreeSurface.style.height = '100%';
+          return;
+        }
+
+        const { levelById, parentsById } = computeLibraryTreeLevels();
+        const columns = new Map();
+        for (const node of allNodes) {
+          const level = levelById.get(node.id) || 0;
+          if (!columns.has(level)) columns.set(level, []);
+          columns.get(level).push(node);
+        }
+
+        const sortedLevels = [...columns.keys()].sort((a, b) => a - b);
+        for (const level of sortedLevels) {
+          columns.get(level).sort((a, b) => {
+            const aParents = (parentsById.get(a.id) || [])
+              .map((id) => nodes.get(id)?.word || '')
+              .join('|');
+            const bParents = (parentsById.get(b.id) || [])
+              .map((id) => nodes.get(id)?.word || '')
+              .join('|');
+            return (
+              (a.word || a.title || a.id).localeCompare(b.word || b.title || b.id) ||
+              aParents.localeCompare(bParents)
+            );
+          });
+        }
+
+        const positions = new Map();
+        const sizes = new Map();
+        let maxBottom = 0;
+        let maxRight = 0;
+
+        for (const node of allNodes) {
+          sizes.set(node.id, estimateLibraryTreeCardSize(node));
+        }
+
+        const startX = 90;
+        const startY = 120;
+        const rowGap = 26;
+        const columnGap = 80;
+        let currentX = startX;
+
+        for (const level of sortedLevels) {
+          const colNodes = columns.get(level);
+          const columnWidth = Math.max(...colNodes.map((node) => sizes.get(node.id).width));
+          let currentY = startY;
+          colNodes.forEach((node, index) => {
+            const size = sizes.get(node.id);
+            positions.set(node.id, {
+              x: currentX,
+              y: currentY,
+            });
+            currentY += size.height + rowGap;
+            maxBottom = Math.max(maxBottom, currentY - rowGap);
+            maxRight = Math.max(maxRight, currentX + size.width);
+          });
+          currentX += columnWidth + columnGap;
+        }
+
+        const surfaceWidth = Math.max(900, maxRight + startX);
+        const surfaceHeight = Math.max(700, maxBottom + startY);
+        libraryTreeSurface.style.width = `${surfaceWidth}px`;
+        libraryTreeSurface.style.height = `${surfaceHeight}px`;
+        libraryTreeSvg.setAttribute('width', surfaceWidth);
+        libraryTreeSvg.setAttribute('height', surfaceHeight);
+        libraryTreeSvg.setAttribute('viewBox', `0 0 ${surfaceWidth} ${surfaceHeight}`);
+
+        for (const edge of edges.get()) {
+          const fromPos = positions.get(edge.from);
+          const toPos = positions.get(edge.to);
+          if (!fromPos || !toPos) continue;
+          const fromSize = sizes.get(edge.from);
+          const toSize = sizes.get(edge.to);
+          if (!fromSize || !toSize) continue;
+
+          const x1 = fromPos.x + fromSize.width;
+          const y1 = fromPos.y + fromSize.height / 2;
+          const x2 = toPos.x;
+          const y2 = toPos.y + toSize.height / 2;
+          const midX = x1 + Math.max(28, (x2 - x1) / 2);
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          path.setAttribute('d', `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`);
+          path.setAttribute('stroke', 'black');
+          path.setAttribute('stroke-width', '3');
+          path.setAttribute('fill', 'none');
+          libraryTreeSvg.appendChild(path);
+        }
+
+        for (const node of allNodes) {
+          const pos = positions.get(node.id);
+          if (!pos) continue;
+          const size = sizes.get(node.id);
+          const { word, definition } = getLibraryTreeCardContent(node);
+
+          const card = document.createElement('div');
+          card.className = 'library-tree-card';
+          if (basicNodeIds.has(node.id)) card.classList.add('basic');
+          card.style.left = `${pos.x}px`;
+          card.style.top = `${pos.y}px`;
+          card.style.width = `${size.width}px`;
+          card.style.minHeight = `${size.height}px`;
+
+          const img = document.createElement('img');
+          img.className = 'library-tree-card-image';
+          img.src = node.image;
+          img.alt = node.word || node.title || '';
+
+          const textWrap = document.createElement('div');
+          textWrap.className = 'library-tree-card-text';
+
+          const label = document.createElement('div');
+          label.className = 'library-tree-card-word';
+          label.textContent = word;
+
+          textWrap.appendChild(label);
+          if (definition) {
+            const definitionEl = document.createElement('div');
+            definitionEl.className = 'library-tree-card-definition';
+            definitionEl.textContent = definition;
+            textWrap.appendChild(definitionEl);
+          }
+
+          card.appendChild(img);
+          card.appendChild(textWrap);
+          libraryTreeSurface.appendChild(card);
+        }
+      }
+
+      function organizeLibraryNetwork() {
+        if (libraryViewMode === 'tree') {
+          renderLibraryTreeView();
+          if (libraryTreeView) {
+            libraryTreeView.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+          }
+          return;
+        }
+
+        if (!network) return;
+        const updates = computeLibraryNetworkArrangePositions();
+        if (updates.length) {
+          nodes.update(updates);
+        }
+        network.setOptions(options);
+        network.redraw();
+        network.stabilize(120);
+        network.fit({
+          animation: {
+            duration: 600,
+            easingFunction: 'easeInOutQuad',
+          },
+        });
+        scheduleSaveLibraryGraph();
+      }
+
+      const organizeNodeButton = document.createElement('div');
+      organizeNodeButton.classList.add('button');
+      organizeNodeButton.style.width = `168.75px`;
+      organizeNodeButton.style.height = `119.25px`;
+      organizeNodeButton.style.backgroundImage = LIBRARY_ARRANGE_ICON;
+      organizeNodeButton.style.left = `380px`;
+      organizeNodeButton.style.top = `30px`;
+      tab2.appendChild(organizeNodeButton);
+      organizeNodeButton.addEventListener('pointerup', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        organizeLibraryNetwork();
+      });
+
+      const modeNodeButton = document.createElement('div');
+      modeNodeButton.classList.add('button');
+      modeNodeButton.style.width = `168.75px`;
+      modeNodeButton.style.height = `119.25px`;
+      modeNodeButton.style.left = `210px`;
+      modeNodeButton.style.top = `30px`;
+      tab2.appendChild(modeNodeButton);
+
+      libraryTreeView = document.createElement('div');
+      libraryTreeView.id = 'libraryTreeView';
+      libraryTreeSurface = document.createElement('div');
+      libraryTreeSurface.id = 'libraryTreeSurface';
+      libraryTreeSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      libraryTreeSvg.id = 'libraryTreeSvg';
+      libraryTreeSurface.appendChild(libraryTreeSvg);
+      libraryTreeView.appendChild(libraryTreeSurface);
+      tab2.appendChild(libraryTreeView);
+
+      function setLibraryViewMode(mode) {
+        libraryViewMode = mode === 'tree' ? 'tree' : 'network';
+        saveLibraryViewMode();
+        setLibraryModeButtonIcon();
+
+        const showTree = libraryViewMode === 'tree';
+        container.style.display = showTree ? 'none' : 'block';
+        libraryTreeView.style.display = showTree ? 'block' : 'none';
+        organizeNodeButton.style.display = showTree ? 'none' : 'block';
+
+        if (showTree) {
+          renderLibraryTreeView();
+        } else if (network) {
+          setTimeout(() => {
+            network.redraw();
+            network.fit({
+              animation: {
+                duration: 400,
+                easingFunction: 'easeInOutQuad',
+              },
+            });
+          }, 30);
+        }
+      }
+
+      modeNodeButton.addEventListener('pointerup', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        setLibraryViewMode(libraryViewMode === 'network' ? 'tree' : 'network');
+      });
+      setLibraryModeButtonIcon();
+
       async function initNodes() {
+        loadSavedLibraryViewMode();
         for (let i = 0; i < symbolData.length; i++) {
           const svgString = symbolData[i];
           const id = await generateUniqueId(svgString);
@@ -5679,7 +7998,7 @@
             id,
             shape: 'circularImage',
             image: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(scaleSVG(svgString)),
-            word: '',
+            word: tBasicNodeWord(i),
             title: tSymbolTitle(i),
             _baseIndex: i,
           });
@@ -5690,6 +8009,8 @@
 
         await loadLibraryGraphForUser();
         rebuildLibraryFromNodes();
+        renderLibraryTreeView();
+        setLibraryViewMode(libraryViewMode);
 
         network.once('afterDrawing', function () {
           // Assuming 'container' is the DOM element where the network is rendered
@@ -5705,7 +8026,15 @@
             scale: scale,
           });
         });
-        network.on('dragEnd', () => scheduleSaveLibraryGraph());
+        network.on('dragEnd', () => {
+          scheduleSaveLibraryGraph();
+        });
+        nodes.on('*', () => {
+          if (libraryViewMode === 'tree') renderLibraryTreeView();
+        });
+        edges.on('*', () => {
+          if (libraryViewMode === 'tree') renderLibraryTreeView();
+        });
       }
 
       function exportGraphState() {
@@ -5724,6 +8053,7 @@
           x: pos[n.id]?.x ?? null,
           y: pos[n.id]?.y ?? null,
           pattern: n.pattern ? serializePatternGraph(n.pattern) : null,
+          layout: n.layout ? serializeSelectionLayout(n.layout) : null,
         }));
 
         const exportEdges = allEdges.map((e) => ({
@@ -5768,6 +8098,7 @@
 
           // Deserialize pattern safely (supports old records without pattern)
           const parsedPattern = sn.pattern ? deserializePatternGraph(sn.pattern) : null;
+          const parsedLayout = sn.layout ? deserializeSelectionLayout(sn.layout) : null;
 
           if (!exists) {
             // Synthesized nodes need svg to rebuild the image
@@ -5783,16 +8114,24 @@
               y: sn.y ?? undefined,
               _svg: sn.svg,
               pattern: parsedPattern, // PatternGraph instance or null
+              layout: parsedLayout,
             });
           } else {
+            const isBasic = basicNodeIds.has(sn.id);
+            const existingBaseIndex = exists._baseIndex;
             nodes.update({
               id: sn.id,
-              word: sn.word || exists.word || '',
+              word:
+                sn.word ||
+                (isBasic && existingBaseIndex != null
+                  ? tBasicNodeWord(existingBaseIndex)
+                  : exists.word || ''),
               title: sn.title || exists.title || '',
               ...(sn.x != null && sn.y != null ? { x: sn.x, y: sn.y } : {}),
               ...(sn.svg ? { _svg: sn.svg } : {}),
               // only overwrite pattern if saved data actually has one
               ...(sn.pattern !== undefined ? { pattern: parsedPattern } : {}),
+              ...(sn.layout !== undefined ? { layout: parsedLayout } : {}),
             });
           }
         }
@@ -5820,7 +8159,7 @@
           if (!n.word) continue;
           if (!n.pattern) continue; // basic nodes may not have pattern
 
-          library.set(n.word, [n.id, n.pattern]); // n.pattern is PatternGraph (deserialized)
+          library.set(n.word, [n.id, n.pattern, n.layout || null]);
         }
       }
 
@@ -5981,6 +8320,9 @@
 
         if (!hasDuplicate) {
           const serializedPattern = serializePatternGraph(pattern);
+          const serializedLayout = serializeSelectionLayout(
+            snapshotSelectionAsLayout(currentGraph, components),
+          );
           let newNode = {
             id: id,
             shape: 'circularImage',
@@ -5989,6 +8331,7 @@
             title: capitalizeFirstLetter(word) + '. ' + capitalizeFirstLetter(justification),
             _svg: svgString,
             pattern: serializedPattern,
+            layout: serializedLayout,
           };
 
           nodes.add(newNode); // Add node to dataset
@@ -6070,17 +8413,55 @@
 
         const world = document.getElementById('world');
         const content = document.getElementById('worldContent');
+        content.innerHTML = '';
 
         // Now the world is displayed, we can safely measure it
         const W = world.offsetWidth;
         const H = world.offsetHeight;
+        const layoutW = Math.max(W, 1200);
+        const layoutH = Math.max(H, 800);
+        const oceanPadX = Math.max(320, Math.round(layoutW * 0.7));
+        const oceanPadY = Math.max(240, Math.round(layoutH * 0.7));
+        const oceanWidth = layoutW + oceanPadX * 2;
+        const oceanHeight = layoutH + oceanPadY * 2;
+
+        content.style.width = `${oceanWidth}px`;
+        content.style.height = `${oceanHeight}px`;
+
+        const boundary = document.createElement('div');
+        boundary.className = 'world-boundary';
+        content.appendChild(boundary);
+
+        let minIslandLeft = Infinity;
+        let minIslandTop = Infinity;
+        let maxIslandRight = -Infinity;
+        let maxIslandBottom = -Infinity;
 
         worldData.islands.forEach((islandData) => {
           const islandSVG = createIslandSVG(islandData);
-          islandSVG.style.left = islandData.x * W + 'px';
-          islandSVG.style.top = islandData.y * H + 'px';
+          islandSVG.style.left = oceanPadX + islandData.x * layoutW + 'px';
+          islandSVG.style.top = oceanPadY + islandData.y * layoutH + 'px';
           content.appendChild(islandSVG);
+
+          const islandLeft = oceanPadX + islandData.x * layoutW;
+          const islandTop = oceanPadY + islandData.y * layoutH;
+          const islandWidth =
+            parseFloat(islandSVG.getAttribute('width')) || islandSVG.offsetWidth || 0;
+          const islandHeight =
+            parseFloat(islandSVG.getAttribute('height')) || islandSVG.offsetHeight || 0;
+          minIslandLeft = Math.min(minIslandLeft, islandLeft);
+          minIslandTop = Math.min(minIslandTop, islandTop);
+          maxIslandRight = Math.max(maxIslandRight, islandLeft + islandWidth);
+          maxIslandBottom = Math.max(maxIslandBottom, islandTop + islandHeight);
         });
+
+        initFoam(world, content, 110);
+
+        if (worldPanController && Number.isFinite(minIslandLeft)) {
+          const targetX = world.clientWidth / 2 - (minIslandLeft + maxIslandRight) / 2;
+          const targetY = world.clientHeight / 2 - (minIslandTop + maxIslandBottom) / 2;
+          worldPanController.setOffset(targetX, targetY);
+        }
 
         worldRendered = true;
       }
@@ -6382,19 +8763,19 @@
         // Remove old foams to avoid duplicates
         worldContentEl.querySelectorAll('.foam').forEach((el) => el.remove());
 
-        const W = worldEl.clientWidth;
-        const H = worldEl.clientHeight;
+        const contentW = worldContentEl.clientWidth;
+        const contentH = worldContentEl.clientHeight;
+        const baseArea = 2880 * 1920;
+        const densityMultiplier = Math.max(1, Math.round((contentW * contentH) / baseArea));
+        const foamCount = count * densityMultiplier;
 
-        // We'll maintain a padded area around the viewport in content-coordinates
-        const PAD = 600; // increase if you pan far/fast
-
-        for (let i = 0; i < count; i++) {
+        for (let i = 0; i < foamCount; i++) {
           const f = document.createElement('div');
           f.className = 'foam';
 
-          // Position in a big area centered around the initial viewport
-          const x = Math.random() * (W + 2 * PAD) - PAD;
-          const y = Math.random() * (H + 2 * PAD) - PAD;
+          // Distribute over the full ocean layout so smaller windows don't compress waves
+          const x = Math.random() * contentW;
+          const y = Math.random() * contentH;
 
           f.style.left = `${x}px`;
           f.style.top = `${y}px`;
@@ -6406,7 +8787,7 @@
           f.style.opacity = `${0.45 + Math.random() * 0.55}`;
 
           // Store for wrap logic
-          f._pad = PAD;
+          f._pad = 600;
 
           worldContentEl.appendChild(f);
         }
@@ -6452,8 +8833,6 @@
         const content = document.getElementById('worldContent');
         const foamHost = content;
 
-        initFoam(world, content, 80);
-
         let offsetX = 0,
           offsetY = 0;
         let dragging = false;
@@ -6461,6 +8840,18 @@
           startY = 0;
         let startOffsetX = 0,
           startOffsetY = 0;
+
+        function getClampedOffset(nextX, nextY) {
+          const contentWidth = content.offsetWidth || world.clientWidth;
+          const contentHeight = content.offsetHeight || world.clientHeight;
+          const minOffsetX = Math.min(0, world.clientWidth - contentWidth);
+          const minOffsetY = Math.min(0, world.clientHeight - contentHeight);
+
+          return {
+            x: Math.min(0, Math.max(minOffsetX, nextX)),
+            y: Math.min(0, Math.max(minOffsetY, nextY)),
+          };
+        }
 
         function setTransform() {
           content.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
@@ -6492,8 +8883,9 @@
           if (!dragging) return;
           const dx = e.clientX - startX;
           const dy = e.clientY - startY;
-          offsetX = startOffsetX + dx;
-          offsetY = startOffsetY + dy;
+          const clamped = getClampedOffset(startOffsetX + dx, startOffsetY + dy);
+          offsetX = clamped.x;
+          offsetY = clamped.y;
           setTransform();
         });
 
@@ -6513,14 +8905,17 @@
 
         setTransform();
 
-        return {
+        worldPanController = {
           getOffset: () => ({ x: offsetX, y: offsetY }),
           setOffset: (x, y) => {
-            offsetX = x;
-            offsetY = y;
+            const clamped = getClampedOffset(x, y);
+            offsetX = clamped.x;
+            offsetY = clamped.y;
             setTransform();
           },
         };
+
+        return worldPanController;
       }
 
       let selectedIsland = null;
@@ -6629,6 +9024,23 @@
         const canvas = chatCanvas();
         if (!canvas) return;
 
+        resetPendingSnapState();
+        activeSymbol = null;
+        activeEmoji = null;
+        clickOnlySymbol = null;
+        clickOnlyEmoji = null;
+
+        for (const symbol of symbolById.values()) {
+          removeChatSymbolElement(symbol);
+        }
+        for (const emoji of emojiById.values()) {
+          removeChatEmojiElement(emoji);
+        }
+
+        symbolById = new Map();
+        emojiById = new Map();
+        roomObjDataById = new Map();
+
         // remove only chat objects, keep marquee box and other overlays
         canvas
           .querySelectorAll(
@@ -6638,9 +9050,22 @@
       }
 
       async function switchRoom(roomId) {
+        saveChatViewportState();
+        currentRoomId = roomId;
+        if (roomObjsUnsubscribe) {
+          roomObjsUnsubscribe();
+          roomObjsUnsubscribe = null;
+        }
+        clearChatUI();
+        loadObj();
+        return;
+        saveChatViewportState();
         currentRoomId = roomId;
         clearChatUI(); // 你自己实现：把当前聊天室渲染出来的 emoji/symbol/dot 清掉
         await loadObj(); // 从 rooms/{roomId}/objs 重新加载
+        if (tabHeadersActivated[4]) {
+          requestAnimationFrame(() => restoreChatViewportState());
+        }
       }
     </script>
   </body>
