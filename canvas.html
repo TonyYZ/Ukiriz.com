@@ -163,7 +163,11 @@
 
       #tab2 {
         position: relative;
+        width: calc(100% + 20px);
+        height: calc(100% + 40px);
+        margin: -20px -20px -20px 0;
         overflow: hidden;
+        box-sizing: border-box;
       }
 
       #tab0 {
@@ -436,6 +440,29 @@
         color: gray; /* Gray color for the placeholder */
       }
 
+      #chat-question {
+        position: absolute;
+        left: 1000px;
+        bottom: 80px;
+        width: min(600px, calc(100vw - var(--sidebar-w) - 980px));
+        min-height: 48px;
+        padding: 10px 14px;
+        border: 2px solid rgba(0, 0, 0, 0.24);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.78);
+        color: black;
+        font-size: 20px;
+        line-height: 1.35;
+        box-sizing: border-box;
+        z-index: 21;
+        pointer-events: none;
+      }
+
+      #chat-question-label {
+        font-weight: 700;
+        margin-right: 8px;
+      }
+
       #symbol-message-input {
         position: absolute;
         bottom: 58px;
@@ -493,10 +520,15 @@
 
       #libraryTreeView {
         position: absolute;
-        inset: 0;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
         display: none;
-        overflow: auto;
+        overflow-x: auto;
+        overflow-y: scroll;
         background: transparent;
+        box-sizing: border-box;
       }
 
       #libraryTreeSurface {
@@ -1143,6 +1175,31 @@
         return BASIC_NODE_WORDS[lang]?.[i] || BASIC_NODE_WORDS.en?.[i] || '';
       }
 
+      const ISLAND_CHAT_QUESTIONS = {
+        Kimmoke: 'What small thing from today deserves to become a ritual?',
+        Uzel: 'What kind of order helps people feel freer rather than more controlled?',
+        Habataku: 'If your thoughts could grow wings, where would they fly first?',
+        Phong: 'What is something invisible that still shapes your life every day?',
+        Phirun: 'What would healing look like if it came as weather?',
+        Lilit: 'What part of the night feels protective rather than frightening?',
+        Jwala: 'What should burn away in order for something better to begin?',
+        Bagh: 'What do you think strength protects at its core?',
+        Iztli: 'What truth can be sharp without becoming cruel?',
+        Zvono: 'If a sound could summon a memory, which memory should answer?',
+        Cendre: 'What remains valuable after something has already ended?',
+        Tobar: 'What kind of question leads people closer to one another?',
+        Merkez: 'What does it mean for a community to have a true center?',
+      };
+
+      function getChatQuestionForRoom(roomId) {
+        const safeRoomId =
+          roomId || (typeof currentRoomId !== 'undefined' && currentRoomId ? currentRoomId : null);
+        return (
+          (safeRoomId ? ISLAND_CHAT_QUESTIONS[safeRoomId] : null) ||
+          'Choose an island and express something ordinary words cannot quite hold.'
+        );
+      }
+
       function refreshBasicTooltips() {
         try {
           if (!nodes) return;
@@ -1357,6 +1414,12 @@
       const chatControls = () => document.getElementById('chatControls');
       const craftCanvas = () => document.getElementById('craftCanvas');
       const craftControls = () => document.getElementById('craftControls');
+
+      function updateChatQuestionPrompt(roomId) {
+        const el = document.getElementById('chat-question-text');
+        if (!el) return;
+        el.textContent = getChatQuestionForRoom(roomId);
+      }
 
       function appendToChatCanvas(el) {
         chatCanvas()?.appendChild(el);
@@ -2856,9 +2919,9 @@
           '取象自坎卦 ☵：阻隔、分离。文：l（静）/ r（动）。音：[l]（静）/ [ɾ]（动）。',
           '取象自巽卦 ☴：虚浮、泄漏。文：v（静）/ f（动）。音：[v]（静）/ [f]（动）。',
           '取象自震卦 ☳：承载、上升。文：d（静）/ t（动）。音：[d]（静）/ [t]（动）。',
-          '取象自离卦 ☲：容纳、依附。文：b（静）/ p（动）。音：[b]（静）/ [p]（动）。',
+          '取象自离卦 ☲：包围、依附。文：b（静）/ p（动）。音：[b]（静）/ [p]（动）。',
           '取象自兑卦 ☱：破缺、发出。文：s（静）/ z（动）。音：[s]（静）/ [t͡s]（动）。',
-          '取象自乾卦 ☰：丰富、活动。文：ṡ（静）/ ż（动）。音：[ʃ]（静）/ [t͡ʃ]（动）。',
+          '取象自乾卦 ☰：完满、活跃。文：ṡ（静）/ ż（动）。音：[ʃ]（静）/ [t͡ʃ]（动）。',
           'Ítí 的特殊符号（太极）：在诸元素之间维持平衡，因此既可能“单调”，也可能呈现“繁复的秩序”。文：n（静）/ m（动）。音：[n]（静）/ [m]（动）。',
         ],
       };
@@ -3541,6 +3604,13 @@
         }
       });
       appendToChatControls(eyeButton2);
+
+      const chatQuestion = document.createElement('div');
+      chatQuestion.id = 'chat-question';
+      chatQuestion.innerHTML =
+        '<span id="chat-question-label">Question:</span><span id="chat-question-text"></span>';
+      appendToChatControls(chatQuestion);
+      updateChatQuestionPrompt();
 
       const removeButton = document.createElement('div');
       removeButton.isActivated = false;
@@ -9103,6 +9173,7 @@
         const chatHeader = document.getElementById('tab-header4');
         chatHeader.textContent = islandId; // tab 显示岛屿名字
         chatHeader.style.display = 'block'; // 显示 Chat tab
+        updateChatQuestionPrompt(roomIdFromIslandId(islandId));
       }
 
       function hideChatTab() {
@@ -9149,6 +9220,7 @@
       async function switchRoom(roomId) {
         saveChatViewportState();
         currentRoomId = roomId;
+        updateChatQuestionPrompt(roomId);
         if (roomObjsUnsubscribe) {
           roomObjsUnsubscribe();
           roomObjsUnsubscribe = null;
