@@ -427,8 +427,8 @@
         bottom: 110px;
         left: 400px;
         padding: 10px;
-        width: 500px;
-        font-size: 30px; /* Larger font size */
+        width: 400px;
+        font-size: 24px; /* Larger font size */
         background-color: transparent; /* Transparent background */
         border: none; /* No border */
         color: black; /* Text color */
@@ -442,10 +442,10 @@
 
       #chat-question {
         position: absolute;
-        left: 1000px;
+        left: 850px;
         bottom: 80px;
-        width: min(600px, calc(100vw - var(--sidebar-w) - 980px));
-        min-height: 48px;
+        width: 420px;
+        min-height: 0;
         padding: 10px 14px;
         border: 2px solid rgba(0, 0, 0, 0.24);
         border-radius: 18px;
@@ -463,13 +463,19 @@
         margin-right: 8px;
       }
 
+      #chat-question-text {
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+      }
+
       #symbol-message-input {
         position: absolute;
         bottom: 58px;
         left: 400px;
         padding: 10px;
-        width: 500px;
-        font-size: 30px;
+        width: 400px;
+        font-size: 24px;
         background-color: transparent;
         border: none;
         color: black;
@@ -792,168 +798,179 @@
       const I18N = {
         en: {
           homeHTML: `
-                  <h1 style="text-align: center">Divinatory Conlang on Canvas</h1>
-                  <br>
-                  <p>
-                  Welcome!<br />
-                  Ever wondered how divination works?<br />
-                  Fortune tellers interpret meaning in random patterns—from Tarot cards to teacup dregs.
-                  Maybe there’s a divine spirit hidden behind it. Maybe they simply know how to tell a
-                  story from what they see.
-                  </p>
+          <h1 style="text-align: center">Divinatory Conlang on Canvas</h1>
+          <br>
+          <p>
+          Welcome!<br />
+          Ever wondered how divination works?<br />
+          Fortune tellers interpret meaning in random patterns. Every corner in the world from Tarot cards to teacup dregs can be an oracle.
+          Maybe there is a divine spirit hidden behind it. Maybe they simply know how to tell a
+          story from what they see.
+          </p>
 
-                  <p>
-                  Either way, they train their intuition to access whatever knowledge lies “on the other
-                  side.” This platform plays with that idea: it invites <b>you</b> to become the fortune
-                  teller —— in a broader sense. Here, you glimpse the meaning of life by producing and
-                  interpreting abstract symbols. Instead of teaching you a complete symbolic language, I’ll
-                  help you build one yourself.
-                  </p>
+          <p>
+          I want to use this website to explore the logic behind divination. It is a symbolic
+          experiment-game that lets you become a "fortune teller" - really, someone who uses
+          abstract symbols to probe the meaning of life.<br />
+          I am not going to hand you a complete symbolic language. Instead, I want to help you
+          build one for yourself from scratch, step by step, almost like building with blocks.
+          At the same time, you will also train and strengthen your own intuition.
+          </p>
 
-                  <p>
-                  You’ll see how intuition can be built step by step.<br />
-                  Note: your language’s “atoms” are fixed, but how the “molecules” are structured is up to
-                  you. The atoms are designed by me, inspired by the Yijing trigrams.
-                  </p>
+          <p>
+          The linguistic "atoms" you can work with, the basic symbols, are given by me. But the
+          "molecules," the ways they combine, are entirely up to you.<br />
+          These basic symbols were originally inspired by the Yijing trigrams, though they have
+          already transformed a lot during development and now have a more independent identity.
+          </p>
 
+          <div
+          style="
+              max-width: 680px;
+              margin: 18px auto 22px auto;
+              padding: 14px 16px;
+              background: white;
+              border: 1px solid black;
+              border-radius: 10px;
+              box-shadow: 0 4px 0 rgba(0, 0, 0, 0.08);
+              font-family: inherit;
+          "
+          >
+          <div style="text-align: center; font-size: 18px; margin-bottom: 10px">
+              <b>TL;DR - How to start</b>
+          </div>
 
-                  <div
-                  style="
-                      max-width: 680px;
-                      margin: 18px auto 22px auto;
-                      padding: 14px 16px;
-                      background: white;
-                      border: 1px solid black;
-                      border-radius: 10px;
-                      box-shadow: 0 4px 0 rgba(0, 0, 0, 0.08);
-                      font-family: inherit;
-                  "
-                  >
-                  <div style="text-align: center; font-size: 18px; margin-bottom: 10px">
-                      <b>TL;DR — How to start</b>
-                  </div>
+          <div style="font-size: 14px; line-height: 1.5">
+              <div style="margin-bottom: 8px">
+              <b>1) Build a word:</b> Go to <b>Craft</b>, press the <b>symbol wheel</b> to create a
+              symbol, and drag it onto the canvas. Symbols can magnetically snap together.
+              </div>
+              <div style="margin-bottom: 8px">
+              <b>2) Select + Insight:</b> <b>Click and hold</b> any symbol to select the
+              <b>connected component</b> it belongs to, then press <b>Insight</b> (the eye) to get
+              prompts about its meaning.
+              </div>
+              <div style="margin-bottom: 10px">
+              <b>3) Define + save:</b> Enter what the symbol cluster means and your reasoning.
+              If it passes, it will appear in the <b>Library</b>.
+              </div>
+              <div style="margin-bottom: 10px">
+              <b>4) World + chat:</b> Go into <b>World</b>, choose any island, and switch to the tab of its name. Now you can talk using the words you created.
+              </div>
+              <div style="text-align:center; padding-top:8px; border-top:1px dashed rgba(0,0,0,0.35);">
+              Starter challenge: try making <b>sky</b>, <b>rain</b>, <b>flower</b>, and <b>world</b>.
+              </div>
+          </div>
+          </div>
 
-                  <div style="font-size: 14px; line-height: 1.45">
-                      <div style="margin-bottom: 8px">
-                      <b>1) Build a word:</b> In <b>Craft</b>, drag symbols and let the magnets snap them
-                      together.
-                      </div>
-                      <div style="margin-bottom: 8px">
-                      <b>2) Check + learn:</b> <b>Click and hold</b> to highlight the connected cluster,
-                      then press <b>Insight</b> (the eye).
-                      </div>
-                      <div style="margin-bottom: 10px">
-                      <b>3) Name + save:</b> Enter a word + your reasoning. If it passes, it appears in the
-                      <b>Library</b> → use it in <b>Chat</b>.
-                      </div>
+          <p><b>How do the symbols combine?</b> There are two ways:</p>
 
-                      <div
-                      style="
-                          text-align: center;
-                          padding-top: 8px;
-                          border-top: 1px dashed rgba(0, 0, 0, 0.35);
-                      "
-                      >
-                      Starter challenge: <b>sky</b>, <b>rain</b>, <b>flower</b>, <b>computer</b>.
-                      </div>
-                  </div>
-                  </div>
+          <div class="image-row">
+              <img
+              class="i18n-img"
+              data-src-en="./icons/sp.png"
+              data-src-zh="./icons/sp-zh.png"
+              src="./icons/sp.png"
+              alt="Symbol combinations"
+              />
+          </div>
 
+          <p>
+          <b>Series</b> represents <b>contiguous spatial relationships</b>: above, below, left,
+          right, inside, outside, near, covering, and so on.
+          </p>
 
-                  <p>Here are the main ways of combining the symbols:</p>
+          <p style="text-align: center">
+          <b>Examples</b><br />
+          (1) A traffic light = three lights lined up in a row.<br />
+          (2) A granary = a roof placed on top of a pile of grain.
+          </p>
 
-                  <div class="image-row">
-                      <img
-                      class="i18n-img"
-                      data-src-en="./icons/sp.png"
-                      data-src-zh="./icons/sp-zh.png"
-                      src="./icons/sp.png"
-                      alt="Symbol Combinations"
-                      />
-                  </div>
+          <p>
+          <b>Parallel</b> represents a <b>composite concept</b>: multiple qualities or meanings
+          layered into the same space.
+          </p>
 
-                  <p>
-                  Symbols connected in <b>series</b> represent contiguous spatial relationships: above,
-                  below, adjacent to, inside/outside, etc.
-                  </p>
+          <p style="text-align: center">
+          <b>Examples</b><br />
+          (1) A white rock = "white" + "hard".<br />
+          (2) A bullet = "small" + "advancing/striking forward".
+          </p>
 
-                  <p style="text-align: center">
-                  <b>Examples</b><br />
-                  (1) A traffic light = three lights lined up in a row.<br />
-                  (2) A barn = a roof on top of a pile of grains.
-                  </p>
+          <div class="image-row">
+              <img
+              class="i18n-img"
+              data-src-en="./icons/granary.png"
+              data-src-zh="./icons/granary-zh.png"
+              src="./icons/granary.png"
+              alt="Granary example"
+              />
+              <img
+              class="i18n-img"
+              data-src-en="./icons/bullet.png"
+              data-src-zh="./icons/bullet-zh.png"
+              src="./icons/bullet.png"
+              alt="Bullet example"
+              />
+          </div>
 
-                  <p>Symbols connected in <b>parallel</b> represent <b>composite</b> concepts.</p>
+          <p>
+          As long as the combination makes sense to you, it works - because the core principle
+          here is <b>intuitive plausibility</b>.
+          </p>
 
-                  <p style="text-align: center">
-                  <b>Examples</b><br />
-                  (1) A white rock = the composite of whiteness and hardness.<br />
-                  (2) A bullet = the composite of smallness and advancing.
-                  </p>
+          <p>
+          When you build a word, make sure the symbols are truly connected by magnetism:
+          <b>only symbols that belong to the same connected cluster count as one word</b>.<br />
+          You can test this by <b>clicking and holding</b> any symbol. The entire connected
+          component it belongs to will be selected.
+          </p>
 
-                  <div class="image-row">
-                      <img
-                      class="i18n-img"
-                      data-src-en="./icons/granary.png"
-                      data-src-zh="./icons/granary-zh.png"
-                      src="./icons/granary.png"
-                      alt="Granary example"
-                      />
-                      <img
-                      class="i18n-img"
-                      data-src-en="./icons/bullet.png"
-                      data-src-zh="./icons/bullet-zh.png"
-                      src="./icons/bullet.png"
-                      alt="Bullet example"
-                      />
-                  </div>
+          <p>
+          Then click <b>Insight</b> (the eye). The system will show a cloud of labels suggesting
+          possible meanings.<br />
+          You can also use this to learn the basic symbols themselves: click <b>Insight</b>
+          repeatedly, and even for the same symbol the label cloud may vary a little from time to
+          time. But underneath, those suggestions all grow out of the symbol's form and motion.
+          Gradually, you will build a fuller understanding of each basic sign.<br />
+          Even though we only begin with nine basic symbols, <b>Insight</b> will "learn" more and
+          more from the definitions and explanations you give it.
+          </p>
 
-                  <p>
-                  As long as it makes sense to you, it works—because it’s all about <b>intuitiveness</b>.
-                  </p>
+          <p>
+          You can also click the <b>Rotate</b> button to lay a symbol flat or stand it upright,
+          or the <b>Dot</b> button to add a dot to it. That can change the meaning quite a lot.
+          Rotation changes structural direction, while adding a dot can shift a meaning from
+          static to dynamic.<br />
+          There is also a <b>Remove</b> button for deleting selected symbols if the canvas gets
+          too crowded.
+          </p>
 
-                  <p>
-                  When you make a word, make sure the magnets connect the symbols. Only symbols that are
-                  actually connected count as a word. To check this, <b>click and hold</b> a symbol and the
-                  entire connected cluster it belongs to will be highlighted.
-                  </p>
+          <p>
+          When you are ready to save a new word, a window will ask you:
+          <b>what does this word mean?</b> and <b>why do you name it this way?</b>
+          The system will check whether your explanation is coherent. The main purpose is simply
+          to prevent mindless input, so I try to keep the check fairly forgiving.<br />
+          If it passes, the new word will appear in the <b>Library</b>.
+          </p>
 
-                  <p>
-                  Then click the <b>insight</b> button (the eye). It will suggest meanings based on what it
-                  “sees.” You can learn what each basic symbol means by clicking <b>insight</b> and reading
-                  the different aspects it proposes. While we only have nine basic symbols to start,
-                  <b>insight</b> will learn what you teach it over time.
-                  </p>
+          <p>
+          After that, you can use the words you created to communicate with other people.
+          In <b>World</b>, every <b>island</b> is a separate chat room. You can drag in the
+          expressions you created, or just post emoji.<br />
+          Other people may interpret the same symbols differently, and that is fine. That is part
+          of the game. You can guess what someone else meant, ask them questions, and try to use
+          intuition to resonate with their symbols.
+          </p>
 
-                  <p>
-                  A window will pop up asking you to name your word and explain your reasoning, and the
-                  system will check if it makes sense. If it does, the new word you created will appear in
-                  the Library.
-                  </p>
-
-                  <p>
-                  In the next tab, poke around the interface and see if you can build your own expressions
-                  for
-                  <b>“sky,” “rain,” “flower,” and “computer.”</b><br />
-                  Try to attend to the symbols’ meanings (via <b>insight</b>) rather than relying purely on
-                  visual resemblance.
-                  </p>
-
-                  <p>
-                  After that, you can communicate with others using emojis or the expressions you’ve
-                  created. You can post a problem you have, or just chat. Others may interpret the same
-                  symbols differently—and that’s fine. What matters is resonating with the symbols and
-                  being inspired by them.
-                  </p>
-
-                  <p>
-                  <i>P.S.</i> Since LLM calls cost money, there’s a daily limit on how many times you can
-                  validate a symbol or generate emojis (<b>100 credits/day</b>). If you’d like to support
-                  me, you can donate on Ko-fi to upgrade (<b>$5 → 1000 credits/day for one month</b>).
-                  </p>
-                  <br /><br /><br /><br />
-                `,
-          tldrTitle: 'TL;DR — How to start',
+          <p>
+          <i>P.S.</i> Since LLM calls cost money, there is a daily limit on how many times you can
+          validate definitions or generate emoji (<b>100 credits/day</b>). If you would like to support
+          me, you can donate on Ko-fi to upgrade (<b>$5 -> 1000 credits/day for one month</b>).
+          </p>
+          <br /><br />
+        `,
+          tldrTitle: 'TL;DR - How to start',
           home: 'Home',
           insight: 'Insight',
           craft: 'Craft',
@@ -966,27 +983,27 @@
           },
           supportCode: 'Support code',
           clickToCopy: '(click to copy UID)',
-          supportOnKofi: '☕ Support on Ko-fi',
+          supportOnKofi: 'Support on Ko-fi',
         },
         zh: {
           homeHTML: `
                   <h1 style="text-align:center;">卦言画布 </h1>
 
                   <p>
-                  欢迎来到这里。<br>
-                  你有没有想过：占卜为什么“看起来能看出东西”？<br>
-                  甲骨、星象、纸牌、硬币的正反……它们本身并没有固定意义，但占卜师却能从随机图案里讲出一个故事。
-                  也许这背后有神秘力量；也许只是因为他们擅长自圆其说，把线索“连成一条线”。
+                  欢迎！<br>
+                  你有没有想过：占卜为什么能“看透事物的奥秘”？<br>
+                  甲骨的裂纹、星宿的排列、纸牌的花色、硬币的正反……这些特征看似随机，占卜师却能从中发现丰富的意蕴。
+                  这背后也许有神灵传话；也许只是因为他们擅长自圆其说，把零星的线索串成一个故事。
                   </p>
 
                   <p>
-                  这个平台在玩同一个想法：让你成为“占卜师”——更广义地说，成为一个能运用抽象符号并以此窥探生活意义的人。<br>
-                  我不会直接教你一整套符号语言；相反，我会帮你从零开始把语言“自己造出来”。你会看到直觉是如何一步步被训练和积累的。
+                  我想借这个网站探索占卜的原理。它是个符号实验游戏，让你成为“占卜师”……呃，其实就是教你用抽象的符号来窥探生活的意义。<br>
+                  我不会直接教你一整套符号语言；相反，我会帮你从零开始把它一步步自己造出来，就像堆积木。与此同时，你也会训练和强化自己的直觉。
                   </p>
 
                   <p>
-                  你的语言“原子”（基础符号）是固定的；但“分子”（组合方式）完全由你决定。<br>
-                  这些基础符号由我设计，灵感来自《易经》八卦。
+                  你能摆弄的语言“原子”（基础符号）是我给好的；但“分子”（组合方式）完全由你定。<br>
+                  这些基础符号的灵感最初来自《易经》八卦，但已经在开发过程中辗转变形，面目一新。
                   </p>
 
                   <!-- TL;DR card -->
@@ -1001,27 +1018,29 @@
                   font-family: inherit;
                   ">
                   <div style="text-align:center; font-size:18px; margin-bottom:10px;">
-                      <b>太长不看 — 三步上手</b>
+                      <b>给新手的太长不看教程</b>
                   </div>
 
                   <div style="font-size:14px; line-height:1.5;">
                       <div style="margin-bottom:8px;">
-                      <b>1）造一个词：</b>去 <b>Craft</b>，把符号拖到画布上，让磁吸把它们“吸在一起”。
+                      <b>1）造一个词：</b>去 <b>工作台</b> 标签页，按 <b>符号轮</b> 创建一个符号，把它拖到画布上。符号之间可以像磁铁一样“吸在一起”。
                       </div>
                       <div style="margin-bottom:8px;">
-                      <b>2）检查 + 学习：</b><b>长按</b>任意符号，会高亮它所在的<b>连通组</b>；然后点 <b>洞察</b>（眼睛按钮）看系统给的含义提示。
+                      <b>2）选中 + 洞察：</b><b>长按</b>任意符号，会选中它所在的 <b>连通分量</b>；然后点 <b>洞察</b>（眼睛按钮）获取单个符号意义的提示。
                       </div>
                       <div style="margin-bottom:10px;">
-                      <b>3）命名 + 保存：</b>输入这个组合对应的词，以及你的理由。通过检查后，它会出现在 <b>词库</b>，之后就能在 <b>聊天</b> 里用它交流。
+                      <b>3）定义 + 保存：</b>输入这组符号对应的意义以及你的理由。通过检查后，它会出现在 <b>词库</b> 标签页。
                       </div>
-
+                      <div style="margin-bottom:10px;">
+                      <b>3）世界 + 聊天：</b>进入 <b>世界</b> 标签页，随便选择一个岛屿，切换到它的标签页。现在，你可以用你刚造的词来聊天了！
+                      </div>
                       <div style="text-align:center; padding-top:8px; border-top:1px dashed rgba(0,0,0,0.35);">
-                      新手挑战：<b>“天空 / 雨 / 花 / 电脑”</b>
+                      新手挑战：试试造这些词 —— <b>天空、雨、花、世界</b>
                       </div>
                   </div>
                   </div>
 
-                  <p><b>符号怎么组合？</b>主要有两种方式：</p>
+                  <p><b>符号怎么组合？</b>有两种方式：</p>
 
                   <div class="image-row">
                       <img
@@ -1044,7 +1063,7 @@
                   </p>
 
                   <p>
-                  <b>并联</b>表示<b>复合概念</b>：把多个性质/含义“叠加到一起”。<br>
+                  <b>并联</b>表示<b>复合概念</b>：把多个性质/含义“叠加到一起”。它们占据同一片空间。<br>
                   </p>
 
                   <p style="text-align:center;">
@@ -1071,34 +1090,39 @@
                   </div>
 
                   <p>
-                  只要这个组合对你来说讲得通，它就能成立——因为这里追求的核心就是 <b>直觉上的合理性</b>。
+                  只要这个组合对你来说讲得通，它就能成立 —— 因为这里核心就是 <b>直觉上的合理性</b>。
                   </p>
 
                   <p>
-                  当你在造词时，请确保符号之间真的被“磁吸连接”起来：<b>只有连在一起的符号才算一个词</b>。<br>
-                  你可以<b>长按</b>某个符号来检查：它所在的整块<b>连通组</b>会被高亮。
+                  当你在造词时，请确保符号之间真的被“磁吸连接”起来：<b>只有连在一块的符号才算一个词</b>。<br>
+                  你可以<b>长按</b>某个符号来检查：它所在的整块<b>连通分量</b>会被选中。
                   </p>
 
                   <p>
-                  然后点击 <b>洞察</b>（眼睛按钮），系统会根据它“看到”的结构给出一些含义建议。<br>
-                  你也可以反过来用它学习每个基础符号：多点几次洞察，读一读它给的不同角度，你会逐渐形成自己的理解。<br>
-                  虽然一开始只有九个基础符号，但 <b>洞察</b> 会随着你不断命名与解释，逐渐“学会”你教它的东西。
+                  然后点击 <b>洞察</b>（眼睛按钮），系统会显示一团标签云来提示它的含义。<br>
+                  你也可以反过来用它学习每个基础符号：多点几次洞察，即使是同一个符号，每次标签云可能都不太一样。但溯其本源，其实都由这个符号的形状和动势衍生出来。渐渐地，你会形成对每个基础符号的综合理解。<br>
+                  虽然一开始只有九个基础符号，但 <b>洞察</b> 会随着你不断定义与解释，“学会”越来越多你教它的东西。
                   </p>
 
                   <p>
-                  当你准备好保存新词时，会弹出窗口让你输入：<b>这个词是什么</b>，以及<b>你为什么这么命名</b>。系统会检查你的解释是否自洽。<br>
-                  通过后，这个新词会出现在 <b>词库</b>。
+                  对了，你可以点击 <b>旋转</b> 按钮来放平或者立起符号，或者是 <b>加点</b> 按钮来给符号加个点，意思可能会大有不同。旋转会变换结构方向，加点会让意义由静变动。<br>
+                  另外，点击 <b>漩涡</b> 按钮可以删除选中的符号。太挤了可不方便工作！
+                  <p>
+
+                  当你准备好保存新词时，会弹出窗口让你输入：<b>这个词是什么</b>，以及<b>你为什么这么命名</b>。系统会检查你的解释是否自洽。这一步的目的只是为了防止无脑输入，所以我尽量让系统通情达理了。<br>
+                  通过后，这个新词会出现在 <b>词库</b> 里。
                   </p>
 
                   <p>
-                  接下来你就可以用你造出来的词去和别人交流：可以在 <b>世界的岛屿</b> 里发 emoji，也可以发你自己造出来的表达。<br>
-                  别人的解释可能跟你不一样——没关系。重要的是你和这些符号产生共鸣，并从它们那里得到启发。
+                  接下来，你就能用你造出来的词跟别人交流啦。<b>世界</b> 里的每个 <b>岛屿</b> 都是一个聊天室。你可以发送/拖拽你自己造出来的表达，也可以发 emoji。<br>
+                  别人的解释很有可能跟你不一样。没关系！这是游戏的一环。你可以猜对方想表达什么，也可以问对方问题。要诀：运用直觉理解对方的符号并与其共鸣。
                   </p>
 
                   <p>
-                  <i>P.S.</i> 因为调用大模型要花钱，每天能验证/生成的次数有限（<b>100 credits/day</b>）。<br>
-                  你也可以通过 Ko-fi 支持我：<b>$5 → 1000 credits/day（持续 1 个月）</b>。
+                  <i>P.S.</i> 因为调用大模型要花钱，每天能检查定义/生成emoji的次数有限（每天 <b>100</b> 点）。<br>
+                  当然，欢迎在 Ko-fi 上支持我！给我投喂五刀的可尔必思，我会给你升级到每天 <b>1000</b> 点，持续 <b>1个月</b>。
                   </p>
+                  <br /><br />
                 `,
           tldrTitle: 'TL;DR — 3 步开始',
           home: '欢迎',
@@ -1113,7 +1137,7 @@
           },
           supportCode: '支持码',
           clickToCopy: '（点击复制 UID）',
-          supportOnKofi: '☕ 去 Ko-fi 支持',
+          supportOnKofi: '🍹 上 Ko-fi 支持',
         },
       };
 
@@ -1145,6 +1169,12 @@
 
         document.getElementById('lang-en')?.classList.toggle('active', currentLang === 'en');
         document.getElementById('lang-zh')?.classList.toggle('active', currentLang === 'zh');
+        const chatQuestionLabel = document.getElementById('chat-question-label');
+        if (chatQuestionLabel) {
+          chatQuestionLabel.textContent =
+            CHAT_QUESTION_LABELS[currentLang] || CHAT_QUESTION_LABELS.en;
+        }
+        updateChatQuestionPrompt?.();
 
         refreshBasicTooltips?.();
         if (network) network.redraw();
@@ -1175,28 +1205,78 @@
         return BASIC_NODE_WORDS[lang]?.[i] || BASIC_NODE_WORDS.en?.[i] || '';
       }
 
+      const CHAT_QUESTION_LABELS = {
+        en: 'Question:',
+        zh: '问题：',
+      };
+
       const ISLAND_CHAT_QUESTIONS = {
-        Kimmoke: 'What small thing from today deserves to become a ritual?',
-        Uzel: 'What kind of order helps people feel freer rather than more controlled?',
-        Habataku: 'If your thoughts could grow wings, where would they fly first?',
-        Phong: 'What is something invisible that still shapes your life every day?',
-        Phirun: 'What would healing look like if it came as weather?',
-        Lilit: 'What part of the night feels protective rather than frightening?',
-        Jwala: 'What should burn away in order for something better to begin?',
-        Bagh: 'What do you think strength protects at its core?',
-        Iztli: 'What truth can be sharp without becoming cruel?',
-        Zvono: 'If a sound could summon a memory, which memory should answer?',
-        Cendre: 'What remains valuable after something has already ended?',
-        Tobar: 'What kind of question leads people closer to one another?',
-        Merkez: 'What does it mean for a community to have a true center?',
+        Kimmoke: {
+          en: 'What do you want right now?',
+          zh: '你现在想要什么？',
+        },
+        Uzel: {
+          en: 'Which symbols should everyone use?',
+          zh: '有没有所有人都应该用的符号？',
+        },
+        Habataku: {
+          en: 'What is starting to happen?',
+          zh: '什么正在开始出现？',
+        },
+        Phong: {
+          en: 'What are you keeping to yourself?',
+          zh: '你把什么藏在心里？',
+        },
+        Phirun: {
+          en: 'What is causing trouble?',
+          zh: '什么正在制造麻烦？',
+        },
+        Lilit: {
+          en: 'How would express "lying"?',
+          zh: '你会怎么表达“说谎”？',
+        },
+        Jwala: {
+          en: 'What is urgent?',
+          zh: '有没有什么很紧急？',
+        },
+        Bagh: {
+          en: 'What makes you feel safe?',
+          zh: '什么让你感到安全？',
+        },
+        Iztli: {
+          en: 'Express "power" with as few symbols as possible?',
+          zh: '你会怎么用尽量少的符号表达“力量”？',
+        },
+        Zvono: {
+          en: 'What is hidden?',
+          zh: '有什么被隐藏着？',
+        },
+        Cendre: {
+          en: 'What went wrong?',
+          zh: '哪里出了问题？',
+        },
+        Tobar: {
+          en: 'What did you forget?',
+          zh: '你忘记了什么？',
+        },
+        Merkez: {
+          en: 'How would you express "fear"?',
+          zh: '你会怎么表达“恐惧”？',
+        },
       };
 
       function getChatQuestionForRoom(roomId) {
         const safeRoomId =
           roomId || (typeof currentRoomId !== 'undefined' && currentRoomId ? currentRoomId : null);
+        const lang = getLang();
+        const fallback = {
+          en: 'What is something ordinary words cannot quite convey?',
+          zh: '有什么是普通语言难以表达的事物？',
+        };
         return (
-          (safeRoomId ? ISLAND_CHAT_QUESTIONS[safeRoomId] : null) ||
-          'Choose an island and express something ordinary words cannot quite hold.'
+          (safeRoomId ? ISLAND_CHAT_QUESTIONS[safeRoomId]?.[lang] : null) ||
+          fallback[lang] ||
+          fallback.en
         );
       }
 
@@ -1254,6 +1334,10 @@
 
         e.stopPropagation();
         setLang(en ? 'en' : 'zh');
+      });
+
+      window.addEventListener('resize', () => {
+        updateChatQuestionPrompt?.();
       });
 
       document.addEventListener('keydown', async (e) => {
@@ -1417,8 +1501,43 @@
 
       function updateChatQuestionPrompt(roomId) {
         const el = document.getElementById('chat-question-text');
-        if (!el) return;
+        const box = document.getElementById('chat-question');
+        const label = document.getElementById('chat-question-label');
+        if (!el || !box || !label) return;
+
         el.textContent = getChatQuestionForRoom(roomId);
+
+        const sidebarWidth =
+          parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-w')) ||
+          280;
+        const lang = getLang();
+        const minWidth = lang === 'zh' ? 300 : 320;
+        const maxCap = lang === 'zh' ? 1200 : 800;
+        const sideReserve = lang === 'zh' ? 20 : 980;
+        const maxWidth = Math.max(
+          minWidth,
+          Math.min(maxCap, window.innerWidth - sidebarWidth - sideReserve),
+        );
+
+        const measureCanvas =
+          updateChatQuestionPrompt._measureCanvas ||
+          (updateChatQuestionPrompt._measureCanvas = document.createElement('canvas'));
+        const ctx = measureCanvas.getContext('2d');
+        const labelStyle = getComputedStyle(label);
+        const textStyle = getComputedStyle(el);
+        const labelFont = `${labelStyle.fontWeight} ${labelStyle.fontSize} ${labelStyle.fontFamily}`;
+        const textFont = `${textStyle.fontWeight} ${textStyle.fontSize} ${textStyle.fontFamily}`;
+
+        ctx.font = labelFont;
+        const labelWidth = Math.ceil(ctx.measureText(label.textContent || '').width);
+        ctx.font = textFont;
+        const textWidth = Math.ceil(ctx.measureText(el.textContent || '').width);
+
+        box.style.maxWidth = `${maxWidth}px`;
+        el.style.whiteSpace = 'normal';
+        const oneLineWidth = labelWidth + textWidth + 64;
+        const finalWidth = Math.max(minWidth, Math.min(maxWidth, oneLineWidth));
+        box.style.width = `${finalWidth}px`;
       }
 
       function appendToChatCanvas(el) {
