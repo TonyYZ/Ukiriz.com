@@ -1792,8 +1792,47 @@
         }
       }
 
+      function addLocalRoomLink(aId, aSide, bId, bSide) {
+        const aData = roomObjDataById.get(aId);
+        if (aData?.type === 'symbol') {
+          const links = Array.isArray(aData.links) ? [...aData.links] : [];
+          if (!links.some((lk) => lk.otherId === bId && lk.mySide === aSide && lk.otherSide === bSide)) {
+            links.push({ otherId: bId, mySide: aSide, otherSide: bSide });
+            roomObjDataById.set(aId, { ...aData, links });
+          }
+        }
+
+        const bData = roomObjDataById.get(bId);
+        if (bData?.type === 'symbol') {
+          const links = Array.isArray(bData.links) ? [...bData.links] : [];
+          if (!links.some((lk) => lk.otherId === aId && lk.mySide === bSide && lk.otherSide === aSide)) {
+            links.push({ otherId: aId, mySide: bSide, otherSide: aSide });
+            roomObjDataById.set(bId, { ...bData, links });
+          }
+        }
+      }
+
+      function removeLocalRoomLink(aId, aSide, bId, bSide) {
+        const aData = roomObjDataById.get(aId);
+        if (aData?.type === 'symbol') {
+          const links = (Array.isArray(aData.links) ? aData.links : []).filter(
+            (lk) => !(lk.otherId === bId && lk.mySide === aSide && lk.otherSide === bSide),
+          );
+          roomObjDataById.set(aId, { ...aData, links });
+        }
+
+        const bData = roomObjDataById.get(bId);
+        if (bData?.type === 'symbol') {
+          const links = (Array.isArray(bData.links) ? bData.links : []).filter(
+            (lk) => !(lk.otherId === aId && lk.mySide === bSide && lk.otherSide === aSide),
+          );
+          roomObjDataById.set(bId, { ...bData, links });
+        }
+      }
+
       async function persistLink(aId, aSide, bId, bSide) {
         if (!tabHeadersActivated[4]) return;
+        addLocalRoomLink(aId, aSide, bId, bSide);
 
         // store on both documents
         const aRef = objDocRef(aId);
@@ -1814,6 +1853,7 @@
 
       // Remove link on both docs: A -- B
       async function removeLink(aId, aSide, bId, bSide) {
+        removeLocalRoomLink(aId, aSide, bId, bSide);
         return trackSymbolOp(
           [aId, bId],
           (async () => {
@@ -2160,16 +2200,11 @@
 
           const a = symbolById.get(docId);
           if (!a) continue;
-          if (shouldSuppressRemoteVisualUpdate(a, data.ownerUid || '')) continue;
 
           const links = data.links || [];
           for (const lk of links) {
             const b = symbolById.get(lk.otherId);
             if (!b) continue;
-            if (
-              shouldSuppressRemoteVisualUpdate(b, roomObjDataById.get(lk.otherId)?.ownerUid || '')
-            )
-              continue;
 
             if (docId < lk.otherId) {
               const aConns = currentGraph.getSymbolConnections(a);
@@ -5103,7 +5138,9 @@
               activeSymbol.doneButton.style.top = `${parseFloat(activeSymbol.doneButton.style.top) + 23 + activeSymbol.doneButton.answerHeight}px`;
             }
 
-            endLongPress();
+            if (activeSymbol?._dragged) {
+              endLongPress();
+            }
             activeSymbol.classList.add('framed');
           }
 
@@ -5129,7 +5166,9 @@
         }
 
         if (activeSymbol) {
-          endLongPress();
+          if (activeSymbol._dragged) {
+            endLongPress();
+          }
 
           // 🚫 not mine → do nothing (still selected)
           if (!canEditElement(activeSymbol)) {
@@ -5574,7 +5613,9 @@
         if (clickOnlySymbol) {
           const s = clickOnlySymbol;
 
-          if (!s._dragged) {
+          if (longPressFired) {
+            clickOnlySymbol = null;
+          } else if (!s._dragged) {
             selectionClickHandled = true;
 
             // Same toggle rule as activeSymbol:
