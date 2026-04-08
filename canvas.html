@@ -1217,51 +1217,51 @@
         },
         Uzel: {
           en: 'Which symbols should everyone use?',
-          zh: '有没有所有人都应该用的符号？',
+          zh: '哪些符号是所有人都应该用的？',
         },
         Habataku: {
-          en: 'What is starting to happen?',
-          zh: '什么正在开始出现？',
+          en: 'How would you express "growing"?',
+          zh: '你会怎么表达“生长”？',
         },
         Phong: {
-          en: 'What are you keeping to yourself?',
-          zh: '你把什么藏在心里？',
+          en: 'What are you keeping to yourself right now?',
+          zh: '你现在把什么藏在心里？',
         },
         Phirun: {
-          en: 'What is causing trouble?',
-          zh: '什么正在制造麻烦？',
+          en: 'What does “rain” feel like to you?',
+          zh: '“雨”给你什么感觉？',
         },
         Lilit: {
-          en: 'How would express "lying"?',
+          en: 'How would you express "lying"?',
           zh: '你会怎么表达“说谎”？',
         },
         Jwala: {
-          en: 'What is urgent?',
-          zh: '有没有什么很紧急？',
+          en: 'What feels urgent right now?',
+          zh: '现在有什么是紧急的？',
         },
         Bagh: {
           en: 'What makes you feel safe?',
           zh: '什么让你感到安全？',
         },
         Iztli: {
-          en: 'Express "power" with as few symbols as possible?',
-          zh: '你会怎么用尽量少的符号表达“力量”？',
+          en: 'Express "power" using as few symbols as possible',
+          zh: '用尽量少的符号表达“力量”',
         },
         Zvono: {
-          en: 'What is hidden?',
-          zh: '有什么被隐藏着？',
+          en: 'What are you not saying?',
+          zh: '你有什么没有说出口？',
         },
         Cendre: {
-          en: 'What went wrong?',
-          zh: '哪里出了问题？',
+          en: 'What does time passing feel like?',
+          zh: '时间流逝是什么样的感觉？',
         },
         Tobar: {
-          en: 'What did you forget?',
-          zh: '你忘记了什么？',
+          en: 'What do you miss?',
+          zh: '你在想念什么？',
         },
         Merkez: {
-          en: 'How would you express "fear"?',
-          zh: '你会怎么表达“恐惧”？',
+          en: 'How would you express "home"?',
+          zh: '你会怎么表达“家”？',
         },
       };
 
@@ -1796,7 +1796,11 @@
         const aData = roomObjDataById.get(aId);
         if (aData?.type === 'symbol') {
           const links = Array.isArray(aData.links) ? [...aData.links] : [];
-          if (!links.some((lk) => lk.otherId === bId && lk.mySide === aSide && lk.otherSide === bSide)) {
+          if (
+            !links.some(
+              (lk) => lk.otherId === bId && lk.mySide === aSide && lk.otherSide === bSide,
+            )
+          ) {
             links.push({ otherId: bId, mySide: aSide, otherSide: bSide });
             roomObjDataById.set(aId, { ...aData, links });
           }
@@ -1805,7 +1809,11 @@
         const bData = roomObjDataById.get(bId);
         if (bData?.type === 'symbol') {
           const links = Array.isArray(bData.links) ? [...bData.links] : [];
-          if (!links.some((lk) => lk.otherId === aId && lk.mySide === bSide && lk.otherSide === aSide)) {
+          if (
+            !links.some(
+              (lk) => lk.otherId === aId && lk.mySide === bSide && lk.otherSide === aSide,
+            )
+          ) {
             links.push({ otherId: aId, mySide: bSide, otherSide: aSide });
             roomObjDataById.set(bId, { ...bData, links });
           }
