@@ -191,7 +191,19 @@
         height: 24000px;
         min-width: 24000px;
         min-height: 24000px;
-        background: #f4f4f9;
+        background-color: #f4f4f9;
+        /* Subtle world-space grid for orientation in large chat canvas */
+        background-image:
+          linear-gradient(to right, rgba(0, 0, 0, 0.065) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(0, 0, 0, 0.065) 1px, transparent 1px),
+          linear-gradient(to right, rgba(0, 0, 0, 0.12) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(0, 0, 0, 0.12) 1px, transparent 1px);
+        background-size:
+          80px 80px,
+          80px 80px,
+          400px 400px,
+          400px 400px;
+        background-position: 0 0, 0 0, 0 0, 0 0;
       }
 
       #tab4 {
@@ -217,6 +229,38 @@
 
       #chatControls > * {
         pointer-events: auto;
+      }
+
+      #chatMinimap {
+        position: fixed;
+        right: calc(var(--sidebar-w) + 44px);
+        bottom: 24px;
+        width: 210px;
+        height: 148px;
+        margin: 0;
+        border: 2px solid rgba(0, 0, 0, 0.32);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.88);
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+        z-index: 24;
+        overflow: hidden;
+        backdrop-filter: blur(3px);
+        -webkit-backdrop-filter: blur(3px);
+      }
+
+      #chatMinimapCanvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      #chatMinimapViewport {
+        position: absolute;
+        border: 2px solid #00b0f0;
+        background: rgba(0, 176, 240, 0.12);
+        border-radius: 6px;
+        box-sizing: border-box;
+        pointer-events: none;
       }
 
       .marquee-box {
@@ -341,7 +385,7 @@
         font-size: 16px;
         font-family: inherit; /* Set font to match labels */
         cursor: pointer;
-        z-index: 1000004;
+        z-index: 8;
         pointer-events: auto;
         user-select: none;
         -webkit-user-select: none;
@@ -349,6 +393,7 @@
 
       .symbol-label.active {
         border-width: 3px; /* Thicker border when clicked */
+        z-index: 9;
       }
 
       .symbol-label.user-created-label {
@@ -425,7 +470,7 @@
       #message-input {
         position: absolute;
         bottom: 110px;
-        left: 400px;
+        left: 350px;
         padding: 10px;
         width: 400px;
         font-size: 24px; /* Larger font size */
@@ -442,7 +487,7 @@
 
       #chat-question {
         position: absolute;
-        left: 850px;
+        left: 800px;
         bottom: 80px;
         width: 420px;
         min-height: 0;
@@ -472,7 +517,7 @@
       #symbol-message-input {
         position: absolute;
         bottom: 58px;
-        left: 400px;
+        left: 350px;
         padding: 10px;
         width: 400px;
         font-size: 24px;
@@ -773,6 +818,10 @@
         </div>
       </div>
       <div class="tab-content" id="tab4">
+        <div id="chatMinimap">
+          <canvas id="chatMinimapCanvas" width="210" height="148"></canvas>
+          <div id="chatMinimapViewport"></div>
+        </div>
         <div id="chatCanvas"></div>
         <div id="chatControls">
           <!-- Input box at the bottom of the page -->
@@ -1338,6 +1387,7 @@
 
       window.addEventListener('resize', () => {
         updateChatQuestionPrompt?.();
+        scheduleChatMiniMapUpdate?.();
       });
 
       document.addEventListener('keydown', async (e) => {
@@ -1460,6 +1510,7 @@
           document.getElementById('tab4')?.addEventListener('scroll', () => {
             if (!tabHeadersActivated[4]) return;
             saveChatViewportState();
+            scheduleChatMiniMapUpdate();
           });
           chatViewportBound = true;
         }
@@ -1467,6 +1518,7 @@
         if (tabIndex === 4) {
           requestAnimationFrame(() => {
             restoreChatViewportState();
+            scheduleChatMiniMapUpdate();
           });
         }
 
@@ -1493,11 +1545,25 @@
       const tab2 = document.getElementById('tab2');
       const tab3 = document.getElementById('tab3');
       const tab4 = document.getElementById('tab4');
+      const chatMiniMap = document.getElementById('chatMinimap');
+      const chatMiniMapCanvas = document.getElementById('chatMinimapCanvas');
 
       const chatCanvas = () => document.getElementById('chatCanvas');
       const chatControls = () => document.getElementById('chatControls');
       const craftCanvas = () => document.getElementById('craftCanvas');
       const craftControls = () => document.getElementById('craftControls');
+
+      chatMiniMapCanvas?.addEventListener('pointerdown', (e) => {
+        chatMiniMapDragging = true;
+        jumpChatViewportFromMiniMap(e.clientX, e.clientY);
+      });
+      window.addEventListener('pointermove', (e) => {
+        if (!chatMiniMapDragging) return;
+        jumpChatViewportFromMiniMap(e.clientX, e.clientY);
+      });
+      window.addEventListener('pointerup', () => {
+        chatMiniMapDragging = false;
+      });
 
       function updateChatQuestionPrompt(roomId) {
         const el = document.getElementById('chat-question-text');
@@ -1512,8 +1578,9 @@
           280;
         const lang = getLang();
         const minWidth = lang === 'zh' ? 300 : 320;
-        const maxCap = lang === 'zh' ? 1200 : 800;
-        const sideReserve = lang === 'zh' ? 20 : 980;
+        const maxCap = lang === 'zh' ? 760 : 620;
+        const sideReserve = lang === 'zh' ? 420 : 1180;
+        box.style.bottom = lang === 'zh' ? '80px' : '64px';
         const maxWidth = Math.max(
           minWidth,
           Math.min(maxCap, window.innerWidth - sidebarWidth - sideReserve),
@@ -1554,6 +1621,141 @@
 
       function appendToCraftControls(el) {
         craftControls()?.appendChild(el);
+      }
+
+      let chatMiniMapFrame = 0;
+      let chatMiniMapTransform = null;
+      let chatMiniMapDragging = false;
+
+      function getChatMiniMapItems() {
+        const canvas = chatCanvas();
+        if (!canvas) return [];
+        return Array.from(canvas.querySelectorAll('.symbol, .symbol-label')).filter(
+          (el) => el.parentElement === canvas,
+        );
+      }
+
+      function scheduleChatMiniMapUpdate() {
+        if (chatMiniMapFrame) return;
+        chatMiniMapFrame = requestAnimationFrame(() => {
+          chatMiniMapFrame = 0;
+          updateChatMiniMap();
+        });
+      }
+
+      function updateChatMiniMap() {
+        const box = document.getElementById('chatMinimap');
+        const canvas = document.getElementById('chatMinimapCanvas');
+        const viewport = document.getElementById('chatMinimapViewport');
+        const tab = tab4 || document.getElementById('tab4');
+        const surface = chatCanvas();
+        if (!box || !canvas || !viewport || !tab || !surface) return;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const width = canvas.width;
+        const height = canvas.height;
+        const inset = 8;
+        const items = getChatMiniMapItems();
+        const contentLeft = tab.scrollLeft;
+        const contentTop = tab.scrollTop;
+        const contentRight = contentLeft + tab.clientWidth;
+        const contentBottom = contentTop + tab.clientHeight;
+
+        let minX = contentLeft;
+        let minY = contentTop;
+        let maxX = contentRight;
+        let maxY = contentBottom;
+
+        for (const el of items) {
+          const left = parseFloat(el.style.left) || 0;
+          const top = parseFloat(el.style.top) || 0;
+          const itemW = el.offsetWidth || 18;
+          const itemH = el.offsetHeight || 18;
+          minX = Math.min(minX, left);
+          minY = Math.min(minY, top);
+          maxX = Math.max(maxX, left + itemW);
+          maxY = Math.max(maxY, top + itemH);
+        }
+
+        const pad = 180;
+        minX = Math.max(0, minX - pad);
+        minY = Math.max(0, minY - pad);
+        maxX = Math.min(surface.scrollWidth, maxX + pad);
+        maxY = Math.min(surface.scrollHeight, maxY + pad);
+
+        const worldW = Math.max(tab.clientWidth, maxX - minX, 1);
+        const worldH = Math.max(tab.clientHeight, maxY - minY, 1);
+        const scale = Math.min((width - inset * 2) / worldW, (height - inset * 2) / worldH);
+        const offsetX = (width - worldW * scale) / 2;
+        const offsetY = (height - worldH * scale) / 2;
+
+        chatMiniMapTransform = { minX, minY, scale, offsetX, offsetY };
+
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = '#edf7fb';
+        ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = 'rgba(0, 176, 240, 0.08)';
+        ctx.fillRect(offsetX, offsetY, worldW * scale, worldH * scale);
+
+        for (const el of items) {
+          const left = parseFloat(el.style.left) || 0;
+          const top = parseFloat(el.style.top) || 0;
+          const itemW = Math.max(4, (el.offsetWidth || 18) * scale);
+          const itemH = Math.max(4, (el.offsetHeight || 18) * scale);
+          const x = offsetX + (left - minX) * scale;
+          const y = offsetY + (top - minY) * scale;
+
+          const isSelected =
+            el.classList.contains('framed') || el.classList.contains('active') || el.selected;
+          ctx.fillStyle = el.classList.contains('symbol')
+            ? isSelected
+              ? '#00b0f0'
+              : '#30343f'
+            : isSelected
+              ? '#00b0f0'
+              : '#8a8f9d';
+          ctx.fillRect(x, y, itemW, itemH);
+        }
+
+        const viewX = offsetX + (contentLeft - minX) * scale;
+        const viewY = offsetY + (contentTop - minY) * scale;
+        const viewW = tab.clientWidth * scale;
+        const viewH = tab.clientHeight * scale;
+        viewport.style.left = `${viewX}px`;
+        viewport.style.top = `${viewY}px`;
+        viewport.style.width = `${Math.max(10, viewW)}px`;
+        viewport.style.height = `${Math.max(10, viewH)}px`;
+      }
+
+      function jumpChatViewportFromMiniMap(clientX, clientY) {
+        const canvas = document.getElementById('chatMinimapCanvas');
+        const tab = tab4 || document.getElementById('tab4');
+        const surface = chatCanvas();
+        if (!canvas || !tab || !surface || !chatMiniMapTransform) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const localX = clientX - rect.left;
+        const localY = clientY - rect.top;
+        const { minX, minY, scale, offsetX, offsetY } = chatMiniMapTransform;
+        if (!scale) return;
+
+        const worldX = minX + (localX - offsetX) / scale;
+        const worldY = minY + (localY - offsetY) / scale;
+        const nextLeft = Math.max(
+          0,
+          Math.min(surface.scrollWidth - tab.clientWidth, worldX - tab.clientWidth / 2),
+        );
+        const nextTop = Math.max(
+          0,
+          Math.min(surface.scrollHeight - tab.clientHeight, worldY - tab.clientHeight / 2),
+        );
+
+        tab.scrollLeft = nextLeft;
+        tab.scrollTop = nextTop;
+        saveChatViewportState();
+        scheduleChatMiniMapUpdate();
       }
 
       function getChatViewportStorageKey(roomId = currentRoomId) {
@@ -1641,6 +1843,7 @@
             if (Number.isFinite(saved?.scrollLeft) && Number.isFinite(saved?.scrollTop)) {
               tab.scrollLeft = saved.scrollLeft;
               tab.scrollTop = saved.scrollTop;
+              scheduleChatMiniMapUpdate();
               return;
             }
           } catch {}
@@ -1656,6 +1859,7 @@
           tab.scrollLeft = Math.max(0, (canvas.scrollWidth - tab.clientWidth) / 2);
           tab.scrollTop = Math.max(0, (canvas.scrollHeight - tab.clientHeight) / 2);
         }
+        scheduleChatMiniMapUpdate();
       }
 
       window.addEventListener('beforeunload', () => {
@@ -2373,6 +2577,8 @@
           rebuildChatSymbolLinks();
         }
 
+        scheduleChatMiniMapUpdate();
+
         if (pendingChatViewportRestoreRoomId === roomId) {
           pendingChatViewportRestoreRoomId = null;
           if (tabHeadersActivated[4]) {
@@ -3065,25 +3271,25 @@
 
       const SYMBOL_TITLES = {
         en: [
-          'Based on Trigram Kun ☷. Empty and still. Grapheme: ġ (static), ċ (dynamic). Phoneme: [ɣ] (static), [x] (dynamic).',
+          'Based on Trigram Kun ☷. Empty and still. Grapheme: gh (static), h (dynamic). Phoneme: [ɣ] (static), [x] (dynamic).',
           'Based on Trigram Gen ☶. Constrain and fall. Grapheme: g (static), c (dynamic). Phoneme: [g] (static), [k] (dynamic).',
           'Based on Trigram Kan ☵. Occupy and radiate. Grapheme: l (static), r (dynamic). Phoneme: [l] (static), [ɾ] (dynamic).',
           'Based on Trigram Xun ☴. Airy and leak. Grapheme: v (static), f (dynamic). Phoneme: [v] (static), [f] (dynamic).',
           'Based on Trigram Zhen ☳. Load and rise. Grapheme: d (static), t (dynamic). Phoneme: [d] (static), [t] (dynamic).',
           'Based on Trigram Li ☲. Contain and attach. Grapheme: b (static), p (dynamic). Phoneme: [b] (static), [p] (dynamic).',
           'Based on Trigram Dui ☱. Broken and express. Grapheme: s (static), z (dynamic). Phoneme: [s] (static), [t͡s] (dynamic).',
-          'Based on Trigram Qian ☰. Multiple and vibrant. Grapheme: ṡ (static), ż (dynamic). Phoneme: [ʃ] (static), [t͡ʃ] (dynamic).',
+          'Based on Trigram Qian ☰. Multiple and vibrant. Grapheme: sh (static), ch (dynamic). Phoneme: [ʃ] (static), [t͡ʃ] (dynamic).',
           'A uniquely Ítí symbol. It is always balancing all elements, so it can be either monotonous or filled with variegated order. Grapheme: n (static), m (dynamic). Phoneme: [n] (static), [m] (dynamic).',
         ],
         zh: [
-          '取象自坤卦 ☷：空虚、安静。文：ġ（静）/ ċ（动）。音：[ɣ]（静）/ [x]（动）。',
+          '取象自坤卦 ☷：空虚、安静。文：gh（静）/ h（动）。音：[ɣ]（静）/ [x]（动）。',
           '取象自艮卦 ☶：覆盖、下降。文：g（静）/ c（动）。音：[g]（静）/ [k]（动）。',
           '取象自坎卦 ☵：阻隔、分离。文：l（静）/ r（动）。音：[l]（静）/ [ɾ]（动）。',
           '取象自巽卦 ☴：虚浮、泄漏。文：v（静）/ f（动）。音：[v]（静）/ [f]（动）。',
           '取象自震卦 ☳：承载、上升。文：d（静）/ t（动）。音：[d]（静）/ [t]（动）。',
           '取象自离卦 ☲：包围、依附。文：b（静）/ p（动）。音：[b]（静）/ [p]（动）。',
           '取象自兑卦 ☱：破缺、发出。文：s（静）/ z（动）。音：[s]（静）/ [t͡s]（动）。',
-          '取象自乾卦 ☰：完满、活跃。文：ṡ（静）/ ż（动）。音：[ʃ]（静）/ [t͡ʃ]（动）。',
+          '取象自乾卦 ☰：完满、活跃。文：sh（静）/ ch（动）。音：[ʃ]（静）/ [t͡ʃ]（动）。',
           'Ítí 的特殊符号（太极）：在诸元素之间维持平衡，因此既可能“单调”，也可能呈现“繁复的秩序”。文：n（静）/ m（动）。音：[n]（静）/ [m]（动）。',
         ],
       };
@@ -3095,8 +3301,6 @@
 
       const EXTRA = {
         en: {
-          rightSide: ['right side'],
-          leftSide: ['left side'],
           gravity: ['gravity', 'fall', 'descend'],
           roof: ['top', 'roof', 'high', 'aloft'],
           aerial: ['aerial', 'suspend', 'tall', 'float'],
@@ -3104,8 +3308,6 @@
           ground: ['low', 'ground', 'platform'],
         },
         zh: {
-          rightSide: ['右'],
-          leftSide: ['左'],
           gravity: ['重', '坠', '落', '下'],
           roof: ['上方', '顶', '高'],
           aerial: ['悬空'],
@@ -3380,7 +3582,7 @@
 
         symbol.offsetX = (symbolWidth * symbolScale) / 2;
         symbol.offsetY = (symbolHeight * symbolScale) / 2;
-        symbol.style.zIndex = '1000003';
+        symbol.style.zIndex = '7';
         symbol.style.left = `${localX - symbol.offsetX}px`;
         symbol.style.top = `${localY - symbol.offsetY}px`;
 
@@ -4062,10 +4264,7 @@
           });
 
           const data = await response.json();
-
-          //console.warn('[client] usage', data.usage);
-          //console.warn('[client] lang', data.debugLang);
-          //console.warn('[client] result', data.result);
+          console.log('token usage', data.usage);
 
           if (typeof data.used === 'number' && typeof data.limit === 'number') {
             updateQuotaBadge(data.used, data.limit);
@@ -5152,6 +5351,10 @@
             activeSymbol.classList.add('framed');
           }
 
+          if (canvas === chatCanvas()) {
+            scheduleChatMiniMapUpdate();
+          }
+
           groupDragActive = false;
           return;
         }
@@ -5171,6 +5374,9 @@
           activeEmoji.style.left = `${x}px`;
           activeEmoji.style.top = `${y}px`;
           activeEmoji.selected = true;
+          if (canvas === chatCanvas()) {
+            scheduleChatMiniMapUpdate();
+          }
         }
 
         if (activeSymbol) {
@@ -5255,6 +5461,10 @@
 
           if (activeSymbol?.isDynamic && activeSymbol.dot) {
             updateDotPositionLocal(activeSymbol.dot);
+          }
+
+          if (canvas === chatCanvas()) {
+            scheduleChatMiniMapUpdate();
           }
         }
       });
@@ -6104,13 +6314,6 @@
           if (!selectedSymbol.querySelector('.symbol-label')) {
             const words = tSymbolLabels(selectedSymbol.elemIdTrue, selectedSymbol.isDynamic);
 
-            if (getDir(selectedSymbol) === 0 && !selectedSymbol.isDynamic) {
-              if (selectedSymbol.elemIdTrue === 1 || selectedSymbol.elemIdTrue === 3)
-                words.push(...extra('rightSide'));
-              if (selectedSymbol.elemIdTrue === 4 || selectedSymbol.elemIdTrue === 6)
-                words.push(...extra('leftSide'));
-            }
-
             if (getDir(selectedSymbol) === 1) {
               if (selectedSymbol.elemIdTrue === 1) {
                 if (selectedSymbol.isDynamic) {
@@ -6565,7 +6768,6 @@
             const data = await response.json();
 
             console.warn('[client] usage', data.usage);
-            // console.warn('[client] lang', data.debugLang);
 
             if (typeof data.used === 'number' && typeof data.limit === 'number') {
               updateQuotaBadge(data.used, data.limit);
@@ -7037,7 +7239,7 @@
         if (tabHeadersActivated[4] || symbolX !== null) appendToChatCanvas(symbol);
 
         if (tabHeadersActivated[4] && symbolX === null) {
-          symbol.style.zIndex = '100';
+          symbol.style.zIndex = '7';
         }
 
         if (symbolX === null && selectedSymbols.size !== 0) {
@@ -7176,8 +7378,8 @@
 
       function getMoleculeChar(symbol) {
         const table = [
-          'ġ',
-          'ċ',
+          'gh',
+          'h',
           'g',
           'c',
           'r',
@@ -7190,8 +7392,8 @@
           'p',
           's',
           'z',
-          'ṡ',
-          'ż',
+          'sh',
+          'ch',
           'n',
           'm',
         ];
@@ -7205,9 +7407,9 @@
           char === 's'
         ) {
           if (symbol.angle === 0 || symbol.angle === 180) {
-            char += ' horizontal';
+            char += '_h';
           } else {
-            char += ' vertical';
+            char += '_v';
           }
         }
         return char;
