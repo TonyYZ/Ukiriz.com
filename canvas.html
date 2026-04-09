@@ -1553,6 +1553,73 @@
       const craftCanvas = () => document.getElementById('craftCanvas');
       const craftControls = () => document.getElementById('craftControls');
 
+      const MIN_CANVAS_ZOOM = 0.6;
+      const MAX_CANVAS_ZOOM = 2.4;
+      const CANVAS_ZOOM_STEP = 1.1;
+      let craftCanvasZoom = 1;
+      let chatCanvasZoom = 1;
+
+      function clampCanvasZoom(v) {
+        return Math.max(MIN_CANVAS_ZOOM, Math.min(MAX_CANVAS_ZOOM, v));
+      }
+
+      function getCanvasZoom(container) {
+        if (!container) return 1;
+        if (container === craftCanvas()) return craftCanvasZoom;
+        if (container === chatCanvas()) return chatCanvasZoom;
+        return 1;
+      }
+
+      function setCanvasZoom(container, zoom) {
+        if (!container) return;
+        const z = clampCanvasZoom(zoom);
+        container.style.zoom = `${z}`;
+        if (container === craftCanvas()) craftCanvasZoom = z;
+        if (container === chatCanvas()) chatCanvasZoom = z;
+      }
+
+      function zoomActiveCanvas(deltaY, clientX, clientY) {
+        const active = document.querySelector('.tab-content.active');
+        if (!active) return;
+
+        const isChat = active.id === 'tab4';
+        const isCraft = active.id === 'tab1';
+        if (!isChat && !isCraft) return;
+
+        const canvas = isChat ? chatCanvas() : craftCanvas();
+        if (!canvas) return;
+
+        const oldZoom = getCanvasZoom(canvas);
+        const nextZoom = clampCanvasZoom(
+          deltaY < 0 ? oldZoom * CANVAS_ZOOM_STEP : oldZoom / CANVAS_ZOOM_STEP,
+        );
+        if (Math.abs(nextZoom - oldZoom) < 0.0001) return;
+
+        if (isChat) {
+          const container = tab4 || document.getElementById('tab4');
+          if (!container) {
+            setCanvasZoom(canvas, nextZoom);
+            return;
+          }
+
+          const rect = container.getBoundingClientRect();
+          const localX = clientX - rect.left;
+          const localY = clientY - rect.top;
+          const worldX = (container.scrollLeft + localX) / oldZoom;
+          const worldY = (container.scrollTop + localY) / oldZoom;
+
+          setCanvasZoom(canvas, nextZoom);
+
+          container.scrollLeft = Math.max(0, worldX * nextZoom - localX);
+          container.scrollTop = Math.max(0, worldY * nextZoom - localY);
+          scheduleChatMiniMapUpdate?.();
+          saveChatViewportState?.();
+          return;
+        }
+
+        setCanvasZoom(canvas, nextZoom);
+      }
+
       chatMiniMapCanvas?.addEventListener('pointerdown', (e) => {
         chatMiniMapDragging = true;
         jumpChatViewportFromMiniMap(e.clientX, e.clientY);
@@ -1564,6 +1631,19 @@
       window.addEventListener('pointerup', () => {
         chatMiniMapDragging = false;
       });
+
+      window.addEventListener(
+        'wheel',
+        (e) => {
+          if (!e.ctrlKey) return;
+          const active = document.querySelector('.tab-content.active');
+          if (!active) return;
+          if (active.id !== 'tab1' && active.id !== 'tab4') return;
+          e.preventDefault();
+          zoomActiveCanvas(e.deltaY, e.clientX, e.clientY);
+        },
+        { passive: false },
+      );
 
       function updateChatQuestionPrompt(roomId) {
         const el = document.getElementById('chat-question-text');
@@ -3832,15 +3912,16 @@
 
         const canvas = getCanvasForElem(symbol);
         if (!canvas) return;
+        const zoom = getCanvasZoom(canvas) || 1;
 
         const canvasRect = canvas.getBoundingClientRect();
         const rect = symbol.getBoundingClientRect();
 
         // 把视口坐标 -> canvas 局部坐标
-        const symLeft = rect.left - canvasRect.left;
-        const symTop = rect.top - canvasRect.top;
-        const symRight = rect.right - canvasRect.left;
-        const symBottom = rect.bottom - canvasRect.top;
+        const symLeft = (rect.left - canvasRect.left) / zoom;
+        const symTop = (rect.top - canvasRect.top) / zoom;
+        const symRight = (rect.right - canvasRect.left) / zoom;
+        const symBottom = (rect.bottom - canvasRect.top) / zoom;
 
         let x, y;
 
@@ -4402,9 +4483,97 @@
         const canvas = chatCanvas();
         const container = tab4 || canvas;
         return {
-          left: (canvas?.scrollLeft || 0) + Math.max(80, (container?.clientWidth || 800) * 0.32),
-          top: (canvas?.scrollTop || 0) + Math.max(80, (container?.clientHeight || 600) * 0.28),
+          left:
+            (container?.scrollLeft || 0) + Math.max(80, (container?.clientWidth || 800) * 0.32),
+          top: (container?.scrollTop || 0) + Math.max(80, (container?.clientHeight || 600) * 0.28),
         };
+      }
+
+      function getSymbolRectOnCanvas(symbol) {
+        const left = parseFloat(symbol.style.left) || 0;
+        const top = parseFloat(symbol.style.top) || 0;
+        const fallback = getSymbolBoxSizeForAngle(symbol.angle ?? 0);
+        const width = symbol.offsetWidth || fallback.width || 0;
+        const height = symbol.offsetHeight || fallback.height || 0;
+        return {
+          left,
+          top,
+          right: left + width,
+          bottom: top + height,
+        };
+      }
+
+      function rectsOverlap(a, b, padding = 18) {
+        return (
+          a.left < b.right + padding &&
+          a.right > b.left - padding &&
+          a.top < b.bottom + padding &&
+          a.bottom > b.top - padding
+        );
+      }
+
+      function findNonOverlappingShift(placedSymbols, occupiedRects) {
+        if (!placedSymbols.length || !occupiedRects.length) return { dx: 0, dy: 0, found: true };
+
+        const placedRects = placedSymbols.map((s) => getSymbolRectOnCanvas(s));
+        const isFree = (dx, dy) =>
+          !placedRects.some((rect) =>
+            occupiedRects.some((occ) =>
+              rectsOverlap(
+                {
+                  left: rect.left + dx,
+                  top: rect.top + dy,
+                  right: rect.right + dx,
+                  bottom: rect.bottom + dy,
+                },
+                occ,
+              ),
+            ),
+          );
+
+        if (isFree(0, 0)) return { dx: 0, dy: 0, found: true };
+
+        const step = 140;
+        const maxRing = 18;
+
+        for (let ring = 1; ring <= maxRing; ring++) {
+          for (let ix = -ring; ix <= ring; ix++) {
+            for (let iy = -ring; iy <= ring; iy++) {
+              if (Math.max(Math.abs(ix), Math.abs(iy)) !== ring) continue;
+              const dx = ix * step;
+              const dy = iy * step;
+              if (isFree(dx, dy)) return { dx, dy, found: true };
+            }
+          }
+        }
+
+        return { dx: 0, dy: 0, found: false };
+      }
+
+      function shiftSpawnedSymbols(placedSymbols, dx, dy) {
+        if ((!dx && !dy) || !placedSymbols.length) return;
+        for (const symbol of placedSymbols) {
+          const left = parseFloat(symbol.style.left) || 0;
+          const top = parseFloat(symbol.style.top) || 0;
+          symbol.style.left = `${left + dx}px`;
+          symbol.style.top = `${top + dy}px`;
+          if (symbol.isDynamic && symbol.dot) {
+            updateDotPositionLocal(symbol.dot);
+          }
+        }
+      }
+
+      function getRectBounds(rects) {
+        if (!rects.length) return null;
+        return rects.reduce(
+          (acc, r) => ({
+            left: Math.min(acc.left, r.left),
+            top: Math.min(acc.top, r.top),
+            right: Math.max(acc.right, r.right),
+            bottom: Math.max(acc.bottom, r.bottom),
+          }),
+          { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity },
+        );
       }
 
       function collectPatternLinks(pattern) {
@@ -4510,6 +4679,9 @@
           layout?.nodes?.length === pattern.nodes.length ? layout.nodes : pattern.nodes;
         const sourceLinks = layout?.links?.length ? layout.links : collectPatternLinks(pattern);
         const placed = new Array(sourceNodes.length);
+        const occupiedRects = Array.from(chatCanvas()?.querySelectorAll('.symbol') || []).map((s) =>
+          getSymbolRectOnCanvas(s),
+        );
         const origin = getPatternSpawnOrigin();
         const hasSavedLayout = pattern.nodes.every(
           (node) => Number.isFinite(node?.relLeft) && Number.isFinite(node?.relTop),
@@ -4657,6 +4829,25 @@
           }
         }
 
+        const placedSymbols = placed.filter(Boolean);
+        let shift = findNonOverlappingShift(placedSymbols, occupiedRects);
+        if (!shift.found && occupiedRects.length && placedSymbols.length) {
+          const occupiedBounds = getRectBounds(occupiedRects);
+          const placedBounds = getRectBounds(placedSymbols.map((s) => getSymbolRectOnCanvas(s)));
+          if (occupiedBounds && placedBounds) {
+            const gap = 220;
+            shift = {
+              dx: occupiedBounds.right + gap - placedBounds.left,
+              dy: occupiedBounds.top - placedBounds.top,
+              found: true,
+            };
+          }
+        }
+        shiftSpawnedSymbols(placedSymbols, shift.dx, shift.dy);
+
+        // Guard against stale realtime echoes while we finalize spawned-group placement.
+        placedSymbols.forEach((symbol) => markLocalSymbolMutation(symbol, 2500));
+
         for (const link of sourceLinks) {
           const fromSymbol = placed[link.from];
           const toSymbol = placed[link.to];
@@ -4672,6 +4863,18 @@
           if (fromId && toId) {
             await persistLink(fromId, link.fromSide, toId, link.toSide);
           }
+        }
+
+        if (shift.dx || shift.dy) {
+          const persistTasks = placedSymbols.map(async (symbol) => {
+            let id = symbol.dataset?.id;
+            if (!id && symbol._pendingIdPromise) id = await symbol._pendingIdPromise;
+            if (!id) return;
+            const x = parseFloat(symbol.style.left) || 0;
+            const y = parseFloat(symbol.style.top) || 0;
+            await updateObjPosition(id, x, y);
+          });
+          await Promise.all(persistTasks);
         }
 
         placed.forEach((symbol) => {
@@ -4954,6 +5157,15 @@
         emoji.textContent = emojiResponse; // Default text
         floatLabel(emoji);
 
+        // Auto-highlight newly created local emoji so users can spot the latest bubble.
+        if (emojiId === null) {
+          clearAllSymbolSelection();
+          clearAllEmojiSelection();
+          emoji.selected = true;
+          emoji.classList.add('active');
+          selectedEmojis.add(emoji);
+        }
+
         if (emojiId !== null) {
           emoji.dataset.id = emojiId;
           emojiById.set(emojiId, emoji);
@@ -5031,7 +5243,8 @@
 
       function clientToLocal(container, clientX, clientY) {
         const r = container.getBoundingClientRect();
-        return { x: clientX - r.left, y: clientY - r.top };
+        const zoom = getCanvasZoom(container);
+        return { x: (clientX - r.left) / zoom, y: (clientY - r.top) / zoom };
       }
 
       function getCanvasForElem(el) {
@@ -6343,9 +6556,10 @@
             const rect = selectedSymbol.getBoundingClientRect();
             const canvas = getCanvasForElem(selectedSymbol);
             const canvasRect = canvas ? canvas.getBoundingClientRect() : { left: 0, top: 0 };
+            const zoom = canvas ? getCanvasZoom(canvas) || 1 : 1;
 
-            const cx = rect.left - canvasRect.left + rect.width / 2;
-            const cy = rect.top - canvasRect.top + rect.height / 2;
+            const cx = (rect.left - canvasRect.left) / zoom + rect.width / (2 * zoom);
+            const cy = (rect.top - canvasRect.top) / zoom + rect.height / (2 * zoom);
 
             for (const word of subset) {
               labelData.push([word, cx, cy, selectedSymbol, false]);
@@ -6385,13 +6599,14 @@
             if (!canvas) continue;
 
             const canvasRect = canvas.getBoundingClientRect();
+            const zoom = getCanvasZoom(canvas) || 1;
 
             for (const symbol of foundMatching) {
               const rect = symbol.getBoundingClientRect();
 
               // viewport -> canvas-local
-              const cx = rect.left - canvasRect.left + rect.width / 2;
-              const cy = rect.top - canvasRect.top + rect.height / 2;
+              const cx = (rect.left - canvasRect.left) / zoom + rect.width / (2 * zoom);
+              const cy = (rect.top - canvasRect.top) / zoom + rect.height / (2 * zoom);
 
               avgX += cx;
               avgY += cy;
@@ -7280,8 +7495,7 @@
             symbol.dataset.id = symbolId;
             symbolById.set(symbolId, symbol);
           } else {
-            const clientNonce =
-              tabHeadersActivated[4] && symbolX === null ? makeClientNonce('symbol') : null;
+            const clientNonce = tabHeadersActivated[4] ? makeClientNonce('symbol') : null;
             if (clientNonce) {
               symbol.dataset.clientNonce = clientNonce;
               pendingLocalChatSymbolsByNonce.set(clientNonce, symbol);
