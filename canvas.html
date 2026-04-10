@@ -1882,14 +1882,15 @@
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
+        const zoom = getCanvasZoom(surface) || 1;
         const width = canvas.width;
         const height = canvas.height;
         const inset = 8;
         const items = getChatMiniMapItems();
-        const contentLeft = tab.scrollLeft;
-        const contentTop = tab.scrollTop;
-        const contentRight = contentLeft + tab.clientWidth;
-        const contentBottom = contentTop + tab.clientHeight;
+        const contentLeft = tab.scrollLeft / zoom;
+        const contentTop = tab.scrollTop / zoom;
+        const contentRight = contentLeft + tab.clientWidth / zoom;
+        const contentBottom = contentTop + tab.clientHeight / zoom;
 
         let minX = contentLeft;
         let minY = contentTop;
@@ -1899,8 +1900,9 @@
         for (const el of items) {
           const left = parseFloat(el.style.left) || 0;
           const top = parseFloat(el.style.top) || 0;
-          const itemW = el.offsetWidth || 18;
-          const itemH = el.offsetHeight || 18;
+          const rect = el.getBoundingClientRect();
+          const itemW = (rect.width || el.offsetWidth || 18) / zoom;
+          const itemH = (rect.height || el.offsetHeight || 18) / zoom;
           minX = Math.min(minX, left);
           minY = Math.min(minY, top);
           maxX = Math.max(maxX, left + itemW);
@@ -1910,11 +1912,13 @@
         const pad = 180;
         minX = Math.max(0, minX - pad);
         minY = Math.max(0, minY - pad);
-        maxX = Math.min(surface.scrollWidth, maxX + pad);
-        maxY = Math.min(surface.scrollHeight, maxY + pad);
+        const worldMaxX = Math.max(surface.scrollWidth / zoom, contentRight);
+        const worldMaxY = Math.max(surface.scrollHeight / zoom, contentBottom);
+        maxX = Math.min(worldMaxX, maxX + pad);
+        maxY = Math.min(worldMaxY, maxY + pad);
 
-        const worldW = Math.max(tab.clientWidth, maxX - minX, 1);
-        const worldH = Math.max(tab.clientHeight, maxY - minY, 1);
+        const worldW = Math.max(tab.clientWidth / zoom, maxX - minX, 1);
+        const worldH = Math.max(tab.clientHeight / zoom, maxY - minY, 1);
         const scale = Math.min((width - inset * 2) / worldW, (height - inset * 2) / worldH);
         const offsetX = (width - worldW * scale) / 2;
         const offsetY = (height - worldH * scale) / 2;
@@ -1930,8 +1934,9 @@
         for (const el of items) {
           const left = parseFloat(el.style.left) || 0;
           const top = parseFloat(el.style.top) || 0;
-          const itemW = Math.max(4, (el.offsetWidth || 18) * scale);
-          const itemH = Math.max(4, (el.offsetHeight || 18) * scale);
+          const rect = el.getBoundingClientRect();
+          const itemW = Math.max(4, ((rect.width || el.offsetWidth || 18) / zoom) * scale);
+          const itemH = Math.max(4, ((rect.height || el.offsetHeight || 18) / zoom) * scale);
           const x = offsetX + (left - minX) * scale;
           const y = offsetY + (top - minY) * scale;
 
@@ -1949,8 +1954,8 @@
 
         const viewX = offsetX + (contentLeft - minX) * scale;
         const viewY = offsetY + (contentTop - minY) * scale;
-        const viewW = tab.clientWidth * scale;
-        const viewH = tab.clientHeight * scale;
+        const viewW = (tab.clientWidth / zoom) * scale;
+        const viewH = (tab.clientHeight / zoom) * scale;
         viewport.style.left = `${viewX}px`;
         viewport.style.top = `${viewY}px`;
         viewport.style.width = `${Math.max(10, viewW)}px`;
@@ -1962,6 +1967,7 @@
         const tab = tab4 || document.getElementById('tab4');
         const surface = chatCanvas();
         if (!canvas || !tab || !surface || !chatMiniMapTransform) return;
+        const zoom = getCanvasZoom(surface) || 1;
 
         const rect = canvas.getBoundingClientRect();
         const localX = clientX - rect.left;
@@ -1971,13 +1977,15 @@
 
         const worldX = minX + (localX - offsetX) / scale;
         const worldY = minY + (localY - offsetY) / scale;
+        const maxLeft = Math.max(0, tab.scrollWidth - tab.clientWidth);
+        const maxTop = Math.max(0, tab.scrollHeight - tab.clientHeight);
         const nextLeft = Math.max(
           0,
-          Math.min(surface.scrollWidth - tab.clientWidth, worldX - tab.clientWidth / 2),
+          Math.min(maxLeft, worldX * zoom - tab.clientWidth / 2),
         );
         const nextTop = Math.max(
           0,
-          Math.min(surface.scrollHeight - tab.clientHeight, worldY - tab.clientHeight / 2),
+          Math.min(maxTop, worldY * zoom - tab.clientHeight / 2),
         );
 
         tab.scrollLeft = nextLeft;
