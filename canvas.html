@@ -4741,6 +4741,25 @@
         }
       }
 
+      async function persistDynamicDotsForSymbols(symbols) {
+        const tasks = [];
+        for (const symbol of symbols || []) {
+          if (!symbol?.isDynamic || !symbol.dot) continue;
+          tasks.push(
+            (async () => {
+              if (!symbol.dataset?.id && symbol._pendingIdPromise) {
+                await symbol._pendingIdPromise;
+              }
+              if (!symbol.dataset?.id) return;
+              await persistDotPosition(symbol.dot);
+            })(),
+          );
+        }
+        if (tasks.length) {
+          await Promise.all(tasks);
+        }
+      }
+
       function getRectBounds(rects) {
         if (!rects.length) return null;
         return rects.reduce(
@@ -5054,6 +5073,9 @@
           });
           await Promise.all(persistTasks);
         }
+
+        // Ensure dynamic-dot positions are saved after all spawn-time layout adjustments.
+        await persistDynamicDotsForSymbols(placedSymbols);
 
         placed.forEach((symbol) => {
           symbol.selected = true;
@@ -7685,6 +7707,8 @@
             symbol.dataset.id = symbolId;
             symbolById.set(symbolId, symbol);
           } else {
+            // New local chat symbol: suppress immediate echo frames (often dotX/dotY = null first).
+            markLocalSymbolMutation(symbol, 2500);
             const clientNonce = tabHeadersActivated[4] ? makeClientNonce('symbol') : null;
             if (clientNonce) {
               symbol.dataset.clientNonce = clientNonce;
