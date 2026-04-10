@@ -6994,14 +6994,15 @@
           if (!canvas) return null;
 
           const canvasRect = canvas.getBoundingClientRect();
+          const zoom = getCanvasZoom(canvas) || 1;
 
           let rightMost = -Infinity;
           let topMost = Infinity;
 
           for (const s of selectedSymbols) {
             const r = s.getBoundingClientRect();
-            const right = r.right - canvasRect.left; // canvas-local
-            const top = r.top - canvasRect.top; // canvas-local
+            const right = (r.right - canvasRect.left) / zoom; // canvas-local
+            const top = (r.top - canvasRect.top) / zoom; // canvas-local
             if (right > rightMost) rightMost = right;
             if (top < topMost) topMost = top;
           }
