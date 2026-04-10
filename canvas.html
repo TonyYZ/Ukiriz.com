@@ -181,8 +181,88 @@
 
       #craftCanvas {
         position: relative;
-        width: 100%;
-        height: 100%;
+        width: calc(100% + var(--craft-extra-x, 0px));
+        height: calc(100% + var(--craft-extra-y, 0px));
+        min-width: calc(100% + var(--craft-extra-x, 0px));
+        min-height: calc(100% + var(--craft-extra-y, 0px));
+        background-color: #f4f4f9;
+        background-image:
+          linear-gradient(to right, rgba(0, 0, 0, 0.065) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(0, 0, 0, 0.065) 1px, transparent 1px),
+          linear-gradient(to right, rgba(0, 0, 0, 0.12) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(0, 0, 0, 0.12) 1px, transparent 1px);
+        background-size:
+          80px 80px,
+          80px 80px,
+          400px 400px,
+          400px 400px;
+        background-position:
+          0 0,
+          0 0,
+          0 0,
+          0 0;
+      }
+
+      #tab1 {
+        position: relative;
+        width: calc(100% + 40px);
+        height: calc(100% + 40px);
+        margin: -20px -20px -20px -20px;
+        overflow: auto;
+        --craft-extra-x: 0px;
+        --craft-extra-y: 0px;
+        --craft-grid-minor-step: 80px;
+        --craft-grid-major-step: 400px;
+        --craft-grid-minor-stroke: 1px;
+        --craft-grid-major-stroke: 1px;
+        background: #f4f4f9;
+        background-image:
+          linear-gradient(
+            to right,
+            rgba(0, 0, 0, 0.065) var(--craft-grid-minor-stroke),
+            transparent var(--craft-grid-minor-stroke)
+          ),
+          linear-gradient(
+            to bottom,
+            rgba(0, 0, 0, 0.065) var(--craft-grid-minor-stroke),
+            transparent var(--craft-grid-minor-stroke)
+          ),
+          linear-gradient(
+            to right,
+            rgba(0, 0, 0, 0.12) var(--craft-grid-major-stroke),
+            transparent var(--craft-grid-major-stroke)
+          ),
+          linear-gradient(
+            to bottom,
+            rgba(0, 0, 0, 0.12) var(--craft-grid-major-stroke),
+            transparent var(--craft-grid-major-stroke)
+          );
+        background-size:
+          var(--craft-grid-minor-step) var(--craft-grid-minor-step),
+          var(--craft-grid-minor-step) var(--craft-grid-minor-step),
+          var(--craft-grid-major-step) var(--craft-grid-major-step),
+          var(--craft-grid-major-step) var(--craft-grid-major-step);
+        background-position:
+          0 0,
+          0 0,
+          0 0,
+          0 0;
+        min-width: 0;
+        box-sizing: border-box;
+      }
+
+      #craftControls {
+        position: sticky;
+        left: 0;
+        bottom: 0;
+        width: 0;
+        height: 0;
+        z-index: 20;
+        pointer-events: none;
+      }
+
+      #craftControls > * {
+        pointer-events: auto;
       }
 
       #chatCanvas {
@@ -203,7 +283,11 @@
           80px 80px,
           400px 400px,
           400px 400px;
-        background-position: 0 0, 0 0, 0 0, 0 0;
+        background-position:
+          0 0,
+          0 0,
+          0 0,
+          0 0;
       }
 
       #tab4 {
@@ -807,7 +891,6 @@
             <div class="color" style="background-color: black"></div>
           </div>
         </div>
-        <p></p>
       </div>
       <div class="tab-content" id="tab2">
         <div id="network"></div>
@@ -1482,6 +1565,13 @@
           marqueeCraftEnabled = true;
         }
 
+        if (tabIndex === 1) {
+          requestAnimationFrame(() => {
+            applyCraftCanvasPadding(getCanvasZoom(craftCanvas()) || 1);
+            updateCraftGridAlignment();
+          });
+        }
+
         if (tabIndex === 4 && !marqueeChatEnabled) {
           enableMarqueeSelection({
             canvasEl: document.getElementById('chatCanvas'),
@@ -1552,15 +1642,19 @@
       const chatControls = () => document.getElementById('chatControls');
       const craftCanvas = () => document.getElementById('craftCanvas');
       const craftControls = () => document.getElementById('craftControls');
+      const CRAFT_GRID_MINOR = 80;
+      const CRAFT_GRID_MAJOR = 400;
 
-      const MIN_CANVAS_ZOOM = 0.6;
+      const MIN_CHAT_CANVAS_ZOOM = 0.6;
+      const MIN_CRAFT_CANVAS_ZOOM = 1;
       const MAX_CANVAS_ZOOM = 2.4;
       const CANVAS_ZOOM_STEP = 1.1;
       let craftCanvasZoom = 1;
       let chatCanvasZoom = 1;
 
-      function clampCanvasZoom(v) {
-        return Math.max(MIN_CANVAS_ZOOM, Math.min(MAX_CANVAS_ZOOM, v));
+      function clampCanvasZoom(container, v) {
+        const minZoom = container === craftCanvas() ? MIN_CRAFT_CANVAS_ZOOM : MIN_CHAT_CANVAS_ZOOM;
+        return Math.max(minZoom, Math.min(MAX_CANVAS_ZOOM, v));
       }
 
       function getCanvasZoom(container) {
@@ -1572,10 +1666,47 @@
 
       function setCanvasZoom(container, zoom) {
         if (!container) return;
-        const z = clampCanvasZoom(zoom);
+        const z = clampCanvasZoom(container, zoom);
         container.style.zoom = `${z}`;
-        if (container === craftCanvas()) craftCanvasZoom = z;
+        if (container === craftCanvas()) {
+          craftCanvasZoom = z;
+          applyCraftCanvasPadding(z);
+        }
         if (container === chatCanvas()) chatCanvasZoom = z;
+      }
+
+      function mod(n, m) {
+        return ((n % m) + m) % m;
+      }
+
+      function applyCraftCanvasPadding(zoom) {
+        const container = tab1 || document.getElementById('tab1');
+        if (!container) return;
+        const extraX = Math.max(0, (zoom - 1) * container.clientWidth);
+        const extraY = Math.max(0, (zoom - 1) * container.clientHeight);
+        container.style.setProperty('--craft-extra-x', `${extraX}px`);
+        container.style.setProperty('--craft-extra-y', `${extraY}px`);
+      }
+
+      function updateCraftGridAlignment() {
+        const container = tab1 || document.getElementById('tab1');
+        const canvas = craftCanvas();
+        if (!container || !canvas) return;
+
+        const z = getCanvasZoom(canvas) || 1;
+        const minor = CRAFT_GRID_MINOR * z;
+        const major = CRAFT_GRID_MAJOR * z;
+        const stroke = Math.max(1, z);
+        const minorX = -mod(container.scrollLeft, minor);
+        const minorY = -mod(container.scrollTop, minor);
+        const majorX = -mod(container.scrollLeft, major);
+        const majorY = -mod(container.scrollTop, major);
+
+        container.style.setProperty('--craft-grid-minor-step', `${minor}px`);
+        container.style.setProperty('--craft-grid-major-step', `${major}px`);
+        container.style.setProperty('--craft-grid-minor-stroke', `${stroke}px`);
+        container.style.setProperty('--craft-grid-major-stroke', `${stroke}px`);
+        container.style.backgroundPosition = `${minorX}px ${minorY}px, ${minorX}px ${minorY}px, ${majorX}px ${majorY}px, ${majorX}px ${majorY}px`;
       }
 
       function zoomActiveCanvas(deltaY, clientX, clientY) {
@@ -1591,33 +1722,38 @@
 
         const oldZoom = getCanvasZoom(canvas);
         const nextZoom = clampCanvasZoom(
+          canvas,
           deltaY < 0 ? oldZoom * CANVAS_ZOOM_STEP : oldZoom / CANVAS_ZOOM_STEP,
         );
         if (Math.abs(nextZoom - oldZoom) < 0.0001) return;
 
-        if (isChat) {
-          const container = tab4 || document.getElementById('tab4');
-          if (!container) {
-            setCanvasZoom(canvas, nextZoom);
-            return;
-          }
-
-          const rect = container.getBoundingClientRect();
-          const localX = clientX - rect.left;
-          const localY = clientY - rect.top;
-          const worldX = (container.scrollLeft + localX) / oldZoom;
-          const worldY = (container.scrollTop + localY) / oldZoom;
-
+        const container = isChat
+          ? tab4 || document.getElementById('tab4')
+          : tab1 || document.getElementById('tab1');
+        if (!container) {
           setCanvasZoom(canvas, nextZoom);
-
-          container.scrollLeft = Math.max(0, worldX * nextZoom - localX);
-          container.scrollTop = Math.max(0, worldY * nextZoom - localY);
-          scheduleChatMiniMapUpdate?.();
-          saveChatViewportState?.();
           return;
         }
 
+        const rect = container.getBoundingClientRect();
+        const localX = clientX - rect.left;
+        const localY = clientY - rect.top;
+        const worldX = (container.scrollLeft + localX) / oldZoom;
+        const worldY = (container.scrollTop + localY) / oldZoom;
+
         setCanvasZoom(canvas, nextZoom);
+        const applyScroll = () => {
+          container.scrollLeft = Math.max(0, worldX * nextZoom - localX);
+          container.scrollTop = Math.max(0, worldY * nextZoom - localY);
+          if (isChat) {
+            scheduleChatMiniMapUpdate?.();
+            saveChatViewportState?.();
+          } else {
+            updateCraftGridAlignment();
+          }
+        };
+        // Craft starts with no overflow at 100%, so apply after layout to avoid clamping-to-zero.
+        requestAnimationFrame(applyScroll);
       }
 
       chatMiniMapCanvas?.addEventListener('pointerdown', (e) => {
@@ -1644,6 +1780,18 @@
         },
         { passive: false },
       );
+
+      tab1?.addEventListener('scroll', () => {
+        if (!tabHeadersActivated[1]) return;
+        updateCraftGridAlignment();
+      });
+
+      window.addEventListener('resize', () => {
+        applyCraftCanvasPadding(getCanvasZoom(craftCanvas()) || 1);
+        updateCraftGridAlignment();
+      });
+
+      applyCraftCanvasPadding(1);
 
       function updateChatQuestionPrompt(roomId) {
         const el = document.getElementById('chat-question-text');
@@ -1942,8 +2090,14 @@
         scheduleChatMiniMapUpdate();
       }
 
-      window.addEventListener('beforeunload', () => {
+      let pendingDeleteCommits = 0;
+
+      window.addEventListener('beforeunload', (e) => {
         saveChatViewportState();
+        if (pendingDeleteCommits > 0) {
+          e.preventDefault();
+          e.returnValue = '';
+        }
       });
 
       let activeSymbol = null;
@@ -1986,6 +2140,7 @@
         updateDoc,
         doc,
         deleteDoc,
+        writeBatch,
         arrayRemove,
         serverTimestamp,
         arrayUnion,
@@ -2158,29 +2313,6 @@
             }).catch(() => {});
           })(),
         );
-      }
-
-      async function removeLinksBeforeDelete(symbolId) {
-        const ref = objDocRef(symbolId);
-        const snap = await getDoc(ref);
-        if (!snap.exists()) return;
-
-        const data = snap.data();
-        const links = data.links || [];
-
-        // Remove reverse link from each neighbor
-        for (const lk of links) {
-          const otherRef = objDocRef(lk.otherId);
-
-          // Reverse record on neighbor: mySide/otherSide swap
-          await updateDoc(otherRef, {
-            links: arrayRemove({
-              otherId: symbolId,
-              mySide: lk.otherSide,
-              otherSide: lk.mySide,
-            }),
-          }).catch(() => {});
-        }
       }
 
       // Load emojis on page load
@@ -2694,13 +2826,60 @@
         subscribeToRoom(currentRoomId);
       }
 
-      // Function to delete a document
-      async function deleteObj(roomId, docId) {
+      async function getSymbolLinksForDelete(symbolId, roomId) {
+        const localData = roomObjDataById.get(symbolId);
+        if (localData?.type === 'symbol' && Array.isArray(localData.links)) {
+          return localData.links;
+        }
+
         try {
-          await deleteDoc(doc(db, 'rooms', roomId, 'objs', docId));
-          console.log(`Document with ID ${docId} deleted successfully.`);
-        } catch (error) {
-          console.error('Error deleting document:', error);
+          const snap = await getDoc(objDocRef(symbolId, roomId));
+          if (!snap.exists()) return [];
+          const data = snap.data();
+          return Array.isArray(data?.links) ? data.links : [];
+        } catch {
+          return [];
+        }
+      }
+
+      async function deleteChatSelectionBatch(roomId, symbolIds, emojiIds) {
+        const symbolSet = new Set((symbolIds || []).filter(Boolean));
+        const emojiSet = new Set((emojiIds || []).filter(Boolean));
+        if (!symbolSet.size && !emojiSet.size) return;
+
+        pendingDeleteCommits += 1;
+        try {
+          const batch = writeBatch(db);
+          const processedLinkRemovals = new Set();
+
+          for (const symbolId of symbolSet) {
+            const links = await getSymbolLinksForDelete(symbolId, roomId);
+            for (const lk of links) {
+              const otherId = lk?.otherId;
+              if (!otherId || symbolSet.has(otherId)) continue;
+
+              const key = `${otherId}|${lk.otherSide}|${symbolId}|${lk.mySide}`;
+              if (processedLinkRemovals.has(key)) continue;
+              processedLinkRemovals.add(key);
+
+              batch.update(objDocRef(otherId, roomId), {
+                links: arrayRemove({
+                  otherId: symbolId,
+                  mySide: lk.otherSide,
+                  otherSide: lk.mySide,
+                }),
+              });
+            }
+            batch.delete(objDocRef(symbolId, roomId));
+          }
+
+          for (const emojiId of emojiSet) {
+            batch.delete(objDocRef(emojiId, roomId));
+          }
+
+          await batch.commit();
+        } finally {
+          pendingDeleteCommits = Math.max(0, pendingDeleteCommits - 1);
         }
       }
 
@@ -4089,22 +4268,17 @@
       removeButton2.addEventListener('mouseup', async (e) => {
         e.stopPropagation();
         e.preventDefault();
+        const symbolIdsToDelete = [];
+        const emojiIdsToDelete = [];
 
         // ----- Symbols: delete only mine -----
         if (selectedSymbols.size > 0) {
           const toDelete = getEditableSelectedSymbols(); // only editable symbols
 
           for (const selectedSymbol of toDelete) {
-            currentGraph.removeSymbol(selectedSymbol);
-
             const id = selectedSymbol.dataset.id;
-            if (id) {
-              // 1) remove links on neighbors
-              await removeLinksBeforeDelete(id);
-
-              // 2) delete the symbol doc
-              await deleteObj(currentRoomId, id);
-            }
+            currentGraph.removeSymbol(selectedSymbol);
+            if (id) symbolIdsToDelete.push(id);
 
             // UI cleanup
             if (selectedSymbol.isDynamic) selectedSymbol.dot?.remove();
@@ -4122,15 +4296,19 @@
 
           for (const selectedEmoji of toDeleteE) {
             const id = selectedEmoji.dataset.id;
-            if (id) {
-              await deleteObj(currentRoomId, id);
-            }
+            if (id) emojiIdsToDelete.push(id);
             selectedEmoji.remove();
 
             selectedEmojis.delete(selectedEmoji);
             selectedEmoji.selected = false;
           }
         }
+
+        if (symbolIdsToDelete.length || emojiIdsToDelete.length) {
+          await deleteChatSelectionBatch(currentRoomId, symbolIdsToDelete, emojiIdsToDelete);
+        }
+
+        scheduleChatMiniMapUpdate?.();
 
         if (eyeButton2.isActivated) {
           eyeButton2.isActivated = false;
@@ -4679,8 +4857,8 @@
           layout?.nodes?.length === pattern.nodes.length ? layout.nodes : pattern.nodes;
         const sourceLinks = layout?.links?.length ? layout.links : collectPatternLinks(pattern);
         const placed = new Array(sourceNodes.length);
-        const occupiedRects = Array.from(chatCanvas()?.querySelectorAll('.symbol') || []).map((s) =>
-          getSymbolRectOnCanvas(s),
+        const occupiedRects = Array.from(chatCanvas()?.querySelectorAll('.symbol') || []).map(
+          (s) => getSymbolRectOnCanvas(s),
         );
         const origin = getPatternSpawnOrigin();
         const hasSavedLayout = pattern.nodes.every(
@@ -6111,7 +6289,10 @@
           clickOnlyEmoji = null;
         }
 
-        if (selectionClickHandled) return;
+        if (selectionClickHandled) {
+          if (tabHeadersActivated[4]) scheduleChatMiniMapUpdate?.();
+          return;
+        }
 
         if (dragGroup) {
           for (const el of dragGroup.keys()) {
@@ -6175,6 +6356,7 @@
           }
         }
 
+        if (tabHeadersActivated[4]) scheduleChatMiniMapUpdate?.();
         longPressFired = false;
       });
 
@@ -6215,10 +6397,11 @@
 
         function showBox(clientX1, clientY1, clientX2, clientY2) {
           const r = canvasEl.getBoundingClientRect();
-          const x1 = Math.min(clientX1, clientX2) - r.left;
-          const y1 = Math.min(clientY1, clientY2) - r.top;
-          const x2 = Math.max(clientX1, clientX2) - r.left;
-          const y2 = Math.max(clientY1, clientY2) - r.top;
+          const zoom = getCanvasZoom(canvasEl) || 1;
+          const x1 = (Math.min(clientX1, clientX2) - r.left) / zoom;
+          const y1 = (Math.min(clientY1, clientY2) - r.top) / zoom;
+          const x2 = (Math.max(clientX1, clientX2) - r.left) / zoom;
+          const y2 = (Math.max(clientY1, clientY2) - r.top) / zoom;
 
           const b = ensureBox();
           b.style.left = `${x1}px`;
@@ -6255,6 +6438,10 @@
 
             if (intersects) onSelect?.(el);
           });
+
+          if (canvasEl === chatCanvas()) {
+            scheduleChatMiniMapUpdate?.();
+          }
         }
 
         // 用 pointer 事件更稳（鼠标移出也不丢）
@@ -6325,6 +6512,7 @@
           s.classList.remove('framed');
         }
         selectedSymbols.clear();
+        if (tabHeadersActivated[4]) scheduleChatMiniMapUpdate?.();
       }
 
       function clearAllEmojiSelection() {
@@ -6333,6 +6521,7 @@
           e.classList.remove('active');
         }
         selectedEmojis.clear();
+        if (tabHeadersActivated[4]) scheduleChatMiniMapUpdate?.();
       }
 
       function getSelectedSymbolClipboard() {
@@ -7824,28 +8013,32 @@
 
           if (getDir(active) === getDir(target)) {
             // parallel
+            const activeRect = active.getBoundingClientRect();
+            const targetRect = target.getBoundingClientRect();
+            const canvas = getCanvasForElem(active);
+            const zoom = getCanvasZoom(canvas) || 1;
             if (getDir(active) === 0) {
-              targetX = parseFloat(target.style.left);
-              targetY = parseFloat(target.style.top) - (symbolHeight - 7) * symbolScale;
+              targetX = targetRect.left;
+              targetY = targetRect.top - (symbolHeight - 7) * symbolScale * zoom;
               if (currentGraph.getSymbolConnections(target)[Side.PAR_TOP].length === 0) {
                 snapToSymbol(
                   active,
                   target,
-                  parseFloat(active.style.left),
-                  parseFloat(active.style.top),
+                  activeRect.left,
+                  activeRect.top,
                   targetX,
                   targetY,
                   Side.PAR_BOT,
                   Side.PAR_TOP,
                 );
               }
-              targetY = parseFloat(target.style.top) + (symbolHeight - 4) * symbolScale;
+              targetY = targetRect.top + (symbolHeight - 4) * symbolScale * zoom;
               if (currentGraph.getSymbolConnections(target)[Side.PAR_BOT].length === 0) {
                 snapToSymbol(
                   active,
                   target,
-                  parseFloat(active.style.left),
-                  parseFloat(active.style.top),
+                  activeRect.left,
+                  activeRect.top,
                   targetX,
                   targetY,
                   Side.PAR_TOP,
@@ -7854,27 +8047,27 @@
               }
             }
             if (getDir(active) === 1) {
-              targetX = parseFloat(target.style.left) - (symbolHeight - 7) * symbolScale;
-              targetY = parseFloat(target.style.top);
+              targetX = targetRect.left - (symbolHeight - 7) * symbolScale * zoom;
+              targetY = targetRect.top;
               if (currentGraph.getSymbolConnections(target)[Side.PAR_TOP].length === 0) {
                 snapToSymbol(
                   active,
                   target,
-                  parseFloat(active.style.left),
-                  parseFloat(active.style.top),
+                  activeRect.left,
+                  activeRect.top,
                   targetX,
                   targetY,
                   Side.PAR_BOT,
                   Side.PAR_TOP,
                 );
               }
-              targetX = parseFloat(target.style.left) + (symbolHeight - 4) * symbolScale;
+              targetX = targetRect.left + (symbolHeight - 4) * symbolScale * zoom;
               if (currentGraph.getSymbolConnections(target)[Side.PAR_BOT].length === 0) {
                 snapToSymbol(
                   active,
                   target,
-                  parseFloat(active.style.left),
-                  parseFloat(active.style.top),
+                  activeRect.left,
+                  activeRect.top,
                   targetX,
                   targetY,
                   Side.PAR_TOP,
@@ -7973,103 +8166,110 @@
       function getAbsJunctions(symbol) {
         const relJunctions = getRelJunctions(symbol);
         const rect = symbol.getBoundingClientRect();
+        const canvas = getCanvasForElem(symbol);
+        const zoom = getCanvasZoom(canvas) || 1;
+        const renderScale = symbolScale * zoom;
+        const calInvYScaled = calInvY * zoom;
+        const calCan1Scaled = calCan1 * zoom;
+        const calCan2Scaled = calCan2 * zoom;
+
         let absJunctions;
         if (symbol.angle === 0) {
           absJunctions = [
             {
-              x: rect.left + relJunctions[0].x * symbolScale,
-              y: rect.top + relJunctions[0].y * symbolScale,
+              x: rect.left + relJunctions[0].x * renderScale,
+              y: rect.top + relJunctions[0].y * renderScale,
             },
             {
-              x: rect.left + relJunctions[1].x * symbolScale,
-              y: rect.top + relJunctions[1].y * symbolScale,
+              x: rect.left + relJunctions[1].x * renderScale,
+              y: rect.top + relJunctions[1].y * renderScale,
             },
             {
-              x: rect.left + relJunctions[2].x * symbolScale,
-              y: rect.top + relJunctions[2].y * symbolScale,
+              x: rect.left + relJunctions[2].x * renderScale,
+              y: rect.top + relJunctions[2].y * renderScale,
             },
             {
-              x: rect.left + relJunctions[3].x * symbolScale,
-              y: rect.top + relJunctions[3].y * symbolScale,
+              x: rect.left + relJunctions[3].x * renderScale,
+              y: rect.top + relJunctions[3].y * renderScale,
             },
           ];
         }
         if (symbol.angle === 180) {
           absJunctions = [
             {
-              x: rect.right - relJunctions[1].x * symbolScale,
-              y: rect.bottom - relJunctions[1].y * symbolScale - calInvY,
+              x: rect.right - relJunctions[1].x * renderScale,
+              y: rect.bottom - relJunctions[1].y * renderScale - calInvYScaled,
             },
             {
-              x: rect.right - relJunctions[0].x * symbolScale,
-              y: rect.bottom - relJunctions[0].y * symbolScale - calInvY,
+              x: rect.right - relJunctions[0].x * renderScale,
+              y: rect.bottom - relJunctions[0].y * renderScale - calInvYScaled,
             },
             {
-              x: rect.right - relJunctions[3].x * symbolScale,
-              y: rect.bottom - relJunctions[3].y * symbolScale,
+              x: rect.right - relJunctions[3].x * renderScale,
+              y: rect.bottom - relJunctions[3].y * renderScale,
             },
             {
-              x: rect.right - relJunctions[2].x * symbolScale,
-              y: rect.bottom - relJunctions[2].y * symbolScale,
+              x: rect.right - relJunctions[2].x * renderScale,
+              y: rect.bottom - relJunctions[2].y * renderScale,
             },
           ];
         }
         if (symbol.angle === 90) {
           absJunctions = [
             {
-              x: rect.right - relJunctions[0].y * symbolScale,
-              y: rect.top + relJunctions[0].x * symbolScale,
+              x: rect.right - relJunctions[0].y * renderScale,
+              y: rect.top + relJunctions[0].x * renderScale,
             },
             {
-              x: rect.right - relJunctions[1].y * symbolScale,
-              y: rect.top + relJunctions[1].x * symbolScale,
+              x: rect.right - relJunctions[1].y * renderScale,
+              y: rect.top + relJunctions[1].x * renderScale,
             },
             {
-              x: rect.right - relJunctions[3].y * symbolScale,
-              y: rect.top + relJunctions[3].x * symbolScale,
+              x: rect.right - relJunctions[3].y * renderScale,
+              y: rect.top + relJunctions[3].x * renderScale,
             },
             {
-              x: rect.right - relJunctions[2].y * symbolScale,
-              y: rect.top + relJunctions[2].x * symbolScale,
+              x: rect.right - relJunctions[2].y * renderScale,
+              y: rect.top + relJunctions[2].x * renderScale,
             },
           ];
         }
         if (symbol.angle === 270) {
           absJunctions = [
             {
-              x: rect.left + relJunctions[1].y * symbolScale + calInvY,
-              y: rect.bottom - relJunctions[1].x * symbolScale,
+              x: rect.left + relJunctions[1].y * renderScale + calInvYScaled,
+              y: rect.bottom - relJunctions[1].x * renderScale,
             },
             {
-              x: rect.left + relJunctions[0].y * symbolScale + calInvY,
-              y: rect.bottom - relJunctions[0].x * symbolScale,
+              x: rect.left + relJunctions[0].y * renderScale + calInvYScaled,
+              y: rect.bottom - relJunctions[0].x * renderScale,
             },
             {
-              x: rect.left + relJunctions[2].y * symbolScale,
-              y: rect.bottom - relJunctions[2].x * symbolScale,
+              x: rect.left + relJunctions[2].y * renderScale,
+              y: rect.bottom - relJunctions[2].x * renderScale,
             },
             {
-              x: rect.left + relJunctions[3].y * symbolScale,
-              y: rect.bottom - relJunctions[3].x * symbolScale,
+              x: rect.left + relJunctions[3].y * renderScale,
+              y: rect.bottom - relJunctions[3].x * renderScale,
             },
           ];
         }
         if (symbol.elemId === 2) {
           if (symbol.angle === 0) {
-            absJunctions[2].x += calCan1;
-            absJunctions[3].x += calCan1;
+            absJunctions[2].x += calCan1Scaled;
+            absJunctions[3].x += calCan1Scaled;
           }
           if (symbol.angle === 270) {
-            absJunctions[2].y -= calCan1;
-            absJunctions[3].y -= calCan1;
+            absJunctions[2].y -= calCan1Scaled;
+            absJunctions[3].y -= calCan1Scaled;
           }
           if (symbol.angle === 90) {
-            absJunctions[2].y -= calCan2;
-            absJunctions[3].y -= calCan2;
+            absJunctions[2].y -= calCan2Scaled;
+            absJunctions[3].y -= calCan2Scaled;
           }
           if (symbol.angle === 180) {
-            absJunctions[2].x += calCan2;
-            absJunctions[3].x += calCan2;
+            absJunctions[2].x += calCan2Scaled;
+            absJunctions[3].x += calCan2Scaled;
           }
         }
 
@@ -8137,13 +8337,14 @@
         if (violatesConflicts(active, activeSide)) return;
 
         // ---- 2) Distance check ----
-        if (getDist(activeX, activeY, targetX, targetY) >= SNAP_DISTANCE) return;
+        const canvas = getCanvasForElem(active);
+        const zoom = getCanvasZoom(canvas) || 1;
+        const clientDist = getDist(activeX, activeY, targetX, targetY);
+        const localDist = clientDist / zoom;
+        if (localDist >= SNAP_DISTANCE) return;
 
-        const oldX = parseFloat(active.style.left) || 0;
-        const oldY = parseFloat(active.style.top) || 0;
-
-        const dx = targetX - activeX;
-        const dy = targetY - activeY;
+        const dx = (targetX - activeX) / zoom;
+        const dy = (targetY - activeY) / zoom;
 
         // ---- 3) Group drag: request a delta for the whole group ----
         if (groupDragActive) {
@@ -8162,7 +8363,7 @@
           targetSide,
           dx,
           dy,
-          dist: getDist(activeX, activeY, targetX, targetY),
+          dist: localDist,
         });
       }
 
