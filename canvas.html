@@ -5258,12 +5258,19 @@
         const emoji = document.createElement('div');
         emoji.classList.add('symbol-label');
         // Position the label near the symbol
-        if (emojiX) {
+        if (Number.isFinite(emojiX) && Number.isFinite(emojiY)) {
           emoji.x = emojiX;
           emoji.y = emojiY;
         } else {
-          emoji.x = getRandomFloat(window.innerWidth / 5, (window.innerWidth * 4) / 5);
-          emoji.y = getRandomFloat(window.innerHeight / 5, (window.innerHeight * 4) / 5);
+          const canvas = chatCanvas();
+          const container = tab4 || canvas;
+          const zoom = getCanvasZoom(canvas) || 1;
+          const viewLeft = (container?.scrollLeft || 0) / zoom;
+          const viewTop = (container?.scrollTop || 0) / zoom;
+          const viewWidth = (container?.clientWidth || window.innerWidth) / zoom;
+          const viewHeight = (container?.clientHeight || window.innerHeight) / zoom;
+          emoji.x = viewLeft + getRandomFloat(viewWidth * 0.2, viewWidth * 0.8);
+          emoji.y = viewTop + getRandomFloat(viewHeight * 0.2, viewHeight * 0.8);
         }
 
         emoji.style.left = `${emoji.x}px`;
