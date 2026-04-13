@@ -89,7 +89,7 @@
         background-repeat: no-repeat;
         background-position: center;
         cursor: pointer;
-        z-index: 1;
+        z-index: 30;
       }
 
       /* Tab styles */
@@ -313,6 +313,56 @@
 
       #chatControls > * {
         pointer-events: auto;
+      }
+
+      #chatAnchorLayer {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+        pointer-events: none;
+        z-index: 7;
+      }
+
+      /* Annotation bubbles – hidden until inspection mode reveals them */
+      .symbol-label.annotation-bubble {
+        display: none;
+        /* Keep the same look as regular bubbles */
+        background: white;
+        border: 1px solid black;
+        border-radius: 5px;
+        padding: 4px 8px;
+        font-style: normal;
+        color: black;
+      }
+      .symbol-label.annotation-bubble.annotation-visible {
+        display: block;
+      }
+
+      /* Single bounding-box frame for spawned expression groups */
+      #expressionGroupFrame {
+        position: absolute;
+        pointer-events: none;
+        outline: 2px solid #00b0f0;
+        border-radius: 0;
+        outline-offset: 0;
+        z-index: 6;
+        display: none;
+      }
+
+      /* Spawned-expression meta card (word + why) shown in chat inspection mode */
+      .spawned-expression-meta {
+        z-index: 8; /* above symbols/bubbles, below UI controls */
+        max-width: 520px;
+      }
+      .spawned-expression-meta .library-tree-card-word {
+        font-size: 20px;
+      }
+      .spawned-expression-meta .library-tree-card-definition {
+        font-size: 14px;
+        line-height: 1.3;
       }
 
       #chatMinimap {
@@ -553,7 +603,7 @@
 
       #message-input {
         position: absolute;
-        bottom: 110px;
+        bottom: 58px;
         left: 350px;
         padding: 10px;
         width: 400px;
@@ -600,7 +650,7 @@
 
       #symbol-message-input {
         position: absolute;
-        bottom: 58px;
+        bottom: 110px;
         left: 350px;
         padding: 10px;
         width: 400px;
@@ -910,15 +960,16 @@
           <!-- Input box at the bottom of the page -->
           <input
             type="text"
-            id="message-input"
-            placeholder="Type a message to turn into emoji..."
+            id="symbol-message-input"
+            placeholder="Type a message to turn into symbol..."
             maxlength="32"
           />
           <input
             type="text"
-            id="symbol-message-input"
-            placeholder="Type a message to turn into symbol..."
-            maxlength="32"
+            id="message-input"
+            placeholder="Make an annotation..."
+            maxlength="200"
+            style="display: none"
           />
         </div>
         <p></p>
@@ -927,6 +978,9 @@
 
     <script type="module">
       // --- i18n dictionary (minimal starter) ---
+      // Annotation tether bookkeeping (initialized early to avoid TDZ during boot)
+      var annoChildToParent = new Map(); // fromEmojiId -> toEmojiId
+      var lastInspectionRootSymbolId = null;
       const I18N = {
         en: {
           homeHTML: `
@@ -1294,7 +1348,11 @@
         if (t1) t1.textContent = I18N[currentLang].craft;
         if (t2) t2.textContent = I18N[currentLang].library;
         if (t3) t3.textContent = I18N[currentLang].world;
-        if (t4) t4.textContent = I18N[currentLang].chat;
+        if (t4) {
+          const selectedIslandEl = document.querySelector('#world svg.island.selected');
+          const islandName = selectedIslandEl?.dataset?.islandId;
+          t4.textContent = islandName || I18N[currentLang].chat;
+        }
 
         // 3) If you render quota badge text, refresh it
         refreshQuotaBadge?.();
@@ -1851,6 +1909,51 @@
         craftControls()?.appendChild(el);
       }
 
+      function ensureChatAnchorLayer() {
+        const surface = chatCanvas();
+        if (!surface) return null;
+
+        let layer = document.getElementById('chatAnchorLayer');
+        if (layer && layer.parentElement === surface) return layer;
+
+        layer = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        layer.setAttribute('id', 'chatAnchorLayer');
+        layer.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+
+        const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+        const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+        marker.setAttribute('id', 'chatAnchorArrow');
+        marker.setAttribute('markerWidth', '10');
+        marker.setAttribute('markerHeight', '8');
+        marker.setAttribute('refX', '9');
+        marker.setAttribute('refY', '4');
+        marker.setAttribute('orient', 'auto');
+        marker.setAttribute('markerUnits', 'strokeWidth');
+        const arrowPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        arrowPath.setAttribute('d', 'M0,0 L10,4 L0,8 z');
+        arrowPath.setAttribute('fill', 'rgba(45, 53, 72, 0.9)');
+        marker.appendChild(arrowPath);
+        defs.appendChild(marker);
+        layer.appendChild(defs);
+
+        surface.appendChild(layer);
+        return layer;
+      }
+
+      function getElementCenterInChatCanvas(el) {
+        const surface = chatCanvas();
+        if (!surface || !el) return null;
+        const zoom = getCanvasZoom(surface) || 1;
+        const canvasRect = surface.getBoundingClientRect();
+        const rect = el.getBoundingClientRect();
+        return {
+          x: (rect.left - canvasRect.left) / zoom + rect.width / (2 * zoom),
+          y: (rect.top - canvasRect.top) / zoom + rect.height / (2 * zoom),
+          w: rect.width / zoom,
+          h: rect.height / zoom,
+        };
+      }
+
       let chatMiniMapFrame = 0;
       let chatMiniMapTransform = null;
       let chatMiniMapDragging = false;
@@ -1859,16 +1962,247 @@
         const canvas = chatCanvas();
         if (!canvas) return [];
         return Array.from(canvas.querySelectorAll('.symbol, .symbol-label')).filter(
-          (el) => el.parentElement === canvas,
+          (el) =>
+            el.parentElement === canvas &&
+            !(
+              el.classList?.contains('annotation-bubble') &&
+              !el.classList?.contains('annotation-visible')
+            ),
         );
       }
+
+      // In chat inspection mode, clicking the empty background should NOT clear the symbol selection.
+      // This keeps the inspected component's selection frame visible, so the user doesn't "lose" it.
+      function installChatBackgroundExitHandler() {
+        const surface = chatCanvas();
+        if (!surface) return;
+        if (surface._hasInspectionExitHandler) return;
+        surface._hasInspectionExitHandler = true;
+
+        surface.addEventListener(
+          'pointerdown',
+          (e) => {
+            if (!eyeButton2?.isActivated) return;
+            if (e.button != null && e.button !== 0) return;
+
+            const t = e.target;
+            if (t && t.closest) {
+              if (
+                t.closest('.symbol') ||
+                t.closest('.symbol-label') ||
+                t.closest('.button') ||
+                t.closest('#chatControls') ||
+                t.closest('#chatMinimap') ||
+                t.closest('#chat-question')
+              ) {
+                return;
+              }
+            }
+
+            // Only treat as background click when the surface itself was hit.
+            if (t !== surface) return;
+
+            // Do not clear symbols in inspection mode; allow panning/scrolling without losing the frame.
+            // (If you want to clear selection, click another symbol or toggle the eye off.)
+            // We still clear emoji selection to avoid "stuck" selected bubbles.
+            clearAllEmojiSelection();
+          },
+          true,
+        );
+      }
+
+      // DOM is ready and the helper exists now, so install it once.
+      installChatBackgroundExitHandler();
 
       function scheduleChatMiniMapUpdate() {
         if (chatMiniMapFrame) return;
         chatMiniMapFrame = requestAnimationFrame(() => {
           chatMiniMapFrame = 0;
           updateChatMiniMap();
+          if (eyeButton2?.isActivated) {
+            showAnnotationsForSelection();
+          }
+          scheduleAnnotationLinksUpdate();
         });
+      }
+
+      let annotationLinkFrame = 0;
+      function scheduleAnnotationLinksUpdate() {
+        if (annotationLinkFrame) return;
+        annotationLinkFrame = requestAnimationFrame(() => {
+          annotationLinkFrame = 0;
+          renderAnnotationLinks();
+        });
+      }
+
+      function renderAnnotationLinks() {
+        const layer = document.getElementById('chatAnchorLayer');
+        if (!layer) return;
+        // Remove old annotation link SVG elements
+        layer
+          .querySelectorAll('.anno-link-line, .anno-anchor-line, .anno-link-dot, .anno-anchor-dot')
+          .forEach((el) => el.remove());
+
+        function getComponentCenterFromRootSymbolId(rootSymbolId) {
+          const root = symbolById.get(rootSymbolId);
+          if (!root) return null;
+
+          const stack = [root];
+          const visited = new Set([root]);
+          let sumX = 0;
+          let sumY = 0;
+          let count = 0;
+
+          while (stack.length) {
+            const sym = stack.pop();
+            const c = getElementCenterInChatCanvas(sym);
+            if (c) {
+              sumX += c.x;
+              sumY += c.y;
+              count += 1;
+            }
+
+            const conns = currentGraph.getSymbolConnections(sym) || [[], [], [], [], [], []];
+            for (const side of conns) {
+              for (const [nbr] of side) {
+                if (!nbr || visited.has(nbr)) continue;
+                visited.add(nbr);
+                stack.push(nbr);
+              }
+            }
+          }
+
+          if (!count) return null;
+          return { x: sumX / count, y: sumY / count };
+        }
+
+        for (const link of annoLinkById.values()) {
+          const fromEmoji = emojiById.get(link.fromEmojiId);
+          const toEmoji = emojiById.get(link.toEmojiId);
+          if (!fromEmoji || !toEmoji) continue;
+          // Only show if both are visible
+          if (
+            !fromEmoji.classList.contains('annotation-visible') ||
+            !toEmoji.classList.contains('annotation-visible')
+          )
+            continue;
+
+          const a = getElementCenterInChatCanvas(fromEmoji);
+          const b = getElementCenterInChatCanvas(toEmoji);
+          if (!a || !b) continue;
+
+          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          line.classList.add('anno-link-line');
+          line.setAttribute('x1', a.x);
+          line.setAttribute('y1', a.y);
+          line.setAttribute('x2', b.x);
+          line.setAttribute('y2', b.y);
+          line.setAttribute('stroke', '#000');
+          line.setAttribute('stroke-width', '2');
+          line.setAttribute('stroke-dasharray', '6 4');
+          layer.appendChild(line);
+
+          const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          dot.classList.add('anno-link-dot');
+          dot.setAttribute('cx', b.x);
+          dot.setAttribute('cy', b.y);
+          dot.setAttribute('r', '4');
+          dot.setAttribute('fill', '#000');
+          layer.appendChild(dot);
+        }
+
+        // Render anchors from root annotations -> inspected symbol component center
+        for (const emoji of emojiById.values()) {
+          if (!emoji?.isConnected) continue;
+          if (emoji.dataset?.isAnnotation !== 'true') continue;
+          if (!emoji.classList.contains('annotation-visible')) continue;
+
+          const emojiId = emoji.dataset?.id;
+          if (!emojiId) continue;
+
+          // If this annotation is chained to another annotation, it anchors to that bubble instead.
+          if (annoChildToParent.has(emojiId)) continue;
+
+          const rootSymbolId = emoji.dataset?.annoRootSymbolId;
+          if (!rootSymbolId) continue;
+
+          const from = getElementCenterInChatCanvas(emoji);
+          const to = getComponentCenterFromRootSymbolId(rootSymbolId);
+          if (!from || !to) continue;
+
+          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          line.classList.add('anno-anchor-line');
+          line.setAttribute('x1', from.x);
+          line.setAttribute('y1', from.y);
+          line.setAttribute('x2', to.x);
+          line.setAttribute('y2', to.y);
+          line.setAttribute('stroke', '#000');
+          line.setAttribute('stroke-width', '2');
+          line.setAttribute('stroke-dasharray', '6 4');
+          layer.appendChild(line);
+
+          const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          dot.classList.add('anno-anchor-dot');
+          dot.setAttribute('cx', to.x);
+          dot.setAttribute('cy', to.y);
+          dot.setAttribute('r', '4');
+          dot.setAttribute('fill', '#000');
+          layer.appendChild(dot);
+        }
+      }
+
+      function upsertAnnotationLinkLocal(docId, content) {
+        // Annotation-to-annotation links are rendered as SVG lines
+        // They reuse the chatAnchorLayer SVG and are updated in scheduleAnnotationLinksUpdate
+        annoLinkById.set(docId, {
+          fromEmojiId: content.fromEmojiId,
+          toEmojiId: content.toEmojiId,
+          id: docId,
+        });
+        if (content?.fromEmojiId && content?.toEmojiId) {
+          annoChildToParent.set(content.fromEmojiId, content.toEmojiId);
+        }
+        scheduleAnnotationLinksUpdate?.();
+      }
+
+      function updateExpressionGroupFrame(symbols, canvas) {
+        if (!symbols || symbols.length === 0) {
+          clearExpressionGroupFrame();
+          return;
+        }
+        const cv = canvas || chatCanvas() || craftCanvas();
+        if (!cv) return;
+
+        if (!expressionGroupFrameEl || !expressionGroupFrameEl.isConnected) {
+          expressionGroupFrameEl = document.createElement('div');
+          expressionGroupFrameEl.id = 'expressionGroupFrame';
+          cv.appendChild(expressionGroupFrameEl);
+        }
+
+        let minLeft = Infinity;
+        let minTop = Infinity;
+        let maxRight = -Infinity;
+        let maxBottom = -Infinity;
+        for (const sym of symbols) {
+          const r = getSymbolRectOnCanvas(sym);
+          minLeft = Math.min(minLeft, r.left);
+          minTop = Math.min(minTop, r.top);
+          maxRight = Math.max(maxRight, r.right);
+          maxBottom = Math.max(maxBottom, r.bottom);
+        }
+
+        const pad = 0; // keep frame as tight as the normal per-symbol selection outline
+        expressionGroupFrameEl.style.display = 'block';
+        expressionGroupFrameEl.style.left = `${minLeft - pad}px`;
+        expressionGroupFrameEl.style.top = `${minTop - pad}px`;
+        expressionGroupFrameEl.style.width = `${maxRight - minLeft + pad * 2}px`;
+        expressionGroupFrameEl.style.height = `${maxBottom - minTop + pad * 2}px`;
+      }
+
+      function clearExpressionGroupFrame() {
+        if (expressionGroupFrameEl) {
+          expressionGroupFrameEl.style.display = 'none';
+        }
       }
 
       function updateChatMiniMap() {
@@ -1878,6 +2212,7 @@
         const tab = tab4 || document.getElementById('tab4');
         const surface = chatCanvas();
         if (!box || !canvas || !viewport || !tab || !surface) return;
+        ensureChatAnchorLayer();
 
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
@@ -1979,14 +2314,8 @@
         const worldY = minY + (localY - offsetY) / scale;
         const maxLeft = Math.max(0, tab.scrollWidth - tab.clientWidth);
         const maxTop = Math.max(0, tab.scrollHeight - tab.clientHeight);
-        const nextLeft = Math.max(
-          0,
-          Math.min(maxLeft, worldX * zoom - tab.clientWidth / 2),
-        );
-        const nextTop = Math.max(
-          0,
-          Math.min(maxTop, worldY * zoom - tab.clientHeight / 2),
-        );
+        const nextLeft = Math.max(0, Math.min(maxLeft, worldX * zoom - tab.clientWidth / 2));
+        const nextTop = Math.max(0, Math.min(maxTop, worldY * zoom - tab.clientHeight / 2));
 
         tab.scrollLeft = nextLeft;
         tab.scrollTop = nextTop;
@@ -2489,6 +2818,12 @@
       var roomSyncQueue = Promise.resolve();
       var pendingChatViewportRestoreRoomId = null;
       const pendingOpsBySymbolId = new Map();
+      let annoLinkById = new Map(); // docId → { fromEmojiId, toEmojiId }
+      const expressionGroups = new Map(); // groupId → Set<symbol>
+      let expressionGroupFrameEl = null;
+      let spawnedExpressionMetaCardEl = null;
+      let spawnedExpressionMetaGroupId = null;
+      // (annoChildToParent, lastInspectionRootSymbolId) initialized near top of module
 
       function makeClientNonce(prefix) {
         return `${prefix}:${currentUser?.uid || 'guest'}:${Date.now()}:${Math.random().toString(36).slice(2, 9)}`;
@@ -2547,6 +2882,17 @@
 
         if (activeSymbol === symbol) activeSymbol = null;
         if (clickOnlySymbol === symbol) clickOnlySymbol = null;
+
+        // Keep expression-group bookkeeping consistent.
+        if (symbol._expressionGroupId) {
+          const grp = expressionGroups.get(symbol._expressionGroupId);
+          if (grp) {
+            grp.delete(symbol);
+            if (grp.size === 0) expressionGroups.delete(symbol._expressionGroupId);
+          }
+          symbol._expressionGroupId = null;
+        }
+
         selectedSymbols.delete(symbol);
         symbol.selected = false;
         symbol.classList.remove('framed');
@@ -2558,6 +2904,7 @@
 
         currentGraph.removeSymbol(symbol);
         symbol.remove();
+        scheduleChatMiniMapUpdate?.();
       }
 
       function removeChatEmojiElement(emoji) {
@@ -2569,6 +2916,7 @@
         emoji.selected = false;
         emoji.classList.remove('active');
         emoji.remove();
+        scheduleChatMiniMapUpdate?.();
       }
 
       function adoptExistingChatSymbol(existing, symbol) {
@@ -2684,6 +3032,15 @@
         emoji.y = data.y ?? emoji.y ?? 0;
         emoji.style.left = `${emoji.x}px`;
         emoji.style.top = `${emoji.y}px`;
+        if (data.isAnnotation) {
+          emoji.classList.add('annotation-bubble');
+          emoji.dataset.isAnnotation = 'true';
+          emoji.dataset.annoRootSymbolId = data.annoRootSymbolId
+            ? String(data.annoRootSymbolId)
+            : '';
+          // Hide by default (shown only in inspection mode)
+          emoji.classList.remove('annotation-visible');
+        }
       }
 
       async function upsertChatSymbolFromDoc(docId, data) {
@@ -2715,6 +3072,21 @@
 
         symbol.dataset.ownerUid = data.ownerUid || '';
         symbol.dataset.id = docId;
+
+        // Persisted spawned-expression grouping + metadata (for global group selection after refresh)
+        const exprGroupId = data.exprGroupId || data.expr_group_id || null;
+        if (exprGroupId) {
+          symbol._expressionGroupId = String(exprGroupId);
+          if (!expressionGroups.has(symbol._expressionGroupId)) {
+            expressionGroups.set(symbol._expressionGroupId, new Set());
+          }
+          expressionGroups.get(symbol._expressionGroupId).add(symbol);
+        }
+        if (data.exprWord) symbol.dataset.exprWord = String(data.exprWord);
+        if (data.exprWhy) symbol.dataset.exprWhy = String(data.exprWhy);
+        if (data.exprAuthorUid) symbol.dataset.exprAuthorUid = String(data.exprAuthorUid);
+        if (data.exprNodeId) symbol.dataset.exprNodeId = String(data.exprNodeId);
+
         const suppressVisual = shouldSuppressRemoteVisualUpdate(symbol, data.ownerUid || '');
         if (!suppressVisual) {
           symbol.elemId = data.content.elemId;
@@ -2761,6 +3133,14 @@
             const prev = roomObjDataById.get(docId);
             roomObjDataById.delete(docId);
 
+            if ((prev?.type || data?.type) === 'annoLink') {
+              const lk = annoLinkById.get(docId);
+              if (lk?.fromEmojiId) annoChildToParent.delete(lk.fromEmojiId);
+              annoLinkById.delete(docId);
+              scheduleAnnotationLinksUpdate?.();
+              continue;
+            }
+
             if ((prev?.type || data?.type) === 'symbol') {
               removeChatSymbolElement(symbolById.get(docId));
               symbolById.delete(docId);
@@ -2790,6 +3170,8 @@
             await upsertChatEmojiFromDoc(docId, data);
           } else if (data.type === 'symbol') {
             await upsertChatSymbolFromDoc(docId, data);
+          } else if (data.type === 'annoLink') {
+            upsertAnnotationLinkLocal(docId, data.content || {});
           }
         }
 
@@ -4204,6 +4586,19 @@
         eyeButton.isActivated = !eyeButton.isActivated;
         if (eyeButton.isActivated) {
           eyeButton.style.backgroundImage = "url('./icons/eye_blue.png')";
+          // Only inspect the craft-canvas selection (avoid cross-tab selection leakage).
+          const craftSel = Array.from(selectedSymbols).filter(
+            (s) => getCanvasForElem(s) === craftCanvas(),
+          );
+          if (craftSel.length !== selectedSymbols.size) {
+            clearAllSymbolSelection();
+            for (const s of craftSel) {
+              s.selected = true;
+              s.classList.add('framed');
+              selectedSymbols.add(s);
+            }
+          }
+
           if (selectedSymbols.size !== 0) {
             const [foundIds, elimBasic, representatives, hasDuplicateExpression] =
               showSimpleLabel();
@@ -4222,18 +4617,152 @@
 
       const eyeButton2 = eyeButton.cloneNode(true);
 
-      eyeButton2.addEventListener('mouseup', (e) => {
-        eyeButton2.isActivated = !eyeButton2.isActivated;
-        if (eyeButton2.isActivated) {
-          eyeButton2.style.backgroundImage = "url('./icons/eye_blue.png')";
-          if (selectedSymbols.size !== 0) {
-            const [foundIds, elimBasic, representatives, hasDuplicateExpression] =
-              showSimpleLabel();
-          }
-        } else {
-          eyeButton2.style.backgroundImage = "url('./icons/eye_black.png')";
+      function setChatInspectionMode(on) {
+        eyeButton2.isActivated = !!on;
+        eyeButton2.style.backgroundImage = on
+          ? "url('./icons/eye_blue.png')"
+          : "url('./icons/eye_black.png')";
+
+        const annotationInput = document.getElementById('message-input');
+        if (annotationInput) annotationInput.style.display = on ? 'block' : 'none';
+
+        if (on) {
+          // Clear any old meaning bubbles to avoid stacking duplicates.
           removeLabelInputs();
+          // Only inspect the chat-canvas selection (avoid cross-tab selection leakage).
+          const chatSel = Array.from(selectedSymbols).filter(
+            (s) => getCanvasForElem(s) === chatCanvas(),
+          );
+          if (chatSel.length !== selectedSymbols.size) {
+            clearAllSymbolSelection();
+            for (const s of chatSel) {
+              s.selected = true;
+              s.classList.add('framed');
+              selectedSymbols.add(s);
+            }
+          }
+          if (selectedSymbols.size !== 0) showSimpleLabel();
+          showAnnotationsForSelection();
+          showSpawnedExpressionMetaForSelection();
+        } else {
+          removeLabelInputs();
+          hideAllAnnotations();
+          // Immediate tether cleanup (avoid any "stuck" lines if RAF is delayed)
+          const layer = document.getElementById('chatAnchorLayer');
+          layer
+            ?.querySelectorAll(
+              '.anno-link-line, .anno-anchor-line, .anno-link-dot, .anno-anchor-dot',
+            )
+            ?.forEach((el) => el.remove());
         }
+
+        scheduleChatMiniMapUpdate?.();
+      }
+
+      function showSpawnedExpressionMetaForSelection() {
+        try {
+          if (!selectedSymbols.size) return;
+          if (!isSelectionConnected(selectedSymbols, currentGraph)) return;
+
+          const first = selectedSymbols.values().next().value;
+          const canvas = getCanvasForElem(first);
+          if (canvas !== chatCanvas()) return;
+
+          // Only when the selection is exactly one spawned-expression group.
+          const gid = first?._expressionGroupId || null;
+          if (!gid) return;
+          const grp = expressionGroups.get(gid);
+          if (!grp || grp.size < 2) return;
+          const grpArray = Array.from(grp);
+          const isGroupSelected =
+            grpArray.every((s) => selectedSymbols.has(s)) && selectedSymbols.size === grp.size;
+          if (!isGroupSelected) return;
+
+          const word = String(first.dataset?.exprWord || '').trim();
+          const why = String(first.dataset?.exprWhy || '').trim();
+          if (!word && !why) return;
+
+          // Remove any old meta card so we don't stack duplicates.
+          document
+            .querySelectorAll('.spawned-expression-meta.removable')
+            .forEach((el) => el.remove());
+          spawnedExpressionMetaCardEl = null;
+          spawnedExpressionMetaGroupId = null;
+
+          // Techtree-style card: bold word title + why text in one box.
+          const card = document.createElement('div');
+          card.className = 'library-tree-card spawned-expression-meta removable';
+
+          // Don't let clicks on the card exit inspection mode or clear selection.
+          card.addEventListener('pointerdown', (e) => e.stopPropagation());
+          card.addEventListener('mousedown', (e) => e.stopPropagation());
+          card.addEventListener('mouseup', (e) => e.stopPropagation());
+
+          const textWrap = document.createElement('div');
+          textWrap.className = 'library-tree-card-text';
+
+          const titleEl = document.createElement('div');
+          titleEl.className = 'library-tree-card-word';
+          titleEl.textContent = word || '';
+
+          const whyEl = document.createElement('div');
+          whyEl.className = 'library-tree-card-definition';
+          whyEl.textContent = why || '';
+
+          textWrap.appendChild(titleEl);
+          if (why) textWrap.appendChild(whyEl);
+          card.appendChild(textWrap);
+          appendToChatCanvas(card);
+
+          spawnedExpressionMetaCardEl = card;
+          spawnedExpressionMetaGroupId = gid;
+          updateSpawnedExpressionMetaCardPosition();
+        } catch (e) {
+          console.warn('showSpawnedExpressionMetaForSelection failed:', e);
+        }
+      }
+
+      function updateSpawnedExpressionMetaCardPosition() {
+        const card = spawnedExpressionMetaCardEl;
+        if (!card || !card.isConnected) return;
+        if (!selectedSymbols.size) return;
+
+        const first = selectedSymbols.values().next().value;
+        const canvas = getCanvasForElem(first);
+        if (canvas !== chatCanvas()) return;
+
+        // Keep in sync only when the selection is exactly one spawned-expression group.
+        const gid = first?._expressionGroupId || null;
+        if (!gid || gid !== spawnedExpressionMetaGroupId) return;
+        const grp = expressionGroups.get(gid);
+        if (!grp || grp.size < 2) return;
+        const grpArray = Array.from(grp);
+        const isGroupSelected =
+          grpArray.every((s) => selectedSymbols.has(s)) && selectedSymbols.size === grp.size;
+        if (!isGroupSelected) return;
+
+        let rightMost = -Infinity;
+        let topMost = Infinity;
+        for (const s of selectedSymbols) {
+          const r = getSymbolRectOnCanvas(s);
+          if (r.right > rightMost) rightMost = r.right;
+          if (r.top < topMost) topMost = r.top;
+        }
+
+        const gap = 14;
+        card.style.left = `${rightMost + gap}px`;
+        card.style.top = `${topMost - 6}px`;
+      }
+
+      function exitChatInspectionMode() {
+        if (!eyeButton2?.isActivated) return;
+        setChatInspectionMode(false);
+      }
+
+      eyeButton2.addEventListener('pointerup', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        setChatInspectionMode(!eyeButton2.isActivated);
       });
       appendToChatControls(eyeButton2);
 
@@ -4279,22 +4808,47 @@
         const symbolIdsToDelete = [];
         const emojiIdsToDelete = [];
 
+        // If an annotation bubble is selected, Remove should delete only that annotation (not symbols).
+        const selectedAnnotations = Array.from(selectedEmojis).filter(
+          (em) => em?.dataset?.isAnnotation === 'true',
+        );
+        if (selectedAnnotations.length > 0) {
+          const toDeleteE = selectedAnnotations.filter((em) => canEditElement(em));
+          const annoIds = [];
+          for (const em of toDeleteE) {
+            const id = em.dataset?.id;
+            if (id) annoIds.push(id);
+            em.remove();
+            selectedEmojis.delete(em);
+            em.selected = false;
+          }
+
+          // Best-effort: also remove any annotation-link docs that touch these annotations.
+          const linkDocIdsToDelete = [];
+          for (const [docId, data] of roomObjDataById.entries()) {
+            if (data?.type !== 'annoLink') continue;
+            const from = data?.content?.fromEmojiId;
+            const to = data?.content?.toEmojiId;
+            if (annoIds.includes(from) || annoIds.includes(to)) {
+              linkDocIdsToDelete.push(docId);
+            }
+          }
+
+          await deleteChatSelectionBatch(currentRoomId, [], annoIds.concat(linkDocIdsToDelete));
+          scheduleChatMiniMapUpdate?.();
+          return;
+        }
+
         // ----- Symbols: delete only mine -----
         if (selectedSymbols.size > 0) {
           const toDelete = getEditableSelectedSymbols(); // only editable symbols
 
           for (const selectedSymbol of toDelete) {
             const id = selectedSymbol.dataset.id;
-            currentGraph.removeSymbol(selectedSymbol);
             if (id) symbolIdsToDelete.push(id);
 
-            // UI cleanup
-            if (selectedSymbol.isDynamic) selectedSymbol.dot?.remove();
-            selectedSymbol.remove();
-
-            // keep Set in sync
-            selectedSymbols.delete(selectedSymbol);
-            selectedSymbol.selected = false;
+            // Remove via helper so expressionGroups + graph + selection stay consistent.
+            removeChatSymbolElement(selectedSymbol);
           }
         }
 
@@ -4305,10 +4859,7 @@
           for (const selectedEmoji of toDeleteE) {
             const id = selectedEmoji.dataset.id;
             if (id) emojiIdsToDelete.push(id);
-            selectedEmoji.remove();
-
-            selectedEmojis.delete(selectedEmoji);
-            selectedEmoji.selected = false;
+            removeChatEmojiElement(selectedEmoji);
           }
         }
 
@@ -4317,11 +4868,10 @@
         }
 
         scheduleChatMiniMapUpdate?.();
+        clearExpressionGroupFrame();
 
         if (eyeButton2.isActivated) {
-          eyeButton2.isActivated = false;
-          eyeButton2.style.backgroundImage = "url('./icons/eye_black.png')";
-          removeLabelInputs();
+          setChatInspectionMode(false);
         }
       });
 
@@ -4451,7 +5001,7 @@
       });
 
       wheel.addEventListener('mouseup', (event) => {
-        wheel.style.zIndex = '1';
+        wheel.style.zIndex = '30';
         wheel.style.backgroundImage = 'url(./icons/wheel/wheel.png)';
       });
 
@@ -4460,6 +5010,8 @@
       const wheel2 = wheel.cloneNode(true);
       wheel2.addEventListener('mousedown', (e) => {
         document.body.classList.add('no-text-select'); // prevent textbox selection
+        // Spawning a new symbol is a separate action; leave inspection mode cleanly.
+        if (eyeButton2?.isActivated) setChatInspectionMode(false);
         wheel2.style.zIndex = '0';
         latestPointerClientX = e.clientX;
         latestPointerClientY = e.clientY;
@@ -4498,59 +5050,235 @@
 
       wheel2.addEventListener('mouseup', (event) => {
         document.body.classList.remove('no-text-select');
-        wheel2.style.zIndex = '1';
+        wheel2.style.zIndex = '30';
         wheel2.style.backgroundImage = 'url(./icons/wheel/wheel.png)';
       });
       window.addEventListener('mouseup', () => {
-        wheel.style.zIndex = '1';
-        wheel2.style.zIndex = '1';
+        wheel.style.zIndex = '30';
+        wheel2.style.zIndex = '30';
       });
       tab4.appendChild(wheel2);
 
-      // Function to handle the message when Enter is pressed
-      async function handleMessage() {
+      // Function to handle annotation creation when Enter is pressed
+      async function handleAnnotation() {
         const messageBox = document.getElementById('message-input');
-        const userInput = messageBox.value;
+        const userInput = messageBox.value.trim();
+        if (!userInput) return;
 
-        if (userInput === '') {
-          return;
-        }
+        // Only works in inspection mode
+        const inspecting = eyeButton.isActivated || eyeButton2.isActivated;
+        if (!inspecting) return;
+
+        // Only works when a connected component is selected
+        if (selectedSymbols.size === 0) return;
+        if (!isSelectionConnected(selectedSymbols, currentGraph)) return;
 
         messageBox.value = '';
 
-        try {
-          const response = await fetch('https://divinatory-conlang.zhouyt-tony2018.workers.dev/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              type: 'emoji',
-              uid: currentUser?.uid || null,
-              text: userInput,
-              lang: currentLang,
+        // Create annotation bubble with plain text (no AI call)
+        const annotation = await createEmoji(userInput, null, null, null, { isAnnotation: true });
+        annotation.classList.add('annotation-bubble');
+        annotation.classList.add('annotation-visible');
+        annotation.dataset.isAnnotation = 'true';
+
+        // Determine what to anchor to
+        const selectedAnnotation = Array.from(selectedEmojis).find(
+          (e) => e.dataset?.isAnnotation === 'true',
+        );
+
+        if (selectedAnnotation) {
+          // Chain: create annotation-to-annotation link (B → A)
+          await createAnnotationLink(annotation, selectedAnnotation);
+        } else {
+          // Place new annotation near the current selected group (no persistent tether)
+          const centers = Array.from(selectedSymbols)
+            .map((s) => getElementCenterInChatCanvas(s))
+            .filter(Boolean);
+          if (centers.length) {
+            const cx = centers.reduce((sum, p) => sum + p.x, 0) / centers.length;
+            const cy = centers.reduce((sum, p) => sum + p.y, 0) / centers.length;
+            annotation.x = cx + 40;
+            annotation.y = cy - 10;
+            annotation.style.left = `${annotation.x}px`;
+            annotation.style.top = `${annotation.y}px`;
+          }
+        }
+
+        scheduleChatMiniMapUpdate?.();
+      }
+
+      // v2: tethered annotations (inspection-mode only)
+      async function handleAnnotation2() {
+        const messageBox = document.getElementById('message-input');
+        const userInput = messageBox?.value?.trim?.() || '';
+        if (!userInput) return;
+
+        // Only works in inspection mode
+        const inspecting = eyeButton.isActivated || eyeButton2.isActivated;
+        if (!inspecting) return;
+
+        // Only works when a connected component is selected
+        if (selectedSymbols.size === 0) return;
+        if (!isSelectionConnected(selectedSymbols, currentGraph)) return;
+
+        messageBox.value = '';
+
+        // Root symbol id: stable smallest id in the selected component
+        const ids = (
+          await Promise.all(
+            Array.from(selectedSymbols).map(async (s) => {
+              return s?.dataset?.id || (await s?._pendingIdPromise?.catch(() => null));
             }),
-          });
+          )
+        )
+          .filter(Boolean)
+          .sort();
+        const rootSymbolId = ids[0] || null;
+        if (!rootSymbolId) return;
 
-          const data = await response.json();
-          console.log('token usage', data.usage);
+        // Optional chain target: an already-selected annotation bubble attached to this root
+        const selectedAnnotation = Array.from(selectedEmojis).find(
+          (e) =>
+            e?.dataset?.isAnnotation === 'true' && e?.dataset?.annoRootSymbolId === rootSymbolId,
+        );
 
-          if (typeof data.used === 'number' && typeof data.limit === 'number') {
-            updateQuotaBadge(data.used, data.limit);
+        const annotation = await createEmoji(
+          userInput,
+          null,
+          null,
+          null,
+          { isAnnotation: true, annoRootSymbolId: rootSymbolId },
+          {
+            preserveSymbolSelection: true,
+            // Creating a new annotation always deselects previously selected annotation bubbles.
+            preserveEmojiSelection: false,
+            autoSelect: true,
+          },
+        );
+
+        if (selectedAnnotation) {
+          await createAnnotationLink2(annotation, selectedAnnotation);
+
+          const a = getElementCenterInChatCanvas(selectedAnnotation);
+          if (a) {
+            annotation.x = a.x + 48;
+            annotation.y = a.y - 12;
+            annotation.style.left = `${annotation.x}px`;
+            annotation.style.top = `${annotation.y}px`;
           }
-
-          if (data.code === 'RATE_LIMITED') {
-            alert(data.message);
-            return;
+        } else {
+          // Root annotation: place it near the selected component center
+          const centers = Array.from(selectedSymbols)
+            .map((s) => getElementCenterInChatCanvas(s))
+            .filter(Boolean);
+          if (centers.length) {
+            const cx = centers.reduce((sum, p) => sum + p.x, 0) / centers.length;
+            const cy = centers.reduce((sum, p) => sum + p.y, 0) / centers.length;
+            annotation.x = cx + 40;
+            annotation.y = cy - 10;
+            annotation.style.left = `${annotation.x}px`;
+            annotation.style.top = `${annotation.y}px`;
           }
+        }
 
-          if (data.ok === false && data.code === 'QUOTA_EXCEEDED') {
-            showFeedback(data.message || "You have reached today's quota.", true);
-            return;
+        // Only reveal annotations for the current inspected component
+        showAnnotationsForSelection();
+        scheduleChatMiniMapUpdate?.();
+      }
+
+      function getAnnotationAnchorTarget() {
+        // Return a representative symbol from the selected group (prefer one with a saved ID)
+        for (const sym of selectedSymbols) {
+          if (sym.dataset?.id) return sym;
+        }
+        return selectedSymbols.values().next().value ?? null;
+      }
+
+      async function createAnnotationLink(fromAnnotation, toAnnotation) {
+        // Store emoji-to-emoji annotation chain link in Firestore
+        const fromId =
+          fromAnnotation.dataset?.id ||
+          (await fromAnnotation._pendingIdPromise?.catch(() => null));
+        const toId =
+          toAnnotation.dataset?.id || (await toAnnotation._pendingIdPromise?.catch(() => null));
+        if (!fromId || !toId) return;
+        await saveObj('annoLink', { fromEmojiId: fromId, toEmojiId: toId }, 0, 0);
+      }
+
+      async function createAnnotationLink2(fromAnnotation, toAnnotation) {
+        const fromId =
+          fromAnnotation.dataset?.id ||
+          (await fromAnnotation._pendingIdPromise?.catch(() => null));
+        const toId =
+          toAnnotation.dataset?.id || (await toAnnotation._pendingIdPromise?.catch(() => null));
+        if (!fromId || !toId) return;
+        const docId = await saveObj('annoLink', { fromEmojiId: fromId, toEmojiId: toId }, 0, 0);
+        upsertAnnotationLinkLocal(docId, { fromEmojiId: fromId, toEmojiId: toId });
+      }
+
+      function showAnnotationsForSelection() {
+        let rootSymbolId = null;
+        if (selectedSymbols.size > 0 && isSelectionConnected(selectedSymbols, currentGraph)) {
+          const ids = Array.from(selectedSymbols)
+            .map((s) => s?.dataset?.id)
+            .filter(Boolean)
+            .sort();
+          rootSymbolId = ids.length ? ids[0] : null;
+        }
+
+        // If nothing is currently selected but inspection mode is still on,
+        // keep showing annotations for the last-inspected component.
+        if (!rootSymbolId && eyeButton2?.isActivated && lastInspectionRootSymbolId) {
+          rootSymbolId = lastInspectionRootSymbolId;
+        }
+
+        lastInspectionRootSymbolId = rootSymbolId;
+
+        document.querySelectorAll('.annotation-bubble').forEach((el) => {
+          const match = rootSymbolId && el.dataset?.annoRootSymbolId === rootSymbolId;
+          if (match) el.classList.add('annotation-visible');
+          else el.classList.remove('annotation-visible');
+        });
+
+        scheduleAnnotationLinksUpdate?.();
+      }
+
+      function hideAllAnnotations() {
+        document.querySelectorAll('.annotation-bubble.annotation-visible').forEach((el) => {
+          el.classList.remove('annotation-visible');
+        });
+        lastInspectionRootSymbolId = null;
+        scheduleAnnotationLinksUpdate?.();
+      }
+
+      function isSymbolInInspectedComponent(symbol) {
+        try {
+          if (!symbol) return false;
+          if (!eyeButton2?.isActivated) return false;
+          const rootId = lastInspectionRootSymbolId;
+          if (!rootId) return false;
+          const root = symbolById.get(rootId);
+          if (!root) return false;
+          if (root === symbol) return true;
+
+          const visited = new Set([root]);
+          const q = [root];
+          while (q.length) {
+            const cur = q.shift();
+            const conns = currentGraph.getSymbolConnections(cur) || [];
+            for (const sideList of conns) {
+              for (const [nbr] of sideList || []) {
+                if (!nbr || visited.has(nbr)) continue;
+                if (nbr === symbol) return true;
+                visited.add(nbr);
+                q.push(nbr);
+              }
+            }
           }
-
-          await createEmoji(data.result);
-        } catch (error) {
-          console.error(error);
-          alert('Emoji generation failed.');
+          return false;
+        } catch (e) {
+          console.warn('isSymbolInInspectedComponent failed', e);
+          return false;
         }
       }
 
@@ -5085,11 +5813,52 @@
         // Ensure dynamic-dot positions are saved after all spawn-time layout adjustments.
         await persistDynamicDotsForSymbols(placedSymbols);
 
-        placed.forEach((symbol) => {
-          symbol.selected = true;
-          symbol.classList.add('framed');
-          selectedSymbols.add(symbol);
-        });
+        // Tag symbols as an expression group and select them with a single bounding box
+        const groupId = `eg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const groupSet = new Set(placedSymbols);
+        expressionGroups.set(groupId, groupSet);
+        for (const sym of placedSymbols) {
+          sym._expressionGroupId = groupId;
+          sym.selected = true;
+          selectedSymbols.add(sym);
+          // No individual 'framed' class — group frame handles the outline
+        }
+
+        // Persist spawned-expression grouping + meta for all users (survives refresh).
+        // We store the author word + why text on every symbol doc for simplicity.
+        try {
+          const nodeId = found.entry?.[0] || null;
+          const libNode = nodeId && typeof nodes?.get === 'function' ? nodes.get(nodeId) : null;
+          const rawTitle = String(libNode?.title || '');
+          const why = rawTitle.includes('. ') ? rawTitle.split(/\. (.+)/)[1] || '' : rawTitle;
+          const payload = {
+            exprGroupId: groupId,
+            exprWord: String(libNode?.word || found.word || ''),
+            exprWhy: String(why || ''),
+            exprNodeId: nodeId ? String(nodeId) : '',
+            exprAuthorUid: currentUser?.uid || '',
+          };
+
+          const tasks = placedSymbols.map(async (sym) => {
+            let id = sym.dataset?.id;
+            if (!id && sym._pendingIdPromise) id = await sym._pendingIdPromise;
+            if (!id) return;
+            await updateDoc(objDocRef(id), payload);
+            // keep local element datasets in sync immediately
+            sym.dataset.exprWord = payload.exprWord;
+            sym.dataset.exprWhy = payload.exprWhy;
+            sym.dataset.exprNodeId = payload.exprNodeId;
+            sym.dataset.exprAuthorUid = payload.exprAuthorUid;
+          });
+          await Promise.all(tasks);
+        } catch (e) {
+          console.warn('Failed to persist expression meta:', e);
+        }
+
+        updateExpressionGroupFrame(
+          placedSymbols,
+          tabHeadersActivated[4] ? chatCanvas() : craftCanvas(),
+        );
 
         activeSymbol = null;
       }
@@ -5113,7 +5882,7 @@
       // Add event listener to the input box for the Enter key
       document.getElementById('message-input').addEventListener('keydown', function (event) {
         if (event.key === 'Enter') {
-          handleMessage();
+          handleAnnotation2();
         }
       });
 
@@ -5262,9 +6031,26 @@
         return group;
       }
 
-      async function createEmoji(emojiResponse, emojiX = null, emojiY = null, emojiId = null) {
+      async function createEmoji(
+        emojiResponse,
+        emojiX = null,
+        emojiY = null,
+        emojiId = null,
+        extraSaveData = {},
+        uiOptions = {},
+      ) {
         const emoji = document.createElement('div');
         emoji.classList.add('symbol-label');
+        const isAnnotation = !!extraSaveData?.isAnnotation;
+        if (isAnnotation) {
+          emoji.classList.add('annotation-bubble');
+          emoji.dataset.isAnnotation = 'true';
+          if (extraSaveData?.annoRootSymbolId) {
+            emoji.dataset.annoRootSymbolId = String(extraSaveData.annoRootSymbolId);
+          }
+          // Visible state is controlled by inspection-mode filtering.
+          emoji.classList.remove('annotation-visible');
+        }
         // Position the label near the symbol
         if (Number.isFinite(emojiX) && Number.isFinite(emojiY)) {
           emoji.x = emojiX;
@@ -5289,7 +6075,8 @@
         emoji.addEventListener('mousedown', (e) => {
           const totalSelected = selectedSymbols.size + selectedEmojis.size;
           const inSelection = selectedEmojis.has(emoji);
-          const wantsGroupDrag = inSelection && totalSelected > 1;
+          const isAnnoNow = emoji.dataset?.isAnnotation === 'true';
+          const wantsGroupDrag = !isAnnoNow && inSelection && totalSelected > 1; // annotations drag their own subtree instead
 
           // record click-vs-drag
           emoji._downClientX = e.clientX;
@@ -5299,22 +6086,25 @@
           emoji._downWasInMulti = wantsGroupDrag;
           emoji._downTotalSelected = selectedSymbols.size + selectedEmojis.size;
 
-          // UI off
-          if (eyeButton.isActivated) {
-            eyeButton.isActivated = false;
-            eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
-            removeLabelInputs();
-          }
-          if (eyeButton2.isActivated) {
-            eyeButton2.isActivated = false;
-            eyeButton2.style.backgroundImage = "url('./icons/eye_black.png')";
-            removeLabelInputs();
+          // UI off (craft only). In chat inspection mode, keep the eye active.
+          const surface = getCanvasForElem(emoji);
+          if (surface === craftCanvas()) {
+            if (eyeButton.isActivated) {
+              eyeButton.isActivated = false;
+              eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
+              removeLabelInputs();
+            }
           }
 
           // Selection on mousedown:
           // If not selected, make it the only selection.
+          // Exception: in inspection mode, clicking an annotation keeps symbol selection.
           if (!inSelection) {
-            clearAllSymbolSelection();
+            const isInspecting = eyeButton.isActivated || eyeButton2.isActivated;
+            const isAnnotation = emoji.dataset?.isAnnotation === 'true';
+            if (!(isInspecting && isAnnotation)) {
+              clearAllSymbolSelection();
+            }
             clearAllEmojiSelection();
             emoji.selected = true;
             emoji.classList.add('active');
@@ -5365,17 +6155,63 @@
             const top = parseFloat(emoji.style.top) || 0;
             emoji.offsetX = localX - left;
             emoji.offsetY = localY - top;
+
+            // If this is an annotation bubble, dragging it should also move its descendant chain
+            // (bubbles that are anchored to it), while never moving its parent anchor.
+            emoji._annoFollowers = null;
+            if (emoji.dataset?.isAnnotation === 'true') {
+              const parentId = emoji.dataset?.id;
+              if (parentId) {
+                const parentLeft = left;
+                const parentTop = top;
+
+                // Build descendant set using annoChildToParent (child -> parent)
+                const followers = new Map(); // DOM -> {dx,dy}
+                const queue = [parentId];
+                const seen = new Set(queue);
+                while (queue.length) {
+                  const cur = queue.shift();
+                  for (const [childId, pId] of annoChildToParent.entries()) {
+                    if (pId !== cur) continue;
+                    if (seen.has(childId)) continue;
+                    seen.add(childId);
+                    queue.push(childId);
+
+                    const childEl = emojiById.get(childId);
+                    if (!childEl || childEl.dataset?.isAnnotation !== 'true') continue;
+                    const cl = parseFloat(childEl.style.left) || 0;
+                    const ct = parseFloat(childEl.style.top) || 0;
+                    followers.set(childEl, { dx: cl - parentLeft, dy: ct - parentTop });
+                  }
+                }
+
+                if (followers.size) emoji._annoFollowers = followers;
+              }
+            }
           }
         });
 
         appendToChatCanvas(emoji);
         emoji.textContent = emojiResponse; // Default text
-        floatLabel(emoji);
+        // Annotations should be stable (no floating) so tether offsets remain predictable.
+        if (emoji.dataset?.isAnnotation !== 'true') {
+          floatLabel(emoji);
+        }
 
         // Auto-highlight newly created local emoji so users can spot the latest bubble.
-        if (emojiId === null) {
-          clearAllSymbolSelection();
-          clearAllEmojiSelection();
+        if (emojiId === null && uiOptions?.autoSelect !== false) {
+          if (isAnnotation) {
+            if (!uiOptions?.preserveSymbolSelection) {
+              clearAllSymbolSelection();
+            }
+            if (!uiOptions?.preserveEmojiSelection) {
+              clearAllEmojiSelection();
+            }
+          } else {
+            clearAllSymbolSelection();
+            clearAllEmojiSelection();
+          }
+
           emoji.selected = true;
           emoji.classList.add('active');
           selectedEmojis.add(emoji);
@@ -5398,7 +6234,7 @@
               emojiResponse,
               emoji.x,
               emoji.y,
-              clientNonce ? { clientNonce } : {},
+              clientNonce ? { clientNonce, ...extraSaveData } : { ...extraSaveData },
             );
             const existing = emojiById.get(docId);
             if (existing && existing !== emoji) {
@@ -5409,6 +6245,10 @@
             if (clientNonce) pendingLocalChatEmojisByNonce.delete(clientNonce);
             return docId;
           })();
+        }
+
+        if (tabHeadersActivated[4]) {
+          scheduleChatMiniMapUpdate?.();
         }
 
         return emoji;
@@ -5432,6 +6272,10 @@
         buttons.forEach((button) => button.remove());
         const outputBoxes = document.querySelectorAll('.typing-effect.removable');
         outputBoxes.forEach((outputBox) => outputBox.remove());
+        const metaCards = document.querySelectorAll('.spawned-expression-meta.removable');
+        metaCards.forEach((el) => el.remove());
+        spawnedExpressionMetaCardEl = null;
+        spawnedExpressionMetaGroupId = null;
       }
 
       function hideLabelInputs() {
@@ -5469,6 +6313,7 @@
 
       let dragGroupStarted = false; // 本次群拖是否已执行过“外部断链”
       let dragGroupSet = null; // 方便判断组内成员（Set）
+      let dragGroupIncludesUnselected = false;
 
       function cutConnectionsOutside(sym, groupSet) {
         const conns = currentGraph.getSymbolConnections(sym);
@@ -5569,6 +6414,7 @@
 
         dragGroupStarted = false;
         dragGroupSet = null;
+        dragGroupIncludesUnselected = false;
 
         // ✅ also reset group-drag runtime flags to avoid lingering behavior
         groupDragActive = false;
@@ -5696,7 +6542,7 @@
 
           for (const [el, off] of dragGroup.entries()) {
             const stillSelected = selectedSymbols.has(el) || selectedEmojis.has(el);
-            if (!stillSelected) continue;
+            if (!stillSelected && !dragGroupIncludesUnselected) continue;
 
             if (!canEditElement(el)) continue;
 
@@ -5739,6 +6585,67 @@
             }
           }
 
+          // During group drag, keep all symbol-attached UI (meaning bubbles, label inputs, etc.)
+          // in sync for every moved symbol (not just the leader).
+          for (const [el] of dragGroup.entries()) {
+            if (!el?.classList?.contains('symbol')) continue;
+            const x = parseFloat(el.style.left) || 0;
+            const y = parseFloat(el.style.top) || 0;
+
+            if (el.labels) {
+              el.labels.forEach((label) => {
+                label.style.left = `${x + label.offsetX}px`;
+                label.style.top = `${y + label.offsetY}px`;
+              });
+            }
+            if (el.input) {
+              el.input.style.left = `${x + el.input.offsetX}px`;
+              el.input.style.top = `${y + el.input.offsetY}px`;
+            }
+            if (el.textarea) {
+              el.textarea.style.left = `${x + el.textarea.offsetX}px`;
+              el.textarea.style.top = `${y + el.textarea.offsetY}px`;
+            }
+            if (el.submitButton) {
+              const tTop = parseFloat(el.textarea?.style?.top || '0') || 0;
+              const tScroll = el.textarea?.scrollHeight || 0;
+              el.submitButton.style.left = `${x + el.submitButton.offsetX}px`;
+              el.submitButton.style.top = `${tTop + 8 + tScroll}px`;
+            }
+            if (el.cancelButton) {
+              const tTop = parseFloat(el.textarea?.style?.top || '0') || 0;
+              const tScroll = el.textarea?.scrollHeight || 0;
+              el.cancelButton.style.left = `${x + el.cancelButton.offsetX}px`;
+              el.cancelButton.style.top = `${tTop + 8 + tScroll}px`;
+            }
+            if (el.pElement) {
+              const tTop = parseFloat(el.textarea?.style?.top || '0') || 0;
+              const tScroll = el.textarea?.scrollHeight || 0;
+              el.pElement.style.left = `${x + el.pElement.offsetX}px`;
+              el.pElement.style.top = `${tTop - 10 + tScroll}px`;
+            }
+            if (el.doneButton) {
+              el.doneButton.style.left = `${x + el.doneButton.offsetX}px`;
+              el.doneButton.style.top = `${y + el.doneButton.offsetY}px`;
+            }
+          }
+
+          // Keep the spawned-expression bounding frame in sync during group drag.
+          if (canvas === chatCanvas() && selectedSymbols.size > 1 && expressionGroupFrameEl) {
+            const any = Array.from(selectedSymbols).find((s) => s?._expressionGroupId);
+            const gid = any?._expressionGroupId;
+            const grp = gid ? expressionGroups.get(gid) : null;
+            if (grp && grp.size > 1) {
+              const grpArray = Array.from(grp);
+              const isGroupSelected =
+                grpArray.every((s) => selectedSymbols.has(s)) && selectedSymbols.size === grp.size;
+              if (isGroupSelected) {
+                updateExpressionGroupFrame(grpArray, canvas);
+                updateSpawnedExpressionMetaCardPosition();
+              }
+            }
+          }
+
           // ✅ 只对 leader（若是 symbol）执行你原来的“断链/检查连接”逻辑
           if (activeSymbol) {
             const x = parseFloat(activeSymbol.style.left) || 0;
@@ -5763,6 +6670,11 @@
               activeSymbol.submitButton.style.left = `${x + activeSymbol.submitButton.offsetX}px`;
               activeSymbol.submitButton.style.top = `${tTop + 8 + activeSymbol.textarea.scrollHeight}px`;
             }
+            if (activeSymbol.cancelButton) {
+              const tTop = parseFloat(activeSymbol.textarea.style.top) || 0;
+              activeSymbol.cancelButton.style.left = `${x + activeSymbol.cancelButton.offsetX}px`;
+              activeSymbol.cancelButton.style.top = `${tTop + 8 + activeSymbol.textarea.scrollHeight}px`;
+            }
             if (activeSymbol.pElement) {
               const tTop = parseFloat(activeSymbol.textarea.style.top) || 0;
               activeSymbol.pElement.style.left = `${x + activeSymbol.pElement.offsetX}px`;
@@ -5770,7 +6682,7 @@
             }
             if (activeSymbol.doneButton) {
               activeSymbol.doneButton.style.left = `${x + activeSymbol.doneButton.offsetX}px`;
-              activeSymbol.doneButton.style.top = `${parseFloat(activeSymbol.doneButton.style.top) + 23 + activeSymbol.doneButton.answerHeight}px`;
+              activeSymbol.doneButton.style.top = `${y + activeSymbol.doneButton.offsetY}px`;
             }
 
             if (activeSymbol?._dragged) {
@@ -5802,6 +6714,20 @@
           activeEmoji.style.left = `${x}px`;
           activeEmoji.style.top = `${y}px`;
           activeEmoji.selected = true;
+
+          // Annotation dragging: also move descendant annotation bubbles (anchored to this bubble)
+          // while never moving the parent anchor (bubble or symbol).
+          if (canvas === chatCanvas() && activeEmoji.dataset?.isAnnotation === 'true') {
+            const followers = activeEmoji._annoFollowers;
+            if (followers && followers.size) {
+              for (const [childEl, off] of followers.entries()) {
+                if (!childEl?.isConnected) continue;
+                if (!canEditElement(childEl)) continue;
+                childEl.style.left = `${x + off.dx}px`;
+                childEl.style.top = `${y + off.dy}px`;
+              }
+            }
+          }
           if (canvas === chatCanvas()) {
             scheduleChatMiniMapUpdate();
           }
@@ -5846,13 +6772,17 @@
             activeSymbol.submitButton.style.left = `${x + activeSymbol.submitButton.offsetX}px`;
             activeSymbol.submitButton.style.top = `${parseFloat(activeSymbol.textarea.style.top) + 8 + activeSymbol.textarea.scrollHeight}px`;
           }
+          if (activeSymbol.cancelButton) {
+            activeSymbol.cancelButton.style.left = `${x + activeSymbol.cancelButton.offsetX}px`;
+            activeSymbol.cancelButton.style.top = `${parseFloat(activeSymbol.textarea.style.top) + 8 + activeSymbol.textarea.scrollHeight}px`;
+          }
           if (activeSymbol.pElement) {
             activeSymbol.pElement.style.left = `${x + activeSymbol.pElement.offsetX}px`;
             activeSymbol.pElement.style.top = `${parseFloat(activeSymbol.textarea.style.top) - 10 + activeSymbol.textarea.scrollHeight}px`;
           }
           if (activeSymbol.doneButton) {
             activeSymbol.doneButton.style.left = `${x + activeSymbol.doneButton.offsetX}px`;
-            activeSymbol.doneButton.style.top = `${parseFloat(activeSymbol.doneButton.style.top) + 23 + activeSymbol.doneButton.answerHeight}px`;
+            activeSymbol.doneButton.style.top = `${y + activeSymbol.doneButton.offsetY}px`;
           }
 
           checkConnections(activeSymbol);
@@ -5976,7 +6906,7 @@
 
         // 5) Clicked UI? then NOT blank
         const hitUI = !!el?.closest?.(
-          '#palette, .wheel, #chatControls, .vertical-bar, .tab, .button, .label-input, .label-textarea, .submit-button, .symbol-label',
+          '#palette, .wheel, #chatControls, .vertical-bar, .tab, .button, .label-input, .label-textarea, .submit-button, .symbol-label, #chatAnchorLayer',
         );
 
         return !hitItem && !hitUI;
@@ -6113,6 +7043,40 @@
             !released._dragged &&
             (released._downWasInMulti || released._downWasSelected);
 
+          // Expression-group toggle: if user clicked (no drag) on an already-selected spawned expression,
+          // deselect the whole group.
+          if (
+            clickToggle &&
+            released._downExpressionGroupId &&
+            released._expressionGroupId === released._downExpressionGroupId
+          ) {
+            const grp = expressionGroups.get(released._expressionGroupId);
+            if (grp && grp.size > 1) {
+              const grpArray = Array.from(grp);
+              const isGroupSelected =
+                grpArray.every((s) => selectedSymbols.has(s)) && selectedSymbols.size === grp.size;
+              if (isGroupSelected && released._groupWasPreselectedOnDown) {
+                const isInspecting = eyeButton.isActivated || eyeButton2.isActivated;
+                const hasOnlyAnnotations =
+                  selectedEmojis.size > 0 &&
+                  Array.from(selectedEmojis).every((e) => e.dataset?.isAnnotation === 'true');
+
+                clearAllSymbolSelection();
+                if (!(isInspecting && hasOnlyAnnotations)) {
+                  clearAllEmojiSelection();
+                }
+                // Deselecting the inspected expression should hide all inspection-only UI.
+                if (eyeButton2?.isActivated) {
+                  setChatInspectionMode(false);
+                  clearAllEmojiSelection();
+                }
+                released._downExpressionGroupId = null;
+                released._groupWasPreselectedOnDown = null;
+                return;
+              }
+            }
+          }
+
           if (clickToggle) {
             selectionClickHandled = true;
             shouldBeSelected = !selectedSymbols.has(released);
@@ -6121,10 +7085,25 @@
           }
 
           // --- 2) Apply selection state ONCE (sync property + class + Set) ---
+          // If the selection is a spawned-expression group, keep only the global frame (no per-symbol boxes).
+          const gid = released?._expressionGroupId || null;
+          const grp = gid ? expressionGroups.get(gid) : null;
+          const grpArray = grp ? Array.from(grp) : null;
+          const selectionIsExactGroup =
+            !!grpArray &&
+            grpArray.length > 1 &&
+            grpArray.every((s) => selectedSymbols.has(s)) &&
+            selectedSymbols.size === grpArray.length;
+
           released.selected = shouldBeSelected;
           if (shouldBeSelected) {
-            released.classList.add('framed');
             selectedSymbols.add(released);
+            if (!selectionIsExactGroup) {
+              released.classList.add('framed');
+            } else {
+              released.classList.remove('framed');
+              updateExpressionGroupFrame(grpArray, getCanvasForElem(released));
+            }
           } else {
             if (clickToggle) cancelDraggingState();
             released.classList.remove('framed');
@@ -6137,11 +7116,12 @@
               removeLabelInputs();
             }
             if (eyeButton2.isActivated) {
-              eyeButton2.isActivated = false;
-              eyeButton2.style.backgroundImage = "url('./icons/eye_black.png')";
-              removeLabelInputs();
+              setChatInspectionMode(false);
             }
           }
+
+          released._downExpressionGroupId = null;
+          released._groupWasPreselectedOnDown = null;
 
           // --- 3) Commit all compatible snap candidates for this released symbol ---
           if (shouldBeSelected) {
@@ -6229,7 +7209,11 @@
               selectedEmojis.delete(released);
             } else {
               // turning ON
-              clearAllSymbolSelection();
+              const isInspecting = eyeButton.isActivated || eyeButton2.isActivated;
+              const isAnno = released.dataset?.isAnnotation === 'true';
+              if (!(isInspecting && isAnno)) {
+                clearAllSymbolSelection();
+              }
               clearAllEmojiSelection();
 
               released.selected = true;
@@ -6253,7 +7237,24 @@
               if (!id && released._pendingIdPromise) id = await released._pendingIdPromise;
               if (id) await updateObjPosition(id, x, y);
             })().catch(console.error);
+
+            // If this was an annotation bubble, also persist any moved descendants.
+            if (released.dataset?.isAnnotation === 'true' && released._annoFollowers) {
+              for (const [childEl] of released._annoFollowers.entries()) {
+                if (!childEl?.isConnected) continue;
+                if (!canEditElement(childEl)) continue;
+                const cx = parseFloat(childEl.style.left);
+                const cy = parseFloat(childEl.style.top);
+                (async () => {
+                  let cid = childEl.dataset?.id;
+                  if (!cid && childEl._pendingIdPromise) cid = await childEl._pendingIdPromise;
+                  if (cid) await updateObjPosition(cid, cx, cy);
+                })().catch(console.error);
+              }
+            }
           }
+
+          released._annoFollowers = null;
         }
 
         if (clickOnlySymbol) {
@@ -6267,6 +7268,41 @@
             // Same toggle rule as activeSymbol:
             // click toggles only if it was already selected at mousedown OR in multi-selection
             const clickToggle = s._downWasInMulti || s._downWasSelected;
+
+            // Spawned-expression toggle (read-only symbols too):
+            // If user clicks (no drag) on an already-selected spawned expression, deselect the whole group.
+            if (
+              clickToggle &&
+              s._downExpressionGroupId &&
+              s._expressionGroupId === s._downExpressionGroupId
+            ) {
+              const grp = expressionGroups.get(s._expressionGroupId);
+              if (grp && grp.size > 1) {
+                const grpArray = Array.from(grp);
+                const isGroupSelected =
+                  grpArray.every((x) => selectedSymbols.has(x)) && selectedSymbols.size === grp.size;
+                if (isGroupSelected && s._groupWasPreselectedOnDown) {
+                  const isInspecting = eyeButton.isActivated || eyeButton2.isActivated;
+                  const hasOnlyAnnotations =
+                    selectedEmojis.size > 0 &&
+                    Array.from(selectedEmojis).every((e) => e.dataset?.isAnnotation === 'true');
+
+                  clearAllSymbolSelection();
+                  if (!(isInspecting && hasOnlyAnnotations)) {
+                    clearAllEmojiSelection();
+                  }
+                  // Deselecting the inspected expression should hide all inspection-only UI.
+                  if (eyeButton2?.isActivated) {
+                    setChatInspectionMode(false);
+                    clearAllEmojiSelection();
+                  }
+                  s._downExpressionGroupId = null;
+                  s._groupWasPreselectedOnDown = null;
+                  clickOnlySymbol = null;
+                  return;
+                }
+              }
+            }
 
             if (clickToggle) {
               // toggle off/on
@@ -6367,29 +7403,19 @@
 
         // waiting for an explanation input, so input boxes aren't fragile (i.e. disappear when canvas is clicked)
         if (!existingInput && isBlankCanvasClick(e)) {
-          // clear symbols safely
-          for (const s of Array.from(selectedSymbols)) {
-            s.classList.remove('framed');
-            s.selected = false;
-          }
-          selectedSymbols.clear();
-
-          // clear emojis safely
-          for (const em of Array.from(selectedEmojis)) {
-            em.classList.remove('active');
-            em.selected = false;
-          }
-          selectedEmojis.clear();
-
           if (eyeButton.isActivated) {
             eyeButton.isActivated = false;
             eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
             removeLabelInputs();
           }
-          if (eyeButton2.isActivated) {
-            eyeButton2.isActivated = false;
-            eyeButton2.style.backgroundImage = "url('./icons/eye_black.png')";
-            removeLabelInputs();
+
+          const inChat = !!document.querySelector('#tab4.active');
+          if (inChat && eyeButton2?.isActivated) {
+            // In chat inspection mode, background click should not clear the inspected selection frame.
+            clearAllEmojiSelection();
+          } else {
+            clearAllSymbolSelection();
+            clearAllEmojiSelection();
           }
         }
 
@@ -6549,6 +7575,7 @@
           s.classList.remove('framed');
         }
         selectedSymbols.clear();
+        clearExpressionGroupFrame();
         if (tabHeadersActivated[4]) scheduleChatMiniMapUpdate?.();
       }
 
@@ -7580,6 +8607,40 @@
 
         // Add pressing event listener to the symbol
         symbol.addEventListener('mousedown', (e) => {
+          // If this symbol is part of a spawned expression group, select the entire group,
+          // but still allow dragging + magnetic snapping like ordinary multi-selection.
+          if (symbol._expressionGroupId) {
+            const grp = expressionGroups.get(symbol._expressionGroupId);
+            if (grp && grp.size > 1) {
+              e.stopPropagation();
+              symbol._downExpressionGroupId = symbol._expressionGroupId;
+              const grpArray = Array.from(grp);
+              const groupWasSelectedBefore =
+                grpArray.every((s) => selectedSymbols.has(s)) && selectedSymbols.size === grp.size;
+              symbol._groupWasPreselectedOnDown = groupWasSelectedBefore;
+
+              const isInspecting = eyeButton.isActivated || eyeButton2.isActivated;
+              const hasOnlyAnnotations =
+                selectedEmojis.size > 0 &&
+                Array.from(selectedEmojis).every((e) => e.dataset?.isAnnotation === 'true');
+
+              // Ensure the group is the current symbol selection.
+              if (!groupWasSelectedBefore) {
+                clearAllSymbolSelection();
+                if (!(isInspecting && hasOnlyAnnotations)) {
+                  clearAllEmojiSelection();
+                }
+                for (const sym of grp) {
+                  sym.selected = true;
+                  selectedSymbols.add(sym);
+                }
+              }
+              const cv = getCanvasForElem(symbol);
+              updateExpressionGroupFrame(grpArray, cv);
+              // Do NOT return: continue into normal drag logic below.
+            }
+          }
+
           const totalSelected = selectedSymbols.size + selectedEmojis.size;
           const inSelection = selectedSymbols.has(symbol);
           const wantsGroupDrag = inSelection && totalSelected > 1;
@@ -7591,25 +8652,42 @@
           symbol._downWasSelected = selectedSymbols.has(symbol);
           symbol._downWasInMulti = wantsGroupDrag; // remember state at down time
           symbol._downTotalSelected = selectedSymbols.size + selectedEmojis.size;
-
-          // UI off
-          if (eyeButton.isActivated) {
-            eyeButton.isActivated = false;
-            eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
-            removeLabelInputs();
+          // If we just selected a group on mousedown, treat this as a normal select (no toggle-off on mouseup).
+          if (symbol._downExpressionGroupId && symbol._groupWasPreselectedOnDown === false) {
+            symbol._downWasSelected = false;
+            symbol._downWasInMulti = false;
           }
-          if (eyeButton2.isActivated) {
-            eyeButton2.isActivated = false;
-            eyeButton2.style.backgroundImage = "url('./icons/eye_black.png')";
-            removeLabelInputs();
+
+          // UI off (craft only). In chat inspection mode, keep the eye active.
+          const surface = getCanvasForElem(symbol);
+          if (surface === craftCanvas()) {
+            if (eyeButton.isActivated) {
+              eyeButton.isActivated = false;
+              eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
+              removeLabelInputs();
+            }
+          }
+
+          // In chat inspection mode, clicking a different connected component should exit inspection mode.
+          if (surface === chatCanvas() && eyeButton2?.isActivated) {
+            if (!isSymbolInInspectedComponent(symbol)) {
+              setChatInspectionMode(false);
+            }
           }
 
           // ✅ Selection on mousedown:
           // If it was not selected, make it the only selection (single-select).
           // If it was already selected, keep selection as-is for now (toggle happens on mouseup if no drag).
+          // Exception: in inspection mode, keep annotation bubble selection alongside symbol.
           if (!inSelection) {
             clearAllSymbolSelection();
-            clearAllEmojiSelection();
+            const isInspecting = eyeButton.isActivated || eyeButton2.isActivated;
+            const hasOnlyAnnotations =
+              selectedEmojis.size > 0 &&
+              Array.from(selectedEmojis).every((e) => e.dataset?.isAnnotation === 'true');
+            if (!(isInspecting && hasOnlyAnnotations)) {
+              clearAllEmojiSelection();
+            }
             symbol.selected = true;
             symbol.classList.add('framed');
             selectedSymbols.add(symbol);
@@ -7696,9 +8774,7 @@
             removeLabelInputs();
           }
           if (eyeButton2.isActivated) {
-            eyeButton2.isActivated = false;
-            eyeButton2.style.backgroundImage = "url('./icons/eye_black.png')";
-            removeLabelInputs();
+            setChatInspectionMode(false);
           }
         }
         if (symbolX === null) {
@@ -10004,7 +11080,7 @@
       function hideChatTab() {
         const chatHeader = document.getElementById('tab-header4');
         chatHeader.style.display = 'none';
-        chatHeader.textContent = 'Chat'; // 可选：恢复默认字样
+        chatHeader.textContent = I18N[currentLang]?.chat || 'Chat'; // 可选：恢复默认字样
       }
 
       function roomIdFromIslandId(id) {
