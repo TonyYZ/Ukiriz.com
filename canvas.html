@@ -74,6 +74,14 @@
         opacity: 0.5;
       }
 
+      body.symbol-drag-ui-pass-through .button,
+      body.symbol-drag-ui-pass-through .submit-button,
+      body.symbol-drag-ui-pass-through .wheel,
+      body.symbol-drag-ui-pass-through #lang-toggle,
+      body.symbol-drag-ui-pass-through .lang-menu {
+        pointer-events: none !important;
+      }
+
       .logo {
         position: fixed;
         top: 30px;
@@ -166,8 +174,12 @@
         width: calc(100% + 20px);
         height: calc(100% + 40px);
         margin: -20px -20px -20px 0;
-        overflow: hidden;
+        overflow: auto;
         box-sizing: border-box;
+      }
+
+      #home-content {
+        transform-origin: top left;
       }
 
       #tab0 {
@@ -257,7 +269,7 @@
         bottom: 0;
         width: 0;
         height: 0;
-        z-index: 20;
+        z-index: 0;
         pointer-events: none;
       }
 
@@ -307,7 +319,7 @@
         bottom: 0;
         width: 0;
         height: 0;
-        z-index: 20;
+        z-index: 0;
         pointer-events: none;
       }
 
@@ -545,7 +557,7 @@
         font-size: 16px;
         font-family: inherit; /* Set font to match labels */
         border-radius: 5px;
-        z-index: 12;
+        z-index: 5;
       }
 
       /* Auto-resizing textarea */
@@ -561,7 +573,7 @@
         border-radius: 5px;
         resize: none;
         overflow: hidden;
-        z-index: 12;
+        z-index: 5;
       }
 
       /* Style the submit button */
@@ -577,7 +589,7 @@
         height: 27px;
         line-height: 27px;
         text-align: center;
-        z-index: 12;
+        z-index: 5;
       }
 
       /* Hover effect */
@@ -701,6 +713,7 @@
         border: none;
         background: transparent;
         box-shadow: none;
+        transform-origin: top left;
       }
 
       #libraryTreeView {
@@ -714,12 +727,17 @@
         overflow-y: scroll;
         background: transparent;
         box-sizing: border-box;
+        user-select: none;
+        -webkit-user-select: none;
+        transform-origin: top left;
       }
 
       #libraryTreeSurface {
         position: relative;
         min-width: 100%;
         min-height: 100%;
+        user-select: none;
+        -webkit-user-select: none;
       }
 
       #libraryTreeSvg {
@@ -745,11 +763,11 @@
         text-align: left;
         cursor: grab;
         touch-action: none;
-        transition: top 120ms ease;
+        user-select: none;
+        -webkit-user-select: none;
       }
       .library-tree-card.dragging {
         cursor: grabbing;
-        transition: none;
         z-index: 2;
       }
       .library-tree-card.selected {
@@ -788,6 +806,70 @@
         line-height: 1.25;
         word-break: break-word;
         max-width: 100%;
+      }
+
+      .library-tree-context-menu {
+        position: fixed;
+        display: none;
+        min-width: 138px;
+        padding: 6px;
+        border: 2px solid #000;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.98);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+        z-index: 300000;
+      }
+
+      .library-tree-context-menu.open {
+        display: block;
+      }
+
+      .library-tree-context-menu button {
+        width: 100%;
+        border: none;
+        border-radius: 8px;
+        background: transparent;
+        padding: 9px 12px;
+        text-align: left;
+        font: inherit;
+        color: #111;
+        cursor: pointer;
+      }
+
+      .library-tree-context-menu button:hover {
+        background: rgba(0, 0, 0, 0.08);
+      }
+
+      .canvas-context-menu {
+        position: fixed;
+        display: none;
+        min-width: 138px;
+        padding: 6px;
+        border: 2px solid #000;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.98);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+        z-index: 300000;
+      }
+
+      .canvas-context-menu.open {
+        display: block;
+      }
+
+      .canvas-context-menu button {
+        width: 100%;
+        border: none;
+        border-radius: 8px;
+        background: transparent;
+        padding: 9px 12px;
+        text-align: left;
+        font: inherit;
+        color: #111;
+        cursor: pointer;
+      }
+
+      .canvas-context-menu button:hover {
+        background: rgba(0, 0, 0, 0.08);
       }
 
       /* World: solid ocean color, no background animation */
@@ -857,6 +939,7 @@
         left: 0;
         top: 0;
         transform: translate(0px, 0px);
+        transform-origin: top left;
         will-change: transform;
       }
 
@@ -1364,6 +1447,7 @@
         // 1) Home page content (you need a container)
         const home = document.getElementById('home-content');
         if (home) home.innerHTML = I18N[currentLang].homeHTML;
+        applyHomeContentZoom?.(homeContentZoom || 1);
 
         // 2) Tabs text (if you want)
         const t0 = document.getElementById('tab-header0');
@@ -1553,6 +1637,64 @@
         setLang(en ? 'en' : 'zh');
       });
 
+      let uiPassthroughRestore = null;
+
+      function restoreUiPassthroughTarget() {
+        if (!uiPassthroughRestore) return;
+        uiPassthroughRestore();
+        uiPassthroughRestore = null;
+      }
+
+      function getUnderlyingSymbolAtPoint(clientX, clientY, controlEl) {
+        if (!controlEl) return null;
+        const prev = controlEl.style.pointerEvents;
+        controlEl.style.pointerEvents = 'none';
+        const underlying = document.elementFromPoint(clientX, clientY);
+        controlEl.style.pointerEvents = prev;
+        const symbol = underlying?.closest?.('.symbol, .dot');
+        if (!symbol) return null;
+        return symbol.classList?.contains('dot') ? symbol.parent || null : symbol;
+      }
+
+      document.addEventListener(
+        'mousedown',
+        (e) => {
+          if (e.button !== 0) return;
+          const control = e.target.closest(
+            '.button, .wheel, .submit-button, #lang-toggle, .lang-menu, .lang-circle, .lang-item',
+          );
+          if (!control) return;
+          const symbol = getUnderlyingSymbolAtPoint(e.clientX, e.clientY, control);
+          if (!symbol) return;
+
+          e.preventDefault();
+          e.stopPropagation();
+          restoreUiPassthroughTarget();
+
+          const prev = control.style.pointerEvents;
+          control.style.pointerEvents = 'none';
+          uiPassthroughRestore = () => {
+            control.style.pointerEvents = prev;
+          };
+
+          const forwarded = new MouseEvent('mousedown', {
+            bubbles: true,
+            cancelable: true,
+            clientX: e.clientX,
+            clientY: e.clientY,
+            button: 0,
+            buttons: 1,
+            ctrlKey: e.ctrlKey,
+            shiftKey: e.shiftKey,
+            altKey: e.altKey,
+            metaKey: e.metaKey,
+            view: window,
+          });
+          symbol.dispatchEvent(forwarded);
+        },
+        true,
+      );
+
       window.addEventListener('resize', () => {
         updateChatQuestionPrompt?.();
         scheduleChatMiniMapUpdate?.();
@@ -1587,6 +1729,7 @@
           e.preventDefault();
           copiedSymbolSnapshots = clipboard.symbols;
           copiedSymbolLinks = clipboard.links;
+          copiedSymbolGroups = clipboard.groups || [];
           symbolPasteCount = 0;
           return;
         }
@@ -1741,15 +1884,22 @@
       const chatControls = () => document.getElementById('chatControls');
       const craftCanvas = () => document.getElementById('craftCanvas');
       const craftControls = () => document.getElementById('craftControls');
+      bindCanvasContextMenu(chatCanvas());
+      bindCanvasContextMenu(craftCanvas());
       const CRAFT_GRID_MINOR = 80;
       const CRAFT_GRID_MAJOR = 400;
 
       const MIN_CHAT_CANVAS_ZOOM = 0.6;
       const MIN_CRAFT_CANVAS_ZOOM = 1;
       const MAX_CANVAS_ZOOM = 2.4;
+      const MIN_VIEW_CONTENT_ZOOM = 0.6;
+      const MAX_VIEW_CONTENT_ZOOM = 2.4;
       const CANVAS_ZOOM_STEP = 1.1;
       let craftCanvasZoom = 1;
       let chatCanvasZoom = 1;
+      let homeContentZoom = 1;
+      let libraryContentZoom = 1;
+      let worldContentZoom = 1;
 
       function clampCanvasZoom(container, v) {
         const minZoom = container === craftCanvas() ? MIN_CRAFT_CANVAS_ZOOM : MIN_CHAT_CANVAS_ZOOM;
@@ -1761,6 +1911,40 @@
         if (container === craftCanvas()) return craftCanvasZoom;
         if (container === chatCanvas()) return chatCanvasZoom;
         return 1;
+      }
+
+      function clampViewContentZoom(v) {
+        return Math.max(MIN_VIEW_CONTENT_ZOOM, Math.min(MAX_VIEW_CONTENT_ZOOM, v));
+      }
+
+      function getHomeZoomTarget() {
+        return document.getElementById('home-content');
+      }
+
+      function applyHomeContentZoom(zoom) {
+        homeContentZoom = clampViewContentZoom(zoom);
+        const home = getHomeZoomTarget();
+        if (!home) return;
+        home.style.zoom = `${homeContentZoom}`;
+      }
+
+      function applyLibraryContentZoom(zoom) {
+        libraryContentZoom = clampViewContentZoom(zoom);
+        if (container) {
+          container.style.zoom = `${libraryContentZoom}`;
+        }
+        if (libraryTreeView) {
+          libraryTreeView.style.zoom = `${libraryContentZoom}`;
+        }
+        requestAnimationFrame(() => {
+          network?.redraw?.();
+          refreshLibraryTreeEdgesFromDom?.();
+        });
+      }
+
+      function applyWorldContentZoom(zoom) {
+        worldContentZoom = clampViewContentZoom(zoom);
+        worldPanController?.refresh?.();
       }
 
       function setCanvasZoom(container, zoom) {
@@ -1855,6 +2039,62 @@
         requestAnimationFrame(applyScroll);
       }
 
+      function zoomScrollableContent(containerEl, oldZoom, nextZoom, clientX, clientY, applyZoom) {
+        if (!containerEl) {
+          applyZoom(nextZoom);
+          return;
+        }
+        const rect = containerEl.getBoundingClientRect();
+        const localX = clientX - rect.left;
+        const localY = clientY - rect.top;
+        const worldX = (containerEl.scrollLeft + localX) / oldZoom;
+        const worldY = (containerEl.scrollTop + localY) / oldZoom;
+        applyZoom(nextZoom);
+        requestAnimationFrame(() => {
+          containerEl.scrollLeft = Math.max(0, worldX * nextZoom - localX);
+          containerEl.scrollTop = Math.max(0, worldY * nextZoom - localY);
+        });
+      }
+
+      function zoomHomeContent(deltaY, clientX, clientY) {
+        const oldZoom = homeContentZoom;
+        const nextZoom = clampViewContentZoom(
+          deltaY < 0 ? oldZoom * CANVAS_ZOOM_STEP : oldZoom / CANVAS_ZOOM_STEP,
+        );
+        if (Math.abs(nextZoom - oldZoom) < 0.0001) return;
+        zoomScrollableContent(tab0, oldZoom, nextZoom, clientX, clientY, applyHomeContentZoom);
+      }
+
+      function zoomLibraryContent(deltaY, clientX, clientY) {
+        const oldZoom = libraryContentZoom;
+        const nextZoom = clampViewContentZoom(
+          deltaY < 0 ? oldZoom * CANVAS_ZOOM_STEP : oldZoom / CANVAS_ZOOM_STEP,
+        );
+        if (Math.abs(nextZoom - oldZoom) < 0.0001) return;
+        zoomScrollableContent(tab2, oldZoom, nextZoom, clientX, clientY, applyLibraryContentZoom);
+      }
+
+      function zoomWorldContent(deltaY, clientX, clientY) {
+        const world = document.getElementById('world');
+        const controller = worldPanController;
+        if (!world || !controller) return;
+        const oldZoom = worldContentZoom;
+        const nextZoom = clampViewContentZoom(
+          deltaY < 0 ? oldZoom * CANVAS_ZOOM_STEP : oldZoom / CANVAS_ZOOM_STEP,
+        );
+        if (Math.abs(nextZoom - oldZoom) < 0.0001) return;
+
+        const rect = world.getBoundingClientRect();
+        const localX = clientX - rect.left;
+        const localY = clientY - rect.top;
+        const offset = controller.getOffset();
+        const worldX = (localX - offset.x) / oldZoom;
+        const worldY = (localY - offset.y) / oldZoom;
+
+        applyWorldContentZoom(nextZoom);
+        controller.setOffset(localX - worldX * nextZoom, localY - worldY * nextZoom);
+      }
+
       chatMiniMapCanvas?.addEventListener('pointerdown', (e) => {
         chatMiniMapDragging = true;
         jumpChatViewportFromMiniMap(e.clientX, e.clientY);
@@ -1870,12 +2110,26 @@
       window.addEventListener(
         'wheel',
         (e) => {
-          if (!e.ctrlKey) return;
+          if (!(e.ctrlKey || e.metaKey)) return;
           const active = document.querySelector('.tab-content.active');
           if (!active) return;
-          if (active.id !== 'tab1' && active.id !== 'tab4') return;
+          if (!['tab0', 'tab1', 'tab2', 'tab3', 'tab4'].includes(active.id)) return;
           e.preventDefault();
-          zoomActiveCanvas(e.deltaY, e.clientX, e.clientY);
+          if (active.id === 'tab1' || active.id === 'tab4') {
+            zoomActiveCanvas(e.deltaY, e.clientX, e.clientY);
+            return;
+          }
+          if (active.id === 'tab0') {
+            zoomHomeContent(e.deltaY, e.clientX, e.clientY);
+            return;
+          }
+          if (active.id === 'tab2') {
+            zoomLibraryContent(e.deltaY, e.clientX, e.clientY);
+            return;
+          }
+          if (active.id === 'tab3') {
+            zoomWorldContent(e.deltaY, e.clientX, e.clientY);
+          }
         },
         { passive: false },
       );
@@ -2570,7 +2824,9 @@
       let selectedEmojis = new Set();
       let copiedSymbolSnapshots = [];
       let copiedSymbolLinks = [];
+      let copiedSymbolGroups = [];
       let symbolPasteCount = 0;
+      let forceFreshInspectionLabels = false;
       let dragGroup = null; // Map<elem, {dx, dy}>
       let dragLeader = null; // activeSymbol or activeEmoji
       let isGenerating = false;
@@ -4349,6 +4605,7 @@
         symbol._downWasSelected = true;
         symbol._downWasInMulti = false;
         symbol._downTotalSelected = 1;
+        setSymbolDragUiPassThrough(true);
 
         const canvas = getCanvasForElem(symbol);
         const pointerX = latestPointerClientX ?? clientX;
@@ -4489,9 +4746,8 @@
         }
 
         if (eyeButton.isActivated) {
-          eyeButton.isActivated = false;
-          eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
-          removeLabelInputs();
+          forceFreshInspectionLabels = true;
+          refreshCraftInspectionUI();
         }
       });
       appendToCraftControls(turnButton);
@@ -4515,10 +4771,9 @@
           }
         }
 
-        if (eyeButton.isActivated) {
-          eyeButton.isActivated = false;
-          eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
-          removeLabelInputs();
+        if (eyeButton2.isActivated) {
+          forceFreshInspectionLabels = true;
+          refreshChatInspectionOverlays();
         }
       });
       appendToChatControls(turnButton2);
@@ -4553,9 +4808,8 @@
         }
 
         if (eyeButton.isActivated) {
-          eyeButton.isActivated = false;
-          eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
-          removeLabelInputs();
+          forceFreshInspectionLabels = true;
+          refreshCraftInspectionUI();
         }
       });
 
@@ -4594,10 +4848,9 @@
           }
         }
 
-        if (eyeButton.isActivated) {
-          eyeButton.isActivated = false;
-          eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
-          removeLabelInputs();
+        if (eyeButton2.isActivated) {
+          forceFreshInspectionLabels = true;
+          refreshChatInspectionOverlays();
         }
       });
       appendToChatControls(dotButton2);
@@ -6711,6 +6964,11 @@
 
         // optional but usually correct: clear snap candidate
         resetPendingSnapState();
+        document.body.classList.remove('symbol-drag-ui-pass-through');
+      }
+
+      function setSymbolDragUiPassThrough(on) {
+        document.body.classList.toggle('symbol-drag-ui-pass-through', !!on);
       }
 
       function applyDeltaToGroup(dx, dy) {
@@ -7291,6 +7549,8 @@
 
       document.addEventListener('mouseup', async (e) => {
         selectionClickHandled = false;
+        setSymbolDragUiPassThrough(false);
+        restoreUiPassthroughTarget();
 
         if (marqueeActive || marqueeJustDidSelect) {
           marqueeJustDidSelect = false; // clear after using marquee box
@@ -7348,10 +7608,11 @@
                   // Keep emoji selection unless it's only annotations in inspection mode.
                   clearAllEmojiSelection();
                 }
-                  refreshInspectionModeForCanvas(getCanvasForElem(released));
-                  released._downExpressionGroupId = null;
-                  released._groupWasPreselectedOnDown = null;
-                  updateExpressionGroupFramesFromSelection(getCanvasForElem(released));
+                refreshInspectionModeForCanvas(getCanvasForElem(released));
+                released._downExpressionGroupId = null;
+                released._groupWasPreselectedOnDown = null;
+                updateExpressionGroupFramesFromSelection(getCanvasForElem(released));
+                cancelDraggingState();
                 return;
               }
             }
@@ -7567,6 +7828,7 @@
                   s._groupWasPreselectedOnDown = null;
                   clickOnlySymbol = null;
                   updateExpressionGroupFramesFromSelection(getCanvasForElem(s));
+                  cancelDraggingState();
                   return;
                 }
               }
@@ -7915,9 +8177,18 @@
 
         const indexBySymbol = new Map(editableSelection.map((symbol, index) => [symbol, index]));
         const links = [];
+        const grouped = new Map();
 
         editableSelection.forEach((symbol, fromIndex) => {
           const conns = currentGraph.getSymbolConnections(symbol) || [[], [], [], [], [], []];
+          const gid = symbol?._expressionGroupId;
+          if (gid) {
+            const grp = expressionGroups.get(gid);
+            if (grp && grp.size > 1) {
+              if (!grouped.has(gid)) grouped.set(gid, []);
+              grouped.get(gid).push(fromIndex);
+            }
+          }
 
           for (let fromSide = 0; fromSide < conns.length; fromSide++) {
             for (const [neighbor, toSide] of conns[fromSide]) {
@@ -7938,8 +8209,13 @@
             isDynamic: !!symbol.isDynamic,
             left: parseFloat(symbol.style.left) || 0,
             top: parseFloat(symbol.style.top) || 0,
+            exprWord: symbol.dataset?.exprWord || '',
+            exprWhy: symbol.dataset?.exprWhy || '',
+            exprNodeId: symbol.dataset?.exprNodeId || '',
+            exprAuthorUid: symbol.dataset?.exprAuthorUid || '',
           })),
           links,
+          groups: Array.from(grouped.values()).filter((members) => members.length > 1),
         };
       }
 
@@ -7947,6 +8223,16 @@
         if (tabHeadersActivated[4]) return chatCanvas();
         if (tabHeadersActivated[1]) return craftCanvas();
         return null;
+      }
+
+      function copyCurrentSelectedSymbolsToClipboard(clipboard = null) {
+        clipboard = clipboard || getSelectedSymbolClipboard();
+        if (clipboard.symbols.length === 0) return false;
+        copiedSymbolSnapshots = clipboard.symbols;
+        copiedSymbolLinks = clipboard.links;
+        copiedSymbolGroups = clipboard.groups || [];
+        symbolPasteCount = 0;
+        return true;
       }
 
       function isEditableTextTarget(target) {
@@ -7957,24 +8243,46 @@
         );
       }
 
-      async function pasteCopiedSymbols() {
+      async function pasteCopiedSymbols(options = {}) {
         if (copiedSymbolSnapshots.length === 0) return;
 
-        const canvas = getActiveSymbolPasteCanvas();
+        const canvas = options.canvas || getActiveSymbolPasteCanvas();
         if (!canvas) return;
 
         const usingChatCanvas = canvas === chatCanvas();
         const canvasRect = canvas.getBoundingClientRect();
         const offsetStep = 30;
         const pasteOffset = offsetStep * (symbolPasteCount + 1);
+        const anchorClientX = Number.isFinite(options.clientX) ? options.clientX : null;
+        const anchorClientY = Number.isFinite(options.clientY) ? options.clientY : null;
+        const hasAnchor = anchorClientX != null && anchorClientY != null;
+        let anchorDeltaX = pasteOffset;
+        let anchorDeltaY = pasteOffset;
+        if (hasAnchor) {
+          const anchor = clientToLocal(canvas, anchorClientX, anchorClientY);
+          const minLeft = Math.min(...copiedSymbolSnapshots.map((snapshot) => snapshot.left));
+          const maxRight = Math.max(
+            ...copiedSymbolSnapshots.map((snapshot) => snapshot.left + symbolWidth * symbolScale),
+          );
+          const minTop = Math.min(...copiedSymbolSnapshots.map((snapshot) => snapshot.top));
+          const maxBottom = Math.max(
+            ...copiedSymbolSnapshots.map((snapshot) => snapshot.top + symbolHeight * symbolScale),
+          );
+          const centerX = (minLeft + maxRight) / 2;
+          const centerY = (minTop + maxBottom) / 2;
+          anchorDeltaX = anchor.x - centerX;
+          anchorDeltaY = anchor.y - centerY;
+        }
         const newlyPasted = [];
 
         clearAllSymbolSelection();
         clearAllEmojiSelection();
 
+        const pendingDotPersists = [];
+
         for (const snapshot of copiedSymbolSnapshots) {
-          const targetLeft = snapshot.left + pasteOffset;
-          const targetTop = snapshot.top + pasteOffset;
+          const targetLeft = snapshot.left + anchorDeltaX;
+          const targetTop = snapshot.top + anchorDeltaY;
 
           let pastedSymbol;
 
@@ -8017,13 +8325,26 @@
             if (!usingChatCanvas) appendToCraftCanvas(dot);
 
             if (usingChatCanvas) {
-              if (pastedSymbol._pendingIdPromise) await pastedSymbol._pendingIdPromise;
-              await persistDotPosition(dot);
+              pendingDotPersists.push(
+                (async () => {
+                  if (pastedSymbol._pendingIdPromise) await pastedSymbol._pendingIdPromise;
+                  await persistDotPosition(dot);
+                })(),
+              );
             }
+          }
+
+          if (snapshot.exprWord) pastedSymbol.dataset.exprWord = String(snapshot.exprWord);
+          if (snapshot.exprWhy) pastedSymbol.dataset.exprWhy = String(snapshot.exprWhy);
+          if (snapshot.exprNodeId) pastedSymbol.dataset.exprNodeId = String(snapshot.exprNodeId);
+          if (snapshot.exprAuthorUid) {
+            pastedSymbol.dataset.exprAuthorUid = String(snapshot.exprAuthorUid);
           }
 
           newlyPasted.push(pastedSymbol);
         }
+
+        const pendingLinkPersists = [];
 
         for (const link of copiedSymbolLinks) {
           const fromSymbol = newlyPasted[link.fromIndex];
@@ -8033,14 +8354,47 @@
           commitLink(fromSymbol, link.fromSide, toSymbol, link.toSide);
 
           if (usingChatCanvas) {
-            if (fromSymbol._pendingIdPromise) await fromSymbol._pendingIdPromise;
-            if (toSymbol._pendingIdPromise) await toSymbol._pendingIdPromise;
+            pendingLinkPersists.push(
+              (async () => {
+                if (fromSymbol._pendingIdPromise) await fromSymbol._pendingIdPromise;
+                if (toSymbol._pendingIdPromise) await toSymbol._pendingIdPromise;
 
-            const fromId = fromSymbol.dataset?.id;
-            const toId = toSymbol.dataset?.id;
-            if (fromId && toId) {
-              await persistLink(fromId, link.fromSide, toId, link.toSide);
-            }
+                const fromId = fromSymbol.dataset?.id;
+                const toId = toSymbol.dataset?.id;
+                if (fromId && toId) {
+                  await persistLink(fromId, link.fromSide, toId, link.toSide);
+                }
+              })(),
+            );
+          }
+        }
+
+        for (const members of copiedSymbolGroups || []) {
+          const groupSymbols = members.map((index) => newlyPasted[index]).filter(Boolean);
+          if (groupSymbols.length < 2) continue;
+          const groupId = `expr_copy_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+          const groupSet = new Set(groupSymbols);
+          expressionGroups.set(groupId, groupSet);
+          for (const sym of groupSet) {
+            sym._expressionGroupId = groupId;
+          }
+
+          if (usingChatCanvas) {
+            const first = groupSymbols[0];
+            const payload = {
+              exprGroupId: groupId,
+              exprWord: String(first?.dataset?.exprWord || ''),
+              exprWhy: String(first?.dataset?.exprWhy || ''),
+              exprNodeId: String(first?.dataset?.exprNodeId || ''),
+              exprAuthorUid: String(first?.dataset?.exprAuthorUid || currentUser?.uid || ''),
+            };
+            Promise.allSettled(
+              groupSymbols.map(async (sym) => {
+                const id = sym.dataset?.id || (await sym._pendingIdPromise?.catch(() => null));
+                if (!id) return;
+                await updateDoc(objDocRef(id), payload);
+              }),
+            ).catch(() => {});
           }
         }
 
@@ -8054,6 +8408,11 @@
         activeSymbol = null;
         dragLeader = null;
         dragGroup = null;
+        updateExpressionGroupFramesFromSelection(canvas);
+
+        if (usingChatCanvas && (pendingDotPersists.length || pendingLinkPersists.length)) {
+          Promise.allSettled([...pendingDotPersists, ...pendingLinkPersists]).catch(() => {});
+        }
       }
 
       function getRandomSubset(words, count) {
@@ -8141,10 +8500,27 @@
       }
 
       function refreshInspectionLabelsForSelection() {
+        const preservedLabelMap = new Map();
+        if (!forceFreshInspectionLabels) {
+          for (const symbol of selectedSymbols) {
+            const labels = Array.from(symbol?.labels || []).filter((label) => label?.isConnected);
+            if (!labels.length) continue;
+            preservedLabelMap.set(symbol, {
+              signature: getSymbolInspectionLabelSignature(symbol),
+              labels: labels.map((label) => ({
+                text: label.textContent || '',
+                userCreated: label.classList.contains('user-created-label'),
+                x: parseFloat(label.style.left) || label.x || 0,
+                y: parseFloat(label.style.top) || label.y || 0,
+              })),
+            });
+          }
+        }
         removeLabelInputs();
+        forceFreshInspectionLabels = false;
         if (selectedSymbols.size === 0) return false;
 
-        showSimpleLabel();
+        showSimpleLabel(preservedLabelMap);
         return true;
       }
 
@@ -8158,8 +8534,13 @@
         }
       }
 
+      function getSymbolInspectionLabelSignature(symbol) {
+        if (!symbol) return '';
+        return `${symbol.elemIdTrue}|${symbol.isDynamic ? 1 : 0}|${getDir(symbol)}`;
+      }
+
       // Function to create labels for selected symbols
-      function showSimpleLabel() {
+      function showSimpleLabel(preservedLabelMap = new Map()) {
         let labelData = [];
 
         selectedSymbols.forEach((selectedSymbol) => {
@@ -8191,6 +8572,18 @@
             }
 
             let subset = getRandomSubset(words, 2);
+            const preservedEntry = preservedLabelMap.get(selectedSymbol) || null;
+            const canReuseBaseTexts =
+              preservedEntry?.signature === getSymbolInspectionLabelSignature(selectedSymbol);
+            const preservedBase = canReuseBaseTexts
+              ? (preservedEntry?.labels || [])
+                  .filter((item) => !item.userCreated)
+                  .map((item) => item.text)
+                  .filter(Boolean)
+              : [];
+            if (preservedBase.length > 0) {
+              subset = preservedBase;
+            }
 
             // ✅ 视口坐标 -> canvas 局部坐标
             const rect = selectedSymbol.getBoundingClientRect();
@@ -8266,13 +8659,18 @@
           canvas.appendChild(label);
 
           const pendingBoxes = pendingBoxesByCanvas.get(canvas) || [];
-          const position = findScatteredLabelPosition(
-            label,
-            labelDataSub[1],
-            labelDataSub[2],
-            canvas,
-            pendingBoxes,
+          const preserved = ((preservedLabelMap.get(anchorSymbol) || {}).labels || []).find(
+            (item) => item.text === labelDataSub[0] && !!item.userCreated === !!labelDataSub[4],
           );
+          const position = preserved
+            ? { x: preserved.x, y: preserved.y }
+            : findScatteredLabelPosition(
+                label,
+                labelDataSub[1],
+                labelDataSub[2],
+                canvas,
+                pendingBoxes,
+              );
 
           label.x = position.x;
           label.y = position.y;
@@ -9019,6 +9417,7 @@
 
         // Add pressing event listener to the symbol
         symbol.addEventListener('mousedown', (e) => {
+          if (e.button !== 0) return;
           const additiveSelect = !!(e.shiftKey || e.ctrlKey || e.metaKey);
           symbol._downAdditive = additiveSelect;
           // If this symbol is part of a spawned expression group, select the entire group,
@@ -9135,8 +9534,16 @@
             return; // no dragging
           }
 
+          const selectedAnnotations = Array.from(selectedEmojis).filter(
+            (em) => em?.dataset?.isAnnotation === 'true',
+          );
+          if (selectedAnnotations.length > 0) {
+            clearAllEmojiSelection();
+          }
+
           symbol.style.cursor = 'grabbing';
           symbol.moving = false;
+          setSymbolDragUiPassThrough(true);
 
           const canvas = getCanvasForElem(symbol);
           const { x: localX, y: localY } = clientToLocal(canvas, e.clientX, e.clientY);
@@ -9174,6 +9581,20 @@
             symbol.offsetX = localX - left;
             symbol.offsetY = localY - top;
           }
+        });
+
+        symbol.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!selectedSymbols.has(symbol)) {
+            ensureContextMenuSymbolSelection(symbol);
+          }
+          const clipboard = getSelectedSymbolClipboard();
+          showCanvasContextMenu(e.clientX, e.clientY, {
+            symbol,
+            clipboard,
+            canCopy: clipboard.symbols.length > 0,
+          });
         });
 
         /* if horizontal: left, right, top perpendicular, bottom perpendicular, top parallel, bottom parallel */
@@ -9937,10 +10358,16 @@
       let libraryTreeView = null;
       let libraryTreeSurface = null;
       let libraryTreeSvg = null;
+      let libraryTreeContextMenu = null;
+      let libraryTreeContextMenuTarget = null;
+      let canvasContextMenu = null;
+      let canvasContextMenuTarget = null;
       let libraryTreeDragState = null;
       let libraryTreeRenderState = null;
       let selectedLibraryTreeNodeIds = new Set();
       const LIBRARY_TREE_ROW_GAP = 26;
+      const LIBRARY_TREE_INSERT_RATIO = 0.35;
+      const LIBRARY_TREE_EDGE_INSERT_PADDING = 8;
       let libraryTreeEdgeFollowFrame = 0;
       let options = {
         nodes: {
@@ -10264,12 +10691,103 @@
         return { width, height };
       }
 
-      function updateLibraryTreeEdgePath(path, fromPos, fromSize, toPos, toSize) {
+      function getLibraryTreeCrossLayerRoute(fromId, toId, y1, y2, preferredSide = '') {
+        const levelById = libraryTreeRenderState?.levelById;
+        const positions = libraryTreeRenderState?.positions;
+        const sizes = libraryTreeRenderState?.sizes;
+        if (!levelById || !positions || !sizes) return null;
+
+        const fromLevel = levelById.get(String(fromId));
+        const toLevel = levelById.get(String(toId));
+        if (!Number.isFinite(fromLevel) || !Number.isFinite(toLevel)) return null;
+        if (Math.abs(toLevel - fromLevel) <= 1) return null;
+
+        const minLevel = Math.min(fromLevel, toLevel);
+        const maxLevel = Math.max(fromLevel, toLevel);
+        const bandPadding = 56;
+        const routeClearance = 62;
+        const blockers = [];
+
+        positions.forEach((pos, id) => {
+          const sid = String(id);
+          if (sid === String(fromId) || sid === String(toId)) return;
+          const level = levelById.get(sid);
+          if (!Number.isFinite(level) || level <= minLevel || level >= maxLevel) return;
+          const size = sizes.get(id);
+          if (!size) return;
+          const top = pos.y;
+          const bottom = pos.y + size.height;
+          if (bottom < Math.min(y1, y2) - bandPadding || top > Math.max(y1, y2) + bandPadding) {
+            return;
+          }
+          blockers.push({ top, bottom });
+        });
+
+        if (!blockers.length) return null;
+
+        const surfaceHeight = libraryTreeSurface?.clientHeight || 0;
+        const topRoute = clamp(
+          Math.min(...blockers.map((blocker) => blocker.top)) - routeClearance,
+          18,
+          Math.max(18, surfaceHeight - 18),
+        );
+        const bottomRoute = clamp(
+          Math.max(...blockers.map((blocker) => blocker.bottom)) + routeClearance,
+          18,
+          Math.max(18, surfaceHeight - 18),
+        );
+        const topCost = Math.abs(y1 - topRoute) + Math.abs(y2 - topRoute);
+        const bottomCost = Math.abs(y1 - bottomRoute) + Math.abs(y2 - bottomRoute);
+        const hysteresis = 90;
+        if (preferredSide === 'top' && topCost <= bottomCost + hysteresis) {
+          return { y: topRoute, side: 'top' };
+        }
+        if (preferredSide === 'bottom' && bottomCost <= topCost + hysteresis) {
+          return { y: bottomRoute, side: 'bottom' };
+        }
+        return topCost <= bottomCost
+          ? { y: topRoute, side: 'top' }
+          : { y: bottomRoute, side: 'bottom' };
+      }
+
+      function updateLibraryTreeEdgePath(path, fromPos, fromSize, toPos, toSize, fromId, toId) {
         if (!path || !fromPos || !fromSize || !toPos || !toSize) return;
         const x1 = fromPos.x + fromSize.width;
         const y1 = fromPos.y + fromSize.height / 2;
         const x2 = toPos.x;
         const y2 = toPos.y + toSize.height / 2;
+        const route = getLibraryTreeCrossLayerRoute(
+          fromId,
+          toId,
+          y1,
+          y2,
+          path.dataset.routeSide || '',
+        );
+        if (route != null) {
+          const span = Math.max(80, x2 - x1);
+          const curve = Math.min(72, Math.max(32, span * 0.2));
+          const previousVisualRouteY = Number(path.dataset.visualRouteY);
+          let smoothedRouteY = Number.isFinite(previousVisualRouteY)
+            ? previousVisualRouteY + (route.y - previousVisualRouteY) * 0.24
+            : route.y;
+          if (route.side === 'top') {
+            smoothedRouteY = Math.min(smoothedRouteY, route.y);
+          } else if (route.side === 'bottom') {
+            smoothedRouteY = Math.max(smoothedRouteY, route.y);
+          }
+          const midX = x1 + span / 2;
+          const firstCtrlX = Math.min(x1 + curve, midX - 24);
+          const secondCtrlX = Math.max(x2 - curve, midX + 24);
+          path.dataset.routeSide = route.side;
+          path.dataset.visualRouteY = String(smoothedRouteY);
+          path.setAttribute(
+            'd',
+            `M ${x1} ${y1} C ${firstCtrlX} ${y1}, ${firstCtrlX} ${smoothedRouteY}, ${midX} ${smoothedRouteY} C ${secondCtrlX} ${smoothedRouteY}, ${secondCtrlX} ${y2}, ${x2} ${y2}`,
+          );
+          return;
+        }
+        delete path.dataset.routeSide;
+        delete path.dataset.visualRouteY;
         const midX = x1 + Math.max(28, (x2 - x1) / 2);
         path.setAttribute('d', `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`);
       }
@@ -10306,6 +10824,8 @@
             { width: fromPos.width, height: fromPos.height },
             toPos,
             { width: toPos.width, height: toPos.height },
+            fromId,
+            toId,
           );
         });
       }
@@ -10328,6 +10848,194 @@
         libraryTreeEdgeFollowFrame = requestAnimationFrame(tick);
       }
 
+      async function copyLibraryTreeCardText(card) {
+        if (!card) return false;
+        const word = card.querySelector('.library-tree-card-word')?.textContent?.trim() || '';
+        const definition =
+          card.querySelector('.library-tree-card-definition')?.textContent?.trim() || '';
+        const text = definition ? `${word}: ${definition}` : word;
+        if (!text) return false;
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch {
+          return false;
+        }
+      }
+
+      function ensureLibraryTreeContextMenu() {
+        if (libraryTreeContextMenu) return libraryTreeContextMenu;
+        const menu = document.createElement('div');
+        menu.className = 'library-tree-context-menu';
+
+        const copyButton = document.createElement('button');
+        copyButton.type = 'button';
+        copyButton.textContent = 'Copy';
+        copyButton.addEventListener('click', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const target = libraryTreeContextMenuTarget;
+          hideLibraryTreeContextMenu();
+          await copyLibraryTreeCardText(target?.card || null);
+        });
+
+        menu.appendChild(copyButton);
+        document.body.appendChild(menu);
+        libraryTreeContextMenu = menu;
+        return menu;
+      }
+
+      function hideLibraryTreeContextMenu() {
+        if (!libraryTreeContextMenu) return;
+        libraryTreeContextMenu.classList.remove('open');
+        libraryTreeContextMenu.style.left = '-9999px';
+        libraryTreeContextMenu.style.top = '-9999px';
+        libraryTreeContextMenuTarget = null;
+      }
+
+      function showLibraryTreeContextMenu(clientX, clientY, card, nodeId) {
+        const menu = ensureLibraryTreeContextMenu();
+        libraryTreeContextMenuTarget = { card, nodeId };
+        menu.classList.add('open');
+        menu.style.left = '0px';
+        menu.style.top = '0px';
+        const rect = menu.getBoundingClientRect();
+        const left = clamp(clientX, 8, Math.max(8, window.innerWidth - rect.width - 8));
+        const top = clamp(clientY, 8, Math.max(8, window.innerHeight - rect.height - 8));
+        menu.style.left = `${left}px`;
+        menu.style.top = `${top}px`;
+      }
+
+      function ensureCanvasContextMenu() {
+        if (canvasContextMenu) return canvasContextMenu;
+        const menu = document.createElement('div');
+        menu.className = 'canvas-context-menu';
+
+        const copyButton = document.createElement('button');
+        copyButton.type = 'button';
+        copyButton.dataset.action = 'copy';
+        copyButton.textContent = 'Copy';
+        copyButton.addEventListener('click', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const target = canvasContextMenuTarget;
+          hideCanvasContextMenu();
+          copyCurrentSelectedSymbolsToClipboard(target?.clipboard || null);
+        });
+
+        const pasteButton = document.createElement('button');
+        pasteButton.type = 'button';
+        pasteButton.dataset.action = 'paste';
+        pasteButton.textContent = 'Paste';
+        pasteButton.addEventListener('click', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const target = canvasContextMenuTarget;
+          hideCanvasContextMenu();
+          if (!target?.canvas) return;
+          await pasteCopiedSymbols({
+            canvas: target.canvas,
+            clientX: target.clientX,
+            clientY: target.clientY,
+          });
+        });
+
+        menu.appendChild(copyButton);
+        menu.appendChild(pasteButton);
+        document.body.appendChild(menu);
+        canvasContextMenu = menu;
+        return menu;
+      }
+
+      function hideCanvasContextMenu() {
+        if (!canvasContextMenu) return;
+        canvasContextMenu.classList.remove('open');
+        canvasContextMenu.style.left = '-9999px';
+        canvasContextMenu.style.top = '-9999px';
+        canvasContextMenuTarget = null;
+      }
+
+      function showCanvasContextMenu(clientX, clientY, config) {
+        const menu = ensureCanvasContextMenu();
+        canvasContextMenuTarget = config;
+        const copyButton = menu.querySelector('[data-action="copy"]');
+        const pasteButton = menu.querySelector('[data-action="paste"]');
+        if (copyButton) copyButton.style.display = config?.canCopy ? '' : 'none';
+        if (pasteButton) {
+          pasteButton.style.display =
+            config?.canvas && copiedSymbolSnapshots.length > 0 ? '' : 'none';
+        }
+        if (
+          (copyButton?.style.display === 'none' || !config?.canCopy) &&
+          (pasteButton?.style.display === 'none' ||
+            !(config?.canvas && copiedSymbolSnapshots.length > 0))
+        ) {
+          hideCanvasContextMenu();
+          return;
+        }
+        menu.classList.add('open');
+        menu.style.left = '0px';
+        menu.style.top = '0px';
+        const rect = menu.getBoundingClientRect();
+        const left = clamp(clientX, 8, Math.max(8, window.innerWidth - rect.width - 8));
+        const top = clamp(clientY, 8, Math.max(8, window.innerHeight - rect.height - 8));
+        menu.style.left = `${left}px`;
+        menu.style.top = `${top}px`;
+      }
+
+      function ensureContextMenuSymbolSelection(symbol) {
+        if (!symbol) return;
+        if (!selectedSymbols.has(symbol)) {
+          clearAllSymbolSelection();
+          clearAllEmojiSelection();
+          const gid = symbol._expressionGroupId;
+          if (gid) {
+            const grp = expressionGroups.get(gid);
+            if (grp?.size) {
+              for (const s of grp) {
+                s.selected = true;
+                selectedSymbols.add(s);
+              }
+            } else {
+              symbol.selected = true;
+              selectedSymbols.add(symbol);
+            }
+          } else {
+            symbol.selected = true;
+            selectedSymbols.add(symbol);
+          }
+        }
+        for (const s of selectedSymbols) {
+          s.classList.add('framed');
+        }
+        const canvas = getCanvasForElem(symbol);
+        if (canvas) {
+          updateExpressionGroupFramesFromSelection(canvas);
+          refreshInspectionModeForCanvas?.(canvas);
+        }
+      }
+
+      function bindCanvasContextMenu(canvas) {
+        if (!canvas || canvas.dataset.contextMenuBound === 'true') return;
+        canvas.dataset.contextMenuBound = 'true';
+        canvas.addEventListener('contextmenu', (e) => {
+          if (
+            e.target?.closest?.(
+              '.symbol, .symbol-label, .dot, .expression-group-frame, .spawned-expression-meta, .button, textarea, input, .submit-button, .cancel-button',
+            )
+          )
+            return;
+          e.preventDefault();
+          e.stopPropagation();
+          showCanvasContextMenu(e.clientX, e.clientY, {
+            canvas,
+            clientX: e.clientX,
+            clientY: e.clientY,
+            canCopy: false,
+          });
+        });
+      }
+
       function setSelectedLibraryTreeNodes(ids) {
         selectedLibraryTreeNodeIds = new Set((ids || []).map((id) => String(id)));
         libraryTreeSurface?.querySelectorAll('.library-tree-card').forEach((card) => {
@@ -10347,35 +11055,59 @@
       function layoutLibraryTreeColumnDuringDrag(level, draggedId, draggedY) {
         if (!libraryTreeSurface || !libraryTreeDragState?.baseEntries?.length) return;
 
-        const entries = libraryTreeDragState.baseEntries;
+        const entries = [...libraryTreeDragState.baseEntries].sort((a, b) => a.baseY - b.baseY);
         const dragged = entries.find((entry) => entry.id === draggedId);
         if (!dragged) return;
 
         dragged.card.style.left = `${dragged.x}px`;
         dragged.card.style.top = `${draggedY}px`;
 
-        const draggedCenter = draggedY + dragged.size.height / 2;
-        const startCenter = dragged.baseY + dragged.size.height / 2;
-        const direction = Math.sign(draggedCenter - startCenter);
-        const space = dragged.size.height + LIBRARY_TREE_ROW_GAP;
-        const easeOut = (v) => 1 - (1 - v) * (1 - v);
+        const draggedIndex = entries.findIndex((entry) => entry.id === draggedId);
+        const movingDown = draggedY >= dragged.baseY;
+        const travel = dragged.size.height + LIBRARY_TREE_ROW_GAP;
+        const edgePadding = LIBRARY_TREE_EDGE_INSERT_PADDING;
+        const easeOut = (v) => 1 - Math.pow(1 - v, 3);
+        const shiftedY = new Map();
+        const draggedBottom = draggedY + dragged.size.height;
+        const topThresholds = entries.map(
+          (entry) => entry.baseY + entry.size.height - edgePadding,
+        );
+        const bottomThresholds = entries.map((entry) => entry.baseY + edgePadding);
+
+        if (movingDown) {
+          for (let i = draggedIndex + 1; i < entries.length; i++) {
+            const entry = entries[i];
+            const threshold = bottomThresholds[i];
+            const nextThreshold =
+              i + 1 < entries.length ? bottomThresholds[i + 1] : threshold + travel;
+            const progress = clamp(
+              (draggedBottom - threshold) / Math.max(1, nextThreshold - threshold),
+              0,
+              1,
+            );
+            if (progress > 0) {
+              shiftedY.set(entry.id, entry.baseY - easeOut(progress) * travel);
+            }
+          }
+        } else {
+          for (let i = draggedIndex - 1; i >= 0; i--) {
+            const entry = entries[i];
+            const threshold = topThresholds[i];
+            const nextThreshold = i - 1 >= 0 ? topThresholds[i - 1] : threshold - travel;
+            const progress = clamp(
+              (threshold - draggedY) / Math.max(1, threshold - nextThreshold),
+              0,
+              1,
+            );
+            if (progress > 0) {
+              shiftedY.set(entry.id, entry.baseY + easeOut(progress) * travel);
+            }
+          }
+        }
 
         for (const entry of entries) {
           if (entry.id === draggedId) continue;
-
-          const baseCenter = entry.baseY + entry.size.height / 2;
-          const range = space * 1.35;
-          let influence = 0;
-
-          if (direction > 0 && baseCenter >= startCenter) {
-            influence = clamp(1 - Math.abs(baseCenter - draggedCenter) / Math.max(1, range), 0, 1);
-            entry.card.style.top = `${entry.baseY - easeOut(influence) * space}px`;
-          } else if (direction < 0 && baseCenter <= startCenter) {
-            influence = clamp(1 - Math.abs(baseCenter - draggedCenter) / Math.max(1, range), 0, 1);
-            entry.card.style.top = `${entry.baseY + easeOut(influence) * space}px`;
-          } else {
-            entry.card.style.top = `${entry.baseY}px`;
-          }
+          entry.card.style.top = `${shiftedY.get(entry.id) ?? entry.baseY}px`;
           entry.card.style.left = `${entry.x}px`;
         }
 
@@ -10385,7 +11117,9 @@
           top: parseFloat(entry.card.style.top) || 0,
         }));
         const minTop = Math.min(...cardsAfterLayout.map((entry) => entry.top));
-        const maxBottom = Math.max(...cardsAfterLayout.map((entry) => entry.top + entry.size.height));
+        const maxBottom = Math.max(
+          ...cardsAfterLayout.map((entry) => entry.top + entry.size.height),
+        );
         let shiftY = 0;
         if (minTop < 0) shiftY = -minTop;
         else if (maxBottom > libraryTreeSurface.clientHeight) {
@@ -10400,40 +11134,134 @@
         }
       }
 
+      function animateLibraryTreeColumnToPackedPositions(dragState) {
+        if (!libraryTreeSurface || !dragState?.baseEntries?.length) return Promise.resolve([]);
+
+        const entries = dragState.baseEntries
+          .map((entry) => {
+            const pos = getLibraryTreeCardDomPosition(entry.id);
+            return pos
+              ? {
+                  id: String(entry.id),
+                  card: entry.card,
+                  x: entry.x,
+                  y: pos.y,
+                  baseY: entry.baseY,
+                  size: entry.size,
+                }
+              : null;
+          })
+          .filter(Boolean)
+          .sort((a, b) => a.baseY - b.baseY);
+
+        if (!entries.length) return Promise.resolve([]);
+
+        const dragged = entries.find((entry) => entry.id === String(dragState.nodeId));
+        if (!dragged) return Promise.resolve([]);
+
+        const others = entries.filter((entry) => entry.id !== dragged.id);
+        const movingDown = dragged.y >= dragged.baseY;
+        const draggedTop = dragged.y;
+        const draggedBottom = dragged.y + dragged.size.height;
+        let insertIndex = others.findIndex((entry) =>
+          movingDown
+            ? draggedBottom < entry.baseY + LIBRARY_TREE_EDGE_INSERT_PADDING
+            : draggedTop < entry.baseY + entry.size.height - LIBRARY_TREE_EDGE_INSERT_PADDING,
+        );
+        if (insertIndex < 0) insertIndex = others.length;
+
+        const ordered = [...others.slice(0, insertIndex), dragged, ...others.slice(insertIndex)];
+
+        const targets = [];
+        let currentY = Math.min(...entries.map((entry) => entry.baseY));
+        ordered.forEach((entry) => {
+          targets.push({ id: entry.id, card: entry.card, x: entry.x, y: currentY });
+          currentY += entry.size.height + LIBRARY_TREE_ROW_GAP;
+        });
+
+        return new Promise((resolve) => {
+          const starts = targets.map((entry) => {
+            const live = getLibraryTreeCardDomPosition(entry.id);
+            return {
+              ...entry,
+              startY: live ? live.y : entry.y,
+            };
+          });
+          const duration = 320;
+          const ease = (t) => 1 - Math.pow(1 - t, 3);
+          const startTime = performance.now();
+
+          const step = (now) => {
+            const rawT = Math.min(1, (now - startTime) / duration);
+            const t = ease(rawT);
+            starts.forEach((entry) => {
+              const nextY = entry.startY + (entry.y - entry.startY) * t;
+              entry.card.style.left = `${entry.x}px`;
+              entry.card.style.top = `${nextY}px`;
+            });
+            refreshLibraryTreeEdgesFromDom();
+
+            if (rawT < 1) {
+              requestAnimationFrame(step);
+              return;
+            }
+
+            const packed = starts.map((entry) => ({
+              id: entry.id,
+              _treeY: entry.y,
+            }));
+            resolve(packed);
+          };
+
+          requestAnimationFrame(step);
+        });
+      }
+
+      function startLibraryTreeCardDrag(card, nodeId, positions, sizes, pointerId, clientY) {
+        const startPos = positions.get(nodeId);
+        const size = sizes.get(nodeId);
+        if (!startPos || !size) return false;
+
+        setSelectedLibraryTreeNodes([nodeId]);
+        const baseEntries = (libraryTreeRenderState?.columns?.get(card.dataset.level || '') || [])
+          .map((id) => {
+            const pos = getLibraryTreeCardDomPosition(id);
+            const s = libraryTreeRenderState?.sizes?.get(id);
+            return pos && s
+              ? { id: String(id), card: pos.card, x: pos.x, y: pos.y, baseY: pos.y, size: s }
+              : null;
+          })
+          .filter(Boolean);
+        libraryTreeDragState = {
+          nodeId,
+          card,
+          level: card.dataset.level || '',
+          startClientY: clientY,
+          startY: startPos.y,
+          x: startPos.x,
+          size,
+          moved: false,
+          baseEntries,
+        };
+        card.classList.add('dragging');
+        card.setPointerCapture?.(pointerId);
+        startLibraryTreeEdgeFollow();
+        return true;
+      }
+
       function attachLibraryTreeCardDrag(card, nodeId, positions, sizes) {
         card.addEventListener('pointerdown', (e) => {
           if (e.button !== 0) return;
+          hideLibraryTreeContextMenu();
           e.preventDefault();
           e.stopPropagation();
-
-          const startPos = positions.get(nodeId);
-          const size = sizes.get(nodeId);
-          if (!startPos || !size) return;
-
+          startLibraryTreeCardDrag(card, nodeId, positions, sizes, e.pointerId, e.clientY);
+        });
+        card.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
           setSelectedLibraryTreeNodes([nodeId]);
-          const baseEntries = (libraryTreeRenderState?.columns?.get(card.dataset.level || '') || [])
-            .map((id) => {
-              const pos = getLibraryTreeCardDomPosition(id);
-              const s = libraryTreeRenderState?.sizes?.get(id);
-              return pos && s
-                ? { id: String(id), card: pos.card, x: pos.x, y: pos.y, baseY: pos.y, size: s }
-                : null;
-            })
-            .filter(Boolean);
-          libraryTreeDragState = {
-            nodeId,
-            card,
-            level: card.dataset.level || '',
-            startClientY: e.clientY,
-            startY: startPos.y,
-            x: startPos.x,
-            size,
-            moved: false,
-            baseEntries,
-          };
-          card.classList.add('dragging');
-          card.setPointerCapture?.(e.pointerId);
-          startLibraryTreeEdgeFollow();
+          showLibraryTreeContextMenu(e.clientX, e.clientY, card, nodeId);
         });
       }
 
@@ -10530,6 +11358,7 @@
           positions,
           sizes,
           columns: treeColumns,
+          levelById: new Map([...levelById.entries()].map(([id, level]) => [String(id), level])),
         };
 
         for (const edge of edges.get()) {
@@ -10548,7 +11377,7 @@
           const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
           path.dataset.from = String(edge.from);
           path.dataset.to = String(edge.to);
-          updateLibraryTreeEdgePath(path, fromPos, fromSize, toPos, toSize);
+          updateLibraryTreeEdgePath(path, fromPos, fromSize, toPos, toSize, edge.from, edge.to);
           path.setAttribute('stroke', 'black');
           path.setAttribute('stroke-width', '3');
           path.setAttribute('fill', 'none');
@@ -10639,20 +11468,27 @@
         refreshLibraryTreeEdgesFromDom();
       });
 
-      document.addEventListener('pointerup', (e) => {
+      document.addEventListener('pointerup', async (e) => {
         if (!libraryTreeDragState) return;
         const { nodeId, card, level } = libraryTreeDragState;
         card.classList.remove('dragging');
         card.releasePointerCapture?.(e.pointerId);
-        libraryTreeDragState = null;
         stopLibraryTreeEdgeFollow();
-        const columnIds = libraryTreeRenderState?.columns?.get(level) || [String(nodeId)];
-        const updates = columnIds
-          .map((id) => {
-            const pos = getLibraryTreeCardDomPosition(id);
-            return pos ? { id, _treeY: pos.y } : null;
-          })
-          .filter(Boolean);
+        let updates = [];
+        if (libraryTreeDragState.moved) {
+          startLibraryTreeEdgeFollow();
+          updates = await animateLibraryTreeColumnToPackedPositions(libraryTreeDragState);
+          stopLibraryTreeEdgeFollow();
+        } else {
+          const columnIds = libraryTreeRenderState?.columns?.get(level) || [String(nodeId)];
+          updates = columnIds
+            .map((id) => {
+              const pos = getLibraryTreeCardDomPosition(id);
+              return pos ? { id, _treeY: pos.y } : null;
+            })
+            .filter(Boolean);
+        }
+        libraryTreeDragState = null;
         if (updates.length) nodes.update(updates);
         renderLibraryTreeView();
         scheduleSaveLibraryGraph();
@@ -10665,6 +11501,23 @@
         libraryTreeDragState = null;
         stopLibraryTreeEdgeFollow();
         renderLibraryTreeView();
+      });
+
+      document.addEventListener('pointerdown', (e) => {
+        if (!libraryTreeContextMenu?.classList.contains('open')) return;
+        if (libraryTreeContextMenu.contains(e.target)) return;
+        hideLibraryTreeContextMenu();
+      });
+
+      document.addEventListener('pointerdown', (e) => {
+        if (!canvasContextMenu?.classList.contains('open')) return;
+        if (canvasContextMenu.contains(e.target)) return;
+        hideCanvasContextMenu();
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') hideLibraryTreeContextMenu();
+        if (e.key === 'Escape') hideCanvasContextMenu();
       });
 
       const organizeNodeButton = document.createElement('div');
@@ -10697,7 +11550,11 @@
       libraryTreeSvg.id = 'libraryTreeSvg';
       libraryTreeSurface.appendChild(libraryTreeSvg);
       libraryTreeView.addEventListener('pointerdown', (e) => {
-        if (e.target === libraryTreeView || e.target === libraryTreeSurface || e.target === libraryTreeSvg) {
+        if (
+          e.target === libraryTreeView ||
+          e.target === libraryTreeSurface ||
+          e.target === libraryTreeSvg
+        ) {
           setSelectedLibraryTreeNodes([]);
         }
       });
@@ -11208,8 +12065,10 @@
         initFoam(world, content, 110);
 
         if (worldPanController && Number.isFinite(minIslandLeft)) {
-          const targetX = world.clientWidth / 2 - (minIslandLeft + maxIslandRight) / 2;
-          const targetY = world.clientHeight / 2 - (minIslandTop + maxIslandBottom) / 2;
+          const targetX =
+            world.clientWidth / 2 - ((minIslandLeft + maxIslandRight) / 2) * worldContentZoom;
+          const targetY =
+            world.clientHeight / 2 - ((minIslandTop + maxIslandBottom) / 2) * worldContentZoom;
           worldPanController.setOffset(targetX, targetY);
         }
 
@@ -11543,16 +12402,17 @@
         }
       }
 
-      function recycleFoam(worldEl, worldContentEl, offsetX, offsetY) {
+      function recycleFoam(worldEl, worldContentEl, offsetX, offsetY, zoom = 1) {
         const W = worldEl.clientWidth;
         const H = worldEl.clientHeight;
 
         // Visible rect in content coords:
         // screenX = contentX + offsetX  => contentX = screenX - offsetX
-        const vx0 = -offsetX;
-        const vy0 = -offsetY;
-        const vx1 = vx0 + W;
-        const vy1 = vy0 + H;
+        const safeZoom = Math.max(zoom || 1, 0.0001);
+        const vx0 = -offsetX / safeZoom;
+        const vy0 = -offsetY / safeZoom;
+        const vx1 = vx0 + W / safeZoom;
+        const vy1 = vy0 + H / safeZoom;
 
         // how far outside viewport before we recycle
         const PAD = 600;
@@ -11592,8 +12452,8 @@
           startOffsetY = 0;
 
         function getClampedOffset(nextX, nextY) {
-          const contentWidth = content.offsetWidth || world.clientWidth;
-          const contentHeight = content.offsetHeight || world.clientHeight;
+          const contentWidth = (content.offsetWidth || world.clientWidth) * worldContentZoom;
+          const contentHeight = (content.offsetHeight || world.clientHeight) * worldContentZoom;
           const minOffsetX = Math.min(0, world.clientWidth - contentWidth);
           const minOffsetY = Math.min(0, world.clientHeight - contentHeight);
 
@@ -11604,9 +12464,9 @@
         }
 
         function setTransform() {
-          content.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+          content.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${worldContentZoom})`;
 
-          recycleFoam(world, content, offsetX, offsetY);
+          recycleFoam(world, content, offsetX, offsetY, worldContentZoom);
         }
 
         world.addEventListener('pointerdown', (e) => {
@@ -11657,8 +12517,15 @@
 
         worldPanController = {
           getOffset: () => ({ x: offsetX, y: offsetY }),
+          getZoom: () => worldContentZoom,
           setOffset: (x, y) => {
             const clamped = getClampedOffset(x, y);
+            offsetX = clamped.x;
+            offsetY = clamped.y;
+            setTransform();
+          },
+          refresh: () => {
+            const clamped = getClampedOffset(offsetX, offsetY);
             offsetX = clamped.x;
             offsetY = clamped.y;
             setTransform();
