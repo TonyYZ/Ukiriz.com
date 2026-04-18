@@ -341,8 +341,8 @@
         display: block;
       }
 
-      /* Single bounding-box frame for spawned expression groups */
-      #expressionGroupFrame {
+      /* Bounding-box frame(s) for spawned expression groups (multi-select supports multiple) */
+      .expression-group-frame {
         position: absolute;
         pointer-events: none;
         outline: 2px solid #00b0f0;
@@ -401,7 +401,7 @@
         position: absolute;
         background: transparent;
         pointer-events: none;
-        z-index: 99999;
+        z-index: 4; /* above symbols, below inspection frames/cards */
         outline: 10px dashed #00b0f0;
       }
 
@@ -545,7 +545,7 @@
         font-size: 16px;
         font-family: inherit; /* Set font to match labels */
         border-radius: 5px;
-        z-index: 5;
+        z-index: 12;
       }
 
       /* Auto-resizing textarea */
@@ -561,7 +561,7 @@
         border-radius: 5px;
         resize: none;
         overflow: hidden;
-        z-index: 5;
+        z-index: 12;
       }
 
       /* Style the submit button */
@@ -577,7 +577,7 @@
         height: 27px;
         line-height: 27px;
         text-align: center;
-        z-index: 5;
+        z-index: 12;
       }
 
       /* Hover effect */
@@ -743,6 +743,18 @@
         justify-content: flex-start;
         gap: 12px;
         text-align: left;
+        cursor: grab;
+        touch-action: none;
+        transition: top 120ms ease;
+      }
+      .library-tree-card.dragging {
+        cursor: grabbing;
+        transition: none;
+        z-index: 2;
+      }
+      .library-tree-card.selected {
+        box-shadow: inset 0 0 0 2px #000;
+        border-color: #000;
       }
 
       .library-tree-card.basic {
@@ -1170,6 +1182,14 @@
           supportCode: 'Support code',
           clickToCopy: '(click to copy UID)',
           supportOnKofi: 'Support on Ko-fi',
+          fillAllFields: 'Please fill in all fields!',
+          wordAlreadyDefined: 'You have already defined this word!',
+          expressionAlreadyUsed:
+            'You have already used this expression for defining another word!',
+          quotaReachedToday: "You have reached today's quota.",
+          validationFailed: 'Validation failed.',
+          whatWordIsThis: 'What word is this?',
+          whyPrompt: 'Why?',
         },
         zh: {
           homeHTML: `
@@ -1324,6 +1344,13 @@
           supportCode: '支持码',
           clickToCopy: '（点击复制 UID）',
           supportOnKofi: '🍹 上 Ko-fi 支持',
+          fillAllFields: '请填写所有字段！',
+          wordAlreadyDefined: '你已经定义过这个词了！',
+          expressionAlreadyUsed: '你已经用这个表达式定义过其他词了！',
+          quotaReachedToday: '你今天已经达到额度上限。',
+          validationFailed: '验证失败。',
+          whatWordIsThis: '\u8fd9\u662f\u4ec0\u4e48\u8bcd\uff1f',
+          whyPrompt: '\u4e3a\u4ec0\u4e48\uff1f',
         },
       };
 
@@ -1538,6 +1565,21 @@
 
         const key = e.key.toLowerCase();
 
+        // Hidden feature: generate an emoji bubble in chat via worker without showing a dedicated UI.
+        // Ctrl+Shift+E (or Cmd+Shift+E) opens a prompt and posts the resulting emoji bubble.
+        if (key === 'e' && e.shiftKey) {
+          if (!tabHeadersActivated?.[4]) return;
+          e.preventDefault();
+          const promptText =
+            currentLang === 'zh'
+              ? '输入一句话，我会把它转换成 emoji（隐藏功能）:'
+              : 'Type a message and I will turn it into emoji (hidden):';
+          const text = (window.prompt(promptText, '') || '').trim();
+          if (!text) return;
+          await handleEmojiMessage(text);
+          return;
+        }
+
         if (key === 'c') {
           const clipboard = getSelectedSymbolClipboard();
           if (clipboard.symbols.length === 0) return;
@@ -1608,16 +1650,15 @@
             ignoreSelector:
               '#palette, .wheel, .button, .label-input, .label-textarea, .submit-button',
             clearSelection: () => {
-              const activeTab = document.querySelector('.tab-content.active');
-              const existingInput = activeTab?.querySelector('.label-input');
-              if (!existingInput) {
-                clearAllSymbolSelection();
-              }
+              clearAllSymbolSelection();
             },
             onSelect: (el) => {
               el.classList.add('framed');
               selectedSymbols.add(el);
               el.selected = true;
+            },
+            onSelectionApplied: () => {
+              refreshCraftInspectionUI();
             },
           });
           marqueeCraftEnabled = true;
@@ -1982,7 +2023,7 @@
         surface.addEventListener(
           'pointerdown',
           (e) => {
-            if (!eyeButton2?.isActivated) return;
+            if (!window.eyeButton2?.isActivated) return;
             if (e.button != null && e.button !== 0) return;
 
             const t = e.target;
@@ -2019,7 +2060,7 @@
         chatMiniMapFrame = requestAnimationFrame(() => {
           chatMiniMapFrame = 0;
           updateChatMiniMap();
-          if (eyeButton2?.isActivated) {
+          if (window.eyeButton2?.isActivated) {
             showAnnotationsForSelection();
           }
           scheduleAnnotationLinksUpdate();
@@ -2173,10 +2214,14 @@
         const cv = canvas || chatCanvas() || craftCanvas();
         if (!cv) return;
 
-        if (!expressionGroupFrameEl || !expressionGroupFrameEl.isConnected) {
-          expressionGroupFrameEl = document.createElement('div');
-          expressionGroupFrameEl.id = 'expressionGroupFrame';
-          cv.appendChild(expressionGroupFrameEl);
+        const gid = symbols[0]?._expressionGroupId || '__expr_group__';
+        let frameEl = expressionGroupFrameEls.get(gid);
+        if (!frameEl || !frameEl.isConnected) {
+          frameEl = document.createElement('div');
+          frameEl.className = 'expression-group-frame';
+          frameEl.dataset.exprGroupId = gid;
+          cv.appendChild(frameEl);
+          expressionGroupFrameEls.set(gid, frameEl);
         }
 
         let minLeft = Infinity;
@@ -2192,16 +2237,98 @@
         }
 
         const pad = 0; // keep frame as tight as the normal per-symbol selection outline
-        expressionGroupFrameEl.style.display = 'block';
-        expressionGroupFrameEl.style.left = `${minLeft - pad}px`;
-        expressionGroupFrameEl.style.top = `${minTop - pad}px`;
-        expressionGroupFrameEl.style.width = `${maxRight - minLeft + pad * 2}px`;
-        expressionGroupFrameEl.style.height = `${maxBottom - minTop + pad * 2}px`;
+        frameEl.style.display = 'block';
+        frameEl.style.left = `${minLeft - pad}px`;
+        frameEl.style.top = `${minTop - pad}px`;
+        frameEl.style.width = `${maxRight - minLeft + pad * 2}px`;
+        frameEl.style.height = `${maxBottom - minTop + pad * 2}px`;
       }
 
       function clearExpressionGroupFrame() {
-        if (expressionGroupFrameEl) {
-          expressionGroupFrameEl.style.display = 'none';
+        for (const [gid, el] of expressionGroupFrameEls.entries()) {
+          if (!el || !el.isConnected) {
+            expressionGroupFrameEls.delete(gid);
+            continue;
+          }
+          el.style.display = 'none';
+        }
+      }
+
+      function updateExpressionGroupFramesFromSelection(canvas) {
+        const cv = canvas || chatCanvas() || craftCanvas();
+        if (!cv) return;
+
+        const fullySelectedGroupIds = new Set();
+        for (const s of selectedSymbols) {
+          const gid = s?._expressionGroupId;
+          if (!gid) continue;
+          const grp = expressionGroups.get(gid);
+          if (!grp || grp.size < 2) continue;
+          let all = true;
+          for (const sym of grp) {
+            if (!selectedSymbols.has(sym)) {
+              all = false;
+              break;
+            }
+          }
+          if (all) fullySelectedGroupIds.add(gid);
+        }
+
+        // Hide stale frames
+        for (const [gid, el] of expressionGroupFrameEls.entries()) {
+          if (!el || !el.isConnected) {
+            expressionGroupFrameEls.delete(gid);
+            continue;
+          }
+          if (!fullySelectedGroupIds.has(gid)) {
+            el.style.display = 'none';
+          }
+        }
+
+        // Render frames for fully-selected groups and remove per-symbol frames within them
+        for (const gid of fullySelectedGroupIds) {
+          const grp = expressionGroups.get(gid);
+          if (!grp) continue;
+          const arr = Array.from(grp);
+          updateExpressionGroupFrame(arr, cv);
+          for (const sym of arr) {
+            sym.classList.remove('framed');
+          }
+        }
+
+        // Ensure everything else still has per-symbol frames
+        for (const s of selectedSymbols) {
+          const gid = s?._expressionGroupId;
+          if (gid && fullySelectedGroupIds.has(gid)) continue;
+          if (!s.classList.contains('framed')) s.classList.add('framed');
+        }
+
+        // In chat inspection mode, keep expression vocab cards in sync with selection.
+        if (cv === chatCanvas()) {
+          showSpawnedExpressionMetaForSelection();
+        }
+      }
+
+      function expandSelectionToExpressionGroups() {
+        // If any symbol from a spawned expression group is selected (e.g. by marquee),
+        // promote the selection to include the entire expression group.
+        const toExpand = new Set();
+        for (const s of selectedSymbols) {
+          const gid = s?._expressionGroupId;
+          if (!gid) continue;
+          const grp = expressionGroups.get(gid);
+          if (grp && grp.size > 1) toExpand.add(gid);
+        }
+        if (!toExpand.size) return;
+
+        for (const gid of toExpand) {
+          const grp = expressionGroups.get(gid);
+          if (!grp) continue;
+          for (const sym of grp) {
+            sym.selected = true;
+            selectedSymbols.add(sym);
+            sym.classList.add('framed');
+          }
         }
       }
 
@@ -2820,9 +2947,8 @@
       const pendingOpsBySymbolId = new Map();
       let annoLinkById = new Map(); // docId → { fromEmojiId, toEmojiId }
       const expressionGroups = new Map(); // groupId → Set<symbol>
-      let expressionGroupFrameEl = null;
-      let spawnedExpressionMetaCardEl = null;
-      let spawnedExpressionMetaGroupId = null;
+      const expressionGroupFrameEls = new Map(); // groupId → DOM element
+      const spawnedExpressionMetaCardEls = new Map(); // groupId -> DOM element
       // (annoChildToParent, lastInspectionRootSymbolId) initialized near top of module
 
       function makeClientNonce(prefix) {
@@ -4599,14 +4725,7 @@
             }
           }
 
-          if (selectedSymbols.size !== 0) {
-            const [foundIds, elimBasic, representatives, hasDuplicateExpression] =
-              showSimpleLabel();
-
-            if (isSelectionConnected(selectedSymbols, currentGraph)) {
-              showInput(foundIds, elimBasic, representatives, hasDuplicateExpression);
-            }
-          }
+          refreshCraftInspectionUI();
         } else {
           eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
           removeLabelInputs();
@@ -4616,6 +4735,8 @@
       appendToCraftControls(eyeButton);
 
       const eyeButton2 = eyeButton.cloneNode(true);
+      // Expose for earlier helpers that run before this const is initialized (avoids TDZ errors).
+      window.eyeButton2 = eyeButton2;
 
       function setChatInspectionMode(on) {
         eyeButton2.isActivated = !!on;
@@ -4627,8 +4748,6 @@
         if (annotationInput) annotationInput.style.display = on ? 'block' : 'none';
 
         if (on) {
-          // Clear any old meaning bubbles to avoid stacking duplicates.
-          removeLabelInputs();
           // Only inspect the chat-canvas selection (avoid cross-tab selection leakage).
           const chatSel = Array.from(selectedSymbols).filter(
             (s) => getCanvasForElem(s) === chatCanvas(),
@@ -4641,9 +4760,7 @@
               selectedSymbols.add(s);
             }
           }
-          if (selectedSymbols.size !== 0) showSimpleLabel();
-          showAnnotationsForSelection();
-          showSpawnedExpressionMetaForSelection();
+          refreshChatInspectionOverlays();
         } else {
           removeLabelInputs();
           hideAllAnnotations();
@@ -4659,99 +4776,179 @@
         scheduleChatMiniMapUpdate?.();
       }
 
+      function refreshChatInspectionOverlays() {
+        if (!eyeButton2?.isActivated) return;
+
+        const hasSelection = refreshInspectionLabelsForSelection();
+
+        if (hasSelection && isSelectionConnected(selectedSymbols, currentGraph)) {
+          showAnnotationsForSelection();
+        } else {
+          hideAllAnnotations();
+        }
+
+        showSpawnedExpressionMetaForSelection();
+      }
+
       function showSpawnedExpressionMetaForSelection() {
         try {
-          if (!selectedSymbols.size) return;
-          if (!isSelectionConnected(selectedSymbols, currentGraph)) return;
+          const canvas = chatCanvas();
+          if (!canvas) return;
 
-          const first = selectedSymbols.values().next().value;
-          const canvas = getCanvasForElem(first);
-          if (canvas !== chatCanvas()) return;
+          // Only show vocab cards in chat inspection mode.
+          // Use window.eyeButton2 to avoid TDZ if called early during boot.
+          const isInspecting = !!window.eyeButton2?.isActivated;
+          if (!isInspecting) {
+            for (const [gid, el] of spawnedExpressionMetaCardEls.entries()) {
+              if (el && el.isConnected) el.remove();
+              spawnedExpressionMetaCardEls.delete(gid);
+            }
+            return;
+          }
 
-          // Only when the selection is exactly one spawned-expression group.
-          const gid = first?._expressionGroupId || null;
-          if (!gid) return;
-          const grp = expressionGroups.get(gid);
-          if (!grp || grp.size < 2) return;
-          const grpArray = Array.from(grp);
-          const isGroupSelected =
-            grpArray.every((s) => selectedSymbols.has(s)) && selectedSymbols.size === grp.size;
-          if (!isGroupSelected) return;
+          // Determine which expression groups are fully selected (even if selection includes other symbols).
+          const wanted = new Set();
+          for (const s of selectedSymbols) {
+            if (!s) continue;
+            if (getCanvasForElem(s) !== canvas) continue;
+            const gid = s._expressionGroupId;
+            if (!gid) continue;
+            const grp = expressionGroups.get(gid);
+            if (!grp || grp.size < 1) continue;
+            let all = true;
+            for (const sym of grp) {
+              if (!selectedSymbols.has(sym)) {
+                all = false;
+                break;
+              }
+            }
+            if (all) wanted.add(gid);
+          }
 
-          const word = String(first.dataset?.exprWord || '').trim();
-          const why = String(first.dataset?.exprWhy || '').trim();
-          if (!word && !why) return;
+          // Remove stale cards
+          for (const [gid, el] of spawnedExpressionMetaCardEls.entries()) {
+            if (!el || !el.isConnected) {
+              spawnedExpressionMetaCardEls.delete(gid);
+              continue;
+            }
+            if (!wanted.has(gid)) {
+              el.remove();
+              spawnedExpressionMetaCardEls.delete(gid);
+            }
+          }
 
-          // Remove any old meta card so we don't stack duplicates.
-          document
-            .querySelectorAll('.spawned-expression-meta.removable')
-            .forEach((el) => el.remove());
-          spawnedExpressionMetaCardEl = null;
-          spawnedExpressionMetaGroupId = null;
+          // Create cards for each fully-selected expression group.
+          for (const gid of wanted) {
+            const existing = spawnedExpressionMetaCardEls.get(gid);
+            if (existing && existing.isConnected) continue;
 
-          // Techtree-style card: bold word title + why text in one box.
-          const card = document.createElement('div');
-          card.className = 'library-tree-card spawned-expression-meta removable';
+            const grp = expressionGroups.get(gid);
+            if (!grp || grp.size < 1) continue;
+            const first = Array.from(grp)[0];
+            const word = String(first?.dataset?.exprWord || '').trim();
+            const why = String(first?.dataset?.exprWhy || '').trim();
+            if (!word && !why) continue;
 
-          // Don't let clicks on the card exit inspection mode or clear selection.
-          card.addEventListener('pointerdown', (e) => e.stopPropagation());
-          card.addEventListener('mousedown', (e) => e.stopPropagation());
-          card.addEventListener('mouseup', (e) => e.stopPropagation());
+            // Techtree-style card: bold word title + why text in one box.
+            const card = document.createElement('div');
+            card.className = 'library-tree-card spawned-expression-meta removable';
+            card.dataset.exprGroupId = gid;
 
-          const textWrap = document.createElement('div');
-          textWrap.className = 'library-tree-card-text';
+            // Don't let clicks on the card exit inspection mode or clear selection.
+            card.addEventListener('pointerdown', (e) => e.stopPropagation());
+            card.addEventListener('mousedown', (e) => e.stopPropagation());
+            card.addEventListener('mouseup', (e) => e.stopPropagation());
 
-          const titleEl = document.createElement('div');
-          titleEl.className = 'library-tree-card-word';
-          titleEl.textContent = word || '';
+            const textWrap = document.createElement('div');
+            textWrap.className = 'library-tree-card-text';
 
-          const whyEl = document.createElement('div');
-          whyEl.className = 'library-tree-card-definition';
-          whyEl.textContent = why || '';
+            const titleEl = document.createElement('div');
+            titleEl.className = 'library-tree-card-word';
+            titleEl.textContent = word || '';
 
-          textWrap.appendChild(titleEl);
-          if (why) textWrap.appendChild(whyEl);
-          card.appendChild(textWrap);
-          appendToChatCanvas(card);
+            const whyEl = document.createElement('div');
+            whyEl.className = 'library-tree-card-definition';
+            whyEl.textContent = why || '';
 
-          spawnedExpressionMetaCardEl = card;
-          spawnedExpressionMetaGroupId = gid;
-          updateSpawnedExpressionMetaCardPosition();
+            textWrap.appendChild(titleEl);
+            if (why) textWrap.appendChild(whyEl);
+            card.appendChild(textWrap);
+            appendToChatCanvas(card);
+            spawnedExpressionMetaCardEls.set(gid, card);
+          }
+
+          updateSpawnedExpressionMetaCardsPosition();
         } catch (e) {
           console.warn('showSpawnedExpressionMetaForSelection failed:', e);
         }
       }
 
-      function updateSpawnedExpressionMetaCardPosition() {
-        const card = spawnedExpressionMetaCardEl;
-        if (!card || !card.isConnected) return;
-        if (!selectedSymbols.size) return;
+      function updateSpawnedExpressionMetaCardsPosition() {
+        const canvas = chatCanvas();
+        if (!canvas) return;
+        const isInspecting = !!window.eyeButton2?.isActivated;
+        if (!isInspecting) return;
 
-        const first = selectedSymbols.values().next().value;
-        const canvas = getCanvasForElem(first);
-        if (canvas !== chatCanvas()) return;
+        // Keep layout stable: position each card to the right of its own expression bounds.
+        const occupied = [];
+        for (const [gid, card] of spawnedExpressionMetaCardEls.entries()) {
+          if (!card || !card.isConnected) {
+            spawnedExpressionMetaCardEls.delete(gid);
+            continue;
+          }
 
-        // Keep in sync only when the selection is exactly one spawned-expression group.
-        const gid = first?._expressionGroupId || null;
-        if (!gid || gid !== spawnedExpressionMetaGroupId) return;
-        const grp = expressionGroups.get(gid);
-        if (!grp || grp.size < 2) return;
-        const grpArray = Array.from(grp);
-        const isGroupSelected =
-          grpArray.every((s) => selectedSymbols.has(s)) && selectedSymbols.size === grp.size;
-        if (!isGroupSelected) return;
+          const grp = expressionGroups.get(gid);
+          if (!grp || grp.size < 1) {
+            card.remove();
+            spawnedExpressionMetaCardEls.delete(gid);
+            continue;
+          }
 
-        let rightMost = -Infinity;
-        let topMost = Infinity;
-        for (const s of selectedSymbols) {
-          const r = getSymbolRectOnCanvas(s);
-          if (r.right > rightMost) rightMost = r.right;
-          if (r.top < topMost) topMost = r.top;
+          // Only show when the group is fully selected.
+          let all = true;
+          for (const sym of grp) {
+            if (!selectedSymbols.has(sym)) {
+              all = false;
+              break;
+            }
+          }
+          if (!all) {
+            card.style.display = 'none';
+            continue;
+          }
+          card.style.display = 'block';
+
+          let rightMost = -Infinity;
+          let topMost = Infinity;
+          for (const s of grp) {
+            const r = getSymbolRectOnCanvas(s);
+            if (r.right > rightMost) rightMost = r.right;
+            if (r.top < topMost) topMost = r.top;
+          }
+
+          const gap = 14;
+          let x = rightMost + gap;
+          let y = topMost - 6;
+          card.style.left = `${x}px`;
+          card.style.top = `${y}px`;
+
+          // Avoid card-on-card overlap in the right margin.
+          for (let tries = 0; tries < 12; tries++) {
+            const box = {
+              left: x,
+              top: y,
+              right: x + (card.offsetWidth || 0),
+              bottom: y + (card.offsetHeight || 0),
+            };
+            const overlaps = occupied.some((o) => boxesOverlap(box, o, 10));
+            if (!overlaps) {
+              occupied.push(box);
+              break;
+            }
+            y = y + (card.offsetHeight || 0) + 10;
+            card.style.top = `${y}px`;
+          }
         }
-
-        const gap = 14;
-        card.style.left = `${rightMost + gap}px`;
-        card.style.top = `${topMost - 6}px`;
       }
 
       function exitChatInspectionMode() {
@@ -4890,7 +5087,10 @@
         e.stopPropagation();
         e.preventDefault();
 
-        const selectedNodeIds = network.getSelectedNodes(); // array of node IDs
+        const selectedNodeIds =
+          libraryViewMode === 'tree' && selectedLibraryTreeNodeIds.size
+            ? [...selectedLibraryTreeNodeIds]
+            : network.getSelectedNodes(); // array of node IDs
 
         if (selectedNodeIds.length === 0) {
           alert('No node selected!');
@@ -4923,9 +5123,13 @@
 
         // 6) Clear selection after deletion
         network.unselectAll();
+        setSelectedLibraryTreeNodes([]);
 
         // Persist the new full graph state (single-doc storage)
         await saveLibraryGraphForUser();
+        if (libraryViewMode === 'tree') {
+          renderLibraryTreeView();
+        }
       });
 
       function dyeColor(symbol, color) {
@@ -5528,7 +5732,9 @@
         return links;
       }
 
-      async function enableDynamicDotForSpawnedSymbol(symbol) {
+      function enableDynamicDotForSpawnedSymbol(symbol) {
+        // Poka-yoke: when spawning a library expression, we want the whole expression to
+        // appear "atomically" (no per-symbol pauses). Persist dot positions later in one batch.
         symbol.isDynamic = true;
         const dot = document.createElement('div');
         dot.innerHTML = dotData;
@@ -5537,8 +5743,6 @@
         symbol.dot = dot;
         updateDotPositionLocal(dot);
         appendToChatCanvas(dot);
-        if (symbol._pendingIdPromise) await symbol._pendingIdPromise;
-        await persistDotPosition(dot);
       }
 
       function alignSpawnedSymbols(
@@ -5629,7 +5833,7 @@
 
           for (let i = 0; i < layout.nodes.length; i++) {
             const node = layout.nodes[i];
-            placed[i] = await createSymbolCopy(
+            placed[i] = createSymbolCopy(
               null,
               null,
               node.elemId ?? node.elemIdTrue,
@@ -5641,13 +5845,13 @@
             );
 
             if (node.isDynamic) {
-              await enableDynamicDotForSpawnedSymbol(placed[i]);
+              enableDynamicDotForSpawnedSymbol(placed[i]);
             }
           }
         } else if (hasSavedLayout) {
           for (let i = 0; i < pattern.nodes.length; i++) {
             const node = pattern.nodes[i];
-            placed[i] = await createSymbolCopy(
+            placed[i] = createSymbolCopy(
               null,
               null,
               node.elemIdTrue,
@@ -5659,7 +5863,7 @@
             );
 
             if (node.isDynamic) {
-              await enableDynamicDotForSpawnedSymbol(placed[i]);
+              enableDynamicDotForSpawnedSymbol(placed[i]);
             }
           }
         } else {
@@ -5670,7 +5874,7 @@
             isDynamic: !!pattern.nodes[0].isDynamic,
           };
 
-          placed[0] = await createSymbolCopy(
+          placed[0] = createSymbolCopy(
             null,
             null,
             rootInfo.elemId,
@@ -5682,7 +5886,7 @@
           );
 
           if (rootInfo.isDynamic) {
-            await enableDynamicDotForSpawnedSymbol(placed[0]);
+            enableDynamicDotForSpawnedSymbol(placed[0]);
           }
 
           const queue = [0];
@@ -5710,7 +5914,7 @@
                   isDynamic: !!pattern.nodes[neighborIndex].isDynamic,
                 };
 
-                placed[neighborIndex] = await createSymbolCopy(
+                placed[neighborIndex] = createSymbolCopy(
                   null,
                   null,
                   neighborInfo.elemId,
@@ -5722,7 +5926,7 @@
                 );
 
                 if (neighborInfo.isDynamic) {
-                  await enableDynamicDotForSpawnedSymbol(placed[neighborIndex]);
+                  enableDynamicDotForSpawnedSymbol(placed[neighborIndex]);
                 }
 
                 alignSpawnedSymbols(
@@ -5745,7 +5949,7 @@
           for (let i = 0; i < sourceNodes.length; i++) {
             if (placed[i]) continue;
             const fallbackInfo = sourceNodes[i];
-            placed[i] = await createSymbolCopy(
+            placed[i] = createSymbolCopy(
               null,
               null,
               fallbackInfo.elemId ?? fallbackInfo.elemIdTrue,
@@ -5757,7 +5961,7 @@
             );
 
             if (fallbackInfo.isDynamic) {
-              await enableDynamicDotForSpawnedSymbol(placed[i]);
+              enableDynamicDotForSpawnedSymbol(placed[i]);
             }
           }
         }
@@ -5781,37 +5985,15 @@
         // Guard against stale realtime echoes while we finalize spawned-group placement.
         placedSymbols.forEach((symbol) => markLocalSymbolMutation(symbol, 2500));
 
+        // Apply links locally immediately so the expression behaves like normal symbols
+        // right away (magnetism, long-press component selection, etc).
         for (const link of sourceLinks) {
           const fromSymbol = placed[link.from];
           const toSymbol = placed[link.to];
           if (!fromSymbol || !toSymbol) continue;
 
           commitLink(fromSymbol, link.fromSide, toSymbol, link.toSide);
-
-          if (fromSymbol._pendingIdPromise) await fromSymbol._pendingIdPromise;
-          if (toSymbol._pendingIdPromise) await toSymbol._pendingIdPromise;
-
-          const fromId = fromSymbol.dataset?.id;
-          const toId = toSymbol.dataset?.id;
-          if (fromId && toId) {
-            await persistLink(fromId, link.fromSide, toId, link.toSide);
-          }
         }
-
-        if (shift.dx || shift.dy) {
-          const persistTasks = placedSymbols.map(async (symbol) => {
-            let id = symbol.dataset?.id;
-            if (!id && symbol._pendingIdPromise) id = await symbol._pendingIdPromise;
-            if (!id) return;
-            const x = parseFloat(symbol.style.left) || 0;
-            const y = parseFloat(symbol.style.top) || 0;
-            await updateObjPosition(id, x, y);
-          });
-          await Promise.all(persistTasks);
-        }
-
-        // Ensure dynamic-dot positions are saved after all spawn-time layout adjustments.
-        await persistDynamicDotsForSymbols(placedSymbols);
 
         // Tag symbols as an expression group and select them with a single bounding box
         const groupId = `eg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -5824,41 +6006,81 @@
           // No individual 'framed' class — group frame handles the outline
         }
 
-        // Persist spawned-expression grouping + meta for all users (survives refresh).
-        // We store the author word + why text on every symbol doc for simplicity.
-        try {
-          const nodeId = found.entry?.[0] || null;
-          const libNode = nodeId && typeof nodes?.get === 'function' ? nodes.get(nodeId) : null;
-          const rawTitle = String(libNode?.title || '');
-          const why = rawTitle.includes('. ') ? rawTitle.split(/\. (.+)/)[1] || '' : rawTitle;
-          const payload = {
-            exprGroupId: groupId,
-            exprWord: String(libNode?.word || found.word || ''),
-            exprWhy: String(why || ''),
-            exprNodeId: nodeId ? String(nodeId) : '',
-            exprAuthorUid: currentUser?.uid || '',
-          };
-
-          const tasks = placedSymbols.map(async (sym) => {
-            let id = sym.dataset?.id;
-            if (!id && sym._pendingIdPromise) id = await sym._pendingIdPromise;
-            if (!id) return;
-            await updateDoc(objDocRef(id), payload);
-            // keep local element datasets in sync immediately
-            sym.dataset.exprWord = payload.exprWord;
-            sym.dataset.exprWhy = payload.exprWhy;
-            sym.dataset.exprNodeId = payload.exprNodeId;
-            sym.dataset.exprAuthorUid = payload.exprAuthorUid;
-          });
-          await Promise.all(tasks);
-        } catch (e) {
-          console.warn('Failed to persist expression meta:', e);
-        }
-
+        // Render the group frame immediately (poka-yoke: prevents "half-spawned" dragging breaking the group).
         updateExpressionGroupFrame(
           placedSymbols,
           tabHeadersActivated[4] ? chatCanvas() : craftCanvas(),
         );
+
+        // Persist everything asynchronously (do not block UI / avoid symbol-by-symbol pauses).
+        (async () => {
+          try {
+            // Ensure all symbol docs exist before writing links/meta.
+            await Promise.all(
+              placedSymbols.map(async (sym) => {
+                if (!sym?.dataset?.id && sym?._pendingIdPromise) await sym._pendingIdPromise;
+              }),
+            );
+
+            // Persist links (in parallel).
+            const linkTasks = [];
+            for (const link of sourceLinks) {
+              const fromSymbol = placed[link.from];
+              const toSymbol = placed[link.to];
+              if (!fromSymbol || !toSymbol) continue;
+              const fromId = fromSymbol.dataset?.id;
+              const toId = toSymbol.dataset?.id;
+              if (!fromId || !toId) continue;
+              linkTasks.push(persistLink(fromId, link.fromSide, toId, link.toSide));
+            }
+            if (linkTasks.length) await Promise.all(linkTasks);
+
+            // Persist final positions after any non-overlap shift.
+            if (shift.dx || shift.dy) {
+              await Promise.all(
+                placedSymbols.map(async (symbol) => {
+                  const id = symbol.dataset?.id;
+                  if (!id) return;
+                  const x = parseFloat(symbol.style.left) || 0;
+                  const y = parseFloat(symbol.style.top) || 0;
+                  await updateObjPosition(id, x, y);
+                }),
+              );
+            }
+
+            // Persist dynamic dots after all layout adjustments.
+            await persistDynamicDotsForSymbols(placedSymbols);
+
+            // Persist spawned-expression grouping + meta for all users (survives refresh).
+            // We store the author word + why text on every symbol doc for simplicity.
+            const nodeId = found.entry?.[0] || null;
+            const libNode = nodeId && typeof nodes?.get === 'function' ? nodes.get(nodeId) : null;
+            const rawTitle = String(libNode?.title || '');
+            const why = rawTitle.includes('. ') ? rawTitle.split(/\. (.+)/)[1] || '' : rawTitle;
+            const payload = {
+              exprGroupId: groupId,
+              exprWord: String(libNode?.word || found.word || ''),
+              exprWhy: String(why || ''),
+              exprNodeId: nodeId ? String(nodeId) : '',
+              exprAuthorUid: currentUser?.uid || '',
+            };
+
+            await Promise.all(
+              placedSymbols.map(async (sym) => {
+                const id = sym.dataset?.id;
+                if (!id) return;
+                await updateDoc(objDocRef(id), payload);
+                // keep local element datasets in sync immediately
+                sym.dataset.exprWord = payload.exprWord;
+                sym.dataset.exprWhy = payload.exprWhy;
+                sym.dataset.exprNodeId = payload.exprNodeId;
+                sym.dataset.exprAuthorUid = payload.exprAuthorUid;
+              }),
+            );
+          } catch (e) {
+            console.warn('spawnPatternOnChatCanvas async persist failed:', e);
+          }
+        })();
 
         activeSymbol = null;
       }
@@ -5879,9 +6101,64 @@
         }
       }
 
+      async function handleEmojiMessage(text) {
+        const uid = currentUser?.uid || null;
+        if (!uid) {
+          alert('Please sign in to generate emoji.');
+          return;
+        }
+
+        try {
+          const response = await fetch('https://divinatory-conlang.zhouyt-tony2018.workers.dev/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'emoji',
+              uid,
+              text,
+              lang: currentLang,
+            }),
+          });
+          const data = await response.json();
+
+          if (typeof data.used === 'number' && typeof data.limit === 'number') {
+            updateQuotaBadge(data.used, data.limit);
+          }
+
+          if (data?.code === 'RATE_LIMITED' || data?.code === 'QUOTA_EXCEEDED') {
+            alert(data.message || 'Request blocked.');
+            return;
+          }
+          if (data?.ok !== true) {
+            alert(data?.error || 'Emoji generation failed.');
+            return;
+          }
+
+          const emojiText = String(data.result || '').trim();
+          if (!emojiText) return;
+          await createEmoji(emojiText);
+        } catch (e) {
+          console.error(e);
+          alert('Emoji generation failed.');
+        }
+      }
+
       // Add event listener to the input box for the Enter key
       document.getElementById('message-input').addEventListener('keydown', function (event) {
         if (event.key === 'Enter') {
+          // Hidden: "/emoji ..." posts a worker-generated emoji bubble instead of an annotation.
+          const box = document.getElementById('message-input');
+          const raw = (box?.value || '').trim();
+          if (raw.toLowerCase().startsWith('/emoji ')) {
+            event.preventDefault();
+            const text = raw.slice(7).trim();
+            box.value = '';
+            if (text) {
+              handleEmojiMessage(text);
+            }
+            return;
+          }
+
           handleAnnotation2();
         }
       });
@@ -6274,8 +6551,19 @@
         outputBoxes.forEach((outputBox) => outputBox.remove());
         const metaCards = document.querySelectorAll('.spawned-expression-meta.removable');
         metaCards.forEach((el) => el.remove());
-        spawnedExpressionMetaCardEl = null;
-        spawnedExpressionMetaGroupId = null;
+        spawnedExpressionMetaCardEls.clear();
+
+        for (const symbol of currentGraph?.adjList?.keys?.() || []) {
+          if (!symbol) continue;
+          symbol.labels?.clear?.();
+          symbol.labels = undefined;
+          symbol.input = null;
+          symbol.textarea = null;
+          symbol.submitButton = null;
+          symbol.cancelButton = null;
+          symbol.pElement = null;
+          symbol.doneButton = null;
+        }
       }
 
       function hideLabelInputs() {
@@ -6630,20 +6918,10 @@
             }
           }
 
-          // Keep the spawned-expression bounding frame in sync during group drag.
-          if (canvas === chatCanvas() && selectedSymbols.size > 1 && expressionGroupFrameEl) {
-            const any = Array.from(selectedSymbols).find((s) => s?._expressionGroupId);
-            const gid = any?._expressionGroupId;
-            const grp = gid ? expressionGroups.get(gid) : null;
-            if (grp && grp.size > 1) {
-              const grpArray = Array.from(grp);
-              const isGroupSelected =
-                grpArray.every((s) => selectedSymbols.has(s)) && selectedSymbols.size === grp.size;
-              if (isGroupSelected) {
-                updateExpressionGroupFrame(grpArray, canvas);
-                updateSpawnedExpressionMetaCardPosition();
-              }
-            }
+          // Keep spawned-expression bounding frame(s) in sync during group drag.
+          if (canvas === chatCanvas() && selectedSymbols.size > 1) {
+            updateExpressionGroupFramesFromSelection(canvas);
+            updateSpawnedExpressionMetaCardsPosition();
           }
 
           // ✅ 只对 leader（若是 symbol）执行你原来的“断链/检查连接”逻辑
@@ -7053,25 +7331,27 @@
             const grp = expressionGroups.get(released._expressionGroupId);
             if (grp && grp.size > 1) {
               const grpArray = Array.from(grp);
-              const isGroupSelected =
-                grpArray.every((s) => selectedSymbols.has(s)) && selectedSymbols.size === grp.size;
+              const isGroupSelected = grpArray.every((s) => selectedSymbols.has(s));
               if (isGroupSelected && released._groupWasPreselectedOnDown) {
                 const isInspecting = eyeButton.isActivated || eyeButton2.isActivated;
                 const hasOnlyAnnotations =
                   selectedEmojis.size > 0 &&
                   Array.from(selectedEmojis).every((e) => e.dataset?.isAnnotation === 'true');
 
-                clearAllSymbolSelection();
+                // Deselect just this expression group (keep other selected groups).
+                for (const sym of grpArray) {
+                  sym.selected = false;
+                  sym.classList.remove('framed');
+                  selectedSymbols.delete(sym);
+                }
                 if (!(isInspecting && hasOnlyAnnotations)) {
+                  // Keep emoji selection unless it's only annotations in inspection mode.
                   clearAllEmojiSelection();
                 }
-                // Deselecting the inspected expression should hide all inspection-only UI.
-                if (eyeButton2?.isActivated) {
-                  setChatInspectionMode(false);
-                  clearAllEmojiSelection();
-                }
-                released._downExpressionGroupId = null;
-                released._groupWasPreselectedOnDown = null;
+                  refreshInspectionModeForCanvas(getCanvasForElem(released));
+                  released._downExpressionGroupId = null;
+                  released._groupWasPreselectedOnDown = null;
+                  updateExpressionGroupFramesFromSelection(getCanvasForElem(released));
                 return;
               }
             }
@@ -7085,39 +7365,25 @@
           }
 
           // --- 2) Apply selection state ONCE (sync property + class + Set) ---
-          // If the selection is a spawned-expression group, keep only the global frame (no per-symbol boxes).
-          const gid = released?._expressionGroupId || null;
-          const grp = gid ? expressionGroups.get(gid) : null;
-          const grpArray = grp ? Array.from(grp) : null;
-          const selectionIsExactGroup =
-            !!grpArray &&
-            grpArray.length > 1 &&
-            grpArray.every((s) => selectedSymbols.has(s)) &&
-            selectedSymbols.size === grpArray.length;
 
           released.selected = shouldBeSelected;
           if (shouldBeSelected) {
             selectedSymbols.add(released);
-            if (!selectionIsExactGroup) {
-              released.classList.add('framed');
-            } else {
-              released.classList.remove('framed');
-              updateExpressionGroupFrame(grpArray, getCanvasForElem(released));
-            }
+            released.classList.add('framed');
           } else {
             if (clickToggle) cancelDraggingState();
             released.classList.remove('framed');
             selectedSymbols.delete(released);
 
-            // Turn off UI modes when deselecting (optional but matches your behavior)
-            if (eyeButton.isActivated) {
-              eyeButton.isActivated = false;
-              eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
-              removeLabelInputs();
+            if (!released._dragged) {
+              refreshInspectionModeForCanvas(getCanvasForElem(released));
             }
-            if (eyeButton2.isActivated) {
-              setChatInspectionMode(false);
-            }
+          }
+
+          const releasedCanvas = getCanvasForElem(released);
+          updateExpressionGroupFramesFromSelection(releasedCanvas);
+          if (!released._dragged) {
+            refreshInspectionModeForCanvas(releasedCanvas);
           }
 
           released._downExpressionGroupId = null;
@@ -7264,6 +7530,7 @@
             clickOnlySymbol = null;
           } else if (!s._dragged) {
             selectionClickHandled = true;
+            const additiveSelect = !!s._downAdditive;
 
             // Same toggle rule as activeSymbol:
             // click toggles only if it was already selected at mousedown OR in multi-selection
@@ -7279,26 +7546,27 @@
               const grp = expressionGroups.get(s._expressionGroupId);
               if (grp && grp.size > 1) {
                 const grpArray = Array.from(grp);
-                const isGroupSelected =
-                  grpArray.every((x) => selectedSymbols.has(x)) && selectedSymbols.size === grp.size;
+                const isGroupSelected = grpArray.every((x) => selectedSymbols.has(x));
                 if (isGroupSelected && s._groupWasPreselectedOnDown) {
                   const isInspecting = eyeButton.isActivated || eyeButton2.isActivated;
                   const hasOnlyAnnotations =
                     selectedEmojis.size > 0 &&
                     Array.from(selectedEmojis).every((e) => e.dataset?.isAnnotation === 'true');
 
-                  clearAllSymbolSelection();
+                  // Deselect just this expression group (keep other selected groups).
+                  for (const sym of grpArray) {
+                    sym.selected = false;
+                    sym.classList.remove('framed');
+                    selectedSymbols.delete(sym);
+                  }
                   if (!(isInspecting && hasOnlyAnnotations)) {
                     clearAllEmojiSelection();
                   }
-                  // Deselecting the inspected expression should hide all inspection-only UI.
-                  if (eyeButton2?.isActivated) {
-                    setChatInspectionMode(false);
-                    clearAllEmojiSelection();
-                  }
+                  refreshInspectionModeForCanvas(getCanvasForElem(s));
                   s._downExpressionGroupId = null;
                   s._groupWasPreselectedOnDown = null;
                   clickOnlySymbol = null;
+                  updateExpressionGroupFramesFromSelection(getCanvasForElem(s));
                   return;
                 }
               }
@@ -7311,20 +7579,28 @@
                 s.classList.remove('framed');
                 selectedSymbols.delete(s);
               } else {
-                clearAllSymbolSelection();
-                clearAllEmojiSelection();
+                if (!additiveSelect) {
+                  clearAllSymbolSelection();
+                  clearAllEmojiSelection();
+                }
                 s.selected = true;
                 s.classList.add('framed');
                 selectedSymbols.add(s);
               }
             } else {
               // first-time click: keep it selected (single-select)
-              clearAllSymbolSelection();
-              clearAllEmojiSelection();
+              if (!additiveSelect) {
+                clearAllSymbolSelection();
+                clearAllEmojiSelection();
+              }
               s.selected = true;
               s.classList.add('framed');
               selectedSymbols.add(s);
             }
+
+            const symbolCanvas = getCanvasForElem(s);
+            updateExpressionGroupFramesFromSelection(symbolCanvas);
+            refreshInspectionModeForCanvas(symbolCanvas);
           }
 
           clickOnlySymbol = null;
@@ -7432,6 +7708,7 @@
         ignoreSelector = '',
         clearSelection,
         onSelect,
+        onSelectionApplied,
       }) {
         let isDown = false;
         let isDragging = false;
@@ -7489,8 +7766,9 @@
           // 只在 canvas 内找 items（避免扫到别的 tab）
           const items = canvasEl.querySelectorAll(itemSelector);
 
-          clearSelection?.();
-
+          // Collect hits first so we can swap selection "atomically" (prevents flicker where
+          // frames/cards disappear between clearSelection and reselect).
+          const hitEls = [];
           items.forEach((el) => {
             const rect = el.getBoundingClientRect();
             const intersects =
@@ -7498,13 +7776,54 @@
               rect.left <= selRight &&
               rect.bottom >= selTop &&
               rect.top <= selBottom;
-
-            if (intersects) onSelect?.(el);
+            if (intersects) hitEls.push(el);
           });
 
+          // Chat: apply selection in one batch (keeps existing selection boxes/cards visible while dragging).
           if (canvasEl === chatCanvas()) {
+            const nextSymbols = new Set();
+            const nextEmojis = new Set();
+
+            for (const el of hitEls) {
+              if (el.classList?.contains('symbol')) nextSymbols.add(el);
+              else if (el.classList?.contains('symbol-label')) nextEmojis.add(el);
+            }
+
+            // Expand to full expression groups locally (without depending on current selectedSymbols).
+            for (const sym of Array.from(nextSymbols)) {
+              const gid = sym?._expressionGroupId;
+              if (!gid) continue;
+              const grp = expressionGroups.get(gid);
+              if (!grp || grp.size < 2) continue;
+              for (const s of grp) nextSymbols.add(s);
+            }
+
+            clearSelection?.();
+
+            for (const s of nextSymbols) {
+              s.selected = true;
+              selectedSymbols.add(s);
+              // framed is temporary; updateExpressionGroupFramesFromSelection will replace with group frames when applicable
+              if (!s.classList.contains('framed')) s.classList.add('framed');
+            }
+            for (const em of nextEmojis) {
+              em.selected = true;
+              em.classList.add('active');
+              selectedEmojis.add(em);
+            }
+
+            updateExpressionGroupFramesFromSelection(canvasEl);
+            if (eyeButton2?.isActivated) {
+              refreshChatInspectionOverlays();
+            }
             scheduleChatMiniMapUpdate?.();
+            return;
           }
+
+          // Default: simple clear-then-select.
+          clearSelection?.();
+          for (const el of hitEls) onSelect?.(el);
+          onSelectionApplied?.();
         }
 
         // 用 pointer 事件更稳（鼠标移出也不丢）
@@ -7771,6 +8090,74 @@
         return subGraph;
       }
 
+      function analyzeSelectionSet(selectionSet) {
+        const foundIds = new Set();
+        const elimBasic = new Set();
+        const representatives = new Map();
+        let hasDuplicateExpression = false;
+
+        const selectionComponents = getConnectedSymbolComponents(selectionSet, currentGraph);
+
+        for (const [storedWord, [storedId, storedGraph]] of library) {
+          const matches = [];
+          for (const component of selectionComponents) {
+            if (component.size < storedGraph.nodes.length) continue;
+            matches.push(...matchAllPatternsOnSelection(component, storedGraph));
+          }
+
+          if (matches.some((m) => areSetsEqual(m, selectionSet))) {
+            hasDuplicateExpression = true;
+          }
+
+          for (const foundMatching of matches) {
+            let lastSymbol;
+            for (const symbol of foundMatching) {
+              lastSymbol = symbol;
+              elimBasic.add(symbol);
+            }
+            if (lastSymbol) {
+              representatives.set(lastSymbol, storedWord);
+              foundIds.add(storedId);
+            }
+          }
+        }
+
+        return [foundIds, elimBasic, representatives, hasDuplicateExpression];
+      }
+
+      function refreshCraftInspectionUI() {
+        if (!eyeButton.isActivated) return;
+
+        const hasSelection = refreshInspectionLabelsForSelection();
+        if (!hasSelection) return;
+
+        const components = getConnectedSymbolComponents(selectedSymbols, currentGraph);
+        for (const component of components) {
+          if (!component || component.size === 0) continue;
+          const [foundIds, elimBasic, representatives, hasDuplicateExpression] =
+            analyzeSelectionSet(component);
+          showInput(foundIds, elimBasic, representatives, hasDuplicateExpression, component);
+        }
+      }
+
+      function refreshInspectionLabelsForSelection() {
+        removeLabelInputs();
+        if (selectedSymbols.size === 0) return false;
+
+        showSimpleLabel();
+        return true;
+      }
+
+      function refreshInspectionModeForCanvas(canvas) {
+        if (canvas === craftCanvas()) {
+          if (eyeButton?.isActivated) refreshCraftInspectionUI();
+          return;
+        }
+        if (canvas === chatCanvas()) {
+          if (eyeButton2?.isActivated) refreshChatInspectionOverlays();
+        }
+      }
+
       // Function to create labels for selected symbols
       function showSimpleLabel() {
         let labelData = [];
@@ -7820,27 +8207,16 @@
           }
         });
 
-        const foundIds = new Set();
-        const elimBasic = new Set(); // we don't want basic-level symbols to connect to symbols that are much advanced than them
-        const representatives = new Map();
-        let hasDuplicateExpression = false;
-
-        const selectionComponents = getConnectedSymbolComponents(selectedSymbols, currentGraph);
+        const [foundIds, elimBasic, representatives, hasDuplicateExpression] =
+          analyzeSelectionSet(selectedSymbols);
 
         for (const [storedWord, [storedId, storedGraph]] of library) {
           const matches = [];
-          for (const component of selectionComponents) {
+          for (const component of getConnectedSymbolComponents(selectedSymbols, currentGraph)) {
             if (component.size < storedGraph.nodes.length) continue;
             matches.push(...matchAllPatternsOnSelection(component, storedGraph));
           }
 
-          // duplicate-expression means: the ENTIRE current selection equals ONE stored expression
-          // (same behavior as you wanted before)
-          if (matches.some((m) => areSetsEqual(m, selectedSymbols))) {
-            hasDuplicateExpression = true;
-          }
-
-          // for each match group, create one label
           for (const foundMatching of matches) {
             let avgX = 0,
               avgY = 0;
@@ -7865,17 +8241,10 @@
               avgY += cy;
               lastSymbol = symbol;
             }
-
-            representatives.set(lastSymbol, storedWord);
             avgX /= foundMatching.size;
             avgY /= foundMatching.size;
 
             labelData.push([storedWord, avgX, avgY, lastSymbol, true]);
-            foundIds.add(storedId);
-
-            for (const symbol of foundMatching) {
-              elimBasic.add(symbol);
-            }
           }
         }
 
@@ -8049,9 +8418,15 @@
       let topMost;
 
       // Function to create a text input near the symbol
-      function showInput(foundIds, elimBasic, representatives, hasDuplicateExpression) {
+      function showInput(
+        foundIds,
+        elimBasic,
+        representatives,
+        hasDuplicateExpression,
+        componentSymbols = selectedSymbols,
+      ) {
         function computeSelectionBoundsLocal() {
-          const first = selectedSymbols.values().next().value;
+          const first = componentSymbols.values().next().value;
           if (!first) return null;
 
           const canvas = first.closest('#craftCanvas, #chatCanvas');
@@ -8063,7 +8438,7 @@
           let rightMost = -Infinity;
           let topMost = Infinity;
 
-          for (const s of selectedSymbols) {
+          for (const s of componentSymbols) {
             const r = s.getBoundingClientRect();
             const right = (r.right - canvasRect.left) / zoom; // canvas-local
             const top = (r.top - canvasRect.top) / zoom; // canvas-local
@@ -8074,7 +8449,7 @@
           return { canvas, rightMost, topMost };
         }
 
-        const inputParent = selectedSymbols.values().next().value;
+        const inputParent = componentSymbols.values().next().value;
         if (!inputParent) return;
 
         const parentLeft = parseFloat(inputParent.style.left) || 0;
@@ -8088,7 +8463,7 @@
         const input = document.createElement('input');
         input.classList.add('label-input', 'removable');
         input.type = 'text';
-        input.placeholder = 'What word is this?';
+        input.placeholder = I18N[currentLang].whatWordIsThis;
         input.maxLength = 22;
 
         // locate input in the canvas-local coordinate system
@@ -8109,7 +8484,7 @@
 
         const textarea = document.createElement('textarea');
         textarea.classList.add('label-textarea', 'removable');
-        textarea.placeholder = 'Why?';
+        textarea.placeholder = I18N[currentLang].whyPrompt;
         textarea.maxLength = 100;
 
         // Position the textarea near the symbol
@@ -8177,15 +8552,26 @@
 
         // Handle button click event
         submitButton.onclick = async function () {
+          const t = I18N[currentLang];
           word = input.value;
 
           // Recalculate the molecule to incorporate the advanced vocabulary
 
           // If the user has only selected one symbol
-          if (selectedSymbols.size === 1) {
-            moleculeString = getMoleculeChar(selectedSymbols.values().next().value);
-          } else if (selectedSymbols.size > 1) {
-            triggerLongPress(selectedSymbols.values().next().value, representatives);
+          if (componentSymbols.size === 1) {
+            moleculeString = getMoleculeChar(componentSymbols.values().next().value);
+          } else if (componentSymbols.size > 1) {
+            const moleculeGraph = buildSubgraphFromSelection(currentGraph, componentSymbols);
+            const results = getMolecule(
+              componentSymbols.values().next().value,
+              new Set([]),
+              representatives,
+              moleculeGraph,
+            );
+            moleculeString = '';
+            if (results.leftStr !== '') moleculeString += results.leftStr + ' - ';
+            moleculeString += results.centerStrs.join(' & ');
+            if (results.rightStr !== '') moleculeString += ' - ' + results.rightStr;
           }
 
           definition = moleculeString;
@@ -8201,19 +8587,19 @@
           textarea.readOnly = true;
 
           if (!word || !definition || !justification) {
-            showFeedback('Please fill in all fields!', true);
+            showFeedback(t.fillAllFields, true);
             return;
           }
           console.warn('[submit] library size =', library?.size);
           console.warn('[submit] library has word?', word, library?.has(word));
           console.warn('[submit] library keys =', [...(library?.keys?.() || [])]);
           if (library.has(word)) {
-            showFeedback('You have already defined the word!', true);
+            showFeedback(t.wordAlreadyDefined, true);
             return;
           }
 
           if (hasDuplicateExpression) {
-            showFeedback('You have already used this expression for defining another word!', true);
+            showFeedback(t.expressionAlreadyUsed, true);
             return;
           }
 
@@ -8248,14 +8634,14 @@
             }
 
             if (data.ok === false && data.code === 'QUOTA_EXCEEDED') {
-              showFeedback(data.message || "You have reached today's quota.", true);
+              showFeedback(data.message || t.quotaReachedToday, true);
               return;
             }
 
             showFeedback(data.result || data.error || 'No response', false);
           } catch (error) {
             console.error(error);
-            alert('Validation failed.');
+            alert(t.validationFailed);
           }
         };
 
@@ -8288,6 +8674,13 @@
           pElement.offsetY = pElement.y - parentTop;
           pElement.style.left = `${pElement.x}px`; // Position to the right of the textbox
           pElement.style.top = `${pElement.y}px`;
+          const approxCharPx = currentLang === 'zh' ? 18 : 9.2;
+          const desiredWidth = (currentLang === 'zh' ? 16 : 100) * approxCharPx;
+          const availableWidth = Math.max(180, (canvas?.clientWidth || 0) - pElement.x - 24);
+          pElement.style.width = `${Math.max(180, Math.min(desiredWidth, availableWidth))}px`;
+          pElement.style.whiteSpace = 'pre-wrap';
+          pElement.style.wordBreak = 'normal';
+          pElement.style.overflowWrap = 'normal';
 
           inputParent.pElement = pElement;
 
@@ -8321,20 +8714,39 @@
             if (!span) return;
 
             if (index < text.length) {
-              const len = span.textContent.length;
+              const currentText = span.textContent;
+              const lastLine = currentText.split('\n').pop() || '';
+              const nextChar = text.charAt(index);
 
-              if (len > 0 && len % maxLineLen === 0) {
-                const lastChar = span.textContent.replace(/\n+$/, '').slice(-1);
-                const nextChar = text.charAt(index); // the first char after the newline
-
-                const lastIsLatin = /[A-Za-z]/.test(lastChar);
-                const nextIsLatin = /[A-Za-z]/.test(nextChar);
-
-                if (lastIsLatin && nextIsLatin) {
-                  span.textContent += '-';
+              if (currentLang === 'zh') {
+                if (lastLine.length >= maxLineLen) {
+                  span.textContent += '\n';
+                  lineIndex++;
                 }
-                span.textContent += '\n';
-                lineIndex++;
+              } else {
+                const trimmedLine = lastLine.replace(/\s+$/, '');
+                const lineLen = trimmedLine.length;
+                const atWordStart = index === 0 || /\s/.test(text.charAt(index - 1));
+
+                // For English, look ahead to the whole next word and wrap BEFORE it starts
+                // if adding it would overflow the target line length.
+                if (atWordStart && /\S/.test(nextChar)) {
+                  const wordMatch = text.slice(index).match(/^\S+/);
+                  const nextWord = wordMatch ? wordMatch[0] : nextChar;
+                  const projectedLen = lineLen + (lineLen > 0 ? 1 : 0) + nextWord.length;
+
+                  if (lineLen > 0 && projectedLen > maxLineLen) {
+                    span.textContent = currentText.replace(/\s+$/, '') + '\n';
+                    lineIndex++;
+                  }
+                }
+
+                // Never let a new line begin with a space.
+                if ((lastLine === '' || /\n$/.test(span.textContent)) && nextChar === ' ') {
+                  index++;
+                  setTimeout(() => type(onComplete), speed);
+                  return;
+                }
               }
 
               // append next char
@@ -8398,10 +8810,10 @@
                   tabHeaders[2].classList.toggle('tab-active');
                 }, 1000); // Adjust timing as needed (1s cycle: 0.5s fade in, 0.5s fade out)
 
-                const pattern = snapshotSelectionAsPattern(currentGraph, selectedSymbols);
-                const layout = snapshotSelectionAsLayout(currentGraph, selectedSymbols);
+                const pattern = snapshotSelectionAsPattern(currentGraph, componentSymbols);
+                const layout = snapshotSelectionAsLayout(currentGraph, componentSymbols);
                 let id = await synthNode(
-                  selectedSymbols,
+                  componentSymbols,
                   word,
                   justification,
                   foundIds,
@@ -8607,6 +9019,8 @@
 
         // Add pressing event listener to the symbol
         symbol.addEventListener('mousedown', (e) => {
+          const additiveSelect = !!(e.shiftKey || e.ctrlKey || e.metaKey);
+          symbol._downAdditive = additiveSelect;
           // If this symbol is part of a spawned expression group, select the entire group,
           // but still allow dragging + magnetic snapping like ordinary multi-selection.
           if (symbol._expressionGroupId) {
@@ -8615,8 +9029,8 @@
               e.stopPropagation();
               symbol._downExpressionGroupId = symbol._expressionGroupId;
               const grpArray = Array.from(grp);
-              const groupWasSelectedBefore =
-                grpArray.every((s) => selectedSymbols.has(s)) && selectedSymbols.size === grp.size;
+              // "Group is selected" means: all its symbols are selected (even if other groups are also selected).
+              const groupWasSelectedBefore = grpArray.every((s) => selectedSymbols.has(s));
               symbol._groupWasPreselectedOnDown = groupWasSelectedBefore;
 
               const isInspecting = eyeButton.isActivated || eyeButton2.isActivated;
@@ -8626,9 +9040,17 @@
 
               // Ensure the group is the current symbol selection.
               if (!groupWasSelectedBefore) {
-                clearAllSymbolSelection();
-                if (!(isInspecting && hasOnlyAnnotations)) {
-                  clearAllEmojiSelection();
+                if (isInspecting && !additiveSelect) {
+                  removeLabelInputs();
+                  if (getCanvasForElem(symbol) === chatCanvas()) {
+                    hideAllAnnotations();
+                  }
+                }
+                if (!additiveSelect) {
+                  clearAllSymbolSelection();
+                  if (!(isInspecting && hasOnlyAnnotations)) {
+                    clearAllEmojiSelection();
+                  }
                 }
                 for (const sym of grp) {
                   sym.selected = true;
@@ -8636,7 +9058,10 @@
                 }
               }
               const cv = getCanvasForElem(symbol);
-              updateExpressionGroupFrame(grpArray, cv);
+              updateExpressionGroupFramesFromSelection(cv);
+              if (!groupWasSelectedBefore && isInspecting && !additiveSelect) {
+                refreshInspectionModeForCanvas(cv);
+              }
               // Do NOT return: continue into normal drag logic below.
             }
           }
@@ -8658,39 +9083,39 @@
             symbol._downWasInMulti = false;
           }
 
-          // UI off (craft only). In chat inspection mode, keep the eye active.
+          // Keep craft inspection mode active while dragging, so the input boxes can
+          // stay visible and follow the inspected selection.
           const surface = getCanvasForElem(symbol);
-          if (surface === craftCanvas()) {
-            if (eyeButton.isActivated) {
-              eyeButton.isActivated = false;
-              eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
-              removeLabelInputs();
-            }
-          }
 
           // In chat inspection mode, clicking a different connected component should exit inspection mode.
-          if (surface === chatCanvas() && eyeButton2?.isActivated) {
-            if (!isSymbolInInspectedComponent(symbol)) {
-              setChatInspectionMode(false);
-            }
-          }
-
           // ✅ Selection on mousedown:
           // If it was not selected, make it the only selection (single-select).
           // If it was already selected, keep selection as-is for now (toggle happens on mouseup if no drag).
           // Exception: in inspection mode, keep annotation bubble selection alongside symbol.
           if (!inSelection) {
-            clearAllSymbolSelection();
             const isInspecting = eyeButton.isActivated || eyeButton2.isActivated;
+            if (isInspecting && !additiveSelect) {
+              removeLabelInputs();
+              if (surface === chatCanvas()) {
+                hideAllAnnotations();
+              }
+            }
+            if (!additiveSelect) {
+              clearAllSymbolSelection();
+            }
             const hasOnlyAnnotations =
               selectedEmojis.size > 0 &&
               Array.from(selectedEmojis).every((e) => e.dataset?.isAnnotation === 'true');
-            if (!(isInspecting && hasOnlyAnnotations)) {
+            if (!(isInspecting && hasOnlyAnnotations) && !additiveSelect) {
               clearAllEmojiSelection();
             }
             symbol.selected = true;
             symbol.classList.add('framed');
             selectedSymbols.add(symbol);
+            updateExpressionGroupFramesFromSelection(surface);
+            if (isInspecting && !additiveSelect) {
+              refreshInspectionModeForCanvas(surface);
+            }
           }
 
           // long press ok
@@ -8831,7 +9256,7 @@
       }
 
       // Find all the symbols that are connected to one symbol
-      function getMolecule(currentSymbol, visited, representatives = null) {
+      function getMolecule(currentSymbol, visited, representatives = null, graph = currentGraph) {
         visited.add(currentSymbol);
 
         console.log(`visit`);
@@ -8846,12 +9271,17 @@
         }
 
         let rightStr = '';
-        for (let i = 0; i < currentGraph.getSymbolConnections(currentSymbol).length; i++) {
+        for (let i = 0; i < graph.getSymbolConnections(currentSymbol).length; i++) {
           // every magnet point
-          for (const entry of currentGraph.getSymbolConnections(currentSymbol)[i]) {
+          for (const entry of graph.getSymbolConnections(currentSymbol)[i]) {
             // entry = [every other symbol connected to my magnet point, its magnet point]
             if (!visited.has(entry[0])) {
-              let results = getMolecule(entry[0], visited, (representatives = representatives));
+              let results = getMolecule(
+                entry[0],
+                visited,
+                (representatives = representatives),
+                graph,
+              );
               visited = results.visited;
               console.log(`entry[0] ${entry[0].elemId} entry[1] ${entry[1]}`);
               if (entry[1] > 1 || i > 1) {
@@ -9507,6 +9937,11 @@
       let libraryTreeView = null;
       let libraryTreeSurface = null;
       let libraryTreeSvg = null;
+      let libraryTreeDragState = null;
+      let libraryTreeRenderState = null;
+      let selectedLibraryTreeNodeIds = new Set();
+      const LIBRARY_TREE_ROW_GAP = 26;
+      let libraryTreeEdgeFollowFrame = 0;
       let options = {
         nodes: {
           shape: 'circularImage',
@@ -9829,6 +10264,179 @@
         return { width, height };
       }
 
+      function updateLibraryTreeEdgePath(path, fromPos, fromSize, toPos, toSize) {
+        if (!path || !fromPos || !fromSize || !toPos || !toSize) return;
+        const x1 = fromPos.x + fromSize.width;
+        const y1 = fromPos.y + fromSize.height / 2;
+        const x2 = toPos.x;
+        const y2 = toPos.y + toSize.height / 2;
+        const midX = x1 + Math.max(28, (x2 - x1) / 2);
+        path.setAttribute('d', `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`);
+      }
+
+      function getLibraryTreeCardDomPosition(nodeId) {
+        const card = libraryTreeSurface?.querySelector(
+          `.library-tree-card[data-node-id="${String(nodeId)}"]`,
+        );
+        if (!card) return null;
+        const surfaceRect = libraryTreeSurface?.getBoundingClientRect();
+        const cardRect = card.getBoundingClientRect();
+        return {
+          card,
+          x: surfaceRect ? cardRect.left - surfaceRect.left : parseFloat(card.style.left) || 0,
+          y: surfaceRect ? cardRect.top - surfaceRect.top : parseFloat(card.style.top) || 0,
+          width: cardRect.width || card.offsetWidth || 0,
+          height: cardRect.height || card.offsetHeight || 0,
+        };
+      }
+
+      function refreshLibraryTreeEdgesFromDom() {
+        if (!libraryTreeSvg || !libraryTreeSurface) return;
+        libraryTreeSvg.querySelectorAll('path[data-from][data-to]').forEach((path) => {
+          const fromId = path.dataset.from;
+          const toId = path.dataset.to;
+          const fromPos = getLibraryTreeCardDomPosition(fromId);
+          const toPos = getLibraryTreeCardDomPosition(toId);
+          const fromNode = nodes.get(fromId);
+          const toNode = nodes.get(toId);
+          if (!fromPos || !toPos || !fromNode || !toNode) return;
+          updateLibraryTreeEdgePath(
+            path,
+            fromPos,
+            { width: fromPos.width, height: fromPos.height },
+            toPos,
+            { width: toPos.width, height: toPos.height },
+          );
+        });
+      }
+
+      function stopLibraryTreeEdgeFollow() {
+        if (libraryTreeEdgeFollowFrame) {
+          cancelAnimationFrame(libraryTreeEdgeFollowFrame);
+          libraryTreeEdgeFollowFrame = 0;
+        }
+      }
+
+      function startLibraryTreeEdgeFollow() {
+        if (libraryTreeEdgeFollowFrame) return;
+        const tick = () => {
+          libraryTreeEdgeFollowFrame = 0;
+          if (!libraryTreeDragState) return;
+          refreshLibraryTreeEdgesFromDom();
+          libraryTreeEdgeFollowFrame = requestAnimationFrame(tick);
+        };
+        libraryTreeEdgeFollowFrame = requestAnimationFrame(tick);
+      }
+
+      function setSelectedLibraryTreeNodes(ids) {
+        selectedLibraryTreeNodeIds = new Set((ids || []).map((id) => String(id)));
+        libraryTreeSurface?.querySelectorAll('.library-tree-card').forEach((card) => {
+          const id = String(card.dataset.nodeId || '');
+          card.classList.toggle('selected', selectedLibraryTreeNodeIds.has(id));
+        });
+        if (network && libraryViewMode === 'tree') {
+          try {
+            network.unselectAll();
+            if (selectedLibraryTreeNodeIds.size) {
+              network.selectNodes([...selectedLibraryTreeNodeIds], false);
+            }
+          } catch {}
+        }
+      }
+
+      function layoutLibraryTreeColumnDuringDrag(level, draggedId, draggedY) {
+        if (!libraryTreeSurface || !libraryTreeDragState?.baseEntries?.length) return;
+
+        const entries = libraryTreeDragState.baseEntries;
+        const dragged = entries.find((entry) => entry.id === draggedId);
+        if (!dragged) return;
+
+        dragged.card.style.left = `${dragged.x}px`;
+        dragged.card.style.top = `${draggedY}px`;
+
+        const draggedCenter = draggedY + dragged.size.height / 2;
+        const startCenter = dragged.baseY + dragged.size.height / 2;
+        const direction = Math.sign(draggedCenter - startCenter);
+        const space = dragged.size.height + LIBRARY_TREE_ROW_GAP;
+        const easeOut = (v) => 1 - (1 - v) * (1 - v);
+
+        for (const entry of entries) {
+          if (entry.id === draggedId) continue;
+
+          const baseCenter = entry.baseY + entry.size.height / 2;
+          const range = space * 1.35;
+          let influence = 0;
+
+          if (direction > 0 && baseCenter >= startCenter) {
+            influence = clamp(1 - Math.abs(baseCenter - draggedCenter) / Math.max(1, range), 0, 1);
+            entry.card.style.top = `${entry.baseY - easeOut(influence) * space}px`;
+          } else if (direction < 0 && baseCenter <= startCenter) {
+            influence = clamp(1 - Math.abs(baseCenter - draggedCenter) / Math.max(1, range), 0, 1);
+            entry.card.style.top = `${entry.baseY + easeOut(influence) * space}px`;
+          } else {
+            entry.card.style.top = `${entry.baseY}px`;
+          }
+          entry.card.style.left = `${entry.x}px`;
+        }
+
+        const cardsAfterLayout = entries.map((entry) => ({
+          card: entry.card,
+          size: entry.size,
+          top: parseFloat(entry.card.style.top) || 0,
+        }));
+        const minTop = Math.min(...cardsAfterLayout.map((entry) => entry.top));
+        const maxBottom = Math.max(...cardsAfterLayout.map((entry) => entry.top + entry.size.height));
+        let shiftY = 0;
+        if (minTop < 0) shiftY = -minTop;
+        else if (maxBottom > libraryTreeSurface.clientHeight) {
+          shiftY = libraryTreeSurface.clientHeight - maxBottom;
+        }
+
+        if (shiftY) {
+          for (const entry of entries) {
+            const nextTop = (parseFloat(entry.card.style.top) || 0) + shiftY;
+            entry.card.style.top = `${nextTop}px`;
+          }
+        }
+      }
+
+      function attachLibraryTreeCardDrag(card, nodeId, positions, sizes) {
+        card.addEventListener('pointerdown', (e) => {
+          if (e.button !== 0) return;
+          e.preventDefault();
+          e.stopPropagation();
+
+          const startPos = positions.get(nodeId);
+          const size = sizes.get(nodeId);
+          if (!startPos || !size) return;
+
+          setSelectedLibraryTreeNodes([nodeId]);
+          const baseEntries = (libraryTreeRenderState?.columns?.get(card.dataset.level || '') || [])
+            .map((id) => {
+              const pos = getLibraryTreeCardDomPosition(id);
+              const s = libraryTreeRenderState?.sizes?.get(id);
+              return pos && s
+                ? { id: String(id), card: pos.card, x: pos.x, y: pos.y, baseY: pos.y, size: s }
+                : null;
+            })
+            .filter(Boolean);
+          libraryTreeDragState = {
+            nodeId,
+            card,
+            level: card.dataset.level || '',
+            startClientY: e.clientY,
+            startY: startPos.y,
+            x: startPos.x,
+            size,
+            moved: false,
+            baseEntries,
+          };
+          card.classList.add('dragging');
+          card.setPointerCapture?.(e.pointerId);
+          startLibraryTreeEdgeFollow();
+        });
+      }
+
       function renderLibraryTreeView() {
         if (!libraryTreeSurface || !libraryTreeSvg) return;
 
@@ -9853,6 +10461,13 @@
         const sortedLevels = [...columns.keys()].sort((a, b) => a - b);
         for (const level of sortedLevels) {
           columns.get(level).sort((a, b) => {
+            const aTreeY = Number.isFinite(a._treeY) ? a._treeY : null;
+            const bTreeY = Number.isFinite(b._treeY) ? b._treeY : null;
+            if (aTreeY != null || bTreeY != null) {
+              if (aTreeY == null) return 1;
+              if (bTreeY == null) return -1;
+              if (aTreeY !== bTreeY) return aTreeY - bTreeY;
+            }
             const aParents = (parentsById.get(a.id) || [])
               .map((id) => nodes.get(id)?.word || '')
               .join('|');
@@ -9877,15 +10492,21 @@
 
         const startX = 90;
         const startY = 120;
-        const rowGap = 26;
+        const rowGap = LIBRARY_TREE_ROW_GAP;
         const columnGap = 80;
         let currentX = startX;
 
+        const treeColumns = new Map();
+
         for (const level of sortedLevels) {
           const colNodes = columns.get(level);
+          treeColumns.set(
+            String(level),
+            colNodes.map((node) => String(node.id)),
+          );
           const columnWidth = Math.max(...colNodes.map((node) => sizes.get(node.id).width));
           let currentY = startY;
-          colNodes.forEach((node, index) => {
+          colNodes.forEach((node) => {
             const size = sizes.get(node.id);
             positions.set(node.id, {
               x: currentX,
@@ -9905,6 +10526,11 @@
         libraryTreeSvg.setAttribute('width', surfaceWidth);
         libraryTreeSvg.setAttribute('height', surfaceHeight);
         libraryTreeSvg.setAttribute('viewBox', `0 0 ${surfaceWidth} ${surfaceHeight}`);
+        libraryTreeRenderState = {
+          positions,
+          sizes,
+          columns: treeColumns,
+        };
 
         for (const edge of edges.get()) {
           const fromPos = positions.get(edge.from);
@@ -9920,7 +10546,9 @@
           const y2 = toPos.y + toSize.height / 2;
           const midX = x1 + Math.max(28, (x2 - x1) / 2);
           const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-          path.setAttribute('d', `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`);
+          path.dataset.from = String(edge.from);
+          path.dataset.to = String(edge.to);
+          updateLibraryTreeEdgePath(path, fromPos, fromSize, toPos, toSize);
           path.setAttribute('stroke', 'black');
           path.setAttribute('stroke-width', '3');
           path.setAttribute('fill', 'none');
@@ -9936,10 +10564,13 @@
           const card = document.createElement('div');
           card.className = 'library-tree-card';
           if (basicNodeIds.has(node.id)) card.classList.add('basic');
+          if (selectedLibraryTreeNodeIds.has(String(node.id))) card.classList.add('selected');
           card.style.left = `${pos.x}px`;
           card.style.top = `${pos.y}px`;
           card.style.width = `${size.width}px`;
           card.style.minHeight = `${size.height}px`;
+          card.dataset.nodeId = String(node.id);
+          card.dataset.level = String(levelById.get(node.id) || 0);
 
           const img = document.createElement('img');
           img.className = 'library-tree-card-image';
@@ -9964,6 +10595,7 @@
           card.appendChild(img);
           card.appendChild(textWrap);
           libraryTreeSurface.appendChild(card);
+          attachLibraryTreeCardDrag(card, node.id, positions, sizes);
         }
       }
 
@@ -9992,6 +10624,48 @@
         });
         scheduleSaveLibraryGraph();
       }
+
+      document.addEventListener('pointermove', (e) => {
+        if (!libraryTreeDragState || !libraryTreeSurface || !libraryTreeSvg) return;
+
+        const { nodeId, card, level, startClientY, startY, x, size } = libraryTreeDragState;
+        const dy = e.clientY - startClientY;
+        if (Math.abs(dy) > 2) libraryTreeDragState.moved = true;
+        const maxY = Math.max(0, libraryTreeSurface.clientHeight - size.height);
+        const nextY = clamp(startY + dy, 0, maxY);
+
+        card.style.left = `${x}px`;
+        layoutLibraryTreeColumnDuringDrag(level, String(nodeId), nextY);
+        refreshLibraryTreeEdgesFromDom();
+      });
+
+      document.addEventListener('pointerup', (e) => {
+        if (!libraryTreeDragState) return;
+        const { nodeId, card, level } = libraryTreeDragState;
+        card.classList.remove('dragging');
+        card.releasePointerCapture?.(e.pointerId);
+        libraryTreeDragState = null;
+        stopLibraryTreeEdgeFollow();
+        const columnIds = libraryTreeRenderState?.columns?.get(level) || [String(nodeId)];
+        const updates = columnIds
+          .map((id) => {
+            const pos = getLibraryTreeCardDomPosition(id);
+            return pos ? { id, _treeY: pos.y } : null;
+          })
+          .filter(Boolean);
+        if (updates.length) nodes.update(updates);
+        renderLibraryTreeView();
+        scheduleSaveLibraryGraph();
+      });
+
+      document.addEventListener('pointercancel', () => {
+        if (!libraryTreeDragState) return;
+        const { card } = libraryTreeDragState;
+        card.classList.remove('dragging');
+        libraryTreeDragState = null;
+        stopLibraryTreeEdgeFollow();
+        renderLibraryTreeView();
+      });
 
       const organizeNodeButton = document.createElement('div');
       organizeNodeButton.classList.add('button');
@@ -10022,6 +10696,11 @@
       libraryTreeSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       libraryTreeSvg.id = 'libraryTreeSvg';
       libraryTreeSurface.appendChild(libraryTreeSvg);
+      libraryTreeView.addEventListener('pointerdown', (e) => {
+        if (e.target === libraryTreeView || e.target === libraryTreeSurface || e.target === libraryTreeSvg) {
+          setSelectedLibraryTreeNodes([]);
+        }
+      });
       libraryTreeView.appendChild(libraryTreeSurface);
       tab2.appendChild(libraryTreeView);
 
@@ -10122,6 +10801,7 @@
           y: pos[n.id]?.y ?? null,
           pattern: n.pattern ? serializePatternGraph(n.pattern) : null,
           layout: n.layout ? serializeSelectionLayout(n.layout) : null,
+          treeY: Number.isFinite(n._treeY) ? n._treeY : null,
         }));
 
         const exportEdges = allEdges.map((e) => ({
@@ -10180,6 +10860,7 @@
               title: sn.title || '',
               x: sn.x ?? undefined,
               y: sn.y ?? undefined,
+              _treeY: Number.isFinite(sn.treeY) ? sn.treeY : undefined,
               _svg: sn.svg,
               pattern: parsedPattern, // PatternGraph instance or null
               layout: parsedLayout,
@@ -10196,6 +10877,7 @@
                   : exists.word || ''),
               title: sn.title || exists.title || '',
               ...(sn.x != null && sn.y != null ? { x: sn.x, y: sn.y } : {}),
+              ...(sn.treeY != null ? { _treeY: sn.treeY } : {}),
               ...(sn.svg ? { _svg: sn.svg } : {}),
               // only overwrite pattern if saved data actually has one
               ...(sn.pattern !== undefined ? { pattern: parsedPattern } : {}),
@@ -10403,7 +11085,7 @@
           };
 
           nodes.add(newNode); // Add node to dataset
-          for (const symbol of selectedSymbols) {
+          for (const symbol of components) {
             if (!elimBasic.has(symbol))
               addEdge(await generateUniqueId(symbolData[symbol.elemIdTrue]), id);
           }
