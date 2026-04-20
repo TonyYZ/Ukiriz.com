@@ -1930,16 +1930,20 @@
 
       function applyLibraryContentZoom(zoom) {
         libraryContentZoom = clampViewContentZoom(zoom);
-        if (container) {
-          container.style.zoom = `${libraryContentZoom}`;
+        if (libraryViewMode === 'tree') {
+          if (libraryTreeView) libraryTreeView.style.zoom = `${libraryContentZoom}`;
+          requestAnimationFrame(() => {
+            refreshLibraryTreeEdgesFromDom?.();
+          });
+          return;
         }
-        if (libraryTreeView) {
-          libraryTreeView.style.zoom = `${libraryContentZoom}`;
+
+        // Network mode: use vis-network's native zoom (CSS zoom breaks pointer math for dragging).
+        if (network) {
+          try {
+            network.moveTo({ scale: libraryContentZoom, animation: false });
+          } catch {}
         }
-        requestAnimationFrame(() => {
-          network?.redraw?.();
-          refreshLibraryTreeEdgesFromDom?.();
-        });
       }
 
       function applyWorldContentZoom(zoom) {
@@ -2071,6 +2075,37 @@
           deltaY < 0 ? oldZoom * CANVAS_ZOOM_STEP : oldZoom / CANVAS_ZOOM_STEP,
         );
         if (Math.abs(nextZoom - oldZoom) < 0.0001) return;
+        if (libraryViewMode !== 'tree' && network && container) {
+          // Keep the world-point under the mouse fixed while zooming.
+          const rect = container.getBoundingClientRect();
+          const dx = clientX - rect.left;
+          const dy = clientY - rect.top;
+          const cx = rect.width / 2;
+          const cy = rect.height / 2;
+          let viewPos = { x: 0, y: 0 };
+          let scale0 = 1;
+          try {
+            viewPos = network.getViewPosition();
+            scale0 = network.getScale();
+          } catch {}
+          const p = {
+            x: viewPos.x + (dx - cx) / Math.max(scale0, 0.0001),
+            y: viewPos.y + (dy - cy) / Math.max(scale0, 0.0001),
+          };
+          const v1 = {
+            x: p.x - (dx - cx) / Math.max(nextZoom, 0.0001),
+            y: p.y - (dy - cy) / Math.max(nextZoom, 0.0001),
+          };
+
+          libraryContentZoom = nextZoom;
+          try {
+            network.moveTo({ position: v1, scale: nextZoom, animation: false });
+          } catch {
+            applyLibraryContentZoom(nextZoom);
+          }
+          return;
+        }
+
         zoomScrollableContent(tab2, oldZoom, nextZoom, clientX, clientY, applyLibraryContentZoom);
       }
 
@@ -10797,14 +10832,25 @@
           `.library-tree-card[data-node-id="${String(nodeId)}"]`,
         );
         if (!card) return null;
-        const surfaceRect = libraryTreeSurface?.getBoundingClientRect();
-        const cardRect = card.getBoundingClientRect();
+        // Use logical (pre-zoom) coordinates so lines and saved positions stay stable under CSS zoom.
+        const cardX = parseFloat(card.style.left) || 0;
+        const cardY = parseFloat(card.style.top) || 0;
+        const w =
+          parseFloat(card.style.width) ||
+          parseFloat(card.style.minWidth) ||
+          card.offsetWidth ||
+          0;
+        const h =
+          parseFloat(card.style.minHeight) ||
+          parseFloat(card.style.height) ||
+          card.offsetHeight ||
+          0;
         return {
           card,
-          x: surfaceRect ? cardRect.left - surfaceRect.left : parseFloat(card.style.left) || 0,
-          y: surfaceRect ? cardRect.top - surfaceRect.top : parseFloat(card.style.top) || 0,
-          width: cardRect.width || card.offsetWidth || 0,
-          height: cardRect.height || card.offsetHeight || 0,
+          x: cardX,
+          y: cardY,
+          width: w,
+          height: h,
         };
       }
 
@@ -11458,9 +11504,12 @@
         if (!libraryTreeDragState || !libraryTreeSurface || !libraryTreeSvg) return;
 
         const { nodeId, card, level, startClientY, startY, x, size } = libraryTreeDragState;
-        const dy = e.clientY - startClientY;
-        if (Math.abs(dy) > 2) libraryTreeDragState.moved = true;
-        const maxY = Math.max(0, libraryTreeSurface.clientHeight - size.height);
+        const zoom = Math.max(libraryContentZoom || 1, 0.0001);
+        const rawDy = e.clientY - startClientY;
+        const dy = rawDy / zoom;
+        if (Math.abs(rawDy) > 2) libraryTreeDragState.moved = true;
+        const surfaceH = libraryTreeSurface.offsetHeight || libraryTreeSurface.clientHeight || 0;
+        const maxY = Math.max(0, surfaceH - size.height);
         const nextY = clamp(startY + dy, 0, maxY);
 
         card.style.left = `${x}px`;
@@ -11573,9 +11622,11 @@
 
         if (showTree) {
           renderLibraryTreeView();
+          applyLibraryContentZoom(libraryContentZoom || 1);
         } else if (network) {
           setTimeout(() => {
             network.redraw();
+            applyLibraryContentZoom(libraryContentZoom || 1);
             network.fit({
               animation: {
                 duration: 400,
