@@ -883,6 +883,47 @@
         cursor: grab;
       }
 
+      .island-info-card {
+        position: absolute;
+        display: none;
+        z-index: 40;
+        max-width: 320px;
+        min-width: 260px;
+        padding: 12px 14px;
+        background: rgba(255, 255, 255, 0.97);
+        border: 2px solid #000;
+        border-radius: 12px;
+        box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
+        font-family: inherit;
+        color: #111;
+        max-height: min(62vh, 520px);
+        overflow: auto;
+        pointer-events: auto;
+        user-select: text;
+      }
+
+      .island-info-card .title {
+        font-weight: 800;
+        font-size: 16px;
+        line-height: 1.25;
+        margin-bottom: 6px;
+      }
+
+      .island-info-card .meta {
+        font-size: 13px;
+        line-height: 1.35;
+        margin-bottom: 8px;
+      }
+
+      .island-info-card .sense {
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      .island-info-card .k {
+        font-weight: 700;
+      }
+
       .foam {
         position: absolute;
         width: 22px;
@@ -990,6 +1031,126 @@
           'Noto Sans Mono CJK SC',
           monospace !important;
       }
+
+      /* Tutorial overlay (Home embedded tour) */
+      #tutorialOverlay {
+        position: fixed;
+        inset: 0;
+        z-index: 2000000; /* above top-right UI */
+        display: none;
+        pointer-events: none;
+      }
+
+      #tutorialOverlay.open {
+        display: block;
+      }
+
+      #tutorialMask {
+        position: absolute;
+        inset: 0;
+        /* The spotlight element provides the dimmed area; keep the mask transparent
+           so the highlighted region stays bright. */
+        background: transparent;
+      }
+
+      #tutorialSpotlight {
+        position: absolute;
+        border: 3px solid rgba(255, 255, 255, 0.95);
+        box-shadow:
+          0 0 0 9999px rgba(0, 0, 0, 0.28),
+          0 12px 24px rgba(0, 0, 0, 0.35);
+        border-radius: 12px;
+        background: transparent;
+        left: -9999px;
+        top: -9999px;
+        width: 0;
+        height: 0;
+      }
+
+      #tutorialBubble {
+        position: absolute;
+        max-width: min(420px, calc(100vw - 40px));
+        background: rgba(255, 255, 255, 0.98);
+        border: 2px solid #000;
+        border-radius: 12px;
+        box-shadow: 0 12px 26px rgba(0, 0, 0, 0.22);
+        padding: 12px 14px;
+        pointer-events: auto;
+        user-select: none;
+      }
+
+      #tutorialBubble .t-title {
+        font-weight: 800;
+        font-size: 15px;
+        margin-bottom: 6px;
+      }
+
+      #tutorialBubble .t-body {
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      #tutorialBubble .t-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      #tutorialBubble button {
+        border: 2px solid #000;
+        background: #fff;
+        border-radius: 10px;
+        padding: 6px 10px;
+        cursor: pointer;
+        font: inherit;
+      }
+
+      #tutorialBubble button.primary {
+        background: #000;
+        color: #fff;
+      }
+
+      .home-tutorial-card {
+        max-width: 720px;
+        margin: 18px auto 26px auto;
+        padding: 14px 16px;
+        background: #fff;
+        border: 2px solid #000;
+        border-radius: 14px;
+        box-shadow: 0 6px 0 rgba(0, 0, 0, 0.08);
+      }
+
+      .home-tutorial-card .ht-title {
+        font-weight: 800;
+        font-size: 16px;
+        margin-bottom: 8px;
+      }
+
+      .home-tutorial-card .ht-body {
+        font-size: 13px;
+        line-height: 1.45;
+        margin-bottom: 10px;
+      }
+
+      .home-tutorial-card .ht-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .home-tutorial-card .ht-actions button {
+        border: 2px solid #000;
+        border-radius: 12px;
+        padding: 8px 12px;
+        cursor: pointer;
+        background: #fff;
+        font: inherit;
+      }
+
+      .home-tutorial-card .ht-actions button.primary {
+        background: #000;
+        color: #fff;
+      }
     </style>
     <script
       type="text/javascript"
@@ -1006,6 +1167,19 @@
         </div>
       </div>
       <div id="quota-badge" class="quota-badge">Credits spent: --/--</div>
+    </div>
+
+    <div id="tutorialOverlay" aria-hidden="true">
+      <div id="tutorialMask"></div>
+      <div id="tutorialSpotlight"></div>
+      <div id="tutorialBubble" role="dialog" aria-label="Tutorial">
+        <div class="t-title" id="tutorialTitle">Tutorial</div>
+        <div class="t-body" id="tutorialBody"></div>
+        <div class="t-actions">
+          <button type="button" id="tutorialBack">Back</button>
+          <button type="button" id="tutorialExit">Exit</button>
+        </div>
+      </div>
     </div>
 
     <div class="vertical-bar">
@@ -1448,6 +1622,14 @@
         const home = document.getElementById('home-content');
         if (home) home.innerHTML = I18N[currentLang].homeHTML;
         applyHomeContentZoom?.(homeContentZoom || 1);
+        ensureHomeTutorialCard?.();
+        if (tutorialStepIndex >= 0) {
+          const els = getTutorialOverlayEls?.();
+          const c = getTutorialCopySafe?.();
+          if (els?.back && c?.back) els.back.textContent = c.back;
+          if (els?.exit && c?.exit) els.exit.textContent = c.exit;
+          updateTutorialUi?.();
+        }
 
         // 2) Tabs text (if you want)
         const t0 = document.getElementById('tab-header0');
@@ -1477,12 +1659,663 @@
         }
         updateChatQuestionPrompt?.();
 
+        // If a world island is selected, refresh its info card in the new language.
+        if (selectedIsland?.dataset?.islandId) {
+          renderIslandInfoCard?.(selectedIsland.dataset.islandId);
+          updateIslandInfoCardPosition?.();
+        }
+
         refreshBasicTooltips?.();
         if (network) network.redraw();
         if (libraryViewMode === 'tree') renderLibraryTreeView?.();
 
         refreshI18nImages();
         document.body.classList.toggle('lang-zh', currentLang === 'zh');
+      }
+
+      // ---- Interactive tutorial (guided overlay) ----
+      let tutorialStepIndex = -1;
+      let tutorialNavigating = false;
+      let tutorialBound = false;
+      const tutorialEvents = new Set();
+      let tutorialStack = [];
+      let tutorialSnapshots = new Map(); // stepIndex -> snapshot
+
+      function emitTutorialEvent(name) {
+        if (tutorialStepIndex < 0) return;
+        if (!name) return;
+        tutorialEvents.add(String(name));
+        tutorialMaybeAdvance();
+      }
+
+      function consumeTutorialEvent(name) {
+        const key = String(name || '');
+        if (!key) return false;
+        if (!tutorialEvents.has(key)) return false;
+        tutorialEvents.delete(key);
+        return true;
+      }
+
+      function tutorialMaybeAdvance() {
+        if (tutorialStepIndex < 0) return;
+        const steps = getTutorialStepsSafe?.();
+        const step = steps?.[tutorialStepIndex];
+        if (!step) return;
+        if (step.advanceOnEvent && tutorialEvents.has(step.advanceOnEvent)) {
+          if (tutorialStepRequirementsMet(step)) {
+            consumeTutorialEvent(step.advanceOnEvent);
+            tutorialEnterStep(tutorialStepIndex + 1);
+            return;
+          }
+        }
+        if (typeof step.advanceWhen === 'function') {
+          try {
+            if (step.advanceWhen() && tutorialStepRequirementsMet(step)) {
+              tutorialEnterStep(tutorialStepIndex + 1);
+            }
+          } catch {}
+        }
+      }
+
+      function getCraftSelectedSymbols() {
+        try {
+          const canvas = craftCanvas();
+          if (!canvas) return [];
+          return Array.from(selectedSymbols).filter((s) => getCanvasForElem(s) === canvas);
+        } catch {
+          return [];
+        }
+      }
+
+      function tutorialStepRequirementsMet(step) {
+        if (!step) return true;
+        if (step.requireCraftSelection) {
+          if (getCraftSelectedSymbols().length === 0) return false;
+        }
+        if (step.requireCraftInsightOn) {
+          if (!eyeButton?.isActivated) return false;
+        }
+        return true;
+      }
+
+      function tutorialCanAdvanceFromStep(step) {
+        if (!step) return true;
+        // Some steps explicitly gate the "Next" button.
+        if (step.gateNext === 'craft_selection_and_insight') {
+          return getCraftSelectedSymbols().length > 0 && !!eyeButton?.isActivated;
+        }
+        return true;
+      }
+
+      function tutorialShowNudge(messageEn, messageZh) {
+        const els = getTutorialOverlayEls?.();
+        if (!els?.body) return;
+        const msg = currentLang === 'zh' ? messageZh : messageEn;
+        if (!msg) return;
+        els.body.textContent = msg;
+      }
+
+      function getActiveTabIndex() {
+        const active = document.querySelector('.tab-content.active');
+        const id = active?.id || '';
+        if (!id.startsWith('tab')) return null;
+        const n = Number(id.slice(3));
+        return Number.isFinite(n) ? n : null;
+      }
+
+      function captureTutorialSnapshot() {
+        const snap = {
+          tabIndex: getActiveTabIndex(),
+          tab0: { left: tab0?.scrollLeft || 0, top: tab0?.scrollTop || 0 },
+          tab1: { left: tab1?.scrollLeft || 0, top: tab1?.scrollTop || 0 },
+          tab2: { left: tab2?.scrollLeft || 0, top: tab2?.scrollTop || 0 },
+          tab4: { left: tab4?.scrollLeft || 0, top: tab4?.scrollTop || 0 },
+          world: null,
+          library: null,
+        };
+        try {
+          if (worldPanController?.getOffset) {
+            snap.world = {
+              offset: worldPanController.getOffset(),
+              zoom: worldContentZoom,
+              selectedIslandId: selectedIsland?.dataset?.islandId || null,
+            };
+          }
+        } catch {}
+        try {
+          if (network && libraryViewMode === 'network') {
+            snap.library = {
+              mode: 'network',
+              viewPos: network.getViewPosition?.() || null,
+              scale: network.getScale?.() || null,
+              zoom: libraryContentZoom,
+            };
+          } else if (libraryTreeView && libraryViewMode === 'tree') {
+            snap.library = {
+              mode: 'tree',
+              scrollTop: libraryTreeView.scrollTop,
+              scrollLeft: libraryTreeView.scrollLeft,
+              zoom: libraryContentZoom,
+            };
+          }
+        } catch {}
+        return snap;
+      }
+
+      function restoreTutorialSnapshot(snapshot) {
+        if (!snapshot) return;
+        try {
+          if (Number.isFinite(snapshot.tabIndex)) window.showTab(snapshot.tabIndex);
+        } catch {}
+        try {
+          if (snapshot.tab0 && tab0) {
+            tab0.scrollLeft = snapshot.tab0.left || 0;
+            tab0.scrollTop = snapshot.tab0.top || 0;
+          }
+          if (snapshot.tab1 && tab1) {
+            tab1.scrollLeft = snapshot.tab1.left || 0;
+            tab1.scrollTop = snapshot.tab1.top || 0;
+          }
+          if (snapshot.tab2 && tab2) {
+            tab2.scrollLeft = snapshot.tab2.left || 0;
+            tab2.scrollTop = snapshot.tab2.top || 0;
+          }
+          if (snapshot.tab4 && tab4) {
+            tab4.scrollLeft = snapshot.tab4.left || 0;
+            tab4.scrollTop = snapshot.tab4.top || 0;
+          }
+        } catch {}
+        try {
+          if (snapshot.world && worldPanController?.setOffset) {
+            worldContentZoom = snapshot.world.zoom || worldContentZoom || 1;
+            worldPanController.refresh?.();
+            const o = snapshot.world.offset;
+            if (o && Number.isFinite(o.x) && Number.isFinite(o.y)) {
+              worldPanController.setOffset(o.x, o.y);
+            }
+            if (snapshot.world.selectedIslandId) {
+              const el = document.querySelector(
+                `#world svg.island[data-island-id="${snapshot.world.selectedIslandId}"]`,
+              );
+              if (el) {
+                if (selectedIsland) selectedIsland.classList.remove('selected');
+                selectedIsland = el;
+                selectedIsland.classList.add('selected');
+                renderIslandInfoCard?.(snapshot.world.selectedIslandId);
+                updateIslandInfoCardPosition?.();
+              }
+            }
+          }
+        } catch {}
+        try {
+          if (snapshot.library?.mode === 'network' && network) {
+            libraryContentZoom = snapshot.library.zoom || libraryContentZoom || 1;
+            const pos = snapshot.library.viewPos;
+            const scale = snapshot.library.scale;
+            if (pos && typeof scale === 'number') {
+              network.moveTo({ position: pos, scale, animation: false });
+            } else if (typeof scale === 'number') {
+              network.moveTo({ scale, animation: false });
+            }
+          } else if (snapshot.library?.mode === 'tree' && libraryTreeView) {
+            libraryContentZoom = snapshot.library.zoom || libraryContentZoom || 1;
+            libraryTreeView.style.zoom = `${libraryContentZoom}`;
+            libraryTreeView.scrollTop = snapshot.library.scrollTop || 0;
+            libraryTreeView.scrollLeft = snapshot.library.scrollLeft || 0;
+            refreshLibraryTreeEdgesFromDom?.();
+          }
+        } catch {}
+      }
+
+      function tutorialEnterStep(nextIndex) {
+        const steps = getTutorialStepsSafe?.() || [];
+        const max = Math.max(0, steps.length - 1);
+        const idx = clamp(nextIndex, 0, max);
+        tutorialStepIndex = idx;
+        if (!tutorialSnapshots.has(idx)) {
+          tutorialSnapshots.set(idx, captureTutorialSnapshot());
+        }
+        if (tutorialStack[tutorialStack.length - 1] !== idx) {
+          tutorialStack.push(idx);
+        }
+        updateTutorialUi?.();
+      }
+
+      function getTutorialCopy() {
+        const zh = currentLang === 'zh';
+        return {
+          startTitle: zh ? '交互式教程' : 'Interactive Tutorial',
+          startBody: zh
+            ? '点击开始后，系统会高亮提示你该点哪里。你可以照着做，也可以随时退出。'
+            : "Click Start and we'll highlight where to click. Follow along, or exit anytime.",
+          startBtn: zh ? '开始教程' : 'Start tutorial',
+          restartBtn: zh ? '重新开始' : 'Restart',
+          back: zh ? '上一步' : 'Back',
+          next: zh ? '下一步' : 'Next',
+          exit: zh ? '退出' : 'Exit',
+        };
+      }
+
+      function ensureHomeTutorialCard() {
+        const home = document.getElementById('home-content');
+        if (!home) return;
+        if (home.querySelector('#homeTutorialCard')) return;
+        const c = getTutorialCopySafe();
+        const card = document.createElement('div');
+        card.id = 'homeTutorialCard';
+        card.className = 'home-tutorial-card';
+        card.innerHTML = `
+          <div class="ht-title">${c.startTitle}</div>
+          <div class="ht-body">${c.startBody}</div>
+          <div class="ht-actions">
+            <button type="button" class="primary" id="homeTutorialStart">${c.startBtn}</button>
+            <button type="button" id="homeTutorialRestart">${c.restartBtn}</button>
+          </div>
+        `;
+        home.appendChild(card);
+        card.querySelector('#homeTutorialStart')?.addEventListener('click', () => startTutorial());
+        card.querySelector('#homeTutorialRestart')?.addEventListener('click', () =>
+          startTutorial(true),
+        );
+      }
+
+      function getTutorialOverlayEls() {
+        return {
+          root: document.getElementById('tutorialOverlay'),
+          spotlight: document.getElementById('tutorialSpotlight'),
+          bubble: document.getElementById('tutorialBubble'),
+          title: document.getElementById('tutorialTitle'),
+          body: document.getElementById('tutorialBody'),
+          back: document.getElementById('tutorialBack'),
+          exit: document.getElementById('tutorialExit'),
+        };
+      }
+
+      function getTutorialSteps() {
+        const zh = currentLang === 'zh';
+        return [
+          {
+            tab: 0,
+            target: () => document.getElementById('tab-header1'),
+            title: zh ? '1/6 去 Craft' : '1/6 Go to Craft',
+            body: zh
+              ? '先点击 Craft（左侧标签）进入画布。'
+              : 'Click Craft (left tab) to enter the canvas.',
+          },
+          {
+            tab: 1,
+            target: () => (document.getElementById('tab1') || document.body).querySelector('.wheel'),
+            title: zh ? '2/6 生成符号' : '2/6 Spawn a Symbol',
+            body: zh
+              ? '点击符号轮生成一个符号，然后拖到画布上。'
+              : 'Click the symbol wheel to spawn a symbol, then drag it onto the canvas.',
+          },
+          {
+            tab: 1,
+            target: () => document.getElementById('craftCanvas'),
+            title: zh ? '3/6 磁吸连接' : '3/6 Magnetic Snapping',
+            body: zh
+              ? '把两个符号靠近，它们会像磁铁一样吸附并连接。'
+              : 'Bring two symbols close and they will snap/connect like magnets.',
+          },
+          {
+            tab: 1,
+            target: () => document.getElementById('craft-eye-button') || null,
+            title: zh ? '4/6 Insight' : '4/6 Insight',
+            body: zh
+              ? '长按选中一个连通分量后，点击 Insight（眼睛）查看提示标签。'
+              : 'Long-press to select a connected component, then click Insight (eye) to see labels.',
+          },
+          {
+            tab: 2,
+            target: () => document.getElementById('tab2'),
+            title: zh ? '5/6 去 Library' : '5/6 Go to Library',
+            body: zh
+              ? 'Library 里会保存你定义过的词，并展示它们之间的关系。'
+              : 'Library stores your defined words and shows relationships between them.',
+          },
+          {
+            tab: 3,
+            target: () => document.getElementById('world'),
+            title: zh ? '6/6 去 World' : '6/6 Go to World',
+            body: zh
+              ? '在 World 选择一座岛，然后进入它的 Chat，用你造的词来交流。'
+              : 'In World, pick an island, then open its Chat and talk using words you created.',
+          },
+        ];
+      }
+
+      function getTutorialCopySafe() {
+        const zh = currentLang === 'zh';
+        return {
+          startTitle: zh ? '\u4ea4\u4e92\u5f0f\u6559\u7a0b' : 'Interactive Tutorial',
+          startBody: zh
+            ? '\u70b9\u51fb\u5f00\u59cb\u540e\uff0c\u7cfb\u7edf\u4f1a\u9ad8\u4eae\u63d0\u793a\u4f60\u8be5\u70b9\u54ea\u91cc\u3002\u4f60\u53ef\u4ee5\u7167\u7740\u505a\uff0c\u4e5f\u53ef\u4ee5\u968f\u65f6\u9000\u51fa\u3002'
+            : "Click Start and we'll highlight where to click. Follow along, or exit anytime.",
+          startBtn: zh ? '\u5f00\u59cb\u6559\u7a0b' : 'Start tutorial',
+          restartBtn: zh ? '\u91cd\u65b0\u5f00\u59cb' : 'Restart',
+          back: zh ? '\u4e0a\u4e00\u6b65' : 'Back',
+          next: zh ? '\u4e0b\u4e00\u6b65' : 'Next',
+          exit: zh ? '\u9000\u51fa' : 'Exit',
+        };
+      }
+
+      function getTutorialStepsSafe() {
+        const zh = currentLang === 'zh';
+        return [
+          {
+            tab: 0,
+            target: () => document.getElementById('tab-header1'),
+            title: zh ? '1/10 \u53bb Craft' : '1/10 Go to Craft',
+            body: zh
+              ? '\u5148\u70b9\u51fb Craft\uff08\u5de6\u4fa7\u6807\u7b7e\uff09\u8fdb\u5165\u753b\u5e03\u3002'
+              : 'Click Craft (left tab) to enter the canvas.',
+            navigate: 'user',
+            advanceWhen: () => document.querySelector('.tab-content.active')?.id === 'tab1',
+          },
+          {
+            tab: 1,
+            target: () => (document.getElementById('tab1') || document.body).querySelector('.wheel'),
+            title: zh ? '2/10 \u751f\u6210\u7b26\u53f7' : '2/10 Spawn a Symbol',
+            body: zh
+              ? '\u70b9\u51fb\u7b26\u53f7\u8f6e\u751f\u6210\u4e00\u4e2a\u7b26\u53f7\uff0c\u7136\u540e\u62d6\u5230\u753b\u5e03\u4e0a\u3002'
+              : 'Click the symbol wheel to spawn a symbol, then drag it onto the canvas.',
+            navigate: 'auto',
+            advanceOnEvent: 'wheel_drag',
+          },
+          {
+            tab: 1,
+            target: () => document.getElementById('craftCanvas'),
+            title: zh ? '3/10 \u78c1\u5438\u8fde\u63a5' : '3/10 Magnetic Snapping',
+            body: zh
+              ? '\u518d\u751f\u6210\u4e00\u4e2a\u7b26\u53f7\uff0c\u628a\u5b83\u62d6\u5230\u53e6\u4e00\u4e2a\u7b26\u53f7\u9644\u8fd1\uff0c\u5b83\u4eec\u4f1a\u78c1\u5438\u8fde\u63a5\u3002'
+              : 'Spawn another symbol and drag it near the first one. They will snap/connect.',
+            navigate: 'auto',
+            advanceWhen: () => (craftCanvas()?.querySelectorAll?.('.symbol')?.length || 0) >= 2,
+          },
+          {
+            tab: 1,
+            target: () => document.getElementById('craftCanvas'),
+            title: zh ? '4/10 \u957f\u6309\u9009\u4e2d' : '4/10 Long-Press Select',
+            body: zh
+              ? '\u5148\u5728\u753b\u5e03\u4e0a\u957f\u6309\u4e00\u4e2a\u7b26\u53f7\uff0c\u9009\u4e2d\u5b83\u6240\u5c5e\u7684\u8fde\u901a\u7ec4\u4ef6\u3002'
+              : 'First, long-press a symbol on the canvas to select its connected component.',
+            navigate: 'auto',
+            advanceOnEvent: 'craft_longpress',
+          },
+          {
+            tab: 1,
+            target: () => document.getElementById('craft-eye-button') || null,
+            title: zh ? '5/10 Insight' : '5/10 Insight',
+            body: zh
+              ? '\u73b0\u5728\u70b9\u51fb Insight\uff08\u773c\u775b\uff09\u663e\u793a\u610f\u4e49\u63d0\u793a\u3002'
+              : 'Now click Insight (eye) to show meaning labels.',
+            navigate: 'auto',
+            advanceOnEvent: 'craft_insight_on',
+            // Prevent accidental deselection while we only care about pressing Insight.
+            lockCraftSelection: true,
+            requireCraftSelection: true,
+          },
+          {
+            tab: 1,
+            targetRect: () => getTutorialCraftSelectionRect?.() || null,
+            title: zh ? '6/10 \u89c2\u5bdf\u63d0\u793a' : '6/10 See the Labels',
+            body: zh
+              ? '\u73b0\u5728\u4f60\u4f1a\u770b\u5230\u7b26\u53f7\u4e0a\u7684\u610f\u4e49\u63d0\u793a\u3002\u70b9\u51fb\u4e00\u4e0b\u9009\u4e2d\u7684\u7b26\u53f7\u6216\u4efb\u610f\u63d0\u793a\u6807\u7b7e\uff0c\u7ee7\u7eed\u3002'
+              : 'You should now see meaning labels on the selected symbols. Click the selected symbols (or any label) to continue.',
+            navigate: 'auto',
+            advanceOnEvent: 'craft_labels_ack',
+            requireCraftSelection: true,
+            requireCraftInsightOn: true,
+          },
+          {
+            tab: 1,
+            target: () => document.getElementById('tab-header2'),
+            title: zh ? '7/10 \u53bb Library' : '7/10 Go to Library',
+            body: zh
+              ? 'Library \u91cc\u4f1a\u4fdd\u5b58\u4f60\u5b9a\u4e49\u8fc7\u7684\u8bcd\uff0c\u5e76\u5c55\u793a\u5b83\u4eec\u4e4b\u95f4\u7684\u5173\u7cfb\u3002'
+              : 'Library stores your defined words and shows relationships between them.',
+            navigate: 'user',
+            advanceWhen: () => document.querySelector('.tab-content.active')?.id === 'tab2',
+          },
+          {
+            tab: 2,
+            target: () => document.getElementById('tab2'),
+            title: zh ? '8/10 \u67e5\u770b Library' : '8/10 Explore Library',
+            body: zh
+              ? '\u8fd9\u91cc\u4f1a\u663e\u793a\u4f60\u5b9a\u4e49\u8fc7\u7684\u8bcd\u548c\u5173\u7cfb\u3002\u4f60\u53ef\u4ee5\u62d6\u62fd\u3001\u6574\u7406\u3001\u6216\u5207\u6362\u89c6\u56fe\u3002'
+              : 'Here you can see your defined words and their relationships. You can drag, organize, or switch views.',
+            navigate: 'auto',
+            advanceOnEvent: 'library_ack',
+          },
+          {
+            tab: 2,
+            target: () => document.getElementById('tab-header3'),
+            title: zh ? '9/10 \u53bb World' : '9/10 Go to World',
+            body: zh
+              ? '\u5728 World \u9009\u62e9\u4e00\u5ea7\u5c9b\uff0c\u7136\u540e\u8fdb\u5165\u5b83\u7684 Chat\uff0c\u7528\u4f60\u9020\u7684\u8bcd\u6765\u4ea4\u6d41\u3002'
+              : 'In World, pick an island, then open its Chat and talk using words you created.',
+            navigate: 'user',
+            advanceWhen: () => document.querySelector('.tab-content.active')?.id === 'tab3',
+          },
+          {
+            tab: 3,
+            target: () => document.getElementById('world'),
+            title: zh ? '10/10 \u67e5\u770b World' : '10/10 Explore World',
+            body: zh
+              ? '\u5728\u4e16\u754c\u5730\u56fe\u4e0a\u9009\u4e2d\u4e00\u5ea7\u5c9b\uff0c\u770b\u770b\u5b83\u7684\u63cf\u8ff0\u5361\u7247\u3002'
+              : 'Select an island on the map and read its description card.',
+            navigate: 'auto',
+            advanceOnEvent: 'world_island_selected',
+          },
+        ];
+      }
+
+      function startTutorial(forceRestart = false) {
+        const els = getTutorialOverlayEls();
+        if (!els.root || !els.spotlight || !els.bubble) return;
+        if (tutorialStepIndex >= 0 && !forceRestart) return;
+        tutorialStepIndex = -1;
+        tutorialEvents.clear();
+        tutorialStack = [];
+        tutorialSnapshots = new Map();
+        els.root.classList.add('open');
+        els.root.setAttribute('aria-hidden', 'false');
+        const c = getTutorialCopySafe();
+        if (els.back) els.back.textContent = c.back;
+        if (els.exit) els.exit.textContent = c.exit;
+        tutorialEnterStep(0);
+      }
+
+      function stopTutorial() {
+        const els = getTutorialOverlayEls();
+        tutorialStepIndex = -1;
+        tutorialNavigating = false;
+        tutorialStack = [];
+        tutorialSnapshots = new Map();
+        tutorialEvents.clear();
+        if (els.root) {
+          els.root.classList.remove('open');
+          els.root.setAttribute('aria-hidden', 'true');
+        }
+      }
+
+      function stepTutorial(delta) {
+        const steps = getTutorialStepsSafe();
+        if (tutorialStepIndex < 0) return;
+        if (delta < 0) {
+          if (tutorialStack.length <= 1) return;
+          // Pop current, restore previous snapshot/state.
+          tutorialStack.pop();
+          const prev = tutorialStack[tutorialStack.length - 1];
+          restoreTutorialSnapshot(tutorialSnapshots.get(prev));
+          tutorialStepIndex = prev;
+          updateTutorialUi();
+          return;
+        }
+        // No manual forward: tutorial advances only via user operations.
+        return;
+      }
+
+      function updateTutorialUi() {
+        const els = getTutorialOverlayEls();
+        if (!els.root || !els.spotlight || !els.bubble) return;
+        if (tutorialStepIndex < 0) return;
+        const steps = getTutorialStepsSafe();
+        const step = steps[tutorialStepIndex];
+        if (!step) return;
+
+        if (!tutorialNavigating) {
+          const active = document.querySelector('.tab-content.active');
+          const activeIndex = active?.id?.startsWith('tab') ? Number(active.id.slice(3)) : null;
+          const nav = step.navigate || 'auto';
+          if (nav !== 'user' && Number.isFinite(step.tab) && activeIndex !== step.tab) {
+            tutorialNavigating = true;
+            try {
+              window.showTab(step.tab);
+            } finally {
+              tutorialNavigating = false;
+            }
+          }
+        }
+
+        if (els.title) els.title.textContent = step.title || '';
+        if (els.body) els.body.textContent = step.body || '';
+
+        const target = step.target?.();
+        const rect = step.targetRect?.() || target?.getBoundingClientRect?.();
+        const pad = 10;
+        const hasRect = rect && rect.width > 0 && rect.height > 0;
+        const left = hasRect ? rect.left - pad : window.innerWidth * 0.5 - 60;
+        const top = hasRect ? rect.top - pad : window.innerHeight * 0.35 - 40;
+        const width = hasRect ? rect.width + pad * 2 : 120;
+        const height = hasRect ? rect.height + pad * 2 : 80;
+
+        els.spotlight.style.left = `${clamp(left, 8, window.innerWidth - 8)}px`;
+        els.spotlight.style.top = `${clamp(top, 8, window.innerHeight - 8)}px`;
+        els.spotlight.style.width = `${Math.max(28, width)}px`;
+        els.spotlight.style.height = `${Math.max(28, height)}px`;
+
+        // Place bubble near spotlight
+        const bubbleRect = els.bubble.getBoundingClientRect();
+        const preferRight = left + width + 14 + bubbleRect.width <= window.innerWidth - 12;
+        const bubbleLeft = preferRight ? left + width + 14 : left;
+        const bubbleTop = clamp(top + height + 12, 12, window.innerHeight - bubbleRect.height - 12);
+        els.bubble.style.left = `${clamp(bubbleLeft, 12, window.innerWidth - bubbleRect.width - 12)}px`;
+        els.bubble.style.top = `${bubbleTop}px`;
+
+        if (els.back) els.back.disabled = tutorialStepIndex <= 0;
+        // No "Next" button: tutorial advances only via user operations.
+
+        // Some steps should auto-advance as soon as their condition becomes true (e.g., tab click).
+        tutorialMaybeAdvance();
+      }
+
+      function getTutorialCraftSelectionRect() {
+        try {
+          const canvas = craftCanvas();
+          if (!canvas) return null;
+          const syms = Array.from(selectedSymbols).filter((s) => getCanvasForElem(s) === canvas);
+          if (syms.length === 0) return null;
+
+          let minL = Infinity,
+            minT = Infinity,
+            maxR = -Infinity,
+            maxB = -Infinity;
+          const addRect = (r) => {
+            if (!r || !(r.width > 0 && r.height > 0)) return;
+            minL = Math.min(minL, r.left);
+            minT = Math.min(minT, r.top);
+            maxR = Math.max(maxR, r.right);
+            maxB = Math.max(maxB, r.bottom);
+          };
+
+          for (const s of syms) {
+            addRect(s.getBoundingClientRect?.());
+            // Labels are usually children of symbols (showSimpleLabel checks selectedSymbol.querySelector('.symbol-label'))
+            s.querySelectorAll?.('.symbol-label, .dot')?.forEach((el) => addRect(el.getBoundingClientRect?.()));
+          }
+
+          if (!Number.isFinite(minL) || !Number.isFinite(minT)) return null;
+          // Expand because meaning bubbles can scatter around the symbols.
+          const expand = Math.min(260, 120 + syms.length * 22);
+          const left = minL - expand;
+          const top = minT - expand;
+          const width = Math.max(1, maxR - minL) + expand * 2;
+          const height = Math.max(1, maxB - minT) + expand * 2;
+          return { left, top, width, height };
+        } catch {
+          return null;
+        }
+      }
+
+      function bindTutorialOverlayOnce() {
+        if (tutorialBound) return;
+        tutorialBound = true;
+        const els = getTutorialOverlayEls();
+        if (!els.root) return;
+        els.back?.addEventListener('click', () => stepTutorial(-1));
+        els.exit?.addEventListener('click', () => stopTutorial());
+        // During certain steps, prevent selection changes so the spotlight doesn't jump to empty space.
+        document.addEventListener(
+          'pointerdown',
+          (e) => {
+            if (tutorialStepIndex < 0) return;
+            const step = getTutorialStepsSafe?.()?.[tutorialStepIndex];
+            if (!step?.lockCraftSelection) return;
+
+            // Allow interacting with tutorial UI and the Insight button itself.
+            if (e.target?.closest?.('#tutorialBubble')) return;
+            if (e.target?.closest?.('#craft-eye-button')) return;
+
+            const inCraftTab = !!e.target?.closest?.('#tab1');
+            const onCraftCanvas =
+              !!e.target?.closest?.('#craftCanvas') ||
+              !!e.target?.closest?.('.symbol') ||
+              !!e.target?.closest?.('.dot') ||
+              !!e.target?.closest?.('.symbol-label') ||
+              !!e.target?.closest?.('.wheel') ||
+              !!e.target?.closest?.('#palette');
+            if (inCraftTab && onCraftCanvas) {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+          },
+          true,
+        );
+
+        // Tutorial acks: advance when the user interacts with the highlighted region.
+        document.addEventListener(
+          'pointerdown',
+          (e) => {
+            if (tutorialStepIndex < 0) return;
+            const step = getTutorialStepsSafe?.()?.[tutorialStepIndex];
+            const evt = step?.advanceOnEvent;
+            if (evt === 'craft_labels_ack') {
+              const canvas = craftCanvas();
+              if (!canvas) return;
+              const inCraft = !!e.target?.closest?.('#tab1');
+              if (!inCraft) return;
+              const hit =
+                !!e.target?.closest?.('.symbol-label') ||
+                !!e.target?.closest?.('.symbol') ||
+                !!e.target?.closest?.('.dot');
+              if (!hit) return;
+              emitTutorialEvent('craft_labels_ack');
+              return;
+            }
+            if (evt === 'library_ack') {
+              if (!e.target?.closest?.('#tab2')) return;
+              emitTutorialEvent('library_ack');
+            }
+          },
+          true,
+        );
+        window.addEventListener('keydown', (e) => {
+          if (tutorialStepIndex < 0) return;
+          if (e.key === 'Escape') stopTutorial();
+          if (e.key === 'ArrowLeft') stepTutorial(-1);
+        });
       }
 
       function getLang() {
@@ -1698,6 +2531,8 @@
       window.addEventListener('resize', () => {
         updateChatQuestionPrompt?.();
         scheduleChatMiniMapUpdate?.();
+        updateIslandInfoCardPosition?.();
+        updateTutorialUi?.();
       });
 
       document.addEventListener('keydown', async (e) => {
@@ -1856,6 +2691,7 @@
 
         // if have not selected an island, cannot open the chat
         if (tabIndex === 4 && !selectedIsland) {
+          updateTutorialUi?.();
           return;
         }
 
@@ -1868,6 +2704,8 @@
             tabHeadersActivated[i] = false;
           }
         }
+        updateTutorialUi?.();
+        tutorialMaybeAdvance?.();
       };
 
       // Initialize the first tab as active
@@ -3174,6 +4012,7 @@
         // ✅ set language BEFORE initNodes
         currentLang = localStorage.getItem('lang') || 'en';
         setLang(currentLang);
+        bindTutorialOverlayOnce?.();
 
         // ✅ now init nodes (symbolData must already exist by this line)
         await initNodes();
@@ -4628,6 +5467,7 @@
       function beginWheelSpawnDrag(symbol, clientX, clientY) {
         if (!symbol) return;
         markLocalSymbolMutation(symbol, 1500);
+        emitTutorialEvent?.('wheel_drag');
 
         dragLeader = null;
         dragGroup = null;
@@ -4989,6 +5829,7 @@
 
       const eyeButton = document.createElement('div');
       eyeButton.isActivated = false;
+      eyeButton.id = 'craft-eye-button';
       eyeButton.classList.add('button');
       eyeButton.style.width = `150px`;
       eyeButton.style.height = `106px`;
@@ -5000,6 +5841,7 @@
         eyeButton.isActivated = !eyeButton.isActivated;
         if (eyeButton.isActivated) {
           eyeButton.style.backgroundImage = "url('./icons/eye_blue.png')";
+          emitTutorialEvent?.('craft_insight_on');
           // Only inspect the craft-canvas selection (avoid cross-tab selection leakage).
           const craftSel = Array.from(selectedSymbols).filter(
             (s) => getCanvasForElem(s) === craftCanvas(),
@@ -5014,6 +5856,8 @@
           }
 
           refreshCraftInspectionUI();
+          // Tutorial spotlight should move to the selection/labels after Insight is enabled.
+          requestAnimationFrame(() => updateTutorialUi?.());
         } else {
           eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
           removeLabelInputs();
@@ -5023,6 +5867,7 @@
       appendToCraftControls(eyeButton);
 
       const eyeButton2 = eyeButton.cloneNode(true);
+      eyeButton2.id = 'chat-eye-button';
       // Expose for earlier helpers that run before this const is initialized (avoids TDZ errors).
       window.eyeButton2 = eyeButton2;
 
@@ -9364,6 +10209,11 @@
           selectedSymbol.classList.add('framed');
         });
         console.log(`molecule ${moleculeString}`);
+
+        // Tutorial: advance after the user successfully long-pressed a connected component in craft.
+        try {
+          if (getCanvasForElem(symbol) === craftCanvas()) emitTutorialEvent?.('craft_longpress');
+        } catch {}
       }
 
       const Side = {
@@ -10836,10 +11686,7 @@
         const cardX = parseFloat(card.style.left) || 0;
         const cardY = parseFloat(card.style.top) || 0;
         const w =
-          parseFloat(card.style.width) ||
-          parseFloat(card.style.minWidth) ||
-          card.offsetWidth ||
-          0;
+          parseFloat(card.style.width) || parseFloat(card.style.minWidth) || card.offsetWidth || 0;
         const h =
           parseFloat(card.style.minHeight) ||
           parseFloat(card.style.height) ||
@@ -12518,6 +13365,7 @@
           content.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${worldContentZoom})`;
 
           recycleFoam(world, content, offsetX, offsetY, worldContentZoom);
+          updateIslandInfoCardPosition?.();
         }
 
         world.addEventListener('pointerdown', (e) => {
@@ -12588,12 +13436,140 @@
 
       let selectedIsland = null;
       let selectionEnabled = false;
+      let islandInfoCard = null;
+
+      const ISLAND_INFO = {
+        Kimmoke: {
+          zh: '极北之地，中央沉着一座墨池，池底深处，零星几座孤山冒着冷冽的火星。静谧之中，暗藏生机。',
+          en: 'The Far North. At its center lies a pool of ink; deep within the pit, a few lonely peaks spit frigid sparks. Amidst the silence, a hidden start breathes.',
+        },
+        Uzel: {
+          zh: '东北方的岩屿，沿岸柳树丛生。树根在冻土中彼此纠缠打结，像一道坚固的栅栏，挡住了四面八方的海风。',
+          en: 'Rock-isles of the Northeast, where willows crowd the shores. Their roots knot together in the permafrost like a heavy palisade, holding back the sea winds from every side.',
+        },
+        Habataku: {
+          zh: '东北东方向的大陆，地势极其险峻，中间裂开一道峡谷。时有巨鸟出没谷中，振翅声如木气破空，直冲云霄。',
+          en: 'A continent in the East-Northeast with treacherous crags and a Great Gorge split through its heart. Giant birds haunt the depths; the beat of their wings sounds like wood splintering the sky as they surge into the clouds.',
+        },
+        Phong: {
+          zh: '正东的森林，琼林遍布全岛。枝叶层层叠叠，闭合如一间翡翠筑成的密室，温润而和合。',
+          en: 'The Forest of the True East, where jade-trees cover the isle. Leaves overlap and seal like a secret chamber of emerald—warm, humid, and perfectly at one.',
+        },
+        Phirun: {
+          zh: '东南的大泽，云行雨施，水幕从天垂落。花叶繁茂，令人目不暇接，但行于其中，烂泥沼泽步步滞涩，阻力重重。',
+          en: 'The Great Marsh of the Southeast. Clouds move and rain falls in veils from the sky. Though the lush blooms dazzle the eye, to walk here is to sink into a swamp, each step heavy with friction and dragging weight.',
+        },
+        Lilit: {
+          zh: '南南东的山地，山道崎岖，如长蛇盘绕。普通行人经过，常有怪异之事相随。唯有心定之人，能于此地获得财宝。',
+          en: 'Highlands of the South-Southeast. The mountain paths are jagged, coiling like serpents. Strange shadows follow the common traveler, yet those with a steady heart may find hidden treasures here.',
+        },
+        Jwala: {
+          zh: '正南的沙漠，白炽灼人，终年干燥。偶尔有闪电不知从何处降临，如火星迸射，灼热刺眼。',
+          en: 'The Desert of the True South. White heat sears the land in eternal drought. Occasionally, lightning strikes from nowhere like sudden sparks—blinding, sharp, and searing.',
+        },
+        Bagh: {
+          zh: '西南的花园，土质厚实肥沃。宴席后的残香在温润空气中浮动，是一处安稳丰饶之地，行人往往流连忘返。',
+          en: 'The Garden of the Southwest, where the soil is thick and fertile. The scent of a finished banquet lingers in the warm air; it is a place of such quiet abundance that travelers often forget to leave.',
+        },
+        Iztli: {
+          zh: '西南西的白洲上，建有一座城。城墙皆由黑曜石筑成，如利刃切开日晕与月光。城中肃穆冰冷，从外面只能听见金属撞击的回响。',
+          en: 'Upon the White Isle of the West-Southwest stands a city. Its walls of obsidian slice through the halos of sun and moon like blades. Within is a cold solemnity; from without, one hears only the echoes of striking metal.',
+        },
+        Zvono: {
+          zh: '正西的小岛，山间有一座古观。观中悬着一口巨钟，余震在阴影中回响不绝。平日人影稀少，但旅人暂居此处，能感神召。',
+          en: 'A small isle of the True West, with an ancient temple nestled in the hills. A great bell hangs within, its resonance lingering endlessly in the shadows. Though few souls are seen, a traveler staying here may feel the touch of the divine.',
+        },
+        Cendre: {
+          zh: '西北西的荒原，杂草丛生。每日野火过境，万物化为灰烬飘散空中。这些灰烬可入药，常有行人前来收集。',
+          en: 'The Barrens of the West-Northwest, overgrown with wild weeds. Every day, wildfires sweep the land, turning all to ash that drifts in the air. These ashes are a potent medicine, and travelers often come to gather them.',
+        },
+        Tobar: {
+          zh: '西北的天门之处，有一口深井。悬河之水从天而降，坠入井中。跃入此泉者，皆入终极遗忘；复出之人，天真无垢。',
+          en: 'At the Heaven-Gate of the Northwest lies a deep well. Waters of a hanging river plunge from the sky into its depths. Those who leap into the spring enter ultimate oblivion; those who emerge are born anew, pure and stainless.',
+        },
+        Merkez: {
+          zh: '中央的集市，来自东西南北的货物在此集散，熙熙攘攘。地势稳恒不变，中央立有一块定心之石，其状难以名状。万千感知在此汇聚、纽结。',
+          en: 'The Central Market, a bustling hub where goods from all quarters gather. The ground is eternally steady; at its heart stands an indescribable Anchor Stone. Here, a thousand senses converge and knot together.',
+        },
+      };
+
+      function ensureIslandInfoCard() {
+        if (islandInfoCard) return islandInfoCard;
+        const world = document.getElementById('world');
+        if (!world) return null;
+        const card = document.createElement('div');
+        card.id = 'islandInfoCard';
+        card.className = 'island-info-card';
+        world.appendChild(card);
+        islandInfoCard = card;
+        return card;
+      }
+
+      function hideIslandInfoCard() {
+        const card = ensureIslandInfoCard();
+        if (!card) return;
+        card.style.display = 'none';
+        card.innerHTML = '';
+      }
+
+      function renderIslandInfoCard(islandId) {
+        const card = ensureIslandInfoCard();
+        if (!card) return;
+        const cleanId = String(islandId || '').trim();
+        const info = ISLAND_INFO[cleanId];
+        if (!info) {
+          hideIslandInfoCard();
+          return;
+        }
+        const bodyText = currentLang === 'zh' ? info.zh : info.en;
+        card.innerHTML = '';
+        const titleEl = document.createElement('div');
+        titleEl.className = 'title';
+        titleEl.textContent = cleanId;
+        const bodyEl = document.createElement('div');
+        bodyEl.className = 'sense';
+        bodyEl.textContent = bodyText || '';
+        card.appendChild(titleEl);
+        card.appendChild(bodyEl);
+        card.style.display = 'block';
+      }
+
+      function updateIslandInfoCardPosition() {
+        const card = islandInfoCard;
+        if (!card || card.style.display === 'none') return;
+        if (!selectedIsland) return;
+        const world = document.getElementById('world');
+        if (!world) return;
+
+        const worldRect = world.getBoundingClientRect();
+        const islandRect = selectedIsland.getBoundingClientRect();
+
+        // Measure card
+        card.style.left = '-9999px';
+        card.style.top = '-9999px';
+        card.style.display = 'block';
+        const cardRect = card.getBoundingClientRect();
+
+        const gap = 14;
+        const preferRight = islandRect.right + gap + cardRect.width <= worldRect.right - 8;
+        const left = preferRight
+          ? islandRect.right - worldRect.left + gap
+          : islandRect.left - worldRect.left - gap - cardRect.width;
+
+        const unclampedTop = islandRect.top - worldRect.top;
+        const top = clamp(unclampedTop, 8, Math.max(8, worldRect.height - cardRect.height - 8));
+
+        const finalLeft = clamp(left, 8, Math.max(8, worldRect.width - cardRect.width - 8));
+        card.style.left = `${finalLeft}px`;
+        card.style.top = `${top}px`;
+      }
 
       function enableIslandSelection() {
         if (selectionEnabled) return;
         selectionEnabled = true;
 
         const world = document.getElementById('world');
+        ensureIslandInfoCard();
 
         let downX = 0,
           downY = 0;
@@ -12612,6 +13588,7 @@
           selectedIsland.classList.remove('selected');
           selectedIsland = null;
           hideChatTab();
+          hideIslandInfoCard();
 
           // 如果当前在 Chat tab，建议回到 World
           showTab(3);
@@ -12658,6 +13635,10 @@
           if (selectedIsland) selectedIsland.classList.remove('selected');
           selectedIsland = upIsland;
           selectedIsland.classList.add('selected');
+
+          renderIslandInfoCard(selectedIsland.dataset.islandId || '');
+          updateIslandInfoCardPosition();
+          emitTutorialEvent?.('world_island_selected');
 
           showChatTabForIsland(selectedIsland.dataset.islandId || 'Chat');
           // showTab(4); // 可选：自动切到 Chat
