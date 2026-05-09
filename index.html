@@ -1,155 +1,534 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>My Portfolio</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 2rem;
-      height: 100vh;
-      background: linear-gradient(135deg, #fffeee, #fff8c0);
-      font-family: 'Segoe UI', sans-serif;
-      color: black;
-      overflow: hidden;
-    }
-
-    header {
-      position: relative;
-      z-index: 3;
-    }
-
-    header h1 {
-      margin: 0;
-      font-size: 2.5rem;
-    }
-
-    header p {
-      margin: 0.25rem 0;
-      font-size: 1rem;
-      color: #ddd;
-    }
-
-    .window {
-      position: absolute;
-      width: 250px;
-      min-height: 150px;
-      padding: 16px;
-      border-radius: 12px;
-      backdrop-filter: blur(12px);
-      background-color: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: black;
-      box-shadow: 0 0 15px rgba(0,0,0,0.2);
-      cursor: default;
-      user-select: none;
-    }
-
-    .window.dragging {
-      cursor: grabbing;
-    }
-
-    .window:hover {
-      transform: scale(1.03);
-      z-index: 2;
-    }
-
-    .window a {
-      cursor: pointer;
-      -webkit-user-drag: none;
-    }
-  </style>
-</head>
-<body>
-
-  <!-- Static name and contact info -->
-  <header>
-    <h1>Tony Zhou <br> 周雨桐 <br> うきり</h1>
-    <div class="contact-info">
-    <b>E-mail</b> zhouyt.tony2018@gmail.com <br>
-    <b>Instagram</b> ukiri.z
-  </header>
-
-  <script>
-    let topWindowZ = 10;
-
-    const projects = [
-      { title: "Akaemo", description: "A 2d platformer: you become a red bouncy ball!", image: "./icons/akaemo.gif", scale: 50, link: "https://tonyyz.itch.io/akaemo"},
-      { title: "Divinatory Canvas", description: "A canvas to create your own divinatory language.", image: "./icons/bullet.png", scale: 100, link: "canvas.html"},
-      { title: "Ete", description: "The automated scribe for conlang ítí", image: "./icons/ete.png", scale: 70, link: "ete.html"},
-      { title: "Latinized Ítí", description: "A Latin script for ítí with fancy and elegant diacritics", image: "./icons/xiaoyaoyou_latinized.png", scale: 100, link: "latinized.html"},
-      { title: "Picture Talk", description: "A canvas for co-creating SVG artworks with LLM", image: "./icons/emoi.png", scale: 100, link: "picture_talk.html"}
-    ];
-
-    projects.forEach((project) => {
-      const win = document.createElement("div");
-      win.className = "window";
-      win.innerHTML = `
-        <h3><a href="${project.link}" style="color: black; text-decoration: none;" target="_blank" draggable="false">${project.title}</a></h3>
-        <p>${project.description}</p>
-        <img src="${project.image}" draggable="false" style="display: block; margin: 0 auto 10px auto; width:${project.scale}%;" alt="${project.title}" />
-      `;
-
-      const x = Math.random() * (window.innerWidth - 280);
-      const y = Math.random() * (window.innerHeight - 250) + 80;
-      win.style.left = `${x}px`;
-      win.style.top = `${y}px`;
-
-      makeDraggable(win);
-      document.body.appendChild(win);
-    });
-
-
-    function makeDraggable(el) {
-      let isDragging = false;
-      let didDrag = false;
-      let offsetX, offsetY;
-      let startX = 0;
-      let startY = 0;
-
-      function bringToFront() {
-        topWindowZ += 1;
-        el.style.zIndex = topWindowZ;
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="preload"
+      href="./fonts/LXGWWenKai-Regular.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <title>My Portfolio</title>
+    <style>
+      body {
+        --qi-hue: 48;
+        margin: 0;
+        padding: 2rem;
+        height: 100vh;
+        background: #fff8c0;
+        font-family: 'UkirizWenKai', 'LXGW WenKai', KaiTi, serif;
+        color: black;
+        overflow: hidden;
       }
 
-      el.addEventListener("mousedown", (e) => {
-        e.preventDefault();
-        isDragging = true;
-        didDrag = false;
-        startX = e.clientX;
-        startY = e.clientY;
-        offsetX = e.clientX - el.offsetLeft;
-        offsetY = e.clientY - el.offsetTop;
-        el.classList.add("dragging");
-        bringToFront();
-      });
+      body::before,
+      body::after {
+        content: '';
+        position: fixed;
+        pointer-events: none;
+      }
 
-      document.addEventListener("mousemove", (e) => {
-        if (isDragging) {
-          if (Math.abs(e.clientX - startX) > 3 || Math.abs(e.clientY - startY) > 3) {
-            didDrag = true;
+      body::before {
+        inset: -18%;
+        z-index: 0;
+        opacity: 0.92;
+        background:
+          radial-gradient(circle at 8% 4%, rgba(255, 255, 246, 0.92), transparent 34%),
+          radial-gradient(circle at 38% 22%, rgba(255, 248, 188, 0.36), transparent 38%),
+          linear-gradient(135deg, #fffef0 0%, #fff9c9 46%, #fff3aa 100%);
+        transform: translateZ(0);
+        transition:
+          background 180ms ease,
+          opacity 180ms ease;
+      }
+
+      body::after {
+        inset: 0;
+        z-index: 0;
+        opacity: 0.1;
+        background-image:
+          linear-gradient(rgba(0, 0, 0, 0.11) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0, 0, 0, 0.09) 1px, transparent 1px);
+        background-size: 44px 44px;
+        mask-image: radial-gradient(circle at 55% 48%, black, transparent 72%);
+      }
+
+      .qi-orb {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 64vmin;
+        height: 64vmin;
+        border-radius: 50%;
+        z-index: 0;
+        pointer-events: none;
+        opacity: 0;
+        transform: translate3d(-50%, -50%, 0) scale(0.9);
+        background: radial-gradient(circle, hsla(var(--qi-hue), 54%, 78%, 0.48), transparent 68%);
+        mix-blend-mode: multiply;
+        transition:
+          opacity 160ms ease,
+          background 160ms ease;
+        will-change: transform, opacity;
+      }
+
+      body.qi-dragging .qi-orb {
+        opacity: 0.82;
+      }
+
+      header {
+        position: relative;
+        z-index: 1;
+      }
+
+      header .hero {
+        display: flex;
+        align-items: flex-start;
+        gap: 2.5rem;
+        max-width: 1200px;
+      }
+
+      header .identity {
+        flex: 0 0 auto;
+        min-width: 260px;
+      }
+
+      header h1 {
+        margin: 0;
+        font-family: 'UkirizSourceHanSerif', 'Source Han Serif SC', 'Noto Serif CJK SC', serif;
+        font-size: 2.5rem;
+      }
+
+      @font-face {
+        font-family: 'UkirizWenKai';
+        src:
+          url('./fonts/LXGWWenKai-Regular.woff2') format('woff2'),
+          local('LXGW WenKai'),
+          local('LXGW WenKai SC'),
+          local('LXGW WenKai Screen'),
+          local('LXGW WenKai GB Screen'),
+          local('LXGW WenKai Lite'),
+          local('霞鹜文楷'),
+          local('霞鹜文楷 GB'),
+          local('霞鹜文楷屏幕阅读版');
+        font-display: block;
+      }
+
+      @font-face {
+        font-family: 'UkirizSarasaUiSC';
+        src:
+          url('./fonts/SarasaUiSC-Regular.woff2') format('woff2'),
+          local('Sarasa UI SC'),
+          local('Sarasa Gothic SC'),
+          local('Sarasa Gothic CL'),
+          local('Sarasa Gothic');
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: 'UkirizSourceHanSerif';
+        src:
+          url('./fonts/SourceHanSerifSC-VF.woff2') format('woff2'),
+          local('Source Han Serif'),
+          local('Source Han Serif SC'),
+          local('Source Han Serif CN'),
+          local('Noto Serif CJK SC'),
+          local('思源宋体'),
+          local('思源宋体 CN'),
+          local('思源宋体 SC');
+        font-display: swap;
+      }
+
+      :lang(zh) {
+        font-family: 'UkirizSarasaUiSC', 'Sarasa UI SC', 'Sarasa Gothic SC', sans-serif;
+        font-weight: 400;
+      }
+
+      header p {
+        margin: 0.25rem 0;
+        font-size: 1rem;
+        color: #ddd;
+      }
+
+      .artist-bio {
+        flex: 1 1 auto;
+        margin-top: 0.25rem;
+        max-width: 760px;
+        font-size: 1.2rem;
+        line-height: 1.45;
+        color: rgba(0, 0, 0);
+        user-select: text;
+      }
+
+      .artist-bio p {
+        margin: 0;
+        color: inherit;
+        font-size: inherit;
+      }
+
+      .artist-bio-zh {
+        margin-top: 1.15rem;
+        font-family: 'UkirizWenKai', KaiTi, serif;
+        font-size: 1.04rem;
+        line-height: 1.7;
+      }
+
+      .artist-bio p.artist-bio-zh:lang(zh) {
+        font-family: 'UkirizWenKai', KaiTi, serif;
+      }
+
+      .window {
+        position: absolute;
+        width: 250px;
+        min-height: 150px;
+        padding: 16px;
+        border-radius: 8px;
+        background: transparent;
+        border: 1px solid rgba(0, 0, 0, 0.13);
+        color: black;
+        box-shadow: 0 16px 38px rgba(72, 56, 20, 0.16);
+        cursor: default;
+        user-select: none;
+        will-change: transform;
+        transform: translateZ(0);
+        isolation: isolate;
+        overflow: hidden;
+        z-index: 3;
+        contain: layout paint style;
+      }
+
+      /* Dedicated glass layer (more reliable than ::before in Chrome first paint). */
+      .window .window-glass {
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background:
+          linear-gradient(
+            135deg,
+            hsla(var(--window-hue), 54%, 86%, 0.1),
+            rgba(255, 255, 255, 0.08)
+          ),
+          rgba(255, 255, 255, 0.045);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        pointer-events: none;
+        z-index: 0;
+        transition: background-color 180ms ease;
+      }
+
+      .window .window-body {
+        position: relative;
+        z-index: 1;
+      }
+
+      .window.dragging {
+        cursor: grabbing;
+        box-shadow: 0 18px 42px hsla(var(--window-hue), 54%, 42%, 0.16);
+      }
+
+      .window.dragging .window-glass {
+        background:
+          linear-gradient(
+            135deg,
+            hsla(var(--window-hue), 48%, 84%, 0.18),
+            rgba(255, 255, 255, 0.12)
+          ),
+          rgba(255, 255, 255, 0.08);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+      }
+
+      .window:hover {
+        transform: scale(1.03);
+      }
+
+      .window.dragging:hover {
+        transform: translateZ(0);
+      }
+
+      .window a {
+        cursor: pointer;
+        -webkit-user-drag: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="qi-orb" aria-hidden="true"></div>
+
+    <!-- Static name and contact info -->
+    <header>
+      <div class="hero">
+        <div class="identity">
+          <h1>
+            Tony Zhou <br />
+            周雨桐 <br />
+            うきり
+          </h1>
+          <div class="contact-info">
+            <b>E-mail</b> zhouyt.tony2018@gmail.com <br />
+            <b>Instagram</b> ukiri.z
+          </div>
+        </div>
+        <div class="artist-bio" aria-label="Artist bio">
+          <p>
+            Tony is an artist-researcher exploring symbolic systems as living structures. Working
+            across visual language, embodied interfaces, and speculative worldbuilding, he creates
+            operative forms (characters, signs, objects, and spatial arrangements) that organize
+            flows of meaning, vitality, and experience. Rooted in early Chinese cosmology, craft
+            traditions, and dreamlike environments, his work imagines symbols as things to
+            manipulate, inhabit, and think through. His practice is an ongoing search for a living
+            script: rule-bound yet fluid, constructed yet organic, symbolic yet inhabitable.
+          </p>
+          <br />
+          <p class="artist-bio-zh" lang="zh">
+            桐是一名符号世界的探索者。<br />
+            他的创作游走于视觉语言、具身交互与世界构筑之间，通过构造文字、记号、器物与空间布置等可操作的形式，引导意义、生命力与经验的流转。<br /><br />
+
+            他的实践扎根于中国早期宇宙观、工艺传统与如梦似幻的环境经验，并试图重新想象符号：它并非只是用来表述的抽象媒介，而是可被摆弄、栖居、体会与玩味之物。<br /><br />
+
+            这是一场对「活文字」的恒久探寻——<br />
+            它有法度，却不僵死；<br />
+            它为人所构，却自有生机；<br />
+            它为象征，而人可居游其中。<br />
+          </p>
+        </div>
+      </div>
+    </header>
+
+    <script>
+      let topWindowZ = 10;
+
+      const projects = [
+        {
+          title: 'Akaemo',
+          description: 'A 2d platformer: you become a red bouncy ball!',
+          image: './icons/akaemo.gif',
+          scale: 50,
+          link: 'https://tonyyz.itch.io/akaemo',
+          hue: 8,
+        },
+        {
+          title: 'Divinatory Canvas',
+          description: 'A canvas to create your own divinatory language.',
+          image: './icons/bullet.png',
+          scale: 100,
+          link: 'canvas.html',
+          hue: 182,
+        },
+        {
+          title: 'Ete',
+          description: 'The automated scribe for conlang Ítí',
+          image: './icons/ete.png',
+          scale: 70,
+          link: 'ete.html',
+          hue: 222,
+        },
+        {
+          title: 'Latinized Ítí',
+          description: 'A Latin script for Ítí with fancy and elegant diacritics',
+          image: './icons/xiaoyaoyou_latinized.png',
+          scale: 100,
+          link: 'latinized.html',
+          hue: 255,
+        },
+        {
+          title: 'Picture Talk',
+          description: 'A canvas for co-creating SVG artworks with LLM',
+          image: './icons/emoi.png',
+          scale: 100,
+          link: 'picture_talk.html',
+          hue: 294,
+        },
+      ];
+
+      // Random but low-overlap placement for windows (keeps randomness, reduces pileups).
+      function rectsIntersect(a, b) {
+        return !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom);
+      }
+
+      function intersectionArea(a, b) {
+        const x1 = Math.max(a.left, b.left);
+        const y1 = Math.max(a.top, b.top);
+        const x2 = Math.min(a.right, b.right);
+        const y2 = Math.min(a.bottom, b.bottom);
+        const w = Math.max(0, x2 - x1);
+        const h = Math.max(0, y2 - y1);
+        return w * h;
+      }
+
+      function getRectAt(x, y, w, h, pad = 0) {
+        return { left: x - pad, top: y - pad, right: x + w + pad, bottom: y + h + pad };
+      }
+
+      function pickWindowPosition(winW, winH, placedRects) {
+        const padEdge = 18;
+        const headerPadTop = 80;
+        const maxX = Math.max(padEdge, window.innerWidth - winW - padEdge);
+        const maxY = Math.max(headerPadTop, window.innerHeight - winH - padEdge);
+
+        const tries = 40;
+        let best = null;
+        for (let i = 0; i < tries; i++) {
+          const x = Math.random() * (maxX - padEdge) + padEdge;
+          const y = Math.random() * (maxY - headerPadTop) + headerPadTop;
+          const rect = getRectAt(x, y, winW, winH, 10);
+
+          let overlapCount = 0;
+          let overlapArea = 0;
+          for (const other of placedRects) {
+            if (!rectsIntersect(rect, other)) continue;
+            overlapCount += 1;
+            overlapArea += intersectionArea(rect, other);
           }
-          el.style.left = `${e.clientX - offsetX}px`;
-          el.style.top = `${e.clientY - offsetY}px`;
+
+          const score = overlapCount * 1e9 + overlapArea;
+          if (!best || score < best.score) {
+            best = { x, y, score };
+            if (overlapCount === 0) break;
+          }
         }
+
+        return best || { x: padEdge, y: headerPadTop };
+      }
+
+      const placedRects = [];
+
+      projects.forEach((project) => {
+        const win = document.createElement('div');
+        win.className = 'window';
+        win.style.setProperty('--window-hue', project.hue ?? 48);
+        win.innerHTML = `
+        <div class="window-glass"></div>
+        <div class="window-body">
+          <h3><a href="${project.link}" style="color: black; text-decoration: none;" target="_blank" draggable="false">${project.title}</a></h3>
+          <p>${project.description}</p>
+          <img src="${project.image}" draggable="false" style="display: block; margin: 0 auto 10px auto; width:${project.scale}%;" alt="${project.title}" />
+        </div>
+      `;
+
+        makeDraggable(win);
+        document.body.appendChild(win);
+
+        // Measure after insertion, then place with low-overlap random sampling.
+        win.style.visibility = 'hidden';
+        const winW = win.offsetWidth || 250;
+        const winH = win.offsetHeight || 180;
+        const pos = pickWindowPosition(winW, winH, placedRects);
+        win.style.left = `${pos.x}px`;
+        win.style.top = `${pos.y}px`;
+        win.style.visibility = 'visible';
+        placedRects.push(getRectAt(pos.x, pos.y, winW, winH, 12));
       });
 
-      document.addEventListener("mouseup", () => {
-        isDragging = false;
-        el.classList.remove("dragging");
-        setTimeout(() => {
-          didDrag = false;
-        }, 0);
-      });
+      function makeDraggable(el) {
+        let isDragging = false;
+        let didDrag = false;
+        let offsetX, offsetY;
+        let startX = 0;
+        let startY = 0;
+        let dragLeft = 0;
+        let dragTop = 0;
+        let baseLeft = 0;
+        let baseTop = 0;
+        let lastX = 0;
+        let lastY = 0;
+        let pendingQiEvent = null;
+        let qiFrame = 0;
+        const qiOrb = document.querySelector('.qi-orb');
 
-      el.addEventListener("click", (e) => {
-        if (didDrag) {
+        function bringToFront() {
+          topWindowZ += 1;
+          el.style.zIndex = topWindowZ;
+        }
+
+        function updateQiField(e) {
+          if (qiOrb) {
+            qiOrb.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0) translate(-50%, -50%)`;
+          }
+
+          lastX = e.clientX;
+          lastY = e.clientY;
+        }
+
+        function scheduleQiField(e) {
+          pendingQiEvent = e;
+          if (qiFrame) return;
+          qiFrame = requestAnimationFrame(() => {
+            qiFrame = 0;
+            if (pendingQiEvent) updateQiField(pendingQiEvent);
+            pendingQiEvent = null;
+          });
+        }
+
+        el.addEventListener('mousedown', (e) => {
           e.preventDefault();
-          e.stopPropagation();
-        }
-      }, true);
-    }
-  </script>
-</body>
+          isDragging = true;
+          didDrag = false;
+          startX = e.clientX;
+          startY = e.clientY;
+          lastX = e.clientX;
+          lastY = e.clientY;
+          baseLeft = el.offsetLeft;
+          baseTop = el.offsetTop;
+          dragLeft = baseLeft;
+          dragTop = baseTop;
+          offsetX = e.clientX - baseLeft;
+          offsetY = e.clientY - baseTop;
+          el.classList.add('dragging');
+          document.body.classList.add('qi-dragging');
+          document.body.style.setProperty(
+            '--qi-hue',
+            el.style.getPropertyValue('--window-hue') || 48,
+          );
+          bringToFront();
+          updateQiField(e);
+        });
+
+        document.addEventListener('mousemove', (e) => {
+          if (isDragging) {
+            if (Math.abs(e.clientX - startX) > 3 || Math.abs(e.clientY - startY) > 3) {
+              didDrag = true;
+            }
+            dragLeft = e.clientX - offsetX;
+            dragTop = e.clientY - offsetY;
+            el.style.transform = `translate3d(${dragLeft - baseLeft}px, ${dragTop - baseTop}px, 0)`;
+            scheduleQiField(e);
+          }
+        });
+
+        document.addEventListener('mouseup', () => {
+          if (!isDragging) return;
+          if (isDragging) {
+            el.style.left = `${dragLeft}px`;
+            el.style.top = `${dragTop}px`;
+            el.style.transform = '';
+          }
+          isDragging = false;
+          pendingQiEvent = null;
+          if (qiFrame) {
+            cancelAnimationFrame(qiFrame);
+            qiFrame = 0;
+          }
+          el.classList.remove('dragging');
+          document.body.classList.remove('qi-dragging');
+          setTimeout(() => {
+            didDrag = false;
+          }, 0);
+        });
+
+        el.addEventListener(
+          'click',
+          (e) => {
+            if (didDrag) {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+          },
+          true,
+        );
+      }
+    </script>
+  </body>
 </html>
