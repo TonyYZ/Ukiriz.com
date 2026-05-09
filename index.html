@@ -78,6 +78,30 @@
         opacity: 0.82;
       }
 
+      .qi-trail {
+        position: fixed;
+        left: var(--trail-x, 0px);
+        top: var(--trail-y, 0px);
+        width: 34vmin;
+        height: 34vmin;
+        border-radius: 50%;
+        z-index: 0;
+        pointer-events: none;
+        opacity: 0;
+        transform: translate3d(-50%, -50%, 0) scale(0.56);
+        background: radial-gradient(circle, hsla(var(--trail-hue), 58%, 76%, 0.5), transparent 70%);
+        mix-blend-mode: multiply;
+        transition:
+          opacity 1800ms ease,
+          transform 1900ms ease;
+        will-change: transform, opacity;
+      }
+
+      .qi-trail.visible {
+        opacity: 0.95;
+        transform: translate3d(-50%, -50%, 0) scale(1.18);
+      }
+
       header {
         position: relative;
         z-index: 1;
@@ -436,6 +460,9 @@
         let lastY = 0;
         let pendingQiEvent = null;
         let qiFrame = 0;
+        let lastTrailAt = 0;
+        let trailIndex = 0;
+        const trailEls = [];
         const qiOrb = document.querySelector('.qi-orb');
 
         function bringToFront() {
@@ -443,13 +470,61 @@
           el.style.zIndex = topWindowZ;
         }
 
+        function getDragCenter() {
+          const rect = el.getBoundingClientRect();
+          return {
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2,
+          };
+        }
+
         function updateQiField(e) {
+          const center = getDragCenter();
           if (qiOrb) {
-            qiOrb.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0) translate(-50%, -50%)`;
+            qiOrb.style.transform = `translate3d(${center.x}px, ${center.y}px, 0) translate(-50%, -50%)`;
           }
 
           lastX = e.clientX;
           lastY = e.clientY;
+        }
+
+        function ensureTrailEls() {
+          if (trailEls.length) return trailEls;
+          for (let i = 0; i < 8; i++) {
+            const trail = document.createElement('div');
+            trail.className = 'qi-trail';
+            document.body.appendChild(trail);
+            trailEls.push(trail);
+          }
+          return trailEls;
+        }
+
+        function leaveQiTrail(e) {
+          const now = performance.now();
+          const dx = e.clientX - lastX;
+          const dy = e.clientY - lastY;
+          const dist = Math.hypot(dx, dy);
+          if (now - lastTrailAt < 70 && dist < 16) return;
+
+          const hue = el.style.getPropertyValue('--window-hue') || 48;
+          const trails = ensureTrailEls();
+          const trail = trails[trailIndex % trails.length];
+          trailIndex += 1;
+          lastTrailAt = now;
+
+          trail.classList.remove('visible');
+          const center = getDragCenter();
+          const ux = dist > 0 ? dx / dist : 0;
+          const uy = dist > 0 ? dy / dist : 0;
+          trail.style.setProperty('--trail-x', `${center.x - ux * 72}px`);
+          trail.style.setProperty('--trail-y', `${center.y - uy * 72}px`);
+          trail.style.setProperty('--trail-hue', hue);
+          void trail.offsetHeight;
+          trail.classList.add('visible');
+
+          window.setTimeout(() => {
+            trail.classList.remove('visible');
+          }, 120);
         }
 
         function scheduleQiField(e) {
@@ -483,6 +558,7 @@
             el.style.getPropertyValue('--window-hue') || 48,
           );
           bringToFront();
+          lastTrailAt = 0;
           updateQiField(e);
         });
 
@@ -494,6 +570,7 @@
             dragLeft = e.clientX - offsetX;
             dragTop = e.clientY - offsetY;
             el.style.transform = `translate3d(${dragLeft - baseLeft}px, ${dragTop - baseTop}px, 0)`;
+            leaveQiTrail(e);
             scheduleQiField(e);
           }
         });
