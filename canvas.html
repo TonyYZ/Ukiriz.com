@@ -5,11 +5,51 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Divinatory Canvas</title>
     <style>
+      @font-face {
+        font-family: 'UkirizWenKai';
+        src:
+          url('./fonts/LXGWWenKai-Regular.woff2') format('woff2'),
+          local('LXGW WenKai'),
+          local('LXGW WenKai SC'),
+          local('LXGW WenKai Screen'),
+          local('LXGW WenKai GB Screen'),
+          local('LXGW WenKai Lite'),
+          local('霞鹜文楷'),
+          local('霞鹜文楷 GB'),
+          local('霞鹜文楷屏幕阅读版');
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: 'UkirizSarasaUiSC';
+        src:
+          url('./fonts/SarasaUiSC-Regular.woff2') format('woff2'),
+          local('Sarasa UI SC'),
+          local('Sarasa Gothic SC'),
+          local('Sarasa Gothic CL'),
+          local('Sarasa Gothic');
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: 'UkirizSourceHanSerif';
+        src:
+          url('./fonts/SourceHanSerifSC-VF.woff2') format('woff2'),
+          local('Source Han Serif'),
+          local('Source Han Serif SC'),
+          local('Source Han Serif CN'),
+          local('Noto Serif CJK SC'),
+          local('思源宋体'),
+          local('思源宋体 CN'),
+          local('思源宋体 SC');
+        font-display: swap;
+      }
+
       :root {
         --mono-en: Consolas, 'Courier New', ui-monospace, SFMono-Regular, Menlo, Monaco;
         --mono-zh:
-          'Sarasa Mono SC', 'Source Han Mono SC', 'Noto Sans Mono CJK SC', 'PingFang SC',
-          'Microsoft YaHei', monospace;
+          'UkirizSarasaUiSC', 'Sarasa UI SC', 'Sarasa Gothic SC', 'Noto Sans CJK SC',
+          'PingFang SC', 'Microsoft YaHei', sans-serif;
       }
 
       body {
@@ -48,6 +88,7 @@
         height: 5px; /* Full height = 67 */
         cursor: grab;
         user-select: none;
+        z-index: 6;
       }
 
       /* Highlight connections */
@@ -576,6 +617,14 @@
         z-index: 5;
       }
 
+      .label-input.tutorial-readonly,
+      .label-textarea.tutorial-readonly,
+      .submit-button.tutorial-readonly {
+        background-color: white;
+        color: black;
+        opacity: 1;
+      }
+
       /* Style the submit button */
       .submit-button {
         position: absolute;
@@ -1021,15 +1070,8 @@
 
       .vis-tooltip {
         font-family:
-          Consolas,
-          'DejaVu Sans Mono',
-          'Noto Sans Mono',
-          'Liberation Mono',
-          'Courier New',
-          /* CJK monospace fallback later */ 'Sarasa Mono SC',
-          'Source Han Mono SC',
-          'Noto Sans Mono CJK SC',
-          monospace !important;
+          Consolas, 'DejaVu Sans Mono', 'Noto Sans Mono', 'Liberation Mono', 'Courier New',
+          'UkirizSarasaUiSC', 'Sarasa UI SC', 'Noto Sans CJK SC', sans-serif !important;
       }
 
       /* Tutorial overlay (Home embedded tour) */
@@ -1177,6 +1219,9 @@
         <div class="t-body" id="tutorialBody"></div>
         <div class="t-actions">
           <button type="button" id="tutorialBack">Back</button>
+          <button type="button" id="tutorialHint">Hint</button>
+          <button type="button" id="tutorialRestartStep">Restart</button>
+          <button type="button" class="primary" id="tutorialContinue">Continue</button>
           <button type="button" id="tutorialExit">Exit</button>
         </div>
       </div>
@@ -1680,10 +1725,22 @@
       const tutorialEvents = new Set();
       let tutorialStack = [];
       let tutorialSnapshots = new Map(); // stepIndex -> snapshot
+      let tutorialLevel = 1;
+      let tutorialLevel2SeenConnections = { series: false, parallel: false };
+      let tutorialLevel1ToolClicks = { rotate: false, dot: false };
+      let tutorialCompletedStep = null;
+      let tutorialPendingDefinitionButton = null;
+      let tutorialRestartingStep = false;
+      let tutorialStepMetaSnapshots = new Map();
 
       function emitTutorialEvent(name) {
         if (tutorialStepIndex < 0) return;
         if (!name) return;
+        if (tutorialCompletedStep) return;
+        if (tutorialLevel === 1) {
+          if (name === 'craft_rotate') tutorialLevel1ToolClicks.rotate = true;
+          if (name === 'craft_dot') tutorialLevel1ToolClicks.dot = true;
+        }
         tutorialEvents.add(String(name));
         tutorialMaybeAdvance();
       }
@@ -1698,22 +1755,63 @@
 
       function tutorialMaybeAdvance() {
         if (tutorialStepIndex < 0) return;
+        if (tutorialCompletedStep) return;
         const steps = getTutorialStepsSafe?.();
         const step = steps?.[tutorialStepIndex];
         if (!step) return;
         if (step.advanceOnEvent && tutorialEvents.has(step.advanceOnEvent)) {
           if (tutorialStepRequirementsMet(step)) {
             consumeTutorialEvent(step.advanceOnEvent);
-            tutorialEnterStep(tutorialStepIndex + 1);
+            tutorialCompleteStep(step);
             return;
           }
         }
         if (typeof step.advanceWhen === 'function') {
           try {
             if (step.advanceWhen() && tutorialStepRequirementsMet(step)) {
-              tutorialEnterStep(tutorialStepIndex + 1);
+              tutorialCompleteStep(step);
             }
           } catch {}
+        }
+      }
+
+      function tutorialCompleteStep(step, override = {}) {
+        tutorialCompletedStep = {
+          index: tutorialStepIndex,
+          title: override.title ?? step?.completedTitle ?? step?.title ?? '',
+          body:
+            override.body ??
+            step?.completedBody ??
+            (currentLang === 'zh' ? '很好，这一步已经完成。' : 'Great, this step is complete.'),
+          showBack: !!override.showBack,
+          hideContinue: !!override.hideContinue,
+          definitionState: override.definitionState || null,
+        };
+        updateTutorialUi?.();
+      }
+
+      function tutorialHandleDefinitionFeedback(passed, doneButton) {
+        if (tutorialStepIndex < 0 || tutorialCompletedStep) return;
+        const step = getTutorialStepsSafe?.()?.[tutorialStepIndex];
+        if (!step?.definitionFeedback) return;
+        tutorialPendingDefinitionButton = doneButton || null;
+        const zh = currentLang === 'zh';
+        if (passed) {
+          tutorialCompleteStep(step, {
+            body: zh
+              ? '很好！系统接受了你的定义。请按下 ✔，把这个词保存进 Library。'
+              : 'Great! The system accepts your definition. Press ✔ to save this word into Library.',
+            definitionState: 'accepted',
+          });
+        } else {
+          tutorialCompleteStep(step, {
+            body: zh
+              ? '糟糕，这次没有成功。请按 × 关掉反馈，然后再试一次。'
+              : 'Oh no, this did not go well. Press × and give it another try.',
+            showBack: true,
+            hideContinue: true,
+            definitionState: 'failed',
+          });
         }
       }
 
@@ -1753,6 +1851,58 @@
         const msg = currentLang === 'zh' ? messageZh : messageEn;
         if (!msg) return;
         els.body.textContent = msg;
+      }
+
+      function isTutorialCraftInteractionLocked() {
+        if (tutorialStepIndex < 0) return false;
+        const step = getTutorialStepsSafe?.()?.[tutorialStepIndex];
+        const completed =
+          !!tutorialCompletedStep && tutorialCompletedStep.index === tutorialStepIndex;
+        return !!(
+          step?.lockCraftControls ||
+          (completed && (step?.lockCompletedCraftInteraction || step?.lockCompletedCraftSelection))
+        );
+      }
+
+      function isTutorialCraftCompletedInteractionLocked() {
+        if (tutorialStepIndex < 0) return false;
+        const step = getTutorialStepsSafe?.()?.[tutorialStepIndex];
+        const completed =
+          !!tutorialCompletedStep && tutorialCompletedStep.index === tutorialStepIndex;
+        return !!(
+          completed &&
+          (step?.lockCompletedCraftInteraction || step?.lockCompletedCraftSelection)
+        );
+      }
+
+      function isTutorialCraftInsightOffLocked() {
+        if (tutorialStepIndex < 0 || !eyeButton?.isActivated) return false;
+        const step = getTutorialStepsSafe?.()?.[tutorialStepIndex];
+        const completed =
+          !!tutorialCompletedStep && tutorialCompletedStep.index === tutorialStepIndex;
+        return !!(
+          step?.lockCraftInsightOn ||
+          (completed && (step?.lockCompletedCraftInteraction || step?.lockCompletedCraftSelection))
+        );
+      }
+
+      function isTutorialCraftRemoveLocked() {
+        if (tutorialStepIndex < 0) return false;
+        const step = getTutorialStepsSafe?.()?.[tutorialStepIndex];
+        const completed =
+          !!tutorialCompletedStep && tutorialCompletedStep.index === tutorialStepIndex;
+        return !!(
+          step?.lockCraftRemove ||
+          (completed && (step?.lockCompletedCraftInteraction || step?.lockCompletedCraftSelection))
+        );
+      }
+
+      function isTutorialTabNavigationBlocked(tabIndex) {
+        if (tutorialRestartingStep) return false;
+        if (tutorialStepIndex < 0) return false;
+        const step = getTutorialStepsSafe?.()?.[tutorialStepIndex];
+        if (!step?.allowedTabs) return false;
+        return !step.allowedTabs.includes(tabIndex);
       }
 
       function getActiveTabIndex() {
@@ -1872,6 +2022,18 @@
         const max = Math.max(0, steps.length - 1);
         const idx = clamp(nextIndex, 0, max);
         tutorialStepIndex = idx;
+        tutorialCompletedStep = null;
+        tutorialEvents.clear();
+        if (!tutorialStepMetaSnapshots.has(idx)) {
+          tutorialStepMetaSnapshots.set(idx, {
+            level2SeenConnections: { ...tutorialLevel2SeenConnections },
+            level1ToolClicks: { ...tutorialLevel1ToolClicks },
+          });
+        }
+        const step = steps[idx];
+        if (step?.resetLevel1Tools) {
+          tutorialLevel1ToolClicks = { rotate: false, dot: false };
+        }
         if (!tutorialSnapshots.has(idx)) {
           tutorialSnapshots.set(idx, captureTutorialSnapshot());
         }
@@ -1908,15 +2070,21 @@
           <div class="ht-title">${c.startTitle}</div>
           <div class="ht-body">${c.startBody}</div>
           <div class="ht-actions">
-            <button type="button" class="primary" id="homeTutorialStart">${c.startBtn}</button>
-            <button type="button" id="homeTutorialRestart">${c.restartBtn}</button>
+            <button type="button" class="primary" id="homeTutorialLevel1">${c.level1Btn}</button>
+            <button type="button" class="primary" id="homeTutorialLevel2">${c.level2Btn}</button>
+            <button type="button" class="primary" id="homeTutorialLevel3">${c.level3Btn}</button>
           </div>
         `;
         home.appendChild(card);
-        card.querySelector('#homeTutorialStart')?.addEventListener('click', () => startTutorial());
-        card.querySelector('#homeTutorialRestart')?.addEventListener('click', () =>
-          startTutorial(true),
-        );
+        card
+          .querySelector('#homeTutorialLevel1')
+          ?.addEventListener('click', () => startTutorial(true, 1));
+        card
+          .querySelector('#homeTutorialLevel2')
+          ?.addEventListener('click', () => startTutorial(true, 2));
+        card
+          .querySelector('#homeTutorialLevel3')
+          ?.addEventListener('click', () => startTutorial(true, 3));
       }
 
       function getTutorialOverlayEls() {
@@ -1927,6 +2095,9 @@
           title: document.getElementById('tutorialTitle'),
           body: document.getElementById('tutorialBody'),
           back: document.getElementById('tutorialBack'),
+          hint: document.getElementById('tutorialHint'),
+          restart: document.getElementById('tutorialRestartStep'),
+          continue: document.getElementById('tutorialContinue'),
           exit: document.getElementById('tutorialExit'),
         };
       }
@@ -1944,7 +2115,8 @@
           },
           {
             tab: 1,
-            target: () => (document.getElementById('tab1') || document.body).querySelector('.wheel'),
+            target: () =>
+              (document.getElementById('tab1') || document.body).querySelector('.wheel'),
             title: zh ? '2/6 生成符号' : '2/6 Spawn a Symbol',
             body: zh
               ? '点击符号轮生成一个符号，然后拖到画布上。'
@@ -1988,141 +2160,703 @@
       function getTutorialCopySafe() {
         const zh = currentLang === 'zh';
         return {
-          startTitle: zh ? '\u4ea4\u4e92\u5f0f\u6559\u7a0b' : 'Interactive Tutorial',
+          startTitle: zh ? '交互式教程' : 'Interactive Tutorials',
           startBody: zh
-            ? '\u70b9\u51fb\u5f00\u59cb\u540e\uff0c\u7cfb\u7edf\u4f1a\u9ad8\u4eae\u63d0\u793a\u4f60\u8be5\u70b9\u54ea\u91cc\u3002\u4f60\u53ef\u4ee5\u7167\u7740\u505a\uff0c\u4e5f\u53ef\u4ee5\u968f\u65f6\u9000\u51fa\u3002'
-            : "Click Start and we'll highlight where to click. Follow along, or exit anytime.",
-          startBtn: zh ? '\u5f00\u59cb\u6559\u7a0b' : 'Start tutorial',
-          restartBtn: zh ? '\u91cd\u65b0\u5f00\u59cb' : 'Restart',
-          back: zh ? '\u4e0a\u4e00\u6b65' : 'Back',
-          next: zh ? '\u4e0b\u4e00\u6b65' : 'Next',
-          exit: zh ? '\u9000\u51fa' : 'Exit',
+            ? '选择一个等级。教程只会在你完成对应操作后前进。'
+            : 'Choose a level. Each tutorial advances only when you perform the highlighted action.',
+          level1Btn: zh ? '等级 1：第一个词' : 'Level 1: First Word',
+          level2Btn: zh ? '等级 2：组合符号' : 'Level 2: Compound Symbols',
+          level3Btn: zh ? '等级 3：冰淇淋挑战' : 'Level 3: Ice Cream Challenge',
+          back: zh ? '上一步' : 'Back',
+          hint: zh ? '提示' : 'Hint',
+          restartStep: zh ? '重试本步' : 'Restart step',
+          continueStep: zh ? '继续' : 'Continue',
+          finish: zh ? '完成' : 'Finish',
+          exit: zh ? '退出' : 'Exit',
         };
       }
 
+      function getTutorialText(value) {
+        if (typeof value === 'function') {
+          try {
+            return value();
+          } catch {
+            return '';
+          }
+        }
+        return value || '';
+      }
+
+      function setTutorialDefinitionInputsEnabled(enabled) {
+        try {
+          const canvas = craftCanvas?.();
+          if (!canvas) return;
+          const shouldLock = tutorialStepIndex >= 0 && !enabled;
+          canvas.querySelectorAll('.label-input, .label-textarea').forEach((el) => {
+            el.readOnly = shouldLock;
+            el.classList.toggle('tutorial-readonly', shouldLock);
+          });
+          canvas.querySelectorAll('.submit-button').forEach((el) => {
+            el.disabled = shouldLock;
+            el.classList.toggle('tutorial-readonly', shouldLock);
+          });
+        } catch {}
+      }
+
+      function resetTutorialDefinitionAttempt() {
+        try {
+          const canvas = craftCanvas?.();
+          if (!canvas) return;
+          const componentId =
+            tutorialPendingDefinitionButton?.dataset?.definitionComponentId || '';
+          const scoped = (selector) =>
+            componentId
+              ? Array.from(
+                  canvas.querySelectorAll(
+                    `${selector}[data-definition-component-id="${componentId}"]`,
+                  ),
+                )
+              : Array.from(canvas.querySelectorAll(selector));
+          const input = scoped('.label-input')[0] || null;
+          const textarea = scoped('.label-textarea')[0] || null;
+          scoped('.label-input').forEach((el) => {
+            el.value = '';
+            el.readOnly = false;
+            el.disabled = false;
+            el.classList.remove('tutorial-readonly');
+            el.focus?.();
+          });
+          scoped('.label-textarea').forEach((el) => {
+            el.value = '';
+            el.readOnly = false;
+            el.disabled = false;
+            el.classList.remove('tutorial-readonly');
+            el.style.height = 'auto';
+          });
+          [...scoped('.typing-effect.removable'), ...scoped('.submit-button.removable')].forEach(
+            (el) => {
+              const isPrimarySubmit =
+                el.classList?.contains('submit-button') &&
+                (el.innerHTML || '').includes('✔') &&
+                !el.answerHeight;
+              const isCancel =
+                el.classList?.contains('submit-button') &&
+                (el.innerHTML || '').includes('✘') &&
+                !el.answerHeight;
+              if (isPrimarySubmit || isCancel) return;
+              el.remove();
+            },
+          );
+          const baseX = input ? parseFloat(input.style.left) || 0 : null;
+          const textY = textarea ? parseFloat(textarea.style.top) || 0 : null;
+          if (textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = `${textarea.scrollHeight}px`;
+          }
+          const buttonY = textY !== null ? textY + 8 + (textarea?.scrollHeight || 40) : null;
+          const submit = scoped('.submit-button.removable').find(
+            (el) => (el.innerHTML || '').includes('✔') && !el.answerHeight,
+          );
+          const cancel = scoped('.submit-button.removable').find(
+            (el) => (el.innerHTML || '').includes('✘') && !el.answerHeight,
+          );
+          if (submit && baseX !== null && buttonY !== null) {
+            submit.style.left = `${baseX}px`;
+            submit.style.top = `${buttonY}px`;
+            submit.style.display = '';
+            submit.disabled = false;
+            submit.classList.remove('tutorial-readonly');
+          }
+          if (cancel && baseX !== null && buttonY !== null) {
+            cancel.style.left = `${baseX + 35}px`;
+            cancel.style.top = `${buttonY}px`;
+            cancel.style.display = '';
+            cancel.disabled = false;
+            cancel.classList.remove('tutorial-readonly');
+          }
+          setTutorialDefinitionInputsEnabled?.(true);
+        } catch {}
+      }
+
+      function getCraftSymbols() {
+        try {
+          return Array.from(craftCanvas()?.querySelectorAll?.('.symbol') || []);
+        } catch {
+          return [];
+        }
+      }
+
+      function getCraftConnectionKinds() {
+        const kinds = { series: false, parallel: false, any: false };
+        try {
+          const syms = new Set(getCraftSymbols());
+          for (const sym of syms) {
+            const conns = currentGraph?.getSymbolConnections?.(sym) || [];
+            for (let side = 0; side < conns.length; side++) {
+              for (const [nbr, nbrSide] of conns[side] || []) {
+                if (!syms.has(nbr)) continue;
+                kinds.any = true;
+                const isSeries =
+                  (side === Side.START && nbrSide === Side.END) ||
+                  (side === Side.END && nbrSide === Side.START) ||
+                  (side === Side.START && nbrSide === Side.START) ||
+                  (side === Side.END && nbrSide === Side.END);
+                const isParallel =
+                  side === Side.PAR_TOP ||
+                  side === Side.PAR_BOT ||
+                  nbrSide === Side.PAR_TOP ||
+                  nbrSide === Side.PAR_BOT;
+                if (isSeries) kinds.series = true;
+                if (isParallel) kinds.parallel = true;
+              }
+            }
+          }
+        } catch {}
+        return kinds;
+      }
+
+      function getTutorialConnectionKind(aSide, bSide) {
+        const isSeries =
+          (aSide === Side.START && bSide === Side.END) ||
+          (aSide === Side.END && bSide === Side.START) ||
+          (aSide === Side.START && bSide === Side.START) ||
+          (aSide === Side.END && bSide === Side.END);
+        const isParallel =
+          aSide === Side.PAR_TOP ||
+          aSide === Side.PAR_BOT ||
+          bSide === Side.PAR_TOP ||
+          bSide === Side.PAR_BOT;
+        if (isSeries) return 'series';
+        if (isParallel) return 'parallel';
+        return '';
+      }
+
+      function registerTutorialCraftConnection(aSide, bSide) {
+        if (tutorialStepIndex < 0 || tutorialLevel !== 2 || tutorialCompletedStep) return;
+        const kind = getTutorialConnectionKind(aSide, bSide);
+        if (!kind) return;
+        tutorialLevel2SeenConnections = {
+          ...tutorialLevel2SeenConnections,
+          [kind]: true,
+        };
+        tutorialMaybeAdvance?.();
+      }
+
+      function craftHasSeriesConnection() {
+        return getCraftConnectionKinds().series;
+      }
+
+      function craftHasParallelConnection() {
+        return getCraftConnectionKinds().parallel;
+      }
+
+      function craftHasAnyConnection() {
+        return getCraftConnectionKinds().any;
+      }
+
       function getTutorialStepsSafe() {
+        if (tutorialLevel === 2) return getTutorialLevel2Steps();
+        if (tutorialLevel === 3) return getTutorialLevel3Steps();
+        return getTutorialLevel1Steps();
+      }
+
+      function getTutorialLevel1Steps() {
         const zh = currentLang === 'zh';
         return [
           {
             tab: 0,
             target: () => document.getElementById('tab-header1'),
-            title: zh ? '1/10 \u53bb Craft' : '1/10 Go to Craft',
+            title: zh ? '等级 1 · 1/7 去 Craft' : 'Level 1 · 1/7 Go to Craft',
             body: zh
-              ? '\u5148\u70b9\u51fb Craft\uff08\u5de6\u4fa7\u6807\u7b7e\uff09\u8fdb\u5165\u753b\u5e03\u3002'
-              : 'Click Craft (left tab) to enter the canvas.',
+              ? '先点击 Craft（左侧标签）进入造字画布。'
+              : 'Click Craft on the left to enter the symbol-making canvas.',
+            completedBody: zh
+              ? '很好，你已经进入 Craft。这里是造字和实验符号的地方。'
+              : 'Great, you are now in Craft. This is where you make and experiment with symbols.',
+            completedTarget: () => document.getElementById('craftCanvas'),
+            lockCompletedCraftInteraction: true,
+            allowedTabs: [1],
+            afterRestart: () => {
+              window.showTab?.(0);
+              requestAnimationFrame(() => {
+                if (tab0) tab0.scrollTop = tab0.scrollHeight;
+              });
+            },
             navigate: 'user',
             advanceWhen: () => document.querySelector('.tab-content.active')?.id === 'tab1',
           },
           {
             tab: 1,
-            target: () => (document.getElementById('tab1') || document.body).querySelector('.wheel'),
-            title: zh ? '2/10 \u751f\u6210\u7b26\u53f7' : '2/10 Spawn a Symbol',
+            target: () =>
+              (document.getElementById('tab1') || document.body).querySelector('.wheel'),
+            title: zh ? '等级 1 · 2/7 拖出一个符号' : 'Level 1 · 2/7 Drag One Symbol',
             body: zh
-              ? '\u70b9\u51fb\u7b26\u53f7\u8f6e\u751f\u6210\u4e00\u4e2a\u7b26\u53f7\uff0c\u7136\u540e\u62d6\u5230\u753b\u5e03\u4e0a\u3002'
-              : 'Click the symbol wheel to spawn a symbol, then drag it onto the canvas.',
+              ? '从符号轮拖出任意一个符号，放到画布上。'
+              : 'Drag any one symbol from the wheel onto the canvas.',
+            completedBody: zh
+              ? '很好，你已经在画布上创造了一个符号！'
+              : 'Great, now you have created a symbol on the canvas!',
+            completedTarget: () => document.getElementById('craftCanvas'),
+            lockCompletedCraftSelection: true,
             navigate: 'auto',
             advanceOnEvent: 'wheel_drag',
           },
           {
             tab: 1,
-            target: () => document.getElementById('craftCanvas'),
-            title: zh ? '3/10 \u78c1\u5438\u8fde\u63a5' : '3/10 Magnetic Snapping',
-            body: zh
-              ? '\u518d\u751f\u6210\u4e00\u4e2a\u7b26\u53f7\uff0c\u628a\u5b83\u62d6\u5230\u53e6\u4e00\u4e2a\u7b26\u53f7\u9644\u8fd1\uff0c\u5b83\u4eec\u4f1a\u78c1\u5438\u8fde\u63a5\u3002'
-              : 'Spawn another symbol and drag it near the first one. They will snap/connect.',
-            navigate: 'auto',
-            advanceWhen: () => (craftCanvas()?.querySelectorAll?.('.symbol')?.length || 0) >= 2,
-          },
-          {
-            tab: 1,
-            target: () => document.getElementById('craftCanvas'),
-            title: zh ? '4/10 \u957f\u6309\u9009\u4e2d' : '4/10 Long-Press Select',
-            body: zh
-              ? '\u5148\u5728\u753b\u5e03\u4e0a\u957f\u6309\u4e00\u4e2a\u7b26\u53f7\uff0c\u9009\u4e2d\u5b83\u6240\u5c5e\u7684\u8fde\u901a\u7ec4\u4ef6\u3002'
-              : 'First, long-press a symbol on the canvas to select its connected component.',
-            navigate: 'auto',
-            advanceOnEvent: 'craft_longpress',
-          },
-          {
-            tab: 1,
             target: () => document.getElementById('craft-eye-button') || null,
-            title: zh ? '5/10 Insight' : '5/10 Insight',
+            title: zh ? '等级 1 · 3/7 查看意义' : 'Level 1 · 3/7 See Its Meaning',
             body: zh
-              ? '\u73b0\u5728\u70b9\u51fb Insight\uff08\u773c\u775b\uff09\u663e\u793a\u610f\u4e49\u63d0\u793a\u3002'
-              : 'Now click Insight (eye) to show meaning labels.',
-            navigate: 'auto',
+              ? '点击 Insight（眼睛）查看这个符号的意义泡泡。'
+              : 'Click Insight (the eye) to reveal meaning bubbles for this symbol.',
+            completedBody: zh
+              ? '意义泡泡出现了。它们不是唯一答案，而是给你联想的材料。'
+              : 'The meaning bubbles are visible now. They are not a single answer, but material for association.',
+            completedTargetRect: () => getTutorialCraftSelectionRect?.() || null,
             advanceOnEvent: 'craft_insight_on',
-            // Prevent accidental deselection while we only care about pressing Insight.
+            lockCompletedCraftSelection: true,
             lockCraftSelection: true,
+            lockCraftControls: true,
+            restart: () => {
+              if (eyeButton?.isActivated) {
+                eyeButton.isActivated = false;
+                eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
+                removeLabelInputs?.();
+              }
+            },
             requireCraftSelection: true,
           },
           {
             tab: 1,
-            targetRect: () => getTutorialCraftSelectionRect?.() || null,
-            title: zh ? '6/10 \u89c2\u5bdf\u63d0\u793a' : '6/10 See the Labels',
+            target: () => document.getElementById('craftCanvas'),
+            title: zh ? '等级 1 · 4/7 试试旋转和加点' : 'Level 1 · 4/7 Try Rotate and Dot',
             body: zh
-              ? '\u73b0\u5728\u4f60\u4f1a\u770b\u5230\u7b26\u53f7\u4e0a\u7684\u610f\u4e49\u63d0\u793a\u3002\u70b9\u51fb\u4e00\u4e0b\u9009\u4e2d\u7684\u7b26\u53f7\u6216\u4efb\u610f\u63d0\u793a\u6807\u7b7e\uff0c\u7ee7\u7eed\u3002'
-              : 'You should now see meaning labels on the selected symbols. Click the selected symbols (or any label) to continue.',
-            navigate: 'auto',
-            advanceOnEvent: 'craft_labels_ack',
+              ? '现在试试旋转按钮和动态点按钮。观察整个画布上的意义泡泡如何自己变化。两个按钮都点过之后，这一步会完成。'
+              : 'Now try both the rotate button and the dynamic dot button. Watch how the meaning bubbles change on the canvas. This step completes after you have clicked both.',
+            completedBody: zh
+              ? '现在你知道这两个按钮会如何改变符号的状态和意义了。'
+              : 'Now you know what these buttons do: they change the symbol state and refresh its meanings.',
+            advanceWhen: () => tutorialLevel1ToolClicks.rotate && tutorialLevel1ToolClicks.dot,
+            resetLevel1Tools: true,
+            lockCraftSelection: true,
+            lockCraftInsightOn: true,
+            lockCraftRemove: true,
+            lockDefinitionInputs: true,
+            requireCraftSelection: true,
+            requireCraftInsightOn: true,
+          },
+          {
+            tab: 1,
+            targetRect: () => getTutorialCraftSelectionRect?.() || null,
+            title: zh ? '等级 1 · 5/7 命名它' : 'Level 1 · 5/7 Define It',
+            body: zh
+              ? '把看到的意义泡泡联想到任意概念，在“这个词是什么？”和“为什么？”中写下定义，然后提交。'
+              : 'Associate the bubbles with any concept you can think of. Fill “What word is this?” and “Why?”, then submit.',
+            completedBody: zh
+              ? '很好，你已经把这个符号和一个自己的概念连接起来了。'
+              : 'Great, you have connected this symbol to a concept of your own.',
+            advanceOnEvent: 'word_defined',
+            definitionFeedback: true,
+            allowDefinitionInputs: true,
+            lockCraftSelection: true,
+            lockCraftInsightOn: true,
+            lockCraftRemove: true,
+            restart: () => resetTutorialDefinitionAttempt?.(),
             requireCraftSelection: true,
             requireCraftInsightOn: true,
           },
           {
             tab: 1,
             target: () => document.getElementById('tab-header2'),
-            title: zh ? '7/10 \u53bb Library' : '7/10 Go to Library',
+            title: zh ? '等级 1 · 6/7 去 Library' : 'Level 1 · 6/7 Go to Library',
             body: zh
-              ? 'Library \u91cc\u4f1a\u4fdd\u5b58\u4f60\u5b9a\u4e49\u8fc7\u7684\u8bcd\uff0c\u5e76\u5c55\u793a\u5b83\u4eec\u4e4b\u95f4\u7684\u5173\u7cfb\u3002'
-              : 'Library stores your defined words and shows relationships between them.',
+              ? '点击 Library，看看你刚刚创造的词。'
+              : 'Click Library to see the word you just created.',
+            completedBody: zh
+              ? '你已经来到 Library。刚才定义的词会在这里保存。'
+              : 'You are in Library now. The word you defined is saved here.',
+            completedTarget: () => document.getElementById('tab2'),
+            allowedTabs: [2],
             navigate: 'user',
             advanceWhen: () => document.querySelector('.tab-content.active')?.id === 'tab2',
           },
           {
             tab: 2,
             target: () => document.getElementById('tab2'),
-            title: zh ? '8/10 \u67e5\u770b Library' : '8/10 Explore Library',
+            title: zh ? '等级 1 · 7/7 完成' : 'Level 1 · 7/7 Complete',
             body: zh
-              ? '\u8fd9\u91cc\u4f1a\u663e\u793a\u4f60\u5b9a\u4e49\u8fc7\u7684\u8bcd\u548c\u5173\u7cfb\u3002\u4f60\u53ef\u4ee5\u62d6\u62fd\u3001\u6574\u7406\u3001\u6216\u5207\u6362\u89c6\u56fe\u3002'
-              : 'Here you can see your defined words and their relationships. You can drag, organize, or switch views.',
-            navigate: 'auto',
+              ? '你的第一个符号词已经进入了词库。点击 Library 区域结束这一关。'
+              : 'Your first symbol-word is now in the library. Click inside Library to finish this level.',
+            completedBody: zh
+              ? '等级 1 完成。你已经经历了从符号、意义泡泡到自定义词的完整流程。'
+              : 'Level 1 complete. You have gone from symbol, to meaning bubbles, to your own defined word.',
             advanceOnEvent: 'library_ack',
+          },
+        ];
+      }
+
+      function getTutorialLevel2Steps() {
+        const zh = currentLang === 'zh';
+        return [
+          {
+            tab: 0,
+            target: () => document.getElementById('tab-header1'),
+            title: zh ? '等级 2 · 1/11 去 Craft' : 'Level 2 · 1/11 Go to Craft',
+            body: zh
+              ? '进入 Craft，这一关会练习组合符号。'
+              : 'Enter Craft. This level practices compound symbols.',
+            completedBody: zh
+              ? '很好，你已经进入 Craft。现在我们来练习两个符号之间的关系。'
+              : 'Great, you are in Craft. Now we can practice relationships between two symbols.',
+            completedTarget: () => document.getElementById('craftCanvas'),
+            allowedTabs: [1],
+            navigate: 'user',
+            advanceWhen: () => document.querySelector('.tab-content.active')?.id === 'tab1',
+            lockCompletedCraftInteraction: true,
+          },
+          {
+            tab: 1,
+            target: () =>
+              (document.getElementById('tab1') || document.body).querySelector('.wheel'),
+            title: zh ? '等级 2 · 2/11 第一个符号' : 'Level 2 · 2/11 First Symbol',
+            body: zh ? '先从符号轮拖出一个符号。' : 'Drag one symbol from the wheel.',
+            completedBody: zh
+              ? '第一个符号已经在画布上了。'
+              : 'Your first symbol is on the canvas.',
+            completedTarget: () => document.getElementById('craftCanvas'),
+            allowedTabs: [1],
+            advanceOnEvent: 'wheel_drag',
+            lockCompletedCraftInteraction: true,
+          },
+          {
+            tab: 1,
+            target: () =>
+              (document.getElementById('tab1') || document.body).querySelector('.wheel'),
+            title: zh ? '等级 2 · 3/11 第二个符号' : 'Level 2 · 3/11 Second Symbol',
+            body: zh ? '再拖出第二个符号。' : 'Drag out a second symbol.',
+            completedBody: zh
+              ? '很好，现在你有两个符号可以组合。'
+              : 'Great, now you have two symbols to combine.',
+            completedTarget: () => document.getElementById('craftCanvas'),
+            allowedTabs: [1],
+            advanceOnEvent: 'wheel_drag',
+            lockCraftRemove: true,
+          },
+          {
+            tab: 1,
+            target: () => document.getElementById('craftCanvas'),
+            title: zh ? '等级 2 · 4/11 第一次组合' : 'Level 2 · 4/11 First Combination',
+            body: zh
+              ? '把两个符号吸附起来。你可以先做串联，也可以先做并联。'
+              : 'Snap the two symbols together. You may start with either series or parallel.',
+            completedBody: zh
+              ? '你已经完成了第一种组合方式。'
+              : 'You have completed the first kind of combination.',
+            allowedTabs: [1],
+            advanceWhen: () =>
+              tutorialLevel2SeenConnections.series || tutorialLevel2SeenConnections.parallel,
+          },
+          {
+            tab: 1,
+            target: () => document.getElementById('craftCanvas'),
+            title: zh ? '等级 2 · 5/11 另一种组合' : 'Level 2 · 5/11 The Other Combination',
+            body: () => {
+              const kinds = tutorialLevel2SeenConnections;
+              if (zh) {
+                if (kinds.series && !kinds.parallel)
+                  return '你已经做到了串联。现在请尝试并联：让两个符号在平行侧吸附。';
+                if (kinds.parallel && !kinds.series)
+                  return '你已经做到了并联。现在请尝试串联：让一个符号接到另一个符号的起点/终点。';
+                return '继续尝试，让这两个符号既体验串联，也体验并联。';
+              }
+              if (kinds.series && !kinds.parallel)
+                return 'You made a series connection. Now try parallel: snap the symbols along their parallel sides.';
+              if (kinds.parallel && !kinds.series)
+                return 'You made a parallel connection. Now try series: connect one symbol to the start/end side of the other.';
+              return 'Keep experimenting until you have tried both series and parallel.';
+            },
+            completedBody: zh
+              ? '很好，你已经体验过串联和并联两种组合方式。'
+              : 'Great, you have tried both series and parallel combinations.',
+            allowedTabs: [1],
+            advanceWhen: () => {
+              return (
+                tutorialLevel2SeenConnections.series && tutorialLevel2SeenConnections.parallel
+              );
+            },
+          },
+          {
+            tab: 1,
+            target: () => document.getElementById('craftCanvas'),
+            title: zh ? '等级 2 · 6/11 长按选择整体' : 'Level 2 · 6/11 Long-Press the Group',
+            body: zh
+              ? '长按其中一个符号，选中这个连通的符号组。'
+              : 'Long-press one symbol to select the whole connected group.',
+            completedBody: zh
+              ? '整个连通符号组已经被选中了。'
+              : 'The connected symbol group is selected.',
+            allowedTabs: [1],
+            advanceOnEvent: 'craft_longpress',
+          },
+          {
+            tab: 1,
+            target: () => document.getElementById('craftCanvas'),
+            title: zh ? '等级 2 · 7/11 框选同一组' : 'Level 2 · 7/11 Marquee Select',
+            body: zh
+              ? '在画布空白处拖出一个框，框选同一个符号组。'
+              : 'Drag a marquee box from empty canvas space to select the same symbol group.',
+            completedBody: zh
+              ? '很好，你也可以用框选来选择符号组。'
+              : 'Nice, you can also use marquee selection to select a symbol group.',
+            allowedTabs: [1],
+            advanceOnEvent: 'craft_marquee_select',
+          },
+          {
+            tab: 1,
+            target: () => document.getElementById('craft-eye-button') || null,
+            title: zh ? '等级 2 · 8/11 查看组合意义' : 'Level 2 · 8/11 Inspect the Compound',
+            body: zh
+              ? '点击 Insight，查看这个组合的意义泡泡。'
+              : 'Click Insight to read meaning bubbles for the compound.',
+            completedBody: zh
+              ? '组合意义泡泡出现了。现在可以把它们联想成一个新概念。'
+              : 'The compound meaning bubbles are visible. Now you can associate them with a new concept.',
+            completedTargetRect: () => getTutorialCraftSelectionRect?.() || null,
+            allowedTabs: [1],
+            advanceOnEvent: 'craft_insight_on',
+            lockCraftSelection: true,
+            requireCraftSelection: true,
+          },
+          {
+            tab: 1,
+            targetRect: () => getTutorialCraftSelectionRect?.() || null,
+            title: zh ? '等级 2 · 9/11 定义组合词' : 'Level 2 · 9/11 Define the Compound',
+            body: zh
+              ? '根据这个符号组的意义泡泡，写下一个词和解释，然后提交。'
+              : 'Use the compound’s meaning bubbles to invent a word and explanation, then submit.',
+            completedBody: zh
+              ? '很好，你已经创造了一个复合符号词。'
+              : 'Great, you have created a compound symbol-word.',
+            advanceOnEvent: 'word_defined',
+            definitionFeedback: true,
+            allowedTabs: [1],
+            allowDefinitionInputs: true,
+            lockCraftSelection: true,
+            lockCraftInsightOn: true,
+            lockCraftRemove: true,
+            restart: () => resetTutorialDefinitionAttempt?.(),
+            requireCraftSelection: true,
+            requireCraftInsightOn: true,
+          },
+          {
+            tab: 1,
+            target: () => document.getElementById('tab-header2'),
+            title: zh ? '等级 2 · 10/11 去 Library' : 'Level 2 · 10/11 Go to Library',
+            body: zh ? '去 Library 查看这个复合词。' : 'Go to Library to view this compound word.',
+            completedBody: zh
+              ? '你已经来到 Library，可以看到这个词和它的关系。'
+              : 'You are in Library now, where you can see this word and its relationships.',
+            completedTarget: () => document.getElementById('tab2'),
+            allowedTabs: [2],
+            navigate: 'user',
+            advanceWhen: () => document.querySelector('.tab-content.active')?.id === 'tab2',
+          },
+          {
+            tab: 2,
+            target: () => modeNodeButton || document.getElementById('tab2'),
+            title: zh ? '等级 2 · 11/11 科技树视图' : 'Level 2 · 11/11 Tech Tree View',
+            body: zh
+              ? '点击网络/树形切换按钮，进入科技树视图，看看词是如何从更简单的词生长出来的。'
+              : 'Click the network/tree toggle to enter tech tree view and see how words grow from simpler words.',
+            completedBody: zh
+              ? '等级 2 完成。科技树会帮助你看见词的生成历史。'
+              : 'Level 2 complete. The tech tree helps you see the history of how words are built.',
+            completedTarget: () => document.getElementById('tab2'),
+            advanceOnEvent: 'library_tree_view',
+          },
+        ];
+      }
+
+      function getTutorialLevel3Steps() {
+        const zh = currentLang === 'zh';
+        return [
+          {
+            tab: 0,
+            target: () => document.getElementById('tab-header1'),
+            title: zh ? '等级 3 · 1/10 挑战开始' : 'Level 3 · 1/10 Challenge Begins',
+            body: zh
+              ? '目标：造出“冰淇淋”。先进入 Craft。需要帮助时可以按提示。'
+              : 'Goal: create “ice cream.” Enter Craft. Use Hint whenever you want a possible route.',
+            hint: zh
+              ? '一个可行路线：先造“冷”，再造“食物”，最后把它们并联成“冰淇淋”。'
+              : 'One possible route: define “cold,” define “food,” then combine them in parallel as “ice cream.”',
+            completedBody: zh
+              ? '挑战开始。现在请在 Craft 中自己探索“冰淇淋”的构造路线。'
+              : 'The challenge has begun. Now explore your own route for building “ice cream” in Craft.',
+            completedTarget: () => document.getElementById('craftCanvas'),
+            allowedTabs: [1],
+            navigate: 'user',
+            advanceWhen: () => document.querySelector('.tab-content.active')?.id === 'tab1',
+          },
+          {
+            tab: 1,
+            target: () => document.getElementById('craftCanvas'),
+            title: zh ? '等级 3 · 2/10 造“冷”' : 'Level 3 · 2/10 Make “Cold”',
+            body: zh
+              ? '自由选择符号，查看意义，然后定义一个接近“冷”的词。'
+              : 'Choose symbols freely, inspect their meanings, then define a word close to “cold.”',
+            hint: zh
+              ? '先拖一个符号，试试旋转或加点，再用 Insight 找到你觉得“冷”的意义。'
+              : 'Start with one symbol. Try rotate/dot, then use Insight to find a meaning that feels cold.',
+            completedBody: zh
+              ? '你已经完成了“冷”的一种表达。'
+              : 'You have created one possible expression for “cold.”',
+            advanceOnEvent: 'word_defined',
+            definitionFeedback: true,
+            allowDefinitionInputs: true,
+          },
+          {
+            tab: 1,
+            target: () => document.getElementById('craftCanvas'),
+            title: zh ? '等级 3 · 3/10 造“食物”' : 'Level 3 · 3/10 Make “Food”',
+            body: zh
+              ? '再创造一个接近“食物”的词。你可以用单符号，也可以用组合。'
+              : 'Create another word close to “food.” It can be a single symbol or a compound.',
+            hint: zh
+              ? '寻找与身体、吸收、生命、滋养有关的意义泡泡。'
+              : 'Look for bubbles related to body, intake, life, nourishment, or holding.',
+            completedBody: zh
+              ? '你已经完成了“食物”的一种表达。'
+              : 'You have created one possible expression for “food.”',
+            advanceOnEvent: 'word_defined',
+            definitionFeedback: true,
+            allowDefinitionInputs: true,
+          },
+          {
+            tab: 1,
+            target: () => document.getElementById('craftCanvas'),
+            title: zh ? '等级 3 · 4/10 组合为冰淇淋' : 'Level 3 · 4/10 Combine into Ice Cream',
+            body: zh
+              ? '把“冷”和“食物”的表达组合起来。推荐用并联，让两个意义同时存在。'
+              : 'Combine the expressions for “cold” and “food.” Parallel is a good way to let both meanings coexist.',
+            hint: zh
+              ? '拖动两个表达靠近，尝试让它们在平行侧吸附。'
+              : 'Drag the two expressions close and try snapping them along parallel sides.',
+            completedBody: zh
+              ? '很好，你已经把两个意义并置到同一个组合里。'
+              : 'Great, you have placed two meanings together inside one compound.',
+            advanceWhen: () => craftHasParallelConnection(),
+          },
+          {
+            tab: 1,
+            targetRect: () =>
+              getTutorialCraftSelectionRect?.() ||
+              document.getElementById('craftCanvas')?.getBoundingClientRect?.(),
+            title: zh ? '等级 3 · 5/10 定义“冰淇淋”' : 'Level 3 · 5/10 Define “Ice Cream”',
+            body: zh
+              ? '选中最终组合，点击 Insight，然后把它定义为“冰淇淋”并写下解释。'
+              : 'Select the final compound, click Insight, then define it as “ice cream” with an explanation.',
+            hint: zh
+              ? '如果没有输入框，先长按或框选最终的连通组合，再按 Insight。'
+              : 'If no input boxes appear, long-press or marquee-select the final connected group, then press Insight.',
+            completedBody: zh ? '“冰淇淋”已经被你定义出来了。' : 'You have defined “ice cream.”',
+            advanceOnEvent: 'word_defined',
+            definitionFeedback: true,
+            allowDefinitionInputs: true,
+          },
+          {
+            tab: 1,
+            target: () => document.getElementById('tab-header2'),
+            title: zh ? '等级 3 · 6/10 去 Library' : 'Level 3 · 6/10 Go to Library',
+            body: zh
+              ? '去 Library 看看“冰淇淋”进入词库后的样子。'
+              : 'Go to Library and see how “ice cream” appears in your vocabulary.',
+            completedBody: zh
+              ? '你已经来到 Library。挑战词现在可以作为词库的一部分被查看。'
+              : 'You are in Library now. Your challenge word can be viewed as part of the vocabulary.',
+            allowedTabs: [2],
+            navigate: 'user',
+            advanceWhen: () => document.querySelector('.tab-content.active')?.id === 'tab2',
           },
           {
             tab: 2,
             target: () => document.getElementById('tab-header3'),
-            title: zh ? '9/10 \u53bb World' : '9/10 Go to World',
+            title: zh ? '等级 3 · 7/10 去 World' : 'Level 3 · 7/10 Go to World',
             body: zh
-              ? '\u5728 World \u9009\u62e9\u4e00\u5ea7\u5c9b\uff0c\u7136\u540e\u8fdb\u5165\u5b83\u7684 Chat\uff0c\u7528\u4f60\u9020\u7684\u8bcd\u6765\u4ea4\u6d41\u3002'
-              : 'In World, pick an island, then open its Chat and talk using words you created.',
+              ? '进入 World，选择一座你喜欢的岛。'
+              : 'Enter World and choose an island you like.',
+            completedBody: zh
+              ? '你已经进入 World。接下来选择一个岛屿。'
+              : 'You are in World. Next, choose an island.',
+            allowedTabs: [3],
             navigate: 'user',
             advanceWhen: () => document.querySelector('.tab-content.active')?.id === 'tab3',
           },
           {
             tab: 3,
             target: () => document.getElementById('world'),
-            title: zh ? '10/10 \u67e5\u770b World' : '10/10 Explore World',
+            title: zh ? '等级 3 · 8/10 选择岛屿' : 'Level 3 · 8/10 Select an Island',
             body: zh
-              ? '\u5728\u4e16\u754c\u5730\u56fe\u4e0a\u9009\u4e2d\u4e00\u5ea7\u5c9b\uff0c\u770b\u770b\u5b83\u7684\u63cf\u8ff0\u5361\u7247\u3002'
-              : 'Select an island on the map and read its description card.',
-            navigate: 'auto',
+              ? '点击一座岛，让它成为你发布表达的地点。'
+              : 'Click an island so it becomes the place where you post your expression.',
+            completedBody: zh
+              ? '岛屿已经选中。现在可以把你的词带到它的聊天画布里。'
+              : 'The island is selected. Now you can bring your word into its chat canvas.',
             advanceOnEvent: 'world_island_selected',
+          },
+          {
+            tab: 4,
+            target: () => document.getElementById('symbol-message-input'),
+            title: zh ? '等级 3 · 9/10 发布表达' : 'Level 3 · 9/10 Post the Expression',
+            body: zh
+              ? '在“Type a message to turn into symbol...”里输入你定义的词（例如 ice cream），按回车把表达发布到聊天画布。'
+              : 'In “Type a message to turn into symbol...”, enter your word (for example, ice cream) and press Enter to post it.',
+            completedBody: zh
+              ? '你的词已经以符号表达的形式发布到聊天画布。'
+              : 'Your word has been posted to the chat canvas as a symbol expression.',
+            navigate: 'auto',
+            advanceOnEvent: 'chat_symbol_message',
+          },
+          {
+            tab: 4,
+            target: () =>
+              document.getElementById('chat-eye-button') ||
+              document.getElementById('message-input'),
+            title: zh ? '等级 3 · 10/10 查看并注释' : 'Level 3 · 10/10 Inspect and Annotate',
+            body: zh
+              ? '选中发布的表达，点击 Insight，再用 Make an annotation 写一句注释。'
+              : 'Select the posted expression, click Insight, then write a note in Make an annotation.',
+            hint: zh
+              ? '注释只会在聊天画布的 Insight 模式中出现。'
+              : 'Annotations appear only in chat Insight mode.',
+            completedBody: zh
+              ? '等级 3 完成。你已经从造词、发布，到为表达添加注释走完整个流程。'
+              : 'Level 3 complete. You have gone from making a word, to posting it, to annotating the expression.',
+            advanceOnEvent: 'annotation_created',
           },
         ];
       }
 
-      function startTutorial(forceRestart = false) {
+      function startTutorial(forceRestart = false, level = tutorialLevel) {
         const els = getTutorialOverlayEls();
         if (!els.root || !els.spotlight || !els.bubble) return;
         if (tutorialStepIndex >= 0 && !forceRestart) return;
+        tutorialLevel = Number(level) === 2 ? 2 : Number(level) === 3 ? 3 : 1;
+        tutorialLevel2SeenConnections = { series: false, parallel: false };
+        tutorialLevel1ToolClicks = { rotate: false, dot: false };
+        tutorialCompletedStep = null;
+        tutorialPendingDefinitionButton = null;
         tutorialStepIndex = -1;
         tutorialEvents.clear();
         tutorialStack = [];
         tutorialSnapshots = new Map();
+        tutorialStepMetaSnapshots = new Map();
         els.root.classList.add('open');
         els.root.setAttribute('aria-hidden', 'false');
         const c = getTutorialCopySafe();
         if (els.back) els.back.textContent = c.back;
+        if (els.hint) els.hint.textContent = c.hint;
+        if (els.restart) els.restart.textContent = c.restartStep;
+        if (els.continue) els.continue.textContent = c.continueStep;
         if (els.exit) els.exit.textContent = c.exit;
         tutorialEnterStep(0);
       }
@@ -2134,6 +2868,9 @@
         tutorialStack = [];
         tutorialSnapshots = new Map();
         tutorialEvents.clear();
+        tutorialCompletedStep = null;
+        tutorialPendingDefinitionButton = null;
+        setTutorialDefinitionInputsEnabled?.(true);
         if (els.root) {
           els.root.classList.remove('open');
           els.root.setAttribute('aria-hidden', 'true');
@@ -2144,6 +2881,8 @@
         const steps = getTutorialStepsSafe();
         if (tutorialStepIndex < 0) return;
         if (delta < 0) {
+          tutorialCompletedStep = null;
+          tutorialPendingDefinitionButton = null;
           if (tutorialStack.length <= 1) return;
           // Pop current, restore previous snapshot/state.
           tutorialStack.pop();
@@ -2155,6 +2894,66 @@
         }
         // No manual forward: tutorial advances only via user operations.
         return;
+      }
+
+      function restartTutorialStep() {
+        if (tutorialStepIndex < 0) return;
+        const step = getTutorialStepsSafe?.()?.[tutorialStepIndex];
+        try {
+          step?.restart?.();
+        } catch (e) {
+          console.warn('tutorial step restart hook failed:', e);
+        }
+        tutorialCompletedStep = null;
+        tutorialPendingDefinitionButton = null;
+        const meta = tutorialStepMetaSnapshots.get(tutorialStepIndex);
+        if (meta?.level2SeenConnections) {
+          tutorialLevel2SeenConnections = { ...meta.level2SeenConnections };
+        }
+        if (meta?.level1ToolClicks) {
+          tutorialLevel1ToolClicks = { ...meta.level1ToolClicks };
+        }
+        if (step?.resetLevel1Tools) {
+          tutorialLevel1ToolClicks = { rotate: false, dot: false };
+        }
+        tutorialEvents.clear();
+        tutorialRestartingStep = true;
+        try {
+          restoreTutorialSnapshot(tutorialSnapshots.get(tutorialStepIndex));
+          step?.afterRestart?.();
+        } finally {
+          tutorialRestartingStep = false;
+        }
+        updateTutorialUi();
+      }
+
+      async function continueTutorialFromCompletion() {
+        if (tutorialStepIndex < 0 || !tutorialCompletedStep) return;
+        const steps = getTutorialStepsSafe?.() || [];
+        const nextIndex = tutorialStepIndex + 1;
+        const pendingButton = tutorialPendingDefinitionButton;
+        const mustFinalizeDefinition =
+          tutorialCompletedStep.definitionState === 'accepted' &&
+          pendingButton &&
+          pendingButton.isConnected;
+
+        if (mustFinalizeDefinition) {
+          tutorialPendingDefinitionButton = null;
+          try {
+            await pendingButton.onclick?.call(pendingButton, new MouseEvent('click'));
+          } catch (e) {
+            console.warn('tutorial definition finalize failed:', e);
+            tutorialPendingDefinitionButton = pendingButton;
+            return;
+          }
+        }
+
+        tutorialCompletedStep = null;
+        if (nextIndex >= steps.length) {
+          stopTutorial();
+          return;
+        }
+        tutorialEnterStep(nextIndex);
       }
 
       function updateTutorialUi() {
@@ -2179,11 +2978,21 @@
           }
         }
 
-        if (els.title) els.title.textContent = step.title || '';
-        if (els.body) els.body.textContent = step.body || '';
+        const isCompleted =
+          !!tutorialCompletedStep && tutorialCompletedStep.index === tutorialStepIndex;
+        const displayTitle = isCompleted ? tutorialCompletedStep.title : step.title;
+        const displayBody = isCompleted ? tutorialCompletedStep.body : step.body;
 
-        const target = step.target?.();
-        const rect = step.targetRect?.() || target?.getBoundingClientRect?.();
+        if (els.title) els.title.textContent = getTutorialText(displayTitle);
+        if (els.body) els.body.textContent = getTutorialText(displayBody);
+        setTutorialDefinitionInputsEnabled?.(!!step.allowDefinitionInputs);
+
+        const target = isCompleted ? step.completedTarget?.() || step.target?.() : step.target?.();
+        const rect = isCompleted
+          ? step.completedTargetRect?.() ||
+            step.targetRect?.() ||
+            target?.getBoundingClientRect?.()
+          : step.targetRect?.() || target?.getBoundingClientRect?.();
         const pad = 10;
         const hasRect = rect && rect.width > 0 && rect.height > 0;
         const left = hasRect ? rect.left - pad : window.innerWidth * 0.5 - 60;
@@ -2200,15 +3009,37 @@
         const bubbleRect = els.bubble.getBoundingClientRect();
         const preferRight = left + width + 14 + bubbleRect.width <= window.innerWidth - 12;
         const bubbleLeft = preferRight ? left + width + 14 : left;
-        const bubbleTop = clamp(top + height + 12, 12, window.innerHeight - bubbleRect.height - 12);
+        const bubbleTop = clamp(
+          top + height + 12,
+          12,
+          window.innerHeight - bubbleRect.height - 12,
+        );
         els.bubble.style.left = `${clamp(bubbleLeft, 12, window.innerWidth - bubbleRect.width - 12)}px`;
         els.bubble.style.top = `${bubbleTop}px`;
 
         if (els.back) els.back.disabled = tutorialStepIndex <= 0;
+        if (els.hint) {
+          els.hint.style.display = !isCompleted && step.hint ? '' : 'none';
+          els.hint.textContent = getTutorialCopySafe().hint;
+        }
+        if (els.restart) {
+          els.restart.style.display = isCompleted ? '' : 'none';
+          els.restart.textContent = getTutorialCopySafe().restartStep;
+        }
+        if (els.continue) {
+          const isLast = tutorialStepIndex >= steps.length - 1;
+          els.continue.style.display =
+            isCompleted && !tutorialCompletedStep?.hideContinue ? '' : 'none';
+          els.continue.textContent = isLast
+            ? getTutorialCopySafe().finish
+            : getTutorialCopySafe().continueStep;
+        }
+        if (els.back)
+          els.back.style.display = isCompleted && !tutorialCompletedStep?.showBack ? 'none' : '';
         // No "Next" button: tutorial advances only via user operations.
 
         // Some steps should auto-advance as soon as their condition becomes true (e.g., tab click).
-        tutorialMaybeAdvance();
+        if (!isCompleted) tutorialMaybeAdvance();
       }
 
       function getTutorialCraftSelectionRect() {
@@ -2233,7 +3064,17 @@
           for (const s of syms) {
             addRect(s.getBoundingClientRect?.());
             // Labels are usually children of symbols (showSimpleLabel checks selectedSymbol.querySelector('.symbol-label'))
-            s.querySelectorAll?.('.symbol-label, .dot')?.forEach((el) => addRect(el.getBoundingClientRect?.()));
+            s.querySelectorAll?.('.symbol-label, .dot')?.forEach((el) =>
+              addRect(el.getBoundingClientRect?.()),
+            );
+            [
+              s.input,
+              s.textarea,
+              s.submitButton,
+              s.cancelButton,
+              s.pElement,
+              s.doneButton,
+            ].forEach((el) => addRect(el?.getBoundingClientRect?.()));
           }
 
           if (!Number.isFinite(minL) || !Number.isFinite(minT)) return null;
@@ -2255,6 +3096,13 @@
         const els = getTutorialOverlayEls();
         if (!els.root) return;
         els.back?.addEventListener('click', () => stepTutorial(-1));
+        els.restart?.addEventListener('click', () => restartTutorialStep());
+        els.continue?.addEventListener('click', () => continueTutorialFromCompletion());
+        els.hint?.addEventListener('click', () => {
+          const step = getTutorialStepsSafe?.()?.[tutorialStepIndex];
+          const hintText = getTutorialText(step?.hint);
+          if (hintText) tutorialShowNudge(hintText, hintText);
+        });
         els.exit?.addEventListener('click', () => stopTutorial());
         // During certain steps, prevent selection changes so the spotlight doesn't jump to empty space.
         document.addEventListener(
@@ -2262,11 +3110,23 @@
           (e) => {
             if (tutorialStepIndex < 0) return;
             const step = getTutorialStepsSafe?.()?.[tutorialStepIndex];
-            if (!step?.lockCraftSelection) return;
+            const completed =
+              !!tutorialCompletedStep && tutorialCompletedStep.index === tutorialStepIndex;
+            const lockCraftInteraction = completed && step?.lockCompletedCraftInteraction;
+            const lockCraftControls = lockCraftInteraction || !!step?.lockCraftControls;
+            if (!step?.lockCraftSelection && !(completed && step?.lockCompletedCraftSelection)) {
+              if (!lockCraftInteraction) return;
+            }
 
-            // Allow interacting with tutorial UI and the Insight button itself.
+            // Allow interacting with tutorial UI. During selection-lock steps, also allow Insight.
             if (e.target?.closest?.('#tutorialBubble')) return;
-            if (e.target?.closest?.('#craft-eye-button')) return;
+            if (!lockCraftInteraction && e.target?.closest?.('#craft-eye-button')) return;
+            if (!lockCraftControls && e.target?.closest?.('#craftControls .button')) return;
+            if (
+              e.target?.closest?.('.label-input, .label-textarea, .submit-button, .cancel-button')
+            ) {
+              return;
+            }
 
             const inCraftTab = !!e.target?.closest?.('#tab1');
             const onCraftCanvas =
@@ -2275,7 +3135,8 @@
               !!e.target?.closest?.('.dot') ||
               !!e.target?.closest?.('.symbol-label') ||
               !!e.target?.closest?.('.wheel') ||
-              !!e.target?.closest?.('#palette');
+              !!e.target?.closest?.('#palette') ||
+              !!e.target?.closest?.('#craftControls');
             if (inCraftTab && onCraftCanvas) {
               e.preventDefault();
               e.stopPropagation();
@@ -2598,6 +3459,10 @@
 
       // Switching between tabs
       window.showTab = function (tabIndex) {
+        if (isTutorialTabNavigationBlocked?.(tabIndex)) {
+          return;
+        }
+
         if (tabHeadersActivated[4] && tabIndex !== 4) {
           saveChatViewportState();
         }
@@ -3389,10 +4254,10 @@
         for (const s of selectedSymbols) {
           const gid = s?._expressionGroupId;
           if (!gid) continue;
-          const grp = expressionGroups.get(gid);
-          if (!grp || grp.size < 2) continue;
+          const arr = getExpressionGroupMembers(gid);
+          if (!arr || arr.length < 2) continue;
           let all = true;
-          for (const sym of grp) {
+          for (const sym of arr) {
             if (!selectedSymbols.has(sym)) {
               all = false;
               break;
@@ -3414,9 +4279,8 @@
 
         // Render frames for fully-selected groups and remove per-symbol frames within them
         for (const gid of fullySelectedGroupIds) {
-          const grp = expressionGroups.get(gid);
-          if (!grp) continue;
-          const arr = Array.from(grp);
+          const arr = getExpressionGroupMembers(gid);
+          if (!arr || arr.length < 2) continue;
           updateExpressionGroupFrame(arr, cv);
           for (const sym of arr) {
             sym.classList.remove('framed');
@@ -4077,6 +4941,47 @@
       const pendingOpsBySymbolId = new Map();
       let annoLinkById = new Map(); // docId → { fromEmojiId, toEmojiId }
       const expressionGroups = new Map(); // groupId → Set<symbol>
+
+      function getExpressionGroupMembers(groupId) {
+        const gid = groupId ? String(groupId) : '';
+        if (!gid) return [];
+
+        const grp = expressionGroups.get(gid);
+        if (grp && grp.size > 0) {
+          return Array.from(grp).filter((el) => el && el.isConnected);
+        }
+
+        // Fallback: rebuild from DOM (guards against missing bookkeeping after adoption/merges).
+        const els = Array.from(document.querySelectorAll('.symbol')).filter(
+          (el) => el?._expressionGroupId === gid,
+        );
+        if (els.length) {
+          expressionGroups.set(gid, new Set(els));
+        }
+        return els;
+      }
+
+      function syncExpressionGroupSelectionVisuals(groupId) {
+        const gid = groupId ? String(groupId) : '';
+        if (!gid) return;
+        const grpArray = getExpressionGroupMembers(gid);
+        if (!grpArray || grpArray.length <= 1) return;
+
+        // If the whole expression is selected, its global frame should replace per-symbol outlines.
+        const isFullySelected = grpArray.every((s) => selectedSymbols.has(s));
+        if (isFullySelected) {
+          for (const sym of grpArray) {
+            sym.selected = true;
+            sym.classList.remove('framed');
+          }
+          return;
+        }
+        for (const sym of grpArray) {
+          const isSel = selectedSymbols.has(sym);
+          sym.selected = isSel;
+          sym.classList.toggle('framed', isSel);
+        }
+      }
       const expressionGroupFrameEls = new Map(); // groupId → DOM element
       const spawnedExpressionMetaCardEls = new Map(); // groupId -> DOM element
       // (annoChildToParent, lastInspectionRootSymbolId) initialized near top of module
@@ -5605,6 +6510,11 @@
       turnButton.style.top = `30px`;
 
       turnButton.addEventListener('click', async (e) => {
+        if (isTutorialCraftInteractionLocked?.()) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
         if (selectedSymbols.size != 0) {
           const group = new Set(selectedSymbols);
           if (group.size > 1 && isSelectionConnected(group, currentGraph)) {
@@ -5624,10 +6534,12 @@
           forceFreshInspectionLabels = true;
           refreshCraftInspectionUI();
         }
+        emitTutorialEvent?.('craft_rotate');
       });
       appendToCraftControls(turnButton);
 
       const turnButton2 = turnButton.cloneNode(true);
+      turnButton2.id = 'chat-turn-button';
       turnButton2.addEventListener('click', async (e) => {
         if (selectedSymbols.size !== 0) {
           const group = new Set(
@@ -5655,6 +6567,7 @@
 
       const dotButton = document.createElement('div');
       dotButton.classList.add('button');
+      dotButton.id = 'dot-button';
       dotButton.style.width = `143px`;
       dotButton.style.height = `94px`;
       dotButton.style.backgroundImage = "url('./icons/dot.png')";
@@ -5662,6 +6575,11 @@
       dotButton.style.top = `55px`;
 
       dotButton.addEventListener('mouseup', async (e) => {
+        if (isTutorialCraftInteractionLocked?.()) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
         if (selectedSymbols.size != 0) {
           // Increment the angle by 90 degrees
           for (const selectedSymbol of selectedSymbols) {
@@ -5686,11 +6604,13 @@
           forceFreshInspectionLabels = true;
           refreshCraftInspectionUI();
         }
+        emitTutorialEvent?.('craft_dot');
       });
 
       appendToCraftControls(dotButton);
 
       const dotButton2 = dotButton.cloneNode(true);
+      dotButton2.id = 'chat-dot-button';
       dotButton2.addEventListener('mouseup', async (e) => {
         if (selectedSymbols.size !== 0) {
           for (const selectedSymbol of selectedSymbols) {
@@ -5838,6 +6758,11 @@
       eyeButton.style.top = `40px`;
 
       eyeButton.addEventListener('mouseup', (e) => {
+        if (isTutorialCraftCompletedInteractionLocked?.() || isTutorialCraftInsightOffLocked?.()) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
         eyeButton.isActivated = !eyeButton.isActivated;
         if (eyeButton.isActivated) {
           eyeButton.style.backgroundImage = "url('./icons/eye_blue.png')";
@@ -6113,6 +7038,11 @@
       removeButton.style.top = `40px`;
 
       removeButton.addEventListener('mouseup', (e) => {
+        if (isTutorialCraftRemoveLocked?.()) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
         if (selectedSymbols.size != 0) {
           for (const selectedSymbol of selectedSymbols) {
             currentGraph.removeSymbol(selectedSymbol);
@@ -6521,6 +7451,7 @@
         // Only reveal annotations for the current inspected component
         showAnnotationsForSelection();
         scheduleChatMiniMapUpdate?.();
+        emitTutorialEvent?.('annotation_created');
       }
 
       function getAnnotationAnchorTarget() {
@@ -7228,6 +8159,7 @@
 
         try {
           await spawnPatternOnChatCanvas(userInput);
+          emitTutorialEvent?.('chat_symbol_message');
         } catch (error) {
           console.error(error);
           alert('Symbol rendering failed.');
@@ -7312,6 +8244,7 @@
           y = 0;
 
         setInterval(() => {
+          if (label._inspectionLabelDragging) return;
           let xDelta = getRandomFloat(-2, 2);
           let yDelta = getRandomFloat(-2, 2);
 
@@ -7327,6 +8260,36 @@
             label.style.transform = `translate(${x}px, ${y}px)`;
           }
         }, 100);
+      }
+
+      function attachInspectionLabelDrag(label, anchorSymbol) {
+        if (!label || !anchorSymbol) return;
+        label.dataset.inspectionLabel = 'true';
+        label.anchorSymbol = anchorSymbol;
+        label.style.cursor = 'grab';
+
+        label.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          label._downClientX = e.clientX;
+          label._downClientY = e.clientY;
+          label._dragged = false;
+          label._downWasSelected = selectedEmojis.has(label);
+          label._downWasInMulti = false;
+          label._downTotalSelected = selectedSymbols.size + selectedEmojis.size;
+
+          activeEmoji = label;
+          label.style.cursor = 'grabbing';
+
+          const canvas = getCanvasForElem(label);
+          const { x: localX, y: localY } = clientToLocal(canvas, e.clientX, e.clientY);
+          const left = parseFloat(label.style.left) || 0;
+          const top = parseFloat(label.style.top) || 0;
+          label._dragOffsetX = localX - left;
+          label._dragOffsetY = localY - top;
+          label._inspectionLabelDragging = true;
+        });
       }
 
       function boxesOverlap(a, b, padding = 12) {
@@ -8124,12 +9087,28 @@
           const canvas = getCanvasForElem(activeEmoji);
           const { x: localX, y: localY } = clientToLocal(canvas, e.clientX, e.clientY);
 
-          let x = localX - activeEmoji.offsetX;
-          let y = localY - activeEmoji.offsetY;
+          const dragOffsetX =
+            activeEmoji.dataset?.inspectionLabel === 'true'
+              ? activeEmoji._dragOffsetX || 0
+              : activeEmoji.offsetX;
+          const dragOffsetY =
+            activeEmoji.dataset?.inspectionLabel === 'true'
+              ? activeEmoji._dragOffsetY || 0
+              : activeEmoji.offsetY;
+
+          let x = localX - dragOffsetX;
+          let y = localY - dragOffsetY;
 
           activeEmoji.style.left = `${x}px`;
           activeEmoji.style.top = `${y}px`;
           activeEmoji.selected = true;
+
+          if (activeEmoji.dataset?.inspectionLabel === 'true' && activeEmoji.anchorSymbol) {
+            const anchorLeft = parseFloat(activeEmoji.anchorSymbol.style.left) || 0;
+            const anchorTop = parseFloat(activeEmoji.anchorSymbol.style.top) || 0;
+            activeEmoji.offsetX = x - anchorLeft;
+            activeEmoji.offsetY = y - anchorTop;
+          }
 
           // Annotation dragging: also move descendant annotation bubbles (anchored to this bubble)
           // while never moving the parent anchor (bubble or symbol).
@@ -8322,7 +9301,7 @@
 
         // 5) Clicked UI? then NOT blank
         const hitUI = !!el?.closest?.(
-          '#palette, .wheel, #chatControls, .vertical-bar, .tab, .button, .label-input, .label-textarea, .submit-button, .symbol-label, #chatAnchorLayer',
+          '#palette, .wheel, #chatControls, #top-right-ui, #lang-toggle, .lang-menu, .lang-circle, .lang-item, .vertical-bar, .tab, .button, .label-input, .label-textarea, .submit-button, .symbol-label, #chatAnchorLayer, #tutorialOverlay, #tutorialBubble',
         );
 
         return !hitItem && !hitUI;
@@ -8337,6 +9316,11 @@
           aConns[aSide].push([b, bSide]);
         if (!bConns[bSide].some(([nbr, s]) => nbr === a && s === aSide))
           bConns[bSide].push([a, aSide]);
+
+        if (getCanvasForElem(a) === craftCanvas() || getCanvasForElem(b) === craftCanvas()) {
+          registerTutorialCraftConnection?.(aSide, bSide);
+          requestAnimationFrame(() => tutorialMaybeAdvance?.());
+        }
       }
 
       function resetPendingSnapState() {
@@ -8523,6 +9507,9 @@
 
           const releasedCanvas = getCanvasForElem(released);
           updateExpressionGroupFramesFromSelection(releasedCanvas);
+          if (released?._expressionGroupId) {
+            syncExpressionGroupSelectionVisuals(released._expressionGroupId);
+          }
           if (!released._dragged) {
             refreshInspectionModeForCanvas(releasedCanvas);
           }
@@ -8604,6 +9591,20 @@
           activeEmoji = null;
           released.style.cursor = 'grab';
 
+          if (released.dataset?.inspectionLabel === 'true') {
+            released._inspectionLabelDragging = false;
+            const dx = e.clientX - (released._downClientX ?? e.clientX);
+            const dy = e.clientY - (released._downClientY ?? e.clientY);
+            const didDrag = released._dragged || dx * dx + dy * dy > 16;
+            if (!didDrag) {
+              released.remove();
+            }
+            released.selected = false;
+            released.classList.remove('active');
+            selectedEmojis.delete(released);
+            return;
+          }
+
           const clickToggle =
             !released._dragged && (released._downWasInMulti || released._downWasSelected);
 
@@ -8676,6 +9677,70 @@
             // Same toggle rule as activeSymbol:
             // click toggles only if it was already selected at mousedown OR in multi-selection
             const clickToggle = s._downWasInMulti || s._downWasSelected;
+
+            // If this symbol belongs to a spawned expression group, apply the click to the whole group,
+            // even when the symbols are read-only (created by other users).
+            if (s._expressionGroupId) {
+              const grpArray = getExpressionGroupMembers(s._expressionGroupId);
+              if (grpArray && grpArray.length > 1) {
+                const isGroupSelected = grpArray.every((x) => selectedSymbols.has(x));
+
+                // Spawned-expression toggle (read-only symbols too):
+                // If user clicks (no drag) on an already-selected spawned expression, deselect the whole group.
+                if (
+                  clickToggle &&
+                  s._downExpressionGroupId &&
+                  s._expressionGroupId === s._downExpressionGroupId &&
+                  isGroupSelected &&
+                  s._groupWasPreselectedOnDown
+                ) {
+                  const isInspecting = eyeButton.isActivated || eyeButton2.isActivated;
+                  const hasOnlyAnnotations =
+                    selectedEmojis.size > 0 &&
+                    Array.from(selectedEmojis).every((e) => e.dataset?.isAnnotation === 'true');
+
+                  for (const sym of grpArray) {
+                    sym.selected = false;
+                    sym.classList.remove('framed');
+                    selectedSymbols.delete(sym);
+                  }
+                  if (!(isInspecting && hasOnlyAnnotations)) {
+                    clearAllEmojiSelection();
+                  }
+                  refreshInspectionModeForCanvas(getCanvasForElem(s));
+                  s._downExpressionGroupId = null;
+                  s._groupWasPreselectedOnDown = null;
+                  clickOnlySymbol = null;
+                  updateExpressionGroupFramesFromSelection(getCanvasForElem(s));
+                  cancelDraggingState();
+                  return;
+                }
+
+                // Otherwise: select the group (toggle-on if needed), not just the clicked symbol.
+                if (!additiveSelect) {
+                  clearAllSymbolSelection();
+                }
+                const hasOnlyAnnotations =
+                  selectedEmojis.size > 0 &&
+                  Array.from(selectedEmojis).every((e) => e.dataset?.isAnnotation === 'true');
+                const isInspecting = eyeButton.isActivated || eyeButton2.isActivated;
+                if (!(isInspecting && hasOnlyAnnotations) && !additiveSelect) {
+                  clearAllEmojiSelection();
+                }
+
+                for (const sym of grpArray) {
+                  sym.selected = true;
+                  sym.classList.add('framed');
+                  selectedSymbols.add(sym);
+                }
+
+                const symbolCanvas = getCanvasForElem(s);
+                updateExpressionGroupFramesFromSelection(symbolCanvas);
+                refreshInspectionModeForCanvas(symbolCanvas);
+                clickOnlySymbol = null;
+                return;
+              }
+            }
 
             // Spawned-expression toggle (read-only symbols too):
             // If user clicks (no drag) on an already-selected spawned expression, deselect the whole group.
@@ -8966,6 +10031,12 @@
           clearSelection?.();
           for (const el of hitEls) onSelect?.(el);
           onSelectionApplied?.();
+          if (
+            canvasEl === craftCanvas() &&
+            hitEls.some((el) => el.classList?.contains('symbol'))
+          ) {
+            emitTutorialEvent?.('craft_marquee_select');
+          }
         }
 
         // 用 pointer 事件更稳（鼠标移出也不丢）
@@ -9377,6 +10448,10 @@
             analyzeSelectionSet(component);
           showInput(foundIds, elimBasic, representatives, hasDuplicateExpression, component);
         }
+        if (tutorialStepIndex >= 0) {
+          const step = getTutorialStepsSafe?.()?.[tutorialStepIndex];
+          setTutorialDefinitionInputsEnabled?.(!!step?.allowDefinitionInputs);
+        }
       }
 
       function refreshInspectionLabelsForSelection() {
@@ -9569,7 +10644,6 @@
           label.offsetX = label.x - parseFloat(anchorSymbol.style.left);
           label.offsetY = label.y - parseFloat(anchorSymbol.style.top);
 
-          // 1) avoid triggering global logic when clicked on labels
           label.addEventListener(
             'pointerdown',
             (e) => {
@@ -9578,12 +10652,11 @@
             true,
           );
 
-          // 2) remove label on pointerup
           label.addEventListener('pointerup', (e) => {
             e.stopPropagation();
-            label.remove();
           });
 
+          attachInspectionLabelDrag(label, anchorSymbol);
           floatLabel(label);
         });
         return [foundIds, elimBasic, representatives, hasDuplicateExpression];
@@ -9654,7 +10727,7 @@
             }
 
             // visual feedback
-            const old = sc.textContent;
+            const old = (sc.textContent || '').replace(/\s*✓+$/u, '');
             sc.textContent = `${old} ✓`;
             setTimeout(() => (sc.textContent = old), 1200);
           };
@@ -9729,6 +10802,7 @@
 
         const inputParent = componentSymbols.values().next().value;
         if (!inputParent) return;
+        const definitionComponentId = `def_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
         const parentLeft = parseFloat(inputParent.style.left) || 0;
         const parentTop = parseFloat(inputParent.style.top) || 0;
@@ -9740,6 +10814,7 @@
 
         const input = document.createElement('input');
         input.classList.add('label-input', 'removable');
+        input.dataset.definitionComponentId = definitionComponentId;
         input.type = 'text';
         input.placeholder = I18N[currentLang].whatWordIsThis;
         input.maxLength = 22;
@@ -9762,6 +10837,7 @@
 
         const textarea = document.createElement('textarea');
         textarea.classList.add('label-textarea', 'removable');
+        textarea.dataset.definitionComponentId = definitionComponentId;
         textarea.placeholder = I18N[currentLang].whyPrompt;
         textarea.maxLength = 100;
 
@@ -9793,6 +10869,7 @@
         // Create the submit button
         const submitButton = document.createElement('button');
         submitButton.classList.add('submit-button', 'removable');
+        submitButton.dataset.definitionComponentId = definitionComponentId;
         submitButton.innerHTML = '✔'; // Check mark icon
 
         submitButton.x = rightMost + 5;
@@ -9810,6 +10887,7 @@
         // Create the cancel button
         const cancelButton = document.createElement('button');
         cancelButton.classList.add('submit-button', 'removable');
+        cancelButton.dataset.definitionComponentId = definitionComponentId;
         cancelButton.innerHTML = '✘'; // X mark icon
 
         cancelButton.x = rightMost + 40;
@@ -9859,8 +10937,10 @@
           //input.remove();
           //textarea.remove();
 
-          submitButton.remove();
-          cancelButton.remove();
+          submitButton.style.display = 'none';
+          cancelButton.style.display = 'none';
+          submitButton.disabled = true;
+          cancelButton.disabled = true;
           input.readOnly = true;
           textarea.readOnly = true;
 
@@ -9936,6 +11016,7 @@
           // Create the div element
           const outputBox = document.createElement('div');
           outputBox.classList.add('typing-effect', 'removable');
+          outputBox.dataset.definitionComponentId = definitionComponentId;
 
           const bounds = computeSelectionBoundsLocal();
           if (!bounds) return;
@@ -10048,6 +11129,7 @@
 
             const doneButton = document.createElement('button');
             doneButton.classList.add('submit-button', 'removable');
+            doneButton.dataset.definitionComponentId = definitionComponentId;
             if (passed) {
               doneButton.innerHTML = '✔'; // Check mark icon
             } else {
@@ -10078,6 +11160,8 @@
             if (tabHeadersActivated[1]) appendToCraftCanvas(doneButton);
             if (tabHeadersActivated[4]) appendToChatCanvas(doneButton);
 
+            tutorialHandleDefinitionFeedback?.(passed && !manualFailed, doneButton);
+
             doneButton.onclick = async function () {
               if (passed && !manualFailed) {
                 clearInterval(activeTabInterval);
@@ -10101,6 +11185,7 @@
                 library.set(word, [id, pattern, layout]);
                 console.log('library');
                 console.log(library);
+                emitTutorialEvent?.('word_defined');
               }
               if (eyeButton.isActivated) {
                 eyeButton.isActivated = false;
@@ -10308,11 +11393,10 @@
           // If this symbol is part of a spawned expression group, select the entire group,
           // but still allow dragging + magnetic snapping like ordinary multi-selection.
           if (symbol._expressionGroupId) {
-            const grp = expressionGroups.get(symbol._expressionGroupId);
-            if (grp && grp.size > 1) {
+            const grpArray = getExpressionGroupMembers(symbol._expressionGroupId);
+            if (grpArray && grpArray.length > 1) {
               e.stopPropagation();
               symbol._downExpressionGroupId = symbol._expressionGroupId;
-              const grpArray = Array.from(grp);
               // "Group is selected" means: all its symbols are selected (even if other groups are also selected).
               const groupWasSelectedBefore = grpArray.every((s) => selectedSymbols.has(s));
               symbol._groupWasPreselectedOnDown = groupWasSelectedBefore;
@@ -10336,8 +11420,9 @@
                     clearAllEmojiSelection();
                   }
                 }
-                for (const sym of grp) {
+                for (const sym of grpArray) {
                   sym.selected = true;
+                  sym.classList.add('framed');
                   selectedSymbols.add(sym);
                 }
               }
@@ -12470,6 +13555,7 @@
         if (showTree) {
           renderLibraryTreeView();
           applyLibraryContentZoom(libraryContentZoom || 1);
+          emitTutorialEvent?.('library_tree_view');
         } else if (network) {
           setTimeout(() => {
             network.redraw();
