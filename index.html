@@ -82,24 +82,38 @@
         position: fixed;
         left: var(--trail-x, 0px);
         top: var(--trail-y, 0px);
-        width: 34vmin;
-        height: 34vmin;
+        width: 20vmin;
+        height: 20vmin;
         border-radius: 50%;
-        z-index: 0;
+        z-index: 2;
         pointer-events: none;
         opacity: 0;
         transform: translate3d(-50%, -50%, 0) scale(0.56);
-        background: radial-gradient(circle, hsla(var(--trail-hue), 58%, 76%, 0.5), transparent 70%);
-        mix-blend-mode: multiply;
-        transition:
-          opacity 1800ms ease,
-          transform 1900ms ease;
+        background: radial-gradient(
+          circle,
+          hsla(var(--trail-hue), 58%, 70%, 0.34),
+          transparent 72%
+        );
+        mix-blend-mode: normal;
         will-change: transform, opacity;
       }
 
       .qi-trail.visible {
-        opacity: 0.95;
-        transform: translate3d(-50%, -50%, 0) scale(1.18);
+        animation: qiTrailFade 1600ms ease-out forwards;
+      }
+
+      @keyframes qiTrailFade {
+        0% {
+          opacity: 0.5;
+          transform: translate3d(-50%, -50%, 0) scale(0.72);
+        }
+        62% {
+          opacity: 0.22;
+        }
+        100% {
+          opacity: 0;
+          transform: translate3d(-50%, -50%, 0) scale(1.38);
+        }
       }
 
       header {
@@ -298,19 +312,23 @@
         <div class="artist-bio" aria-label="Artist bio">
           <p>
             Tony is an artist-researcher exploring symbolic systems as living structures. Working
-            across visual language, embodied interfaces, and speculative worldbuilding, he creates
-            operative forms (characters, signs, objects, and spatial arrangements) that organize
-            flows of meaning, vitality, and experience. Rooted in early Chinese cosmology, craft
-            traditions, and dreamlike environments, his work imagines symbols as things to
-            manipulate, inhabit, and think through. His practice is an ongoing search for a living
-            script: rule-bound yet fluid, constructed yet organic, symbolic yet inhabitable.
+            across visual language, embodied media, and worldbuilding, he develops languages,
+            games, and electronic artifacts that guide flows of meaning, vitality, and
+            experience.<br /><br />
+
+            Rooted in early Chinese cosmologies, craft traditions, and contemplative experience,
+            his practice reimagines symbols not as abstract vehicles of representation, but as
+            things to manipulate, inhabit, and think through.<br /><br />
+
+            His work is an ongoing search for a living script: rule-bound yet fluid, constructed
+            yet organic, symbolic yet inhabitable.
           </p>
           <br />
           <p class="artist-bio-zh" lang="zh">
-            桐是一名符号世界的探索者。<br />
-            他的创作游走于视觉语言、具身交互与世界构筑之间，通过构造文字、记号、器物与空间布置等可操作的形式，引导意义、生命力与经验的流转。<br /><br />
+            桐是一名活文字的探索者。<br />
+            他的创作游走于视觉语言、具身媒介与世界构筑之间，通过构造语言、游戏与器物，引导意义、生命力与经验的流转。<br /><br />
 
-            他的实践扎根于中国早期宇宙观、工艺传统与如梦似幻的环境经验，并试图重新想象符号：它并非只是用来表述的抽象媒介，而是可被摆弄、栖居、体会与玩味之物。<br /><br />
+            他的实践扎根于中国早期宇宙观、工艺传统与内观经验，并试图重新想象符号：它并非只是某种抽象媒介，而是可被摆弄、栖居、体会与玩味之物。<br /><br />
 
             这是一场对「活文字」的恒久探寻——<br />
             它有法度，却不僵死；<br />
@@ -513,18 +531,16 @@
           lastTrailAt = now;
 
           trail.classList.remove('visible');
+          trail.style.animation = 'none';
           const center = getDragCenter();
           const ux = dist > 0 ? dx / dist : 0;
           const uy = dist > 0 ? dy / dist : 0;
-          trail.style.setProperty('--trail-x', `${center.x - ux * 72}px`);
-          trail.style.setProperty('--trail-y', `${center.y - uy * 72}px`);
+          trail.style.setProperty('--trail-x', `${center.x - ux * 90}px`);
+          trail.style.setProperty('--trail-y', `${center.y - uy * 90}px`);
           trail.style.setProperty('--trail-hue', hue);
           void trail.offsetHeight;
+          trail.style.animation = '';
           trail.classList.add('visible');
-
-          window.setTimeout(() => {
-            trail.classList.remove('visible');
-          }, 120);
         }
 
         function scheduleQiField(e) {
