@@ -290,6 +290,134 @@
         cursor: pointer;
         -webkit-user-drag: none;
       }
+
+      @media (max-width: 820px) {
+        body {
+          padding: 1rem;
+          min-height: 100vh;
+          height: auto;
+          overflow-x: hidden;
+          overflow-y: auto;
+        }
+
+        body::before {
+          inset: -8%;
+          background:
+            radial-gradient(circle at 10% 3%, rgba(255, 255, 248, 0.96), transparent 38%),
+            linear-gradient(145deg, #fffef0 0%, #fff9c9 52%, #fff3aa 100%);
+        }
+
+        body::after {
+          background-size: 34px 34px;
+          opacity: 0.075;
+        }
+
+        .qi-orb,
+        .qi-trail {
+          display: none;
+        }
+
+        header .hero {
+          display: block;
+          max-width: none;
+        }
+
+        header .identity {
+          min-width: 0;
+        }
+
+        header h1 {
+          font-size: clamp(2rem, 12vw, 3.35rem);
+          line-height: 1.05;
+        }
+
+        .contact-info {
+          margin-top: 0.25rem;
+          font-size: 0.95rem;
+          line-height: 1.45;
+        }
+
+        .artist-bio {
+          margin-top: 1.4rem;
+          max-width: none;
+          font-size: 1.02rem;
+          line-height: 1.55;
+        }
+
+        .artist-bio-zh {
+          font-size: 1rem;
+          line-height: 1.72;
+        }
+
+        .window {
+          position: relative !important;
+          left: auto !important;
+          top: auto !important;
+          transform: none !important;
+          width: auto;
+          min-height: 0;
+          margin: 1rem 0 0;
+          padding: 14px;
+          border-radius: 12px;
+          cursor: default;
+        }
+
+        .window:first-of-type {
+          margin-top: 1.6rem;
+        }
+
+        .window:hover,
+        .window.dragging:hover {
+          transform: none !important;
+        }
+
+        .window.dragging {
+          cursor: default;
+        }
+
+        .window .window-glass,
+        .window.dragging .window-glass {
+          background:
+            linear-gradient(
+              135deg,
+              hsla(var(--window-hue), 42%, 88%, 0.16),
+              rgba(255, 255, 255, 0.14)
+            ),
+            rgba(255, 255, 255, 0.08);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+        }
+
+        .window h3 {
+          margin: 0 0 0.35rem;
+          font-size: 1.25rem;
+        }
+
+        .window p {
+          margin: 0 0 0.8rem;
+          line-height: 1.45;
+        }
+
+        .window img {
+          max-width: min(100%, 320px);
+          max-height: 210px;
+          object-fit: contain;
+        }
+      }
+
+      @media (max-width: 480px) {
+        body {
+          padding: 0.85rem;
+        }
+
+        .artist-bio {
+          font-size: 0.98rem;
+        }
+
+        .window {
+          padding: 12px;
+        }
+      }
     </style>
   </head>
   <body>
@@ -555,6 +683,7 @@
         }
 
         el.addEventListener('mousedown', (e) => {
+          if (window.matchMedia('(max-width: 820px)').matches) return;
           e.preventDefault();
           isDragging = true;
           didDrag = false;
