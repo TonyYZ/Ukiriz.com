@@ -1905,6 +1905,39 @@
         return !step.allowedTabs.includes(tabIndex);
       }
 
+      function isTutorialLibraryModeToggleLocked() {
+        if (tutorialStepIndex < 0) return false;
+        const step = getTutorialStepsSafe?.()?.[tutorialStepIndex];
+        return !!(
+          step?.lockLibraryModeToggle ||
+          step?.lockLibraryControls ||
+          step?.allowLibraryOrganizeOnly
+        );
+      }
+
+      function isTutorialLibraryControlsLocked() {
+        if (tutorialStepIndex < 0) return false;
+        const step = getTutorialStepsSafe?.()?.[tutorialStepIndex];
+        return !!(step?.lockLibraryControls || step?.allowLibraryOrganizeOnly);
+      }
+
+      function isTutorialLibraryOrganizeLocked() {
+        if (tutorialStepIndex < 0) return false;
+        const step = getTutorialStepsSafe?.()?.[tutorialStepIndex];
+        return !!(step?.lockLibraryControls && !step?.allowLibraryOrganizeOnly);
+      }
+
+      function isTutorialWorldIslandSelectionLocked() {
+        if (tutorialStepIndex < 0) return false;
+        const step = getTutorialStepsSafe?.()?.[tutorialStepIndex];
+        const completed =
+          !!tutorialCompletedStep && tutorialCompletedStep.index === tutorialStepIndex;
+        return !!(
+          step?.lockWorldIslandSelection ||
+          (completed && step?.lockCompletedWorldIslandSelection)
+        );
+      }
+
       function getActiveTabIndex() {
         const active = document.querySelector('.tab-content.active');
         const id = active?.id || '';
@@ -2278,6 +2311,27 @@
         } catch {}
       }
 
+      function tutorialPrepareDefinitionRetry(componentId = '') {
+        try {
+          const step = getTutorialStepsSafe?.()?.[tutorialStepIndex];
+          if (!step?.definitionFeedback) return;
+          if (tutorialCompletedStep?.definitionState !== 'failed') return;
+          const canvas = craftCanvas?.();
+          if (canvas && componentId) {
+            canvas
+              .querySelectorAll(
+                `[data-definition-component-id="${componentId}"].typing-effect, [data-definition-component-id="${componentId}"].submit-button`,
+              )
+              .forEach((el) => {
+                if (el.classList?.contains('typing-effect') || el.answerHeight) el.remove();
+              });
+          }
+          tutorialCompletedStep = null;
+          tutorialPendingDefinitionButton = null;
+          updateTutorialUi?.();
+        } catch {}
+      }
+
       function getCraftSymbols() {
         try {
           return Array.from(craftCanvas()?.querySelectorAll?.('.symbol') || []);
@@ -2366,7 +2420,7 @@
           {
             tab: 0,
             target: () => document.getElementById('tab-header1'),
-            title: zh ? '等级 1 · 1/7 去 Craft' : 'Level 1 · 1/7 Go to Craft',
+            title: zh ? '等级 1 · 1/9 去 Craft' : 'Level 1 · 1/9 Go to Craft',
             body: zh
               ? '先点击 Craft（左侧标签）进入造字画布。'
               : 'Click Craft on the left to enter the symbol-making canvas.',
@@ -2389,7 +2443,7 @@
             tab: 1,
             target: () =>
               (document.getElementById('tab1') || document.body).querySelector('.wheel'),
-            title: zh ? '等级 1 · 2/7 拖出一个符号' : 'Level 1 · 2/7 Drag One Symbol',
+            title: zh ? '等级 1 · 2/9 拖出一个符号' : 'Level 1 · 2/9 Drag One Symbol',
             body: zh
               ? '从符号轮拖出任意一个符号，放到画布上。'
               : 'Drag any one symbol from the wheel onto the canvas.',
@@ -2403,8 +2457,43 @@
           },
           {
             tab: 1,
+            target: () =>
+              document.getElementById('craft-remove-button') ||
+              document.getElementById('craftCanvas'),
+            title: zh ? '等级 1 · 3/9 移除符号' : 'Level 1 · 3/9 Remove the Symbol',
+            body: zh
+              ? '现在点击 Remove，把这个选中的符号从画布上移除。'
+              : 'Now click Remove to delete the selected symbol from the canvas.',
+            completedBody: zh
+              ? '这个符号已经被移除。这个按钮用来清理你选中的符号。'
+              : 'The symbol is removed. This button clears whichever symbols you have selected.',
+            completedTarget: () => document.getElementById('craftCanvas'),
+            allowedTabs: [1],
+            advanceOnEvent: 'craft_remove',
+            allowCraftRemoveOnly: true,
+            lockCraftSelection: true,
+            lockCraftControls: true,
+          },
+          {
+            tab: 1,
+            target: () =>
+              (document.getElementById('tab1') || document.body).querySelector('.wheel'),
+            title: zh ? '等级 1 · 4/9 再拖一个符号' : 'Level 1 · 4/9 Drag a Fresh Symbol',
+            body: zh
+              ? '再从符号轮拖出一个符号，用它继续接下来的练习。'
+              : 'Drag out one fresh symbol. We will use this one for meaning and definition.',
+            completedBody: zh
+              ? '很好，现在画布上有一个新的符号可以观察了。'
+              : 'Great, now there is a fresh symbol on the canvas to inspect.',
+            completedTarget: () => document.getElementById('craftCanvas'),
+            lockCompletedCraftSelection: true,
+            navigate: 'auto',
+            advanceOnEvent: 'wheel_drag',
+          },
+          {
+            tab: 1,
             target: () => document.getElementById('craft-eye-button') || null,
-            title: zh ? '等级 1 · 3/7 查看意义' : 'Level 1 · 3/7 See Its Meaning',
+            title: zh ? '等级 1 · 5/9 查看意义' : 'Level 1 · 5/9 See Its Meaning',
             body: zh
               ? '点击 Insight（眼睛）查看这个符号的意义泡泡。'
               : 'Click Insight (the eye) to reveal meaning bubbles for this symbol.',
@@ -2428,7 +2517,7 @@
           {
             tab: 1,
             target: () => document.getElementById('craftCanvas'),
-            title: zh ? '等级 1 · 4/7 试试旋转和加点' : 'Level 1 · 4/7 Try Rotate and Dot',
+            title: zh ? '等级 1 · 6/9 试试旋转和加点' : 'Level 1 · 6/9 Try Rotate and Dot',
             body: zh
               ? '现在试试旋转按钮和动态点按钮。观察整个画布上的意义泡泡如何自己变化。两个按钮都点过之后，这一步会完成。'
               : 'Now try both the rotate button and the dynamic dot button. Watch how the meaning bubbles change on the canvas. This step completes after you have clicked both.',
@@ -2447,7 +2536,7 @@
           {
             tab: 1,
             targetRect: () => getTutorialCraftSelectionRect?.() || null,
-            title: zh ? '等级 1 · 5/7 命名它' : 'Level 1 · 5/7 Define It',
+            title: zh ? '等级 1 · 7/9 命名它' : 'Level 1 · 7/9 Define It',
             body: zh
               ? '把看到的意义泡泡联想到任意概念，在“这个词是什么？”和“为什么？”中写下定义，然后提交。'
               : 'Associate the bubbles with any concept you can think of. Fill “What word is this?” and “Why?”, then submit.',
@@ -2467,7 +2556,7 @@
           {
             tab: 1,
             target: () => document.getElementById('tab-header2'),
-            title: zh ? '等级 1 · 6/7 去 Library' : 'Level 1 · 6/7 Go to Library',
+            title: zh ? '等级 1 · 8/9 去 Library' : 'Level 1 · 8/9 Go to Library',
             body: zh
               ? '点击 Library，看看你刚刚创造的词。'
               : 'Click Library to see the word you just created.',
@@ -2477,12 +2566,19 @@
             completedTarget: () => document.getElementById('tab2'),
             allowedTabs: [2],
             navigate: 'user',
-            advanceWhen: () => document.querySelector('.tab-content.active')?.id === 'tab2',
+            lockLibraryModeToggle: true,
+            advanceWhen: () => {
+              const inLibrary = document.querySelector('.tab-content.active')?.id === 'tab2';
+              if (inLibrary && libraryViewMode !== 'network') {
+                setLibraryViewMode?.('network');
+              }
+              return inLibrary;
+            },
           },
           {
             tab: 2,
             target: () => document.getElementById('tab2'),
-            title: zh ? '等级 1 · 7/7 完成' : 'Level 1 · 7/7 Complete',
+            title: zh ? '等级 1 · 9/9 完成' : 'Level 1 · 9/9 Complete',
             body: zh
               ? '你的第一个符号词已经进入了词库。点击 Library 区域结束这一关。'
               : 'Your first symbol-word is now in the library. Click inside Library to finish this level.',
@@ -2500,7 +2596,7 @@
           {
             tab: 0,
             target: () => document.getElementById('tab-header1'),
-            title: zh ? '等级 2 · 1/11 去 Craft' : 'Level 2 · 1/11 Go to Craft',
+            title: zh ? '等级 2 · 1/12 去 Craft' : 'Level 2 · 1/12 Go to Craft',
             body: zh
               ? '进入 Craft，这一关会练习组合符号。'
               : 'Enter Craft. This level practices compound symbols.',
@@ -2517,7 +2613,7 @@
             tab: 1,
             target: () =>
               (document.getElementById('tab1') || document.body).querySelector('.wheel'),
-            title: zh ? '等级 2 · 2/11 第一个符号' : 'Level 2 · 2/11 First Symbol',
+            title: zh ? '等级 2 · 2/12 第一个符号' : 'Level 2 · 2/12 First Symbol',
             body: zh ? '先从符号轮拖出一个符号。' : 'Drag one symbol from the wheel.',
             completedBody: zh
               ? '第一个符号已经在画布上了。'
@@ -2531,7 +2627,7 @@
             tab: 1,
             target: () =>
               (document.getElementById('tab1') || document.body).querySelector('.wheel'),
-            title: zh ? '等级 2 · 3/11 第二个符号' : 'Level 2 · 3/11 Second Symbol',
+            title: zh ? '等级 2 · 3/12 第二个符号' : 'Level 2 · 3/12 Second Symbol',
             body: zh ? '再拖出第二个符号。' : 'Drag out a second symbol.',
             completedBody: zh
               ? '很好，现在你有两个符号可以组合。'
@@ -2544,7 +2640,7 @@
           {
             tab: 1,
             target: () => document.getElementById('craftCanvas'),
-            title: zh ? '等级 2 · 4/11 第一次组合' : 'Level 2 · 4/11 First Combination',
+            title: zh ? '等级 2 · 4/12 第一次组合' : 'Level 2 · 4/12 First Combination',
             body: zh
               ? '把两个符号吸附起来。你可以先做串联，也可以先做并联。'
               : 'Snap the two symbols together. You may start with either series or parallel.',
@@ -2558,7 +2654,7 @@
           {
             tab: 1,
             target: () => document.getElementById('craftCanvas'),
-            title: zh ? '等级 2 · 5/11 另一种组合' : 'Level 2 · 5/11 The Other Combination',
+            title: zh ? '等级 2 · 5/12 另一种组合' : 'Level 2 · 5/12 The Other Combination',
             body: () => {
               const kinds = tutorialLevel2SeenConnections;
               if (zh) {
@@ -2587,7 +2683,7 @@
           {
             tab: 1,
             target: () => document.getElementById('craftCanvas'),
-            title: zh ? '等级 2 · 6/11 长按选择整体' : 'Level 2 · 6/11 Long-Press the Group',
+            title: zh ? '等级 2 · 6/12 长按选择整体' : 'Level 2 · 6/12 Long-Press the Group',
             body: zh
               ? '长按其中一个符号，选中这个连通的符号组。'
               : 'Long-press one symbol to select the whole connected group.',
@@ -2600,7 +2696,7 @@
           {
             tab: 1,
             target: () => document.getElementById('craftCanvas'),
-            title: zh ? '等级 2 · 7/11 框选同一组' : 'Level 2 · 7/11 Marquee Select',
+            title: zh ? '等级 2 · 7/12 框选同一组' : 'Level 2 · 7/12 Marquee Select',
             body: zh
               ? '在画布空白处拖出一个框，框选同一个符号组。'
               : 'Drag a marquee box from empty canvas space to select the same symbol group.',
@@ -2613,7 +2709,7 @@
           {
             tab: 1,
             target: () => document.getElementById('craft-eye-button') || null,
-            title: zh ? '等级 2 · 8/11 查看组合意义' : 'Level 2 · 8/11 Inspect the Compound',
+            title: zh ? '等级 2 · 8/12 查看组合意义' : 'Level 2 · 8/12 Inspect the Compound',
             body: zh
               ? '点击 Insight，查看这个组合的意义泡泡。'
               : 'Click Insight to read meaning bubbles for the compound.',
@@ -2629,7 +2725,7 @@
           {
             tab: 1,
             targetRect: () => getTutorialCraftSelectionRect?.() || null,
-            title: zh ? '等级 2 · 9/11 定义组合词' : 'Level 2 · 9/11 Define the Compound',
+            title: zh ? '等级 2 · 9/12 定义组合词' : 'Level 2 · 9/12 Define the Compound',
             body: zh
               ? '根据这个符号组的意义泡泡，写下一个词和解释，然后提交。'
               : 'Use the compound’s meaning bubbles to invent a word and explanation, then submit.',
@@ -2650,7 +2746,7 @@
           {
             tab: 1,
             target: () => document.getElementById('tab-header2'),
-            title: zh ? '等级 2 · 10/11 去 Library' : 'Level 2 · 10/11 Go to Library',
+            title: zh ? '等级 2 · 10/12 去 Library' : 'Level 2 · 10/12 Go to Library',
             body: zh ? '去 Library 查看这个复合词。' : 'Go to Library to view this compound word.',
             completedBody: zh
               ? '你已经来到 Library，可以看到这个词和它的关系。'
@@ -2658,12 +2754,33 @@
             completedTarget: () => document.getElementById('tab2'),
             allowedTabs: [2],
             navigate: 'user',
-            advanceWhen: () => document.querySelector('.tab-content.active')?.id === 'tab2',
+            lockLibraryControls: true,
+            advanceWhen: () => {
+              const inLibrary = document.querySelector('.tab-content.active')?.id === 'tab2';
+              if (inLibrary && libraryViewMode !== 'network') {
+                setLibraryViewMode?.('network');
+              }
+              return inLibrary;
+            },
+          },
+          {
+            tab: 2,
+            target: () => organizeNodeButton || document.getElementById('tab2'),
+            title: zh ? '等级 2 · 11/12 整理网络' : 'Level 2 · 11/12 Organize the Network',
+            body: zh
+              ? '现在点击 Organize，让网络节点自动整理成更容易看的关系图。'
+              : 'Now click Organize to automatically tidy the network into a clearer relationship map.',
+            completedBody: zh
+              ? '网络已经整理过了。这个按钮可以在节点太乱时帮你快速重新排布。'
+              : 'The network has been organized. Use this button when the node map becomes too tangled.',
+            completedTarget: () => document.getElementById('tab2'),
+            allowLibraryOrganizeOnly: true,
+            advanceOnEvent: 'library_organize',
           },
           {
             tab: 2,
             target: () => modeNodeButton || document.getElementById('tab2'),
-            title: zh ? '等级 2 · 11/11 科技树视图' : 'Level 2 · 11/11 Tech Tree View',
+            title: zh ? '等级 2 · 12/12 科技树视图' : 'Level 2 · 12/12 Tech Tree View',
             body: zh
               ? '点击网络/树形切换按钮，进入科技树视图，看看词是如何从更简单的词生长出来的。'
               : 'Click the network/tree toggle to enter tech tree view and see how words grow from simpler words.',
@@ -2672,6 +2789,7 @@
               : 'Level 2 complete. The tech tree helps you see the history of how words are built.',
             completedTarget: () => document.getElementById('tab2'),
             advanceOnEvent: 'library_tree_view',
+            restart: () => setLibraryViewMode?.('network'),
           },
         ];
       }
@@ -2682,7 +2800,7 @@
           {
             tab: 0,
             target: () => document.getElementById('tab-header1'),
-            title: zh ? '等级 3 · 1/10 挑战开始' : 'Level 3 · 1/10 Challenge Begins',
+            title: zh ? '等级 3 · 1/12 挑战开始' : 'Level 3 · 1/12 Challenge Begins',
             body: zh
               ? '目标：造出“冰淇淋”。先进入 Craft。需要帮助时可以按提示。'
               : 'Goal: create “ice cream.” Enter Craft. Use Hint whenever you want a possible route.',
@@ -2700,7 +2818,7 @@
           {
             tab: 1,
             target: () => document.getElementById('craftCanvas'),
-            title: zh ? '等级 3 · 2/10 造“冷”' : 'Level 3 · 2/10 Make “Cold”',
+            title: zh ? '等级 3 · 2/12 造“冷”' : 'Level 3 · 2/12 Make “Cold”',
             body: zh
               ? '自由选择符号，查看意义，然后定义一个接近“冷”的词。'
               : 'Choose symbols freely, inspect their meanings, then define a word close to “cold.”',
@@ -2717,7 +2835,7 @@
           {
             tab: 1,
             target: () => document.getElementById('craftCanvas'),
-            title: zh ? '等级 3 · 3/10 造“食物”' : 'Level 3 · 3/10 Make “Food”',
+            title: zh ? '等级 3 · 3/12 造“食物”' : 'Level 3 · 3/12 Make “Food”',
             body: zh
               ? '再创造一个接近“食物”的词。你可以用单符号，也可以用组合。'
               : 'Create another word close to “food.” It can be a single symbol or a compound.',
@@ -2734,7 +2852,7 @@
           {
             tab: 1,
             target: () => document.getElementById('craftCanvas'),
-            title: zh ? '等级 3 · 4/10 组合为冰淇淋' : 'Level 3 · 4/10 Combine into Ice Cream',
+            title: zh ? '等级 3 · 4/12 组合为冰淇淋' : 'Level 3 · 4/12 Combine into Ice Cream',
             body: zh
               ? '把“冷”和“食物”的表达组合起来。推荐用并联，让两个意义同时存在。'
               : 'Combine the expressions for “cold” and “food.” Parallel is a good way to let both meanings coexist.',
@@ -2744,6 +2862,7 @@
             completedBody: zh
               ? '很好，你已经把两个意义并置到同一个组合里。'
               : 'Great, you have placed two meanings together inside one compound.',
+            lockCompletedCraftInteraction: true,
             advanceWhen: () => craftHasParallelConnection(),
           },
           {
@@ -2751,7 +2870,7 @@
             targetRect: () =>
               getTutorialCraftSelectionRect?.() ||
               document.getElementById('craftCanvas')?.getBoundingClientRect?.(),
-            title: zh ? '等级 3 · 5/10 定义“冰淇淋”' : 'Level 3 · 5/10 Define “Ice Cream”',
+            title: zh ? '等级 3 · 5/12 定义“冰淇淋”' : 'Level 3 · 5/12 Define “Ice Cream”',
             body: zh
               ? '选中最终组合，点击 Insight，然后把它定义为“冰淇淋”并写下解释。'
               : 'Select the final compound, click Insight, then define it as “ice cream” with an explanation.',
@@ -2766,53 +2885,74 @@
           {
             tab: 1,
             target: () => document.getElementById('tab-header2'),
-            title: zh ? '等级 3 · 6/10 去 Library' : 'Level 3 · 6/10 Go to Library',
+            title: zh ? '等级 3 · 6/12 去 Library' : 'Level 3 · 6/12 Go to Library',
             body: zh
               ? '去 Library 看看“冰淇淋”进入词库后的样子。'
               : 'Go to Library and see how “ice cream” appears in your vocabulary.',
             completedBody: zh
               ? '你已经来到 Library。挑战词现在可以作为词库的一部分被查看。'
               : 'You are in Library now. Your challenge word can be viewed as part of the vocabulary.',
+            completedTarget: () => document.getElementById('tab2'),
             allowedTabs: [2],
             navigate: 'user',
-            advanceWhen: () => document.querySelector('.tab-content.active')?.id === 'tab2',
+            advanceWhen: () => {
+              const inLibrary = document.querySelector('.tab-content.active')?.id === 'tab2';
+              if (inLibrary && libraryViewMode !== 'network') {
+                setLibraryViewMode?.('network');
+              }
+              return inLibrary;
+            },
           },
           {
             tab: 2,
             target: () => document.getElementById('tab-header3'),
-            title: zh ? '等级 3 · 7/10 去 World' : 'Level 3 · 7/10 Go to World',
+            title: zh ? '等级 3 · 7/12 去 World' : 'Level 3 · 7/12 Go to World',
             body: zh
               ? '进入 World，选择一座你喜欢的岛。'
               : 'Enter World and choose an island you like.',
-            completedBody: zh
-              ? '你已经进入 World。接下来选择一个岛屿。'
-              : 'You are in World. Next, choose an island.',
+            completedBody: zh ? '你进入了 World！' : 'You are in World now!',
+            completedTarget: () => document.getElementById('tab3'),
             allowedTabs: [3],
             navigate: 'user',
+            lockCompletedWorldIslandSelection: true,
             advanceWhen: () => document.querySelector('.tab-content.active')?.id === 'tab3',
           },
           {
             tab: 3,
             target: () => document.getElementById('world'),
-            title: zh ? '等级 3 · 8/10 选择岛屿' : 'Level 3 · 8/10 Select an Island',
+            title: zh ? '等级 3 · 8/12 选择岛屿' : 'Level 3 · 8/12 Select an Island',
             body: zh
               ? '点击一座岛，让它成为你发布表达的地点。'
               : 'Click an island so it becomes the place where you post your expression.',
-            completedBody: zh
-              ? '岛屿已经选中。现在可以把你的词带到它的聊天画布里。'
-              : 'The island is selected. Now you can bring your word into its chat canvas.',
+            completedBody: zh ? '岛屿已经选中。' : 'The island is selected.',
             advanceOnEvent: 'world_island_selected',
+          },
+          {
+            tab: 3,
+            target: () => document.getElementById('tab-header4'),
+            title: zh ? '等级 3 · 9/12 进入岛屿聊天' : 'Level 3 · 9/12 Open the Island Chat',
+            body: zh
+              ? '点击左侧新出现的岛屿聊天标签，进入这座岛的聊天画布。'
+              : 'Click the island chat tab that appeared on the left to enter this island’s chat canvas.',
+            completedBody: zh
+              ? '你已经进入这座岛的聊天画布。接下来可以把你的词作为符号表达发布到这里。'
+              : 'You are now in this island’s chat canvas. Next, you can post your word here as a symbol expression.',
+            completedTarget: () => document.getElementById('chatCanvas'),
+            allowedTabs: [4],
+            navigate: 'user',
+            advanceWhen: () => document.querySelector('.tab-content.active')?.id === 'tab4',
           },
           {
             tab: 4,
             target: () => document.getElementById('symbol-message-input'),
-            title: zh ? '等级 3 · 9/10 发布表达' : 'Level 3 · 9/10 Post the Expression',
+            title: zh ? '等级 3 · 10/12 发布表达' : 'Level 3 · 10/12 Post the Expression',
             body: zh
-              ? '在“Type a message to turn into symbol...”里输入你定义的词（例如 ice cream），按回车把表达发布到聊天画布。'
+              ? '在“Type a message to turn into symbol...”里输入你定义的词（例如 冰淇淋），按回车把表达发布到聊天画布。'
               : 'In “Type a message to turn into symbol...”, enter your word (for example, ice cream) and press Enter to post it.',
             completedBody: zh
               ? '你的词已经以符号表达的形式发布到聊天画布。'
               : 'Your word has been posted to the chat canvas as a symbol expression.',
+            completedTarget: () => document.getElementById('chatCanvas'),
             navigate: 'auto',
             advanceOnEvent: 'chat_symbol_message',
           },
@@ -2821,16 +2961,30 @@
             target: () =>
               document.getElementById('chat-eye-button') ||
               document.getElementById('message-input'),
-            title: zh ? '等级 3 · 10/10 查看并注释' : 'Level 3 · 10/10 Inspect and Annotate',
+            title: zh ? '等级 3 · 11/12 查看表达' : 'Level 3 · 11/12 Inspect the Expression',
             body: zh
-              ? '选中发布的表达，点击 Insight，再用 Make an annotation 写一句注释。'
-              : 'Select the posted expression, click Insight, then write a note in Make an annotation.',
+              ? '选中发布的表达，点击 Insight来看看它的含义。'
+              : 'Select the expression you just posted, then click Insight to inspect its meaning in the chat canvas.',
+            completedBody: zh
+              ? '你可以看到你刚刚为这个表达赋予的意义，别人也能看到哦！'
+              : 'You can see the meaning attributed to this expression. Everyone else can see it too!',
+            completedTarget: () => document.getElementById('chatCanvas'),
+            advanceOnEvent: 'chat_insight_on',
+          },
+          {
+            tab: 4,
+            target: () => document.getElementById('message-input'),
+            title: zh ? '等级 3 · 12/12 添加注释' : 'Level 3 · 12/12 Make an Annotation',
+            body: zh
+              ? '在 Make an annotation 里写一句注释，把你的想法连接到这个表达上。'
+              : 'Write a note in Make an annotation to connect your thought to this expression.',
             hint: zh
               ? '注释只会在聊天画布的 Insight 模式中出现。'
               : 'Annotations appear only in chat Insight mode.',
             completedBody: zh
               ? '等级 3 完成。你已经从造词、发布，到为表达添加注释走完整个流程。'
               : 'Level 3 complete. You have gone from making a word, to posting it, to annotating the expression.',
+            completedTarget: () => document.getElementById('chatCanvas'),
             advanceOnEvent: 'annotation_created',
           },
         ];
@@ -2892,7 +3046,13 @@
           updateTutorialUi();
           return;
         }
-        // No manual forward: tutorial advances only via user operations.
+        if (delta > 0) {
+          tutorialCompletedStep = null;
+          tutorialPendingDefinitionButton = null;
+          const next = Math.min(tutorialStepIndex + 1, steps.length - 1);
+          if (next !== tutorialStepIndex) tutorialEnterStep(next);
+          return;
+        }
         return;
       }
 
@@ -3008,7 +3168,11 @@
         // Place bubble near spotlight
         const bubbleRect = els.bubble.getBoundingClientRect();
         const preferRight = left + width + 14 + bubbleRect.width <= window.innerWidth - 12;
-        const bubbleLeft = preferRight ? left + width + 14 : left;
+        const bubbleLeft = preferRight
+          ? left + width + 14
+          : isCompleted
+            ? window.innerWidth - bubbleRect.width - 24
+            : left;
         const bubbleTop = clamp(
           top + height + 12,
           12,
@@ -3120,6 +3284,23 @@
 
             // Allow interacting with tutorial UI. During selection-lock steps, also allow Insight.
             if (e.target?.closest?.('#tutorialBubble')) return;
+            if (step?.allowCraftRemoveOnly) {
+              if (e.target?.closest?.('#craft-remove-button')) return;
+              const inCraftTab = !!e.target?.closest?.('#tab1');
+              const onCraftSurface =
+                !!e.target?.closest?.('#craftCanvas') ||
+                !!e.target?.closest?.('.symbol') ||
+                !!e.target?.closest?.('.dot') ||
+                !!e.target?.closest?.('.symbol-label') ||
+                !!e.target?.closest?.('.wheel') ||
+                !!e.target?.closest?.('#palette') ||
+                !!e.target?.closest?.('#craftControls');
+              if (inCraftTab && onCraftSurface) {
+                e.preventDefault();
+                e.stopPropagation();
+              }
+              return;
+            }
             if (!lockCraftInteraction && e.target?.closest?.('#craft-eye-button')) return;
             if (!lockCraftControls && e.target?.closest?.('#craftControls .button')) return;
             if (
@@ -3175,7 +3356,7 @@
         window.addEventListener('keydown', (e) => {
           if (tutorialStepIndex < 0) return;
           if (e.key === 'Escape') stopTutorial();
-          if (e.key === 'ArrowLeft') stepTutorial(-1);
+          if (e.key === 'ArrowRight') stepTutorial(1);
         });
       }
 
@@ -7017,7 +7198,9 @@
       eyeButton2.addEventListener('pointerup', (e) => {
         e.stopPropagation();
         e.preventDefault();
-        setChatInspectionMode(!eyeButton2.isActivated);
+        const nextInspectionState = !eyeButton2.isActivated;
+        setChatInspectionMode(nextInspectionState);
+        if (nextInspectionState) emitTutorialEvent?.('chat_insight_on');
       });
       appendToChatControls(eyeButton2);
 
@@ -7029,6 +7212,7 @@
       updateChatQuestionPrompt();
 
       const removeButton = document.createElement('div');
+      removeButton.id = 'craft-remove-button';
       removeButton.isActivated = false;
       removeButton.classList.add('button');
       removeButton.style.width = `168.75px`;
@@ -7044,12 +7228,15 @@
           return;
         }
         if (selectedSymbols.size != 0) {
+          let removedAny = false;
           for (const selectedSymbol of selectedSymbols) {
             currentGraph.removeSymbol(selectedSymbol);
             if (selectedSymbol.isDynamic) selectedSymbol.dot.remove();
             selectedSymbol.remove();
+            removedAny = true;
           }
           selectedSymbols.clear();
+          if (removedAny) emitTutorialEvent?.('craft_remove');
         }
         if (eyeButton.isActivated) {
           eyeButton.isActivated = false;
@@ -7061,6 +7248,7 @@
       appendToCraftControls(removeButton);
 
       const removeButton2 = removeButton.cloneNode(true);
+      removeButton2.id = 'chat-remove-button';
 
       removeButton2.addEventListener('mouseup', async (e) => {
         e.stopPropagation();
@@ -7149,6 +7337,7 @@
       removeNodeButton.addEventListener('pointerup', async (e) => {
         e.stopPropagation();
         e.preventDefault();
+        if (isTutorialLibraryControlsLocked?.()) return;
 
         const selectedNodeIds =
           libraryViewMode === 'tree' && selectedLibraryTreeNodeIds.size
@@ -10909,6 +11098,7 @@
         // Handle button click event
         submitButton.onclick = async function () {
           const t = I18N[currentLang];
+          tutorialPrepareDefinitionRetry?.(definitionComponentId);
           word = input.value;
 
           // Recalculate the molecule to incorporate the advanced vocabulary
@@ -13512,7 +13702,9 @@
       organizeNodeButton.addEventListener('pointerup', (e) => {
         e.stopPropagation();
         e.preventDefault();
+        if (isTutorialLibraryOrganizeLocked?.()) return;
         organizeLibraryNetwork();
+        emitTutorialEvent?.('library_organize');
       });
 
       const modeNodeButton = document.createElement('div');
@@ -13573,6 +13765,7 @@
       modeNodeButton.addEventListener('pointerup', (e) => {
         e.stopPropagation();
         e.preventDefault();
+        if (isTutorialLibraryModeToggleLocked?.()) return;
         setLibraryViewMode(libraryViewMode === 'network' ? 'tree' : 'network');
       });
       setLibraryModeButtonIcon();
@@ -14682,6 +14875,11 @@
 
         world.addEventListener('pointerdown', (e) => {
           if (e.button !== 0) return; // 只处理左键
+          if (isTutorialWorldIslandSelectionLocked?.()) {
+            downIsland = null;
+            didDrag = false;
+            return;
+          }
           downX = e.clientX;
           downY = e.clientY;
           didDrag = false;
@@ -14696,6 +14894,7 @@
 
         world.addEventListener('pointerup', async (e) => {
           if (e.button !== 0) return;
+          if (isTutorialWorldIslandSelectionLocked?.()) return;
 
           // ✅ 如果是拖拽结束：不做任何选中/取消操作（保留当前选中）
           if (didDrag) return;
