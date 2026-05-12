@@ -1,9 +1,9 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Divinatory Canvas</title>
+    <title>Ítí Isles</title>
     <style>
       @font-face {
         font-family: 'UkirizWenKai';
@@ -62,6 +62,7 @@
         font-family: var(--mono-en);
         display: flex;
         height: 100vh; /* Full viewport height */
+        touch-action: manipulation;
       }
 
       body.lang-zh {
@@ -74,6 +75,7 @@
         height: 50.25px; /* Full height = 67 */
         cursor: grab;
         user-select: none;
+        touch-action: none;
         z-index: 3;
         pointer-events: auto;
       }
@@ -88,6 +90,7 @@
         height: 5px; /* Full height = 67 */
         cursor: grab;
         user-select: none;
+        touch-action: none;
         z-index: 6;
       }
 
@@ -138,6 +141,7 @@
         background-repeat: no-repeat;
         background-position: center;
         cursor: pointer;
+        touch-action: none;
         z-index: 30;
       }
 
@@ -200,6 +204,10 @@
         box-sizing: border-box;
       }
 
+      .mobile-only {
+        display: none;
+      }
+
       /* Content sections */
       .tab-content {
         display: none; /* Hide all content by default */
@@ -254,6 +262,7 @@
           0 0,
           0 0,
           0 0;
+        touch-action: none;
       }
 
       #tab1 {
@@ -302,6 +311,7 @@
           0 0;
         min-width: 0;
         box-sizing: border-box;
+        touch-action: none;
       }
 
       #craftControls {
@@ -341,6 +351,7 @@
           0 0,
           0 0,
           0 0;
+        touch-action: none;
       }
 
       #tab4 {
@@ -352,6 +363,7 @@
         background: #f4f4f9;
         min-width: 0;
         box-sizing: border-box;
+        touch-action: none;
       }
 
       #chatControls {
@@ -576,6 +588,7 @@
         pointer-events: auto;
         user-select: none;
         -webkit-user-select: none;
+        touch-action: none;
       }
 
       .symbol-label.active {
@@ -930,6 +943,9 @@
         background: #00b0f050; /* solid */
         overflow: hidden;
         cursor: grab;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: none;
       }
 
       .island-info-card {
@@ -1031,6 +1047,10 @@
         transform: translate(0px, 0px);
         transform-origin: top left;
         will-change: transform;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: none;
+        -webkit-touch-callout: none;
       }
 
       .world-boundary {
@@ -1042,6 +1062,9 @@
 
       .island {
         position: absolute;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
       }
 
       .island-block {
@@ -1193,6 +1216,306 @@
         background: #000;
         color: #fff;
       }
+
+      @media (max-width: 820px), (pointer: coarse) {
+        :root {
+          --sidebar-w: 0px;
+        }
+
+        body {
+          display: block;
+          width: 100vw;
+          height: 100dvh;
+          overflow: hidden;
+          overscroll-behavior: none;
+        }
+
+        .content {
+          width: 100vw;
+          height: calc(100dvh - 76px);
+          margin: 0;
+          padding: 8px;
+          padding-bottom: 12px;
+        }
+
+        .tab-content {
+          height: 100%;
+        }
+
+        .vertical-bar {
+          top: auto;
+          right: 0;
+          bottom: 0;
+          width: 100vw;
+          height: 76px;
+          padding: 0;
+          flex-direction: row;
+          justify-content: space-around;
+          align-items: center;
+          z-index: 99999;
+        }
+
+        .logo {
+          display: none;
+        }
+
+        .tab {
+          width: 20vw;
+          height: 76px;
+          line-height: 76px;
+          margin: 0;
+          font-size: clamp(17px, 5vw, 30px);
+        }
+
+        #tab2,
+        #tab4 {
+          width: calc(100vw + 8px);
+          height: calc(100dvh - 68px);
+          margin: -8px -8px 0 0;
+        }
+
+        #network,
+        #libraryTreeView {
+          position: absolute;
+          left: 0;
+          top: 70px;
+          right: 0;
+          bottom: 0;
+          width: 100%;
+          height: calc(100dvh - 146px);
+          min-height: calc(100dvh - 146px);
+          z-index: 0;
+        }
+
+        #network > .vis-network,
+        #network canvas {
+          display: block !important;
+          visibility: visible !important;
+          width: 100% !important;
+          height: 100% !important;
+        }
+
+        #libraryTreeView {
+          inset: 70px 0 0 0;
+          padding-top: 0;
+          overflow: auto;
+        }
+
+        #libraryTreeSurface {
+          display: block;
+          min-width: 100vw;
+          min-height: calc(100dvh - 146px);
+        }
+
+        .symbol {
+          width: 93.6px;
+          height: 40.2px;
+        }
+
+        #world {
+          width: 100vw;
+          height: calc(100dvh - 76px);
+          margin: -8px;
+        }
+
+        .island-info-card {
+          max-width: min(82vw, 320px);
+          min-width: min(68vw, 240px);
+          max-height: 34dvh;
+        }
+
+        .button {
+          transform: scale(0.52);
+          transform-origin: top left;
+          touch-action: manipulation;
+        }
+
+        #turn-button,
+        #chat-turn-button {
+          left: 8px !important;
+          top: 8px !important;
+        }
+
+        #dot-button,
+        #chat-dot-button {
+          left: 92px !important;
+          top: 20px !important;
+        }
+
+        #craft-remove-button,
+        #chat-remove-button {
+          left: 160px !important;
+          top: 12px !important;
+        }
+
+        #craft-eye-button,
+        #chat-eye-button {
+          left: 246px !important;
+          top: 16px !important;
+        }
+
+        #library-mode-button {
+          left: 104px !important;
+          top: 10px !important;
+          z-index: 20;
+        }
+
+        #library-organize-button {
+          left: 200px !important;
+          top: 10px !important;
+          z-index: 20;
+        }
+
+        #library-remove-button {
+          left: 8px !important;
+          top: 10px !important;
+          z-index: 20;
+        }
+
+        #palette {
+          left: 8px !important;
+          top: 88px !important;
+          gap: 7px;
+          padding: 5px 7px;
+        }
+
+        #palette .color {
+          width: 24px;
+          height: 24px;
+          border-width: 1px;
+        }
+
+        #top-right-ui {
+          right: 8px !important;
+          left: auto !important;
+          top: 74px !important;
+          transform: none;
+          transform-origin: top right;
+          display: flex;
+          flex-direction: column;
+          align-items: stretch;
+          gap: 5px;
+        }
+
+        #quota-badge {
+          font-size: 11px;
+          line-height: 1.25;
+          padding: 6px 8px;
+          max-width: 132px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: normal;
+          border-radius: 5px;
+          text-align: left;
+        }
+
+        .lang-menu {
+          padding: 3px;
+          gap: 3px;
+          border-width: 1px;
+        }
+
+        .lang-item {
+          padding: 4px 6px;
+          font-size: 11px;
+          border-radius: 999px;
+        }
+
+        #lang-toggle,
+        .lang-menu {
+          transform: none;
+          transform-origin: top left;
+        }
+
+        .palette {
+          transform: none;
+          transform-origin: top left;
+          margin: 0;
+        }
+
+        .wheel {
+          width: 188px !important;
+          height: 189px !important;
+          left: 10px !important;
+          bottom: 88px !important;
+        }
+
+        #chatMinimap {
+          right: 10px !important;
+          bottom: 88px !important;
+          transform: scale(0.78);
+          transform-origin: bottom right;
+        }
+
+        #chat-question {
+          left: 8px !important;
+          right: auto !important;
+          top: auto !important;
+          bottom: 276px !important;
+          width: calc(100vw - 150px) !important;
+          max-width: calc(100vw - 150px) !important;
+          min-width: 0 !important;
+          box-sizing: border-box;
+          padding: 7px 9px !important;
+          font-size: 11px !important;
+        }
+
+        #message-input,
+        #symbol-message-input {
+          left: 8px !important;
+          width: calc(100vw - 150px) !important;
+          max-width: calc(100vw - 150px) !important;
+          box-sizing: border-box;
+          padding: 8px !important;
+          font-size: 16px !important;
+        }
+
+        #symbol-message-input {
+          bottom: 242px !important;
+        }
+
+        #message-input {
+          bottom: 212px !important;
+        }
+
+        .label-input,
+        .label-textarea {
+          font-size: 16px;
+          width: min(210px, 60vw);
+          max-width: min(210px, 60vw);
+        }
+
+        .submit-button,
+        .cancel-button {
+          transform: scale(0.9);
+          transform-origin: top left;
+        }
+
+        #tutorialBubble {
+          max-width: calc(100vw - 24px);
+          font-size: 14px;
+        }
+
+        .mobile-only {
+          display: initial;
+        }
+
+        body:not(.home-tab-active) #top-right-ui {
+          display: none;
+        }
+      }
+
+      @media (max-width: 480px) {
+        #top-right-ui {
+          right: 8px !important;
+          left: auto !important;
+          top: 74px !important;
+        }
+
+        #quota-badge {
+          max-width: 118px;
+        }
+      }
     </style>
     <script
       type="text/javascript"
@@ -1298,7 +1621,7 @@
       const I18N = {
         en: {
           homeHTML: `
-          <h1 style="text-align: center">Divinatory Conlang on Canvas</h1>
+          <h1 style="text-align: center">Ítí Isles</h1>
           <br>
           <p>
           Welcome!<br />
@@ -1322,6 +1645,7 @@
           "molecules," the ways they combine, are entirely up to you.<br />
           These basic symbols were originally inspired by the Yijing trigrams, though they have
           already transformed a lot during development and now have a more independent identity.
+          Now, they are named "Ítí."
           </p>
 
           <div
@@ -1483,7 +1807,7 @@
           },
           supportCode: 'Support code',
           clickToCopy: '(click to copy UID)',
-          supportOnKofi: 'Support on Ko-fi',
+          supportOnKofi: '🍹 Support on Ko-fi',
           fillAllFields: 'Please fill in all fields!',
           wordAlreadyDefined: 'You have already defined this word!',
           expressionAlreadyUsed:
@@ -1495,7 +1819,7 @@
         },
         zh: {
           homeHTML: `
-                  <h1 style="text-align:center;">卦言画布 </h1>
+                  <h1 style="text-align:center;">Ítí 岛</h1>
 
                   <p>
                   欢迎！<br>
@@ -1511,7 +1835,7 @@
 
                   <p>
                   你能摆弄的语言“原子”（基础符号）是我给好的；但“分子”（组合方式）完全由你定。<br>
-                  这些基础符号的灵感最初来自《易经》八卦，但已经在开发过程中辗转变形，面目一新。
+                  这些基础符号的灵感最初来自《易经》八卦，但已经在开发过程中辗转变形，面目一新。我现在叫它Ítí。
                   </p>
 
                   <!-- TL;DR card -->
@@ -3667,6 +3991,13 @@
           enableIslandSelection();
         }
 
+        if (tabIndex === 2) {
+          requestAnimationFrame(() => {
+            refreshLibraryViewport?.();
+            requestAnimationFrame(() => refreshLibraryViewport?.());
+          });
+        }
+
         if (tabIndex === 1 && !marqueeCraftEnabled) {
           enableMarqueeSelection({
             canvasEl: document.getElementById('craftCanvas'),
@@ -3750,6 +4081,7 @@
             tabHeadersActivated[i] = false;
           }
         }
+        document.body.classList.toggle('home-tab-active', tabIndex === 0);
         updateTutorialUi?.();
         tutorialMaybeAdvance?.();
       };
@@ -3784,6 +4116,12 @@
       let homeContentZoom = 1;
       let libraryContentZoom = 1;
       let worldContentZoom = 1;
+      let canvasZoomGestureUntil = 0;
+      let canvasPinchActive = false;
+
+      function isCanvasZoomGestureActive() {
+        return canvasPinchActive || performance.now() < canvasZoomGestureUntil;
+      }
 
       function clampCanvasZoom(container, v) {
         const minZoom = container === craftCanvas() ? MIN_CRAFT_CANVAS_ZOOM : MIN_CHAT_CANVAS_ZOOM;
@@ -3828,6 +4166,33 @@
             network.moveTo({ scale: libraryContentZoom, animation: false });
           } catch {}
         }
+      }
+
+      function refreshLibraryViewport() {
+        if (libraryViewMode === 'tree') {
+          renderLibraryTreeView?.();
+          requestAnimationFrame(() => {
+            refreshLibraryTreeEdgesFromDom?.();
+          });
+          return;
+        }
+
+        if (!network || !container) return;
+        const width = container.clientWidth || tab2?.clientWidth || window.innerWidth;
+        const height =
+          container.clientHeight || tab2?.clientHeight || Math.max(240, window.innerHeight - 76);
+        container.style.width = `${width}px`;
+        container.style.height = `${height}px`;
+        try {
+          network.setSize(`${width}px`, `${height}px`);
+          network.redraw();
+          const ids = nodes?.getIds?.() || [];
+          if (ids.length) {
+            network.fit({ nodes: ids, animation: false });
+          } else {
+            network.fit({ animation: false });
+          }
+        } catch {}
       }
 
       function applyWorldContentZoom(zoom) {
@@ -3890,6 +4255,7 @@
 
         const canvas = isChat ? chatCanvas() : craftCanvas();
         if (!canvas) return;
+        canvasZoomGestureUntil = performance.now() + 120;
 
         const oldZoom = getCanvasZoom(canvas);
         const nextZoom = clampCanvasZoom(
@@ -3958,6 +4324,12 @@
         const nextZoom = clampViewContentZoom(
           deltaY < 0 ? oldZoom * CANVAS_ZOOM_STEP : oldZoom / CANVAS_ZOOM_STEP,
         );
+        zoomLibraryTo(nextZoom, clientX, clientY);
+      }
+
+      function zoomLibraryTo(nextZoom, clientX, clientY) {
+        const oldZoom = libraryContentZoom;
+        nextZoom = clampViewContentZoom(nextZoom);
         if (Math.abs(nextZoom - oldZoom) < 0.0001) return;
         if (libraryViewMode !== 'tree' && network && container) {
           // Keep the world-point under the mouse fixed while zooming.
@@ -3993,16 +4365,41 @@
         zoomScrollableContent(tab2, oldZoom, nextZoom, clientX, clientY, applyLibraryContentZoom);
       }
 
+      document.getElementById('network')?.addEventListener(
+        'wheel',
+        (e) => {
+          if (!(e.ctrlKey || e.metaKey)) return;
+          const active = document.querySelector('.tab-content.active');
+          if (active?.id !== 'tab2') return;
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation?.();
+          zoomLibraryContent(e.deltaY, e.clientX, e.clientY);
+        },
+        { capture: true, passive: false },
+      );
+
       function zoomWorldContent(deltaY, clientX, clientY) {
         const world = document.getElementById('world');
         const controller = worldPanController;
         if (!world || !controller) return;
+        canvasZoomGestureUntil = performance.now() + 120;
         const oldZoom = worldContentZoom;
         const nextZoom = clampViewContentZoom(
           deltaY < 0 ? oldZoom * CANVAS_ZOOM_STEP : oldZoom / CANVAS_ZOOM_STEP,
         );
         if (Math.abs(nextZoom - oldZoom) < 0.0001) return;
 
+        zoomWorldTo(nextZoom, clientX, clientY);
+      }
+
+      function zoomWorldTo(nextZoom, clientX, clientY) {
+        const world = document.getElementById('world');
+        const controller = worldPanController;
+        if (!world || !controller) return;
+        const oldZoom = worldContentZoom;
+        nextZoom = clampViewContentZoom(nextZoom);
+        if (Math.abs(nextZoom - oldZoom) < 0.0001) return;
         const rect = world.getBoundingClientRect();
         const localX = clientX - rect.left;
         const localY = clientY - rect.top;
@@ -4010,7 +4407,7 @@
         const worldX = (localX - offset.x) / oldZoom;
         const worldY = (localY - offset.y) / oldZoom;
 
-        applyWorldContentZoom(nextZoom);
+        worldContentZoom = nextZoom;
         controller.setOffset(localX - worldX * nextZoom, localY - worldY * nextZoom);
       }
 
@@ -4052,6 +4449,163 @@
         },
         { passive: false },
       );
+
+      function getTouchInteractionTarget(target) {
+        const hit = target?.closest?.('.symbol, .symbol-label, .dot, .wheel') || null;
+        if (hit?.classList?.contains('dot') && hit.parent) return hit.parent;
+        return hit;
+      }
+
+      function dispatchSyntheticMouse(type, touch, target) {
+        const eventTarget = type === 'mousemove' || type === 'mouseup' ? document : target;
+        eventTarget?.dispatchEvent(
+          new MouseEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            view: window,
+            button: 0,
+            buttons: type === 'mouseup' ? 0 : 1,
+            clientX: touch.clientX,
+            clientY: touch.clientY,
+            screenX: touch.screenX,
+            screenY: touch.screenY,
+          }),
+        );
+      }
+
+      (function enableMobileTouchInteractions() {
+        let activeTouchId = null;
+        let activeTouchTarget = null;
+        let startX = 0;
+        let startY = 0;
+        let lastX = 0;
+        let lastY = 0;
+        let pinch = null;
+        const clickThresholdSq = 36;
+
+        const findTouch = (list, id) => {
+          for (const touch of list) {
+            if (touch.identifier === id) return touch;
+          }
+          return null;
+        };
+
+        const pinchDistance = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+        const pinchCenter = (a, b) => ({
+          x: (a.clientX + b.clientX) / 2,
+          y: (a.clientY + b.clientY) / 2,
+        });
+
+        document.addEventListener(
+          'touchstart',
+          (e) => {
+            if (e.touches.length === 2) {
+              const active = document.querySelector('.tab-content.active');
+              if (!active || !['tab0', 'tab1', 'tab2', 'tab3', 'tab4'].includes(active.id)) return;
+              endLongPress(true);
+              cancelDraggingState();
+              canvasPinchActive = true;
+              canvasZoomGestureUntil = performance.now() + 120;
+              pinch = {
+                tabId: active.id,
+                distance: pinchDistance(e.touches[0], e.touches[1]),
+              };
+              activeTouchId = null;
+              activeTouchTarget = null;
+              e.preventDefault();
+              return;
+            }
+
+            if (e.touches.length !== 1 || activeTouchId !== null) return;
+            const target = getTouchInteractionTarget(e.target);
+            if (!target) return;
+
+            const touch = e.touches[0];
+            activeTouchId = touch.identifier;
+            activeTouchTarget = target;
+            startX = lastX = touch.clientX;
+            startY = lastY = touch.clientY;
+            dispatchSyntheticMouse('mousedown', touch, target);
+            e.preventDefault();
+          },
+          { passive: false },
+        );
+
+        document.addEventListener(
+          'touchmove',
+          (e) => {
+            if (pinch && e.touches.length === 2) {
+              canvasPinchActive = true;
+              canvasZoomGestureUntil = performance.now() + 120;
+              const nextDistance = pinchDistance(e.touches[0], e.touches[1]);
+              if (Math.abs(nextDistance - pinch.distance) > 3) {
+                const center = pinchCenter(e.touches[0], e.touches[1]);
+                const ratio = nextDistance / Math.max(1, pinch.distance);
+                const deltaY = nextDistance > pinch.distance ? -120 : 120;
+                if (pinch.tabId === 'tab1' || pinch.tabId === 'tab4') {
+                  zoomActiveCanvas(deltaY, center.x, center.y);
+                } else if (pinch.tabId === 'tab0') {
+                  zoomHomeContent(deltaY, center.x, center.y);
+                } else if (pinch.tabId === 'tab2') {
+                  zoomLibraryTo(libraryContentZoom * ratio, center.x, center.y);
+                } else if (pinch.tabId === 'tab3') {
+                  zoomWorldTo(worldContentZoom * ratio, center.x, center.y);
+                }
+                pinch.distance = nextDistance;
+              }
+              e.preventDefault();
+              return;
+            }
+
+            if (activeTouchId === null || !activeTouchTarget) return;
+            const touch =
+              findTouch(e.changedTouches, activeTouchId) || findTouch(e.touches, activeTouchId);
+            if (!touch) return;
+            lastX = touch.clientX;
+            lastY = touch.clientY;
+            dispatchSyntheticMouse('mousemove', touch, activeTouchTarget);
+            e.preventDefault();
+          },
+          { passive: false },
+        );
+
+        function endTouch(e) {
+          if (pinch && e.touches.length < 2) {
+            pinch = null;
+            canvasPinchActive = false;
+            canvasZoomGestureUntil = performance.now() + 120;
+          }
+          if (activeTouchId === null || !activeTouchTarget) return;
+          const touch = findTouch(e.changedTouches, activeTouchId);
+          if (!touch) return;
+
+          dispatchSyntheticMouse('mouseup', touch, activeTouchTarget);
+          const dx = lastX - startX;
+          const dy = lastY - startY;
+          if (dx * dx + dy * dy <= clickThresholdSq) {
+            activeTouchTarget.dispatchEvent(
+              new MouseEvent('click', {
+                bubbles: true,
+                cancelable: true,
+                view: window,
+                button: 0,
+                buttons: 0,
+                clientX: touch.clientX,
+                clientY: touch.clientY,
+                screenX: touch.screenX,
+                screenY: touch.screenY,
+              }),
+            );
+          }
+
+          activeTouchId = null;
+          activeTouchTarget = null;
+          e.preventDefault();
+        }
+
+        document.addEventListener('touchend', endTouch, { passive: false });
+        document.addEventListener('touchcancel', endTouch, { passive: false });
+      })();
 
       tab1?.addEventListener('scroll', () => {
         if (!tabHeadersActivated[1]) return;
@@ -6124,7 +6678,8 @@
       const centerX = 450; // Center of the canvas (half of canvas width)
       const centerY = 200; // Center of the canvas (half of canvas height)
 
-      const symbolScale = 0.75;
+      const isCoarseMobile = window.matchMedia?.('(max-width: 820px), (pointer: coarse)')?.matches;
+      const symbolScale = isCoarseMobile ? 0.6 : 0.75;
       const symbolWidth = 156;
       const symbolHeight = 67;
 
@@ -7328,6 +7883,7 @@
       const removeNodeButton = document.createElement('div');
       removeNodeButton.isActivated = false;
       removeNodeButton.classList.add('button');
+      removeNodeButton.id = 'library-remove-button';
       removeNodeButton.style.width = `168.75px`;
       removeNodeButton.style.height = `119.25px`;
       removeNodeButton.style.backgroundImage = "url('./icons/astray.png')";
@@ -7421,19 +7977,32 @@
       );
       const centerRadius = 36; // Define center circle radius
 
+      function getWheelCenter(el) {
+        const r = el.getBoundingClientRect();
+        return {
+          x: r.left + r.width / 2,
+          y: r.top + r.height / 2,
+          radius: Math.max(
+            24,
+            (r.width / parseFloat(wheel.style.width || r.width)) * centerRadius,
+          ),
+        };
+      }
+
       wheel.addEventListener('mousedown', (e) => {
         wheel.style.zIndex = '0';
         latestPointerClientX = e.clientX;
         latestPointerClientY = e.clientY;
         const mouseX = e.clientX;
         const mouseY = e.clientY;
+        const wheelHit = getWheelCenter(wheel);
 
         // Calculate the distance from the center
-        const dx = mouseX - wheelCenterX;
-        const dy = mouseY - wheelCenterY;
+        const dx = mouseX - wheelHit.x;
+        const dy = mouseY - wheelHit.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (distance < centerRadius) {
+        if (distance < wheelHit.radius) {
           wheel.style.backgroundImage = `url(./icons/wheel/wheel8.png)`;
           const symbol = createSymbolCopy(mouseX, mouseY, 8);
           beginWheelSpawnDrag(symbol, mouseX, mouseY);
@@ -7474,13 +8043,14 @@
 
         const mouseX = e.clientX;
         const mouseY = e.clientY;
+        const wheelHit = getWheelCenter(wheel2);
 
         // Calculate the distance from the center
-        const dx = mouseX - wheelCenterX;
-        const dy = mouseY - wheelCenterY;
+        const dx = mouseX - wheelHit.x;
+        const dy = mouseY - wheelHit.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (distance < centerRadius) {
+        if (distance < wheelHit.radius) {
           console.log('Clicked center!');
           wheel2.style.backgroundImage = `url(./icons/wheel/wheel8.png)`;
           const symbol = createSymbolCopy(mouseX, mouseY, 8);
@@ -8879,6 +9449,20 @@
         return { x: (clientX - r.left) / zoom, y: (clientY - r.top) / zoom };
       }
 
+      function getRenderedSymbolScale(symbol) {
+        const rect = symbol.getBoundingClientRect();
+        const angle = Number(symbol.angle || 0);
+        if (angle === 90 || angle === 270) {
+          return (
+            rect.height / symbolWidth ||
+            symbolScale * (getCanvasZoom(getCanvasForElem(symbol)) || 1)
+          );
+        }
+        return (
+          rect.width / symbolWidth || symbolScale * (getCanvasZoom(getCanvasForElem(symbol)) || 1)
+        );
+      }
+
       function getCanvasForElem(el) {
         // 如果符号/emoji 被 append 到哪个 canvas，就用哪个 canvas
         return el.closest('#craftCanvas, #chatCanvas');
@@ -9002,6 +9586,24 @@
       function setSymbolDragUiPassThrough(on) {
         document.body.classList.toggle('symbol-drag-ui-pass-through', !!on);
       }
+
+      function isCanvasUiTarget(target) {
+        return !!target?.closest?.(
+          '.button, #palette, .color, #top-right-ui, #lang-toggle, .lang-menu, .lang-circle, .lang-item, .vertical-bar, .tab, .submit-button, .cancel-button, input, textarea',
+        );
+      }
+
+      document.addEventListener(
+        'pointerdown',
+        (e) => {
+          if (!isCanvasUiTarget(e.target)) return;
+          if (!activeSymbol && !activeEmoji && !dragGroup && !clickOnlySymbol && !clickOnlyEmoji)
+            return;
+          endLongPress(true);
+          cancelDraggingState();
+        },
+        true,
+      );
 
       function applyDeltaToGroup(dx, dy) {
         if (!dragGroup) return;
@@ -9333,6 +9935,17 @@
 
           let x = localX - activeSymbol.offsetX;
           let y = localY - activeSymbol.offsetY;
+          if (dragSnapLock?.activeEl === activeSymbol && !groupDragActive) {
+            const mdx = e.clientX - dragSnapLock.clientX0;
+            const mdy = e.clientY - dragSnapLock.clientY0;
+            if (Math.hypot(mdx, mdy) <= UNSNAP_DISTANCE) {
+              x = dragSnapLock.left;
+              y = dragSnapLock.top;
+            } else {
+              dragSnapLock = null;
+              snapCooldownUntil = performance.now() + 150;
+            }
+          }
           activeSymbol.style.left = `${x}px`;
           activeSymbol.style.top = `${y}px`;
           activeSymbol.selected = true;
@@ -9369,7 +9982,22 @@
             activeSymbol.doneButton.style.top = `${y + activeSymbol.doneButton.offsetY}px`;
           }
 
-          checkConnections(activeSymbol);
+          const snapped = !dragSnapLock && performance.now() > snapCooldownUntil
+            ? checkConnections(activeSymbol)
+            : false;
+          if (snapped) {
+            const snappedLeft = parseFloat(activeSymbol.style.left) || x;
+            const snappedTop = parseFloat(activeSymbol.style.top) || y;
+            dragSnapLock = {
+              activeEl: activeSymbol,
+              clientX0: e.clientX,
+              clientY0: e.clientY,
+              left: snappedLeft,
+              top: snappedTop,
+            };
+            x = snappedLeft;
+            y = snappedTop;
+          }
 
           const snappedCandidate =
             pendingSnapLinks.some((link) => link.active === activeSymbol) ||
@@ -10124,20 +10752,19 @@
           box = document.createElement('div');
           box.className = 'marquee-box';
           // 关键：不要让蓝框吃掉事件
-          box.style.position = 'absolute';
+          box.style.position = 'fixed';
           box.style.pointerEvents = 'none';
           box.style.display = 'none';
-          canvasEl.appendChild(box);
+          box.style.zIndex = '99990';
+          document.body.appendChild(box);
           return box;
         }
 
         function showBox(clientX1, clientY1, clientX2, clientY2) {
-          const r = canvasEl.getBoundingClientRect();
-          const zoom = getCanvasZoom(canvasEl) || 1;
-          const x1 = (Math.min(clientX1, clientX2) - r.left) / zoom;
-          const y1 = (Math.min(clientY1, clientY2) - r.top) / zoom;
-          const x2 = (Math.max(clientX1, clientX2) - r.left) / zoom;
-          const y2 = (Math.max(clientY1, clientY2) - r.top) / zoom;
+          const x1 = Math.min(clientX1, clientX2);
+          const y1 = Math.min(clientY1, clientY2);
+          const x2 = Math.max(clientX1, clientX2);
+          const y2 = Math.max(clientY1, clientY2);
 
           const b = ensureBox();
           b.style.left = `${x1}px`;
@@ -10230,6 +10857,7 @@
 
         // 用 pointer 事件更稳（鼠标移出也不丢）
         canvasEl.addEventListener('pointerdown', (e) => {
+          if (isCanvasZoomGestureActive()) return;
           if (e.button !== 0) return; // 只左键
           if (shouldIgnoreTarget(e.target)) return;
 
@@ -10245,6 +10873,14 @@
         });
 
         canvasEl.addEventListener('pointermove', (e) => {
+          if (isCanvasZoomGestureActive()) {
+            isDown = false;
+            isDragging = false;
+            downOnItem = false;
+            marqueeActive = false;
+            hideBox();
+            return;
+          }
           if (!isDown) return;
 
           if (downOnItem) return;
@@ -10864,8 +11500,20 @@
         const kofiUrl = 'https://ko-fi.com/ukiriz'; // 换成你的 Ko-fi 链接
 
         const t = I18N[currentLang];
-
-        el.innerHTML = `
+        const isMobileQuota = window.matchMedia?.(
+          '(max-width: 820px), (pointer: coarse)',
+        )?.matches;
+        if (isMobileQuota) {
+          const creditsLabel = currentLang === 'zh' ? '额度' : 'Credits';
+          const copyLabel = currentLang === 'zh' ? '复制 UID' : 'copy UID';
+          const supportLabel = currentLang === 'zh' ? '🍹 在 Ko-fi 支持' : '🍹 Support on Ko-fi';
+          el.innerHTML = `
+            <div><strong>${creditsLabel}: ${remaining}/${limit}</strong></div>
+            <button type="button" id="support-code" style="display:block;margin:4px 0 0;padding:0;border:0;background:transparent;text-decoration:underline;cursor:pointer;font:inherit;color:inherit;">${copyLabel}</button>
+            <a id="kofi-link" href="${kofiUrl}" target="_blank" rel="noopener noreferrer" style="display:block;margin-top:4px;text-decoration:underline;color:inherit;">${supportLabel}</a>
+          `;
+        } else {
+          el.innerHTML = `
                   <div><strong>${t.credits(used, limit)}</strong></div>
 
                   <div style="margin-top:4px; font-size:12px;">
@@ -10881,6 +11529,7 @@
                   </a>
                   </div>
               `;
+        }
 
         const sc = document.getElementById('support-code');
         if (sc && uid) {
@@ -10917,7 +11566,11 @@
 
             // visual feedback
             const old = (sc.textContent || '').replace(/\s*✓+$/u, '');
-            sc.textContent = `${old} ✓`;
+            if (old === 'copy UID' || old === '复制 UID') {
+              sc.textContent = currentLang === 'zh' ? '已复制 ✓' : 'copied ✓';
+            } else {
+              sc.textContent = `${old} ✓`;
+            }
             setTimeout(() => (sc.textContent = old), 1200);
           };
           sc.onmousedown = (e) => e.stopPropagation();
@@ -11958,6 +12611,8 @@
 
           const activeJunctions = getAbsJunctions(active);
           const targetJunctions = getAbsJunctions(target);
+          const activeOffsetScale = getRenderedSymbolScale(active) / Math.max(symbolScale, 0.0001);
+          const calYRendered = calY * activeOffsetScale;
 
           targetJunctions.forEach((targetCoord, index) => {
             switch (index) {
@@ -12007,7 +12662,7 @@
                       second.x,
                       second.y,
                       targetCoord.x,
-                      targetCoord.y + calY,
+                      targetCoord.y + calYRendered,
                       Side.END,
                       Side.START,
                       'heihei',
@@ -12060,7 +12715,7 @@
                       first.x,
                       first.y,
                       targetCoord.x,
-                      targetCoord.y - calY,
+                      targetCoord.y - calYRendered,
                       Side.START,
                       Side.END,
                       'meimei',
@@ -12144,9 +12799,10 @@
             const targetRect = target.getBoundingClientRect();
             const canvas = getCanvasForElem(active);
             const zoom = getCanvasZoom(canvas) || 1;
+            const targetRenderScale = getRenderedSymbolScale(target);
             if (getDir(active) === 0) {
               targetX = targetRect.left;
-              targetY = targetRect.top - (symbolHeight - 7) * symbolScale * zoom;
+              targetY = targetRect.top - (symbolHeight - 7) * targetRenderScale;
               if (currentGraph.getSymbolConnections(target)[Side.PAR_TOP].length === 0) {
                 snapToSymbol(
                   active,
@@ -12159,7 +12815,7 @@
                   Side.PAR_TOP,
                 );
               }
-              targetY = targetRect.top + (symbolHeight - 4) * symbolScale * zoom;
+              targetY = targetRect.top + (symbolHeight - 4) * targetRenderScale;
               if (currentGraph.getSymbolConnections(target)[Side.PAR_BOT].length === 0) {
                 snapToSymbol(
                   active,
@@ -12174,7 +12830,7 @@
               }
             }
             if (getDir(active) === 1) {
-              targetX = targetRect.left - (symbolHeight - 7) * symbolScale * zoom;
+              targetX = targetRect.left - (symbolHeight - 7) * targetRenderScale;
               targetY = targetRect.top;
               if (currentGraph.getSymbolConnections(target)[Side.PAR_TOP].length === 0) {
                 snapToSymbol(
@@ -12188,7 +12844,7 @@
                   Side.PAR_TOP,
                 );
               }
-              targetX = targetRect.left + (symbolHeight - 4) * symbolScale * zoom;
+              targetX = targetRect.left + (symbolHeight - 4) * targetRenderScale;
               if (currentGraph.getSymbolConnections(target)[Side.PAR_BOT].length === 0) {
                 snapToSymbol(
                   active,
@@ -12206,8 +12862,9 @@
         }
 
         if (!groupDragActive) {
-          applyPendingSnapCandidates(active);
+          return applyPendingSnapCandidates(active);
         }
+        return false;
       }
 
       // Get the offset for the symbol when connected to another symbol (side 0 = left, 1 = right)
@@ -12293,12 +12950,11 @@
       function getAbsJunctions(symbol) {
         const relJunctions = getRelJunctions(symbol);
         const rect = symbol.getBoundingClientRect();
-        const canvas = getCanvasForElem(symbol);
-        const zoom = getCanvasZoom(canvas) || 1;
-        const renderScale = symbolScale * zoom;
-        const calInvYScaled = calInvY * zoom;
-        const calCan1Scaled = calCan1 * zoom;
-        const calCan2Scaled = calCan2 * zoom;
+        const renderScale = getRenderedSymbolScale(symbol);
+        const baseScale = renderScale / Math.max(symbolScale, 0.0001);
+        const calInvYScaled = calInvY * baseScale;
+        const calCan1Scaled = calCan1 * baseScale;
+        const calCan2Scaled = calCan2 * baseScale;
 
         let absJunctions;
         if (symbol.angle === 0) {
@@ -12467,8 +13123,13 @@
         const canvas = getCanvasForElem(active);
         const zoom = getCanvasZoom(canvas) || 1;
         const clientDist = getDist(activeX, activeY, targetX, targetY);
-        const localDist = clientDist / zoom;
-        if (localDist >= SNAP_DISTANCE) return;
+        const mobileZoomTightening = isCoarseMobile ? Math.max(0.32, 1 / Math.sqrt(zoom)) : 1;
+        const snapDistance = isCoarseMobile
+          ? SNAP_DISTANCE * 0.42 * mobileZoomTightening
+          : SNAP_DISTANCE;
+        // Keep magnet sensitivity visually stable under zoom. If this were measured in
+        // canvas-local units, zooming in would make the snap radius feel much larger.
+        if (clientDist >= snapDistance) return;
 
         const dx = (targetX - activeX) / zoom;
         const dy = (targetY - activeY) / zoom;
@@ -12490,7 +13151,7 @@
           targetSide,
           dx,
           dy,
-          dist: localDist,
+          dist: clientDist,
         });
       }
 
@@ -12565,6 +13226,11 @@
             enabled: true,
             iterations: 600,
           },
+        },
+        interaction: {
+          zoomView: false,
+          dragView: true,
+          dragNodes: true,
         },
       };
 
@@ -13693,6 +14359,7 @@
 
       const organizeNodeButton = document.createElement('div');
       organizeNodeButton.classList.add('button');
+      organizeNodeButton.id = 'library-organize-button';
       organizeNodeButton.style.width = `168.75px`;
       organizeNodeButton.style.height = `119.25px`;
       organizeNodeButton.style.backgroundImage = LIBRARY_ARRANGE_ICON;
@@ -13709,6 +14376,7 @@
 
       const modeNodeButton = document.createElement('div');
       modeNodeButton.classList.add('button');
+      modeNodeButton.id = 'library-mode-button';
       modeNodeButton.style.width = `168.75px`;
       modeNodeButton.style.height = `119.25px`;
       modeNodeButton.style.left = `210px`;
@@ -13747,17 +14415,12 @@
         if (showTree) {
           renderLibraryTreeView();
           applyLibraryContentZoom(libraryContentZoom || 1);
+          requestAnimationFrame(() => refreshLibraryViewport?.());
           emitTutorialEvent?.('library_tree_view');
         } else if (network) {
           setTimeout(() => {
-            network.redraw();
+            refreshLibraryViewport?.();
             applyLibraryContentZoom(libraryContentZoom || 1);
-            network.fit({
-              animation: {
-                duration: 400,
-                easingFunction: 'easeInOutQuad',
-              },
-            });
           }, 30);
         }
       }
@@ -13792,8 +14455,13 @@
         rebuildLibraryFromNodes();
         renderLibraryTreeView();
         setLibraryViewMode(libraryViewMode);
+        requestAnimationFrame(() => refreshLibraryViewport?.());
 
         network.once('afterDrawing', function () {
+          if (isCoarseMobile) {
+            refreshLibraryViewport?.();
+            return;
+          }
           // Assuming 'container' is the DOM element where the network is rendered
           let containerWidth = container.offsetWidth;
           let containerHeight = container.offsetHeight;
@@ -14165,11 +14833,27 @@
 
       async function generateUniqueId(svgString) {
         // Ensure consistent encoding
+        const normalized = String(svgString || '').trim(); // Trim to avoid whitespace inconsistencies
         const encoder = new TextEncoder();
-        const data = encoder.encode(svgString.trim()); // Trim to avoid whitespace inconsistencies
+        const data = encoder.encode(normalized);
 
         // Compute SHA-256 hash
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const subtle = globalThis.crypto?.subtle || globalThis.crypto?.webcrypto?.subtle;
+        if (!subtle?.digest) {
+          let h1 = 0x811c9dc5;
+          let h2 = 0x01000193;
+          for (let i = 0; i < normalized.length; i++) {
+            const c = normalized.charCodeAt(i);
+            h1 ^= c;
+            h1 = Math.imul(h1, 0x01000193);
+            h2 ^= c + i;
+            h2 = Math.imul(h2, 0x85ebca6b);
+          }
+          const fallback = `${(h1 >>> 0).toString(36)}${(h2 >>> 0).toString(36)}`;
+          return `svg-${fallback.substring(0, 16)}`;
+        }
+
+        const hashBuffer = await subtle.digest('SHA-256', data);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
 
         // Convert hash to a base64 string (URL-safe)
@@ -14648,6 +15332,7 @@
         }
 
         world.addEventListener('pointerdown', (e) => {
+          if (isCanvasZoomGestureActive()) return;
           // 右键不拖
           if (e.button === 2) return;
 
@@ -14668,6 +15353,11 @@
         });
 
         world.addEventListener('pointermove', (e) => {
+          if (isCanvasZoomGestureActive()) {
+            dragging = false;
+            world.classList.remove('dragging');
+            return;
+          }
           if (!dragging) return;
           const dx = e.clientX - startX;
           const dy = e.clientY - startY;
@@ -14830,15 +15520,19 @@
         const cardRect = card.getBoundingClientRect();
 
         const gap = 14;
-        const preferRight = islandRect.right + gap + cardRect.width <= worldRect.right - 8;
-        const left = preferRight
-          ? islandRect.right - worldRect.left + gap
-          : islandRect.left - worldRect.left - gap - cardRect.width;
+        const islandCenterX = islandRect.left - worldRect.left + islandRect.width / 2;
+        const belowTop = islandRect.bottom - worldRect.top + gap;
+        const aboveTop = islandRect.top - worldRect.top - gap - cardRect.height;
+        const top =
+          belowTop + cardRect.height <= worldRect.height - 8
+            ? belowTop
+            : clamp(aboveTop, 8, Math.max(8, worldRect.height - cardRect.height - 8));
 
-        const unclampedTop = islandRect.top - worldRect.top;
-        const top = clamp(unclampedTop, 8, Math.max(8, worldRect.height - cardRect.height - 8));
-
-        const finalLeft = clamp(left, 8, Math.max(8, worldRect.width - cardRect.width - 8));
+        const finalLeft = clamp(
+          islandCenterX - cardRect.width / 2,
+          8,
+          Math.max(8, worldRect.width - cardRect.width - 8),
+        );
         card.style.left = `${finalLeft}px`;
         card.style.top = `${top}px`;
       }
