@@ -493,8 +493,8 @@
 
       .lang-menu {
         position: static;
-        background: white;
-        border: 2px solid #ccc;
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid #000;
         border-radius: 999px;
         padding: 6px;
         display: inline-flex;
@@ -611,7 +611,8 @@
         font-size: 16px;
         font-family: inherit; /* Set font to match labels */
         border-radius: 5px;
-        z-index: 5;
+        z-index: 18;
+        pointer-events: auto;
       }
 
       /* Auto-resizing textarea */
@@ -627,7 +628,8 @@
         border-radius: 5px;
         resize: none;
         overflow: hidden;
-        z-index: 5;
+        z-index: 18;
+        pointer-events: auto;
       }
 
       .label-input.tutorial-readonly,
@@ -651,7 +653,8 @@
         height: 27px;
         line-height: 27px;
         text-align: center;
-        z-index: 5;
+        z-index: 19;
+        pointer-events: auto;
       }
 
       /* Hover effect */
@@ -828,9 +831,15 @@
         user-select: none;
         -webkit-user-select: none;
       }
+      .library-tree-card.displaced {
+        transition:
+          top 120ms ease-out,
+          left 120ms ease-out;
+      }
       .library-tree-card.dragging {
         cursor: grabbing;
         z-index: 2;
+        transition: none;
       }
       .library-tree-card.selected {
         box-shadow: inset 0 0 0 2px #000;
@@ -1648,45 +1657,6 @@
           Now, they are named "Ítí."
           </p>
 
-          <div
-          style="
-              max-width: 680px;
-              margin: 18px auto 22px auto;
-              padding: 14px 16px;
-              background: white;
-              border: 1px solid black;
-              border-radius: 10px;
-              box-shadow: 0 4px 0 rgba(0, 0, 0, 0.08);
-              font-family: inherit;
-          "
-          >
-          <div style="text-align: center; font-size: 18px; margin-bottom: 10px">
-              <b>TL;DR - How to start</b>
-          </div>
-
-          <div style="font-size: 14px; line-height: 1.5">
-              <div style="margin-bottom: 8px">
-              <b>1) Build a word:</b> Go to <b>Craft</b>, press the <b>symbol wheel</b> to create a
-              symbol, and drag it onto the canvas. Symbols can magnetically snap together.
-              </div>
-              <div style="margin-bottom: 8px">
-              <b>2) Select + Insight:</b> <b>Click and hold</b> any symbol to select the
-              <b>connected component</b> it belongs to, then press <b>Insight</b> (the eye) to get
-              prompts about its meaning.
-              </div>
-              <div style="margin-bottom: 10px">
-              <b>3) Define + save:</b> Enter what the symbol cluster means and your reasoning.
-              If it passes, it will appear in the <b>Library</b>.
-              </div>
-              <div style="margin-bottom: 10px">
-              <b>4) World + chat:</b> Go into <b>World</b>, choose any island, and switch to the tab of its name. Now you can talk using the words you created.
-              </div>
-              <div style="text-align:center; padding-top:8px; border-top:1px dashed rgba(0,0,0,0.35);">
-              Starter challenge: try making <b>sky</b>, <b>rain</b>, <b>flower</b>, and <b>world</b>.
-              </div>
-          </div>
-          </div>
-
           <p><b>How do the symbols combine?</b> There are two ways:</p>
 
           <div class="image-row">
@@ -1794,7 +1764,6 @@
           </p>
           <br /><br />
         `,
-          tldrTitle: 'TL;DR - How to start',
           home: 'Home',
           insight: 'Insight',
           craft: 'Craft',
@@ -1837,40 +1806,6 @@
                   你能摆弄的语言“原子”（基础符号）是我给好的；但“分子”（组合方式）完全由你定。<br>
                   这些基础符号的灵感最初来自《易经》八卦，但已经在开发过程中辗转变形，面目一新。我现在叫它Ítí。
                   </p>
-
-                  <!-- TL;DR card -->
-                  <div style="
-                  max-width: 680px;
-                  margin: 18px auto 22px auto;
-                  padding: 14px 16px;
-                  background: white;
-                  border: 1px solid black;
-                  border-radius: 10px;
-                  box-shadow: 0 4px 0 rgba(0,0,0,0.08);
-                  font-family: inherit;
-                  ">
-                  <div style="text-align:center; font-size:18px; margin-bottom:10px;">
-                      <b>给新手的太长不看教程</b>
-                  </div>
-
-                  <div style="font-size:14px; line-height:1.5;">
-                      <div style="margin-bottom:8px;">
-                      <b>1）造一个词：</b>去 <b>工作台</b> 标签页，按 <b>符号轮</b> 创建一个符号，把它拖到画布上。符号之间可以像磁铁一样“吸在一起”。
-                      </div>
-                      <div style="margin-bottom:8px;">
-                      <b>2）选中 + 洞察：</b><b>长按</b>任意符号，会选中它所在的 <b>连通分量</b>；然后点 <b>洞察</b>（眼睛按钮）获取单个符号意义的提示。
-                      </div>
-                      <div style="margin-bottom:10px;">
-                      <b>3）定义 + 保存：</b>输入这组符号对应的意义以及你的理由。通过检查后，它会出现在 <b>词库</b> 标签页。
-                      </div>
-                      <div style="margin-bottom:10px;">
-                      <b>3）世界 + 聊天：</b>进入 <b>世界</b> 标签页，随便选择一个岛屿，切换到它的标签页。现在，你可以用你刚造的词来聊天了！
-                      </div>
-                      <div style="text-align:center; padding-top:8px; border-top:1px dashed rgba(0,0,0,0.35);">
-                      新手挑战：试试造这些词 —— <b>天空、雨、花、世界</b>
-                      </div>
-                  </div>
-                  </div>
 
                   <p><b>符号怎么组合？</b>有两种方式：</p>
 
@@ -1956,7 +1891,6 @@
                   </p>
                   <br /><br />
                 `,
-          tldrTitle: 'TL;DR — 3 步开始',
           home: '欢迎',
           insight: '洞察',
           craft: '工作台',
@@ -1975,8 +1909,8 @@
           expressionAlreadyUsed: '你已经用这个表达式定义过其他词了！',
           quotaReachedToday: '你今天已经达到额度上限。',
           validationFailed: '验证失败。',
-          whatWordIsThis: '\u8fd9\u662f\u4ec0\u4e48\u8bcd\uff1f',
-          whyPrompt: '\u4e3a\u4ec0\u4e48\uff1f',
+          whatWordIsThis: '这是什么词？',
+          whyPrompt: '为什么？',
         },
       };
 
@@ -1994,7 +1928,7 @@
         ensureHomeTutorialCard?.();
         if (tutorialStepIndex >= 0) {
           const els = getTutorialOverlayEls?.();
-          const c = getTutorialCopySafe?.();
+          const c = getTutorialCopy?.();
           if (els?.back && c?.back) els.back.textContent = c.back;
           if (els?.exit && c?.exit) els.exit.textContent = c.exit;
           updateTutorialUi?.();
@@ -2102,11 +2036,8 @@
       function tutorialCompleteStep(step, override = {}) {
         tutorialCompletedStep = {
           index: tutorialStepIndex,
-          title: override.title ?? step?.completedTitle ?? step?.title ?? '',
-          body:
-            override.body ??
-            step?.completedBody ??
-            (currentLang === 'zh' ? '很好，这一步已经完成。' : 'Great, this step is complete.'),
+          titleOverride: override.title ?? null,
+          bodyOverride: override.body ?? null,
           showBack: !!override.showBack,
           hideContinue: !!override.hideContinue,
           definitionState: override.definitionState || null,
@@ -2119,19 +2050,20 @@
         const step = getTutorialStepsSafe?.()?.[tutorialStepIndex];
         if (!step?.definitionFeedback) return;
         tutorialPendingDefinitionButton = doneButton || null;
-        const zh = currentLang === 'zh';
         if (passed) {
           tutorialCompleteStep(step, {
-            body: zh
-              ? '很好！系统接受了你的定义。请按下 ✔，把这个词保存进 Library。'
-              : 'Great! The system accepts your definition. Press ✔ to save this word into Library.',
+            body: () =>
+              currentLang === 'zh'
+                ? '很好！系统接受了你的定义。请按下 ✔，把这个词保存进词库。'
+                : 'Great! The system accepts your definition. Press ✔ to save this word into Library.',
             definitionState: 'accepted',
           });
         } else {
           tutorialCompleteStep(step, {
-            body: zh
-              ? '糟糕，这次没有成功。请按 × 关掉反馈，然后再试一次。'
-              : 'Oh no, this did not go well. Press × and give it another try.',
+            body: () =>
+              currentLang === 'zh'
+                ? '糟糕，这次没有成功。请按 × 关掉反馈，然后再试一次。'
+                : 'Oh no, this did not go well. Press × and give it another try.',
             showBack: true,
             hideContinue: true,
             definitionState: 'failed',
@@ -2174,7 +2106,7 @@
         if (!els?.body) return;
         const msg = currentLang === 'zh' ? messageZh : messageEn;
         if (!msg) return;
-        els.body.textContent = msg;
+        renderTutorialText(els.body, msg);
       }
 
       function isTutorialCraftInteractionLocked() {
@@ -2400,26 +2332,11 @@
         updateTutorialUi?.();
       }
 
-      function getTutorialCopy() {
-        const zh = currentLang === 'zh';
-        return {
-          startTitle: zh ? '交互式教程' : 'Interactive Tutorial',
-          startBody: zh
-            ? '点击开始后，系统会高亮提示你该点哪里。你可以照着做，也可以随时退出。'
-            : "Click Start and we'll highlight where to click. Follow along, or exit anytime.",
-          startBtn: zh ? '开始教程' : 'Start tutorial',
-          restartBtn: zh ? '重新开始' : 'Restart',
-          back: zh ? '上一步' : 'Back',
-          next: zh ? '下一步' : 'Next',
-          exit: zh ? '退出' : 'Exit',
-        };
-      }
-
       function ensureHomeTutorialCard() {
         const home = document.getElementById('home-content');
         if (!home) return;
         if (home.querySelector('#homeTutorialCard')) return;
-        const c = getTutorialCopySafe();
+        const c = getTutorialCopy();
         const card = document.createElement('div');
         card.id = 'homeTutorialCard';
         card.className = 'home-tutorial-card';
@@ -2432,7 +2349,15 @@
             <button type="button" class="primary" id="homeTutorialLevel3">${c.level3Btn}</button>
           </div>
         `;
-        home.appendChild(card);
+        const introParagraphs = Array.from(home.children).filter(
+          (el) => el.tagName?.toLowerCase() === 'p',
+        );
+        const insertAfter = introParagraphs[2] || home.querySelector('h1') || null;
+        if (insertAfter?.parentNode === home) {
+          insertAfter.insertAdjacentElement('afterend', card);
+        } else {
+          home.insertBefore(card, home.firstChild?.nextSibling || null);
+        }
         card
           .querySelector('#homeTutorialLevel1')
           ?.addEventListener('click', () => startTutorial(true, 1));
@@ -2459,68 +2384,13 @@
         };
       }
 
-      function getTutorialSteps() {
-        const zh = currentLang === 'zh';
-        return [
-          {
-            tab: 0,
-            target: () => document.getElementById('tab-header1'),
-            title: zh ? '1/6 去 Craft' : '1/6 Go to Craft',
-            body: zh
-              ? '先点击 Craft（左侧标签）进入画布。'
-              : 'Click Craft (left tab) to enter the canvas.',
-          },
-          {
-            tab: 1,
-            target: () =>
-              (document.getElementById('tab1') || document.body).querySelector('.wheel'),
-            title: zh ? '2/6 生成符号' : '2/6 Spawn a Symbol',
-            body: zh
-              ? '点击符号轮生成一个符号，然后拖到画布上。'
-              : 'Click the symbol wheel to spawn a symbol, then drag it onto the canvas.',
-          },
-          {
-            tab: 1,
-            target: () => document.getElementById('craftCanvas'),
-            title: zh ? '3/6 磁吸连接' : '3/6 Magnetic Snapping',
-            body: zh
-              ? '把两个符号靠近，它们会像磁铁一样吸附并连接。'
-              : 'Bring two symbols close and they will snap/connect like magnets.',
-          },
-          {
-            tab: 1,
-            target: () => document.getElementById('craft-eye-button') || null,
-            title: zh ? '4/6 Insight' : '4/6 Insight',
-            body: zh
-              ? '长按选中一个连通分量后，点击 Insight（眼睛）查看提示标签。'
-              : 'Long-press to select a connected component, then click Insight (eye) to see labels.',
-          },
-          {
-            tab: 2,
-            target: () => document.getElementById('tab2'),
-            title: zh ? '5/6 去 Library' : '5/6 Go to Library',
-            body: zh
-              ? 'Library 里会保存你定义过的词，并展示它们之间的关系。'
-              : 'Library stores your defined words and shows relationships between them.',
-          },
-          {
-            tab: 3,
-            target: () => document.getElementById('world'),
-            title: zh ? '6/6 去 World' : '6/6 Go to World',
-            body: zh
-              ? '在 World 选择一座岛，然后进入它的 Chat，用你造的词来交流。'
-              : 'In World, pick an island, then open its Chat and talk using words you created.',
-          },
-        ];
-      }
-
-      function getTutorialCopySafe() {
+      function getTutorialCopy() {
         const zh = currentLang === 'zh';
         return {
-          startTitle: zh ? '交互式教程' : 'Interactive Tutorials',
+          startTitle: zh ? '新手教程' : 'Beginner Tutorials',
           startBody: zh
-            ? '选择一个等级。教程只会在你完成对应操作后前进。'
-            : 'Choose a level. Each tutorial advances only when you perform the highlighted action.',
+            ? '选一个关卡吧！它们会教你使用最核心的功能。教程只会在你完成对应操作后推进。'
+            : 'Choose a level! They will teach you the essentials. Each tutorial advances only when you perform the highlighted action.',
           level1Btn: zh ? '第 1 关：第一个词' : 'Level 1: First Word',
           level2Btn: zh ? '第 2 关：组合符号' : 'Level 2: Compound Symbols',
           level3Btn: zh ? '第 3 关：冰淇淋挑战' : 'Level 3: Ice Cream Challenge',
@@ -2542,6 +2412,72 @@
           }
         }
         return value || '';
+      }
+
+      function escapeTutorialHtml(text) {
+        return String(text || '').replace(
+          /[&<>"']/g,
+          (ch) =>
+            ({
+              '&': '&amp;',
+              '<': '&lt;',
+              '>': '&gt;',
+              '"': '&quot;',
+              "'": '&#39;',
+            })[ch],
+        );
+      }
+
+      function renderTutorialText(el, value) {
+        if (!el) return;
+        const text = getTutorialText(value);
+        const uiTerms =
+          currentLang === 'zh'
+            ? [
+                '输入词语生成符号……',
+                '岛屿标签页',
+                '聊天画布',
+                '网络',
+                '科技树',
+                '整理',
+                '添加注释',
+                '符号轮',
+                '工作台',
+                '词库',
+                '世界',
+                '洞察',
+                '提示',
+                '动态点',
+                '旋转',
+                '移除',
+              ]
+            : [
+                'Type a message to turn into symbol...',
+                'network/tree toggle',
+                'dynamic dot button',
+                'symbol wheel',
+                'network',
+                'tech tree',
+                'chat canvas',
+                'island chat tab',
+                'Make an annotation',
+                'Rotate',
+                'Dot',
+                'Remove',
+                'Organize',
+                'Insight',
+                'Library',
+                'World',
+                'Craft',
+                'Hint',
+              ];
+        const escapedTerms = uiTerms
+          .map((term) => escapeTutorialHtml(term).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+          .sort((a, b) => b.length - a.length);
+        const html = escapedTerms.length
+          ? escapeTutorialHtml(text).replace(new RegExp(escapedTerms.join('|'), 'g'), '<b>$&</b>')
+          : escapeTutorialHtml(text);
+        el.innerHTML = html;
       }
 
       function setTutorialDefinitionInputsEnabled(enabled) {
@@ -2744,12 +2680,12 @@
           {
             tab: 0,
             target: () => document.getElementById('tab-header1'),
-            title: zh ? '第 1 关 · 1/9 去 Craft' : 'Level 1 · 1/9 Go to Craft',
+            title: zh ? '第 1 关 · 1/9 去工作台' : 'Level 1 · 1/9 Go to Craft',
             body: zh
-              ? '先点击 Craft（左侧标签）进入造字画布。'
-              : 'Click Craft on the left to enter the symbol-making canvas.',
+              ? '先点击工作台（右侧标签页）进入造字画布。'
+              : 'Click Craft on the right to enter the symbol-making canvas.',
             completedBody: zh
-              ? '很好，你已经进入 Craft。这里是造字和实验符号的地方。'
+              ? '很好，你已经进入工作台。这里是造字和实验符号的地方。'
               : 'Great, you are now in Craft. This is where you make and experiment with symbols.',
             completedTarget: () => document.getElementById('craftCanvas'),
             lockCompletedCraftInteraction: true,
@@ -2786,7 +2722,7 @@
               document.getElementById('craftCanvas'),
             title: zh ? '第 1 关 · 3/9 移除符号' : 'Level 1 · 3/9 Remove the Symbol',
             body: zh
-              ? '现在点击 Remove，把这个选中的符号从画布上移除。'
+              ? '现在点击移除，把这个选中的符号从画布上移除。'
               : 'Now click Remove to delete the selected symbol from the canvas.',
             completedBody: zh
               ? '这个符号已经被移除。这个按钮用来清理你选中的符号。'
@@ -2819,7 +2755,7 @@
             target: () => document.getElementById('craft-eye-button') || null,
             title: zh ? '第 1 关 · 5/9 查看意义' : 'Level 1 · 5/9 See Its Meaning',
             body: zh
-              ? '点击 Insight（眼睛）查看这个符号的意义泡泡。'
+              ? '点击洞察（眼睛）查看这个符号的意义泡泡。'
               : 'Click Insight (the eye) to reveal meaning bubbles for this symbol.',
             completedBody: zh
               ? '意义泡泡出现了。它们不是唯一答案，而是给你联想的材料。'
@@ -2843,7 +2779,7 @@
             target: () => document.getElementById('craftCanvas'),
             title: zh ? '第 1 关 · 6/9 试试旋转和加点' : 'Level 1 · 6/9 Try Rotate and Dot',
             body: zh
-              ? '现在试试旋转按钮和动态点按钮。观察整个画布上的意义泡泡如何自己变化。两个按钮都点过之后，这一步会完成。'
+              ? '现在试试旋转和动态点。观察整个画布上的意义泡泡如何自己变化。两个按钮都点过之后，这一步会完成。'
               : 'Now try both the rotate button and the dynamic dot button. Watch how the meaning bubbles change on the canvas. This step completes after you have clicked both.',
             completedBody: zh
               ? '现在你知道这两个按钮会如何改变符号的状态和意义了。'
@@ -2880,12 +2816,12 @@
           {
             tab: 1,
             target: () => document.getElementById('tab-header2'),
-            title: zh ? '第 1 关 · 8/9 去 Library' : 'Level 1 · 8/9 Go to Library',
+            title: zh ? '第 1 关 · 8/9 去词库' : 'Level 1 · 8/9 Go to Library',
             body: zh
-              ? '点击 Library，看看你刚刚创造的词。'
+              ? '点击词库，看看你刚刚创造的词。'
               : 'Click Library to see the word you just created.',
             completedBody: zh
-              ? '你已经来到 Library。刚才定义的词会在这里保存。'
+              ? '你已经来到词库。刚才定义的词会在这里保存。'
               : 'You are in Library now. The word you defined is saved here.',
             completedTarget: () => document.getElementById('tab2'),
             allowedTabs: [2],
@@ -2904,7 +2840,7 @@
             target: () => document.getElementById('tab2'),
             title: zh ? '第 1 关 · 9/9 完成' : 'Level 1 · 9/9 Complete',
             body: zh
-              ? '你的第一个符号词已经进入了词库。点击 Library 区域结束这一关。'
+              ? '你的第一个符号词已经进入了词库。点击词库标签页结束这一关。'
               : 'Your first symbol-word is now in the library. Click inside Library to finish this level.',
             completedBody: zh
               ? '第 1 关 完成。你已经经历了从符号、意义泡泡到自定义词的完整流程。'
@@ -2920,12 +2856,12 @@
           {
             tab: 0,
             target: () => document.getElementById('tab-header1'),
-            title: zh ? '第 2 关 · 1/12 去 Craft' : 'Level 2 · 1/12 Go to Craft',
+            title: zh ? '第 2 关 · 1/12 去工作台' : 'Level 2 · 1/12 Go to Craft',
             body: zh
-              ? '进入 Craft，这一关会练习组合符号。'
+              ? '进入工作台，这一关会练习组合符号。'
               : 'Enter Craft. This level practices compound symbols.',
             completedBody: zh
-              ? '很好，你已经进入 Craft。现在我们来练习两个符号之间的关系。'
+              ? '很好，你已经进入工作台。现在我们来练习两个符号之间的关系。'
               : 'Great, you are in Craft. Now we can practice relationships between two symbols.',
             completedTarget: () => document.getElementById('craftCanvas'),
             allowedTabs: [1],
@@ -3035,7 +2971,7 @@
             target: () => document.getElementById('craft-eye-button') || null,
             title: zh ? '第 2 关 · 8/12 查看组合意义' : 'Level 2 · 8/12 Inspect the Compound',
             body: zh
-              ? '点击 Insight，查看这个组合的意义泡泡。'
+              ? '点击洞察，查看这个组合的意义泡泡。'
               : 'Click Insight to read meaning bubbles for the compound.',
             completedBody: zh
               ? '组合意义泡泡出现了。现在可以把它们联想成一个新概念。'
@@ -3070,10 +3006,10 @@
           {
             tab: 1,
             target: () => document.getElementById('tab-header2'),
-            title: zh ? '第 2 关 · 10/12 去 Library' : 'Level 2 · 10/12 Go to Library',
-            body: zh ? '去 Library 查看这个复合词。' : 'Go to Library to view this compound word.',
+            title: zh ? '第 2 关 · 10/12 去词库' : 'Level 2 · 10/12 Go to Library',
+            body: zh ? '去词库查看这个复合词。' : 'Go to Library to view this compound word.',
             completedBody: zh
-              ? '你已经来到 Library，可以看到这个词和它的关系。'
+              ? '你已经来到词库，可以看到这个词和它的关系。'
               : 'You are in Library now, where you can see this word and its relationships.',
             completedTarget: () => document.getElementById('tab2'),
             allowedTabs: [2],
@@ -3092,7 +3028,7 @@
             target: () => organizeNodeButton || document.getElementById('tab2'),
             title: zh ? '第 2 关 · 11/12 整理网络' : 'Level 2 · 11/12 Organize the Network',
             body: zh
-              ? '现在点击 Organize，让网络节点自动整理成更容易看的关系图。'
+              ? '现在点击整理，让网络节点自动整理成更容易看的关系图。'
               : 'Now click Organize to automatically tidy the network into a clearer relationship map.',
             completedBody: zh
               ? '网络已经整理过了。这个按钮可以在节点太乱时帮你快速重新排布。'
@@ -3106,7 +3042,7 @@
             target: () => modeNodeButton || document.getElementById('tab2'),
             title: zh ? '第 2 关 · 12/12 科技树视图' : 'Level 2 · 12/12 Tech Tree View',
             body: zh
-              ? '点击网络/树形切换按钮，进入科技树视图，看看词是如何从更简单的词生长出来的。'
+              ? '点击 网络/科技树切换，进入科技树视图，看看词是如何从更简单的词生长出来的。'
               : 'Click the network/tree toggle to enter tech tree view and see how words grow from simpler words.',
             completedBody: zh
               ? '第 2 关 完成。科技树会帮助你看见词的生成历史。'
@@ -3126,13 +3062,13 @@
             target: () => document.getElementById('tab-header1'),
             title: zh ? '第 3 关 · 1/12 挑战开始' : 'Level 3 · 1/12 Challenge Begins',
             body: zh
-              ? '目标：造出“冰淇淋”。先进入 Craft。需要帮助时可以按提示。'
+              ? '目标：造出“冰淇淋”。先进入工作台。需要帮助时可以按提示。'
               : 'Goal: create “ice cream.” Enter Craft. Use Hint whenever you want a possible route.',
             hint: zh
               ? '一个可行路线：先造“冷”，再造“食物”，最后把它们并联成“冰淇淋”。'
               : 'One possible route: define “cold,” define “food,” then combine them in parallel as “ice cream.”',
             completedBody: zh
-              ? '挑战开始。现在请在 Craft 中自己探索“冰淇淋”的构造路线。'
+              ? '挑战开始。现在请在工作台中自己探索“冰淇淋”的构造路线。'
               : 'The challenge has begun. Now explore your own route for building “ice cream” in Craft.',
             completedTarget: () => document.getElementById('craftCanvas'),
             allowedTabs: [1],
@@ -3147,7 +3083,7 @@
               ? '自由选择符号，查看意义，然后定义一个接近“冷”的词。'
               : 'Choose symbols freely, inspect their meanings, then define a word close to “cold.”',
             hint: zh
-              ? '先拖一个符号，试试旋转或加点，再用 Insight 找到你觉得“冷”的意义。'
+              ? '先拖一个符号，试试旋转或加点，再用洞察找到你觉得“冷”的意义。'
               : 'Start with one symbol. Try rotate/dot, then use Insight to find a meaning that feels cold.',
             completedBody: zh
               ? '你已经完成了“冷”的一种表达。'
@@ -3196,10 +3132,10 @@
               document.getElementById('craftCanvas')?.getBoundingClientRect?.(),
             title: zh ? '第 3 关 · 5/12 定义“冰淇淋”' : 'Level 3 · 5/12 Define “Ice Cream”',
             body: zh
-              ? '选中最终组合，点击 Insight，然后把它定义为“冰淇淋”并写下解释。'
+              ? '选中最终组合，点击洞察，然后把它定义为“冰淇淋”并写下解释。'
               : 'Select the final compound, click Insight, then define it as “ice cream” with an explanation.',
             hint: zh
-              ? '如果没有输入框，先长按或框选最终的连通组合，再按 Insight。'
+              ? '如果没有输入框，先长按或框选最终的连通组合，再按洞察。'
               : 'If no input boxes appear, long-press or marquee-select the final connected group, then press Insight.',
             completedBody: zh ? '“冰淇淋”已经被你定义出来了。' : 'You have defined “ice cream.”',
             advanceOnEvent: 'word_defined',
@@ -3209,12 +3145,12 @@
           {
             tab: 1,
             target: () => document.getElementById('tab-header2'),
-            title: zh ? '第 3 关 · 6/12 去 Library' : 'Level 3 · 6/12 Go to Library',
+            title: zh ? '第 3 关 · 6/12 去词库' : 'Level 3 · 6/12 Go to Library',
             body: zh
-              ? '去 Library 看看“冰淇淋”进入词库后的样子。'
+              ? '去词库看看“冰淇淋”进入词库后的样子。'
               : 'Go to Library and see how “ice cream” appears in your vocabulary.',
             completedBody: zh
-              ? '你已经来到 Library。挑战词现在可以作为词库的一部分被查看。'
+              ? '你已经来到词库。挑战词现在可以作为词库的一部分被查看。'
               : 'You are in Library now. Your challenge word can be viewed as part of the vocabulary.',
             completedTarget: () => document.getElementById('tab2'),
             allowedTabs: [2],
@@ -3230,11 +3166,11 @@
           {
             tab: 2,
             target: () => document.getElementById('tab-header3'),
-            title: zh ? '第 3 关 · 7/12 去 World' : 'Level 3 · 7/12 Go to World',
+            title: zh ? '第 3 关 · 7/12 去世界' : 'Level 3 · 7/12 Go to World',
             body: zh
-              ? '进入 World，选择一座你喜欢的岛。'
+              ? '进入世界，选择一座你喜欢的岛。'
               : 'Enter World and choose an island you like.',
-            completedBody: zh ? '你进入了 World！' : 'You are in World now!',
+            completedBody: zh ? '你进入了世界！' : 'You are in World now!',
             completedTarget: () => document.getElementById('tab3'),
             allowedTabs: [3],
             navigate: 'user',
@@ -3256,7 +3192,7 @@
             target: () => document.getElementById('tab-header4'),
             title: zh ? '第 3 关 · 9/12 进入岛屿聊天' : 'Level 3 · 9/12 Open the Island Chat',
             body: zh
-              ? '点击左侧新出现的岛屿聊天标签，进入这座岛的聊天画布。'
+              ? '点击左侧新出现的岛屿标签页，进入这座岛的聊天画布。'
               : 'Click the island chat tab that appeared on the left to enter this island’s chat canvas.',
             completedBody: zh
               ? '你已经进入这座岛的聊天画布。接下来可以把你的词作为符号表达发布到这里。'
@@ -3271,7 +3207,7 @@
             target: () => document.getElementById('symbol-message-input'),
             title: zh ? '第 3 关 · 10/12 发布表达' : 'Level 3 · 10/12 Post the Expression',
             body: zh
-              ? '在“Type a message to turn into symbol...”里输入你定义的词（例如 冰淇淋），按回车把表达发布到聊天画布。'
+              ? '在“输入词语生成符号……”里输入你定义的词（例如 冰淇淋），按回车把表达发布到聊天画布。'
               : 'In “Type a message to turn into symbol...”, enter your word (for example, ice cream) and press Enter to post it.',
             completedBody: zh
               ? '你的词已经以符号表达的形式发布到聊天画布。'
@@ -3287,7 +3223,7 @@
               document.getElementById('message-input'),
             title: zh ? '第 3 关 · 11/12 查看表达' : 'Level 3 · 11/12 Inspect the Expression',
             body: zh
-              ? '选中发布的表达，点击 Insight来看看它的含义。'
+              ? '选中发布的表达，点击洞察来看看它的含义。'
               : 'Select the expression you just posted, then click Insight to inspect its meaning in the chat canvas.',
             completedBody: zh
               ? '你可以看到你刚刚为这个表达赋予的意义，别人也能看到哦！'
@@ -3300,10 +3236,10 @@
             target: () => document.getElementById('message-input'),
             title: zh ? '第 3 关 · 12/12 添加注释' : 'Level 3 · 12/12 Make an Annotation',
             body: zh
-              ? '在 Make an annotation 里写一句注释，把你的想法连接到这个表达上。'
+              ? '在“添加注释”里写一句注释，把你的想法连接到这个表达上。'
               : 'Write a note in Make an annotation to connect your thought to this expression.',
             hint: zh
-              ? '注释只会在聊天画布的 Insight 模式中出现。'
+              ? '注释只会在聊天画布的洞察模式中出现。'
               : 'Annotations appear only in chat Insight mode.',
             completedBody: zh
               ? '第 3 关 完成。你已经从造词、发布，到为表达添加注释走完整个流程。'
@@ -3330,7 +3266,7 @@
         tutorialStepMetaSnapshots = new Map();
         els.root.classList.add('open');
         els.root.setAttribute('aria-hidden', 'false');
-        const c = getTutorialCopySafe();
+        const c = getTutorialCopy();
         if (els.back) els.back.textContent = c.back;
         if (els.hint) els.hint.textContent = c.hint;
         if (els.restart) els.restart.textContent = c.restartStep;
@@ -3464,11 +3400,18 @@
 
         const isCompleted =
           !!tutorialCompletedStep && tutorialCompletedStep.index === tutorialStepIndex;
-        const displayTitle = isCompleted ? tutorialCompletedStep.title : step.title;
-        const displayBody = isCompleted ? tutorialCompletedStep.body : step.body;
+        const displayTitle = isCompleted
+          ? (tutorialCompletedStep.titleOverride ?? step.completedTitle ?? step.title)
+          : step.title;
+        const displayBody = isCompleted
+          ? (tutorialCompletedStep.bodyOverride ??
+            step.completedBody ??
+            (() =>
+              currentLang === 'zh' ? '很好，这一步已经完成。' : 'Great, this step is complete.'))
+          : step.body;
 
-        if (els.title) els.title.textContent = getTutorialText(displayTitle);
-        if (els.body) els.body.textContent = getTutorialText(displayBody);
+        renderTutorialText(els.title, displayTitle);
+        renderTutorialText(els.body, displayBody);
         setTutorialDefinitionInputsEnabled?.(!!step.allowDefinitionInputs);
 
         const target = isCompleted ? step.completedTarget?.() || step.target?.() : step.target?.();
@@ -3508,19 +3451,19 @@
         if (els.back) els.back.disabled = tutorialStepIndex <= 0;
         if (els.hint) {
           els.hint.style.display = !isCompleted && step.hint ? '' : 'none';
-          els.hint.textContent = getTutorialCopySafe().hint;
+          els.hint.textContent = getTutorialCopy().hint;
         }
         if (els.restart) {
           els.restart.style.display = isCompleted ? '' : 'none';
-          els.restart.textContent = getTutorialCopySafe().restartStep;
+          els.restart.textContent = getTutorialCopy().restartStep;
         }
         if (els.continue) {
           const isLast = tutorialStepIndex >= steps.length - 1;
           els.continue.style.display =
             isCompleted && !tutorialCompletedStep?.hideContinue ? '' : 'none';
           els.continue.textContent = isLast
-            ? getTutorialCopySafe().finish
-            : getTutorialCopySafe().continueStep;
+            ? getTutorialCopy().finish
+            : getTutorialCopy().continueStep;
         }
         if (els.back)
           els.back.style.display = isCompleted && !tutorialCompletedStep?.showBack ? 'none' : '';
@@ -3680,7 +3623,6 @@
         window.addEventListener('keydown', (e) => {
           if (tutorialStepIndex < 0) return;
           if (e.key === 'Escape') stopTutorial();
-          if (e.key === 'ArrowRight') stepTutorial(1);
         });
       }
 
@@ -6762,7 +6704,7 @@
               'chaotic',
               'turmoil',
               'unrest',
-              'hustle',
+              'bustling',
               'activity',
               'bustle',
               'dynamic',
@@ -7112,6 +7054,13 @@
 
         dragLeader = null;
         dragGroup = null;
+        dragGroupStarted = false;
+        dragGroupSet = null;
+        dragGroupIncludesUnselected = false;
+        groupDragActive = false;
+        pendingSnapDelta = null;
+        dragSnapLock = null;
+        resetPendingSnapState();
         activeSymbol = symbol;
         symbol.style.cursor = 'grabbing';
         symbol.moving = false;
@@ -9982,9 +9931,10 @@
             activeSymbol.doneButton.style.top = `${y + activeSymbol.doneButton.offsetY}px`;
           }
 
-          const snapped = !dragSnapLock && performance.now() > snapCooldownUntil
-            ? checkConnections(activeSymbol)
-            : false;
+          const snapped =
+            !dragSnapLock && performance.now() > snapCooldownUntil
+              ? checkConnections(activeSymbol)
+              : false;
           if (snapped) {
             const snappedLeft = parseFloat(activeSymbol.style.left) || x;
             const snappedTop = parseFloat(activeSymbol.style.top) || y;
@@ -10401,6 +10351,15 @@
           // --- 5) Reset per-drag flags ---
           released.moving = false;
           isGenerating = false;
+          dragGroup = null;
+          dragLeader = null;
+          dragGroupStarted = false;
+          dragGroupSet = null;
+          dragGroupIncludesUnselected = false;
+          groupDragActive = false;
+          pendingSnapDelta = null;
+          dragSnapLock = null;
+          resetPendingSnapState();
         }
 
         if (activeEmoji) {
@@ -11506,7 +11465,7 @@
         if (isMobileQuota) {
           const creditsLabel = currentLang === 'zh' ? '额度' : 'Credits';
           const copyLabel = currentLang === 'zh' ? '复制 UID' : 'copy UID';
-          const supportLabel = currentLang === 'zh' ? '🍹 在 Ko-fi 支持' : '🍹 Support on Ko-fi';
+          const supportLabel = currentLang === 'zh' ? '🍹 上 Ko-fi 支持' : '🍹 Support on Ko-fi';
           el.innerHTML = `
             <div><strong>${creditsLabel}: ${remaining}/${limit}</strong></div>
             <button type="button" id="support-code" style="display:block;margin:4px 0 0;padding:0;border:0;background:transparent;text-decoration:underline;cursor:pointer;font:inherit;color:inherit;">${copyLabel}</button>
@@ -12006,6 +11965,13 @@
             tutorialHandleDefinitionFeedback?.(passed && !manualFailed, doneButton);
 
             doneButton.onclick = async function () {
+              if (
+                (!passed || manualFailed) &&
+                tutorialCompletedStep?.definitionState === 'failed'
+              ) {
+                restartTutorialStep?.();
+                return;
+              }
               if (passed && !manualFailed) {
                 clearInterval(activeTabInterval);
 
@@ -12387,6 +12353,13 @@
           } else {
             dragLeader = null;
             dragGroup = null;
+            dragGroupStarted = false;
+            dragGroupSet = null;
+            dragGroupIncludesUnselected = false;
+            groupDragActive = false;
+            pendingSnapDelta = null;
+            dragSnapLock = null;
+            resetPendingSnapState();
 
             activeSymbol = symbol;
             const left = parseFloat(symbol.style.left) || 0;
@@ -13184,6 +13157,8 @@
       let canvasContextMenu = null;
       let canvasContextMenuTarget = null;
       let libraryTreeDragState = null;
+      let libraryTreeMarqueeState = null;
+      let libraryTreeMarqueeBox = null;
       let libraryTreeRenderState = null;
       let selectedLibraryTreeNodeIds = new Set();
       const LIBRARY_TREE_ROW_GAP = 26;
@@ -13886,6 +13861,70 @@
         }
       }
 
+      function ensureLibraryTreeMarqueeBox() {
+        if (libraryTreeMarqueeBox) return libraryTreeMarqueeBox;
+        libraryTreeMarqueeBox = document.createElement('div');
+        libraryTreeMarqueeBox.className = 'marquee-box';
+        libraryTreeMarqueeBox.style.position = 'fixed';
+        libraryTreeMarqueeBox.style.pointerEvents = 'none';
+        libraryTreeMarqueeBox.style.display = 'none';
+        libraryTreeMarqueeBox.style.zIndex = '99990';
+        document.body.appendChild(libraryTreeMarqueeBox);
+        return libraryTreeMarqueeBox;
+      }
+
+      function showLibraryTreeMarqueeBox(x1, y1, x2, y2) {
+        const box = ensureLibraryTreeMarqueeBox();
+        const left = Math.min(x1, x2);
+        const top = Math.min(y1, y2);
+        const right = Math.max(x1, x2);
+        const bottom = Math.max(y1, y2);
+        box.style.left = `${left}px`;
+        box.style.top = `${top}px`;
+        box.style.width = `${Math.max(0, right - left)}px`;
+        box.style.height = `${Math.max(0, bottom - top)}px`;
+        box.style.display = 'block';
+      }
+
+      function hideLibraryTreeMarqueeBox() {
+        if (libraryTreeMarqueeBox) libraryTreeMarqueeBox.style.display = 'none';
+      }
+
+      function selectLibraryTreeCardsInClientRect(x1, y1, x2, y2, additive = false) {
+        if (!libraryTreeSurface) return;
+        const left = Math.min(x1, x2);
+        const top = Math.min(y1, y2);
+        const right = Math.max(x1, x2);
+        const bottom = Math.max(y1, y2);
+        const ids = additive ? new Set(selectedLibraryTreeNodeIds) : new Set();
+        libraryTreeSurface.querySelectorAll('.library-tree-card').forEach((card) => {
+          const rect = card.getBoundingClientRect();
+          const intersects =
+            rect.right >= left && rect.left <= right && rect.bottom >= top && rect.top <= bottom;
+          if (intersects && card.dataset.nodeId) ids.add(String(card.dataset.nodeId));
+        });
+        setSelectedLibraryTreeNodes([...ids]);
+      }
+
+      function isLibraryTreeAdditiveSelectEvent(e) {
+        return !!(
+          e.shiftKey ||
+          e.ctrlKey ||
+          e.metaKey ||
+          e.getModifierState?.('Shift') ||
+          e.getModifierState?.('Control') ||
+          e.getModifierState?.('Meta')
+        );
+      }
+
+      function toggleLibraryTreeNodeSelection(nodeId) {
+        const id = String(nodeId);
+        const ids = new Set(selectedLibraryTreeNodeIds);
+        if (ids.has(id)) ids.delete(id);
+        else ids.add(id);
+        setSelectedLibraryTreeNodes([...ids]);
+      }
+
       function layoutLibraryTreeColumnDuringDrag(level, draggedId, draggedY) {
         if (!libraryTreeSurface || !libraryTreeDragState?.baseEntries?.length) return;
 
@@ -13964,6 +14003,70 @@
           for (const entry of entries) {
             const nextTop = (parseFloat(entry.card.style.top) || 0) + shiftY;
             entry.card.style.top = `${nextTop}px`;
+          }
+        }
+      }
+
+      function layoutLibraryTreeMultiColumnDuringDrag(dy, snapSelectedToTargets = false) {
+        if (!libraryTreeSurface || !libraryTreeDragState?.columnGroups?.length) return;
+
+        for (const group of libraryTreeDragState.columnGroups) {
+          const selectedIds = new Set(group.selected.map((entry) => entry.id));
+          const selectedByBaseOrder = [...group.selected].sort((a, b) => a.baseY - b.baseY);
+          const selectedBlockTop = Math.min(
+            ...selectedByBaseOrder.map((entry) => entry.startY + dy),
+          );
+          let selectedY = selectedBlockTop;
+          const selectedEntries = selectedByBaseOrder.map((entry) => {
+            const packed = {
+              ...entry,
+              y: selectedY,
+            };
+            selectedY += entry.size.height + LIBRARY_TREE_ROW_GAP;
+            return packed;
+          });
+          const unselectedEntries = group.entries
+            .filter((entry) => !selectedIds.has(entry.id))
+            .sort((a, b) => a.baseY - b.baseY);
+
+          if (!selectedEntries.length) continue;
+
+          const selectedTop = Math.min(...selectedEntries.map((entry) => entry.y));
+          const selectedBottom = Math.max(
+            ...selectedEntries.map((entry) => entry.y + entry.size.height),
+          );
+          const selectedCenter = (selectedTop + selectedBottom) / 2;
+          let insertIndex = unselectedEntries.findIndex(
+            (entry) => selectedCenter < entry.baseY + entry.size.height / 2,
+          );
+          if (insertIndex < 0) insertIndex = unselectedEntries.length;
+
+          const ordered = [
+            ...unselectedEntries.slice(0, insertIndex),
+            ...selectedByBaseOrder,
+            ...unselectedEntries.slice(insertIndex),
+          ];
+
+          let currentY = Math.min(...group.entries.map((entry) => entry.baseY));
+          const targetY = new Map();
+          for (const entry of ordered) {
+            targetY.set(entry.id, currentY);
+            currentY += entry.size.height + LIBRARY_TREE_ROW_GAP;
+          }
+
+          for (const entry of group.entries) {
+            entry.card.style.left = `${entry.x}px`;
+            if (selectedIds.has(entry.id)) {
+              entry.card.classList.remove('displaced');
+              const selectedEntry = selectedEntries.find((item) => item.id === entry.id);
+              const nextY = snapSelectedToTargets
+                ? targetY.get(entry.id)
+                : (selectedEntry?.y ?? entry.startY + dy);
+              entry.card.style.top = `${nextY ?? entry.startY + dy}px`;
+            } else {
+              entry.card.classList.add('displaced');
+              entry.card.style.top = `${targetY.get(entry.id) ?? entry.baseY}px`;
+            }
           }
         }
       }
@@ -14056,6 +14159,80 @@
         const size = sizes.get(nodeId);
         if (!startPos || !size) return false;
 
+        const stringNodeId = String(nodeId);
+        const draggingExistingSelection =
+          selectedLibraryTreeNodeIds.has(stringNodeId) && selectedLibraryTreeNodeIds.size > 1;
+        if (draggingExistingSelection) {
+          const entries = [...selectedLibraryTreeNodeIds]
+            .map((id) => {
+              const pos = getLibraryTreeCardDomPosition(id);
+              const s = libraryTreeRenderState?.sizes?.get(id);
+              const level = libraryTreeRenderState?.levelById?.get(String(id));
+              return pos && s
+                ? {
+                    id: String(id),
+                    card: pos.card,
+                    startY: pos.y,
+                    baseY: pos.y,
+                    x: pos.x,
+                    size: s,
+                    level: String(level ?? pos.card.dataset.level ?? ''),
+                  }
+                : null;
+            })
+            .filter(Boolean);
+          if (entries.length > 1) {
+            const selectedLevels = new Set(entries.map((entry) => entry.level));
+            const columnGroups = [...selectedLevels]
+              .map((level) => {
+                const columnIds = libraryTreeRenderState?.columns?.get(String(level)) || [];
+                const columnEntries = columnIds
+                  .map((id) => {
+                    const pos = getLibraryTreeCardDomPosition(id);
+                    const s = libraryTreeRenderState?.sizes?.get(id);
+                    return pos && s
+                      ? {
+                          id: String(id),
+                          card: pos.card,
+                          x: pos.x,
+                          startY: pos.y,
+                          baseY: pos.y,
+                          size: s,
+                        }
+                      : null;
+                  })
+                  .filter(Boolean);
+                return {
+                  level: String(level),
+                  entries: columnEntries,
+                  selected: columnEntries.filter((entry) =>
+                    selectedLibraryTreeNodeIds.has(entry.id),
+                  ),
+                };
+              })
+              .filter((group) => group.selected.length);
+            libraryTreeDragState = {
+              mode: 'multi',
+              nodeId: stringNodeId,
+              card,
+              startClientY: clientY,
+              entries,
+              columnGroups,
+              moved: false,
+            };
+            entries.forEach((entry) => entry.card.classList.add('dragging'));
+            columnGroups.forEach((group) => {
+              group.entries.forEach((entry) => {
+                if (!selectedLibraryTreeNodeIds.has(entry.id))
+                  entry.card.classList.add('displaced');
+              });
+            });
+            card.setPointerCapture?.(pointerId);
+            startLibraryTreeEdgeFollow();
+            return true;
+          }
+        }
+
         setSelectedLibraryTreeNodes([nodeId]);
         const baseEntries = (libraryTreeRenderState?.columns?.get(card.dataset.level || '') || [])
           .map((id) => {
@@ -14067,6 +14244,7 @@
           })
           .filter(Boolean);
         libraryTreeDragState = {
+          mode: 'single',
           nodeId,
           card,
           level: card.dataset.level || '',
@@ -14089,6 +14267,10 @@
           hideLibraryTreeContextMenu();
           e.preventDefault();
           e.stopPropagation();
+          if (isLibraryTreeAdditiveSelectEvent(e)) {
+            toggleLibraryTreeNodeSelection(nodeId);
+            return;
+          }
           startLibraryTreeCardDrag(card, nodeId, positions, sizes, e.pointerId, e.clientY);
         });
         card.addEventListener('contextmenu', (e) => {
@@ -14291,6 +14473,28 @@
       document.addEventListener('pointermove', (e) => {
         if (!libraryTreeDragState || !libraryTreeSurface || !libraryTreeSvg) return;
 
+        if (libraryTreeDragState.mode === 'multi') {
+          const { startClientY, entries } = libraryTreeDragState;
+          const zoom = Math.max(libraryContentZoom || 1, 0.0001);
+          const rawDy = e.clientY - startClientY;
+          let dy = rawDy / zoom;
+          if (Math.abs(rawDy) > 2) libraryTreeDragState.moved = true;
+
+          const surfaceH = libraryTreeSurface.offsetHeight || libraryTreeSurface.clientHeight || 0;
+          if (entries?.length) {
+            const minAllowed = Math.max(...entries.map((entry) => -entry.startY));
+            const maxAllowed = Math.min(
+              ...entries.map((entry) => surfaceH - entry.size.height - entry.startY),
+            );
+            dy = clamp(dy, minAllowed, maxAllowed);
+          }
+
+          libraryTreeDragState.lastDy = dy;
+          layoutLibraryTreeMultiColumnDuringDrag(dy);
+          refreshLibraryTreeEdgesFromDom();
+          return;
+        }
+
         const { nodeId, card, level, startClientY, startY, x, size } = libraryTreeDragState;
         const zoom = Math.max(libraryContentZoom || 1, 0.0001);
         const rawDy = e.clientY - startClientY;
@@ -14307,6 +14511,36 @@
 
       document.addEventListener('pointerup', async (e) => {
         if (!libraryTreeDragState) return;
+        if (libraryTreeDragState.mode === 'multi') {
+          const { card, entries, columnGroups } = libraryTreeDragState;
+          layoutLibraryTreeMultiColumnDuringDrag(libraryTreeDragState.lastDy || 0, true);
+          refreshLibraryTreeEdgesFromDom();
+          entries?.forEach((entry) => entry.card.classList.remove('dragging'));
+          columnGroups?.forEach((group) => {
+            group.entries?.forEach((entry) => entry.card.classList.remove('displaced'));
+          });
+          card?.releasePointerCapture?.(e.pointerId);
+          stopLibraryTreeEdgeFollow();
+          const updateEntries = columnGroups?.length
+            ? [
+                ...new Map(
+                  columnGroups.flatMap((group) => group.entries).map((entry) => [entry.id, entry]),
+                ).values(),
+              ]
+            : entries || [];
+          const updates = updateEntries
+            .map((entry) => {
+              const pos = getLibraryTreeCardDomPosition(entry.id);
+              return pos ? { id: entry.id, _treeY: pos.y } : null;
+            })
+            .filter(Boolean);
+          libraryTreeDragState = null;
+          if (updates.length) nodes.update(updates);
+          renderLibraryTreeView();
+          scheduleSaveLibraryGraph();
+          return;
+        }
+
         const { nodeId, card, level } = libraryTreeDragState;
         card.classList.remove('dragging');
         card.releasePointerCapture?.(e.pointerId);
@@ -14333,8 +14567,15 @@
 
       document.addEventListener('pointercancel', () => {
         if (!libraryTreeDragState) return;
-        const { card } = libraryTreeDragState;
-        card.classList.remove('dragging');
+        const { card, entries, columnGroups } = libraryTreeDragState;
+        if (libraryTreeDragState.mode === 'multi') {
+          entries?.forEach((entry) => entry.card.classList.remove('dragging'));
+          columnGroups?.forEach((group) => {
+            group.entries?.forEach((entry) => entry.card.classList.remove('displaced'));
+          });
+        } else {
+          card?.classList.remove('dragging');
+        }
         libraryTreeDragState = null;
         stopLibraryTreeEdgeFollow();
         renderLibraryTreeView();
@@ -14391,13 +14632,68 @@
       libraryTreeSvg.id = 'libraryTreeSvg';
       libraryTreeSurface.appendChild(libraryTreeSvg);
       libraryTreeView.addEventListener('pointerdown', (e) => {
-        if (
+        const isBlankTreeArea =
           e.target === libraryTreeView ||
           e.target === libraryTreeSurface ||
-          e.target === libraryTreeSvg
-        ) {
+          e.target === libraryTreeSvg;
+        if (!isBlankTreeArea || e.button !== 0) return;
+
+        hideLibraryTreeContextMenu();
+        libraryTreeMarqueeState = {
+          pointerId: e.pointerId,
+          startX: e.clientX,
+          startY: e.clientY,
+          currentX: e.clientX,
+          currentY: e.clientY,
+          additive: isLibraryTreeAdditiveSelectEvent(e),
+          dragging: false,
+        };
+        libraryTreeView.setPointerCapture?.(e.pointerId);
+        e.preventDefault();
+      });
+      libraryTreeView.addEventListener('pointermove', (e) => {
+        if (!libraryTreeMarqueeState || libraryTreeMarqueeState.pointerId !== e.pointerId) return;
+        libraryTreeMarqueeState.currentX = e.clientX;
+        libraryTreeMarqueeState.currentY = e.clientY;
+
+        const dx = e.clientX - libraryTreeMarqueeState.startX;
+        const dy = e.clientY - libraryTreeMarqueeState.startY;
+        if (!libraryTreeMarqueeState.dragging && dx * dx + dy * dy < 16) return;
+
+        libraryTreeMarqueeState.dragging = true;
+        showLibraryTreeMarqueeBox(
+          libraryTreeMarqueeState.startX,
+          libraryTreeMarqueeState.startY,
+          e.clientX,
+          e.clientY,
+        );
+        e.preventDefault();
+      });
+      libraryTreeView.addEventListener('pointerup', (e) => {
+        if (!libraryTreeMarqueeState || libraryTreeMarqueeState.pointerId !== e.pointerId) return;
+        const state = libraryTreeMarqueeState;
+        libraryTreeMarqueeState = null;
+        hideLibraryTreeMarqueeBox();
+        libraryTreeView.releasePointerCapture?.(e.pointerId);
+
+        if (state.dragging) {
+          selectLibraryTreeCardsInClientRect(
+            state.startX,
+            state.startY,
+            e.clientX,
+            e.clientY,
+            state.additive,
+          );
+        } else if (!state.additive) {
           setSelectedLibraryTreeNodes([]);
         }
+        e.preventDefault();
+      });
+      libraryTreeView.addEventListener('pointercancel', (e) => {
+        if (!libraryTreeMarqueeState || libraryTreeMarqueeState.pointerId !== e.pointerId) return;
+        libraryTreeMarqueeState = null;
+        hideLibraryTreeMarqueeBox();
+        libraryTreeView.releasePointerCapture?.(e.pointerId);
       });
       libraryTreeView.appendChild(libraryTreeSurface);
       tab2.appendChild(libraryTreeView);
