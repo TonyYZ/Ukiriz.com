@@ -1091,6 +1091,109 @@
         display: block;
       }
 
+      .island-presence-lines {
+        position: absolute;
+        pointer-events: none;
+        z-index: 4;
+      }
+
+      .island-presence-person {
+        position: absolute;
+        width: 14px;
+        height: 25px;
+        transform: translate(-50%, -100%);
+      }
+
+      .island-presence-head,
+      .island-presence-body,
+      .island-presence-arms,
+      .island-presence-legs,
+      .island-presence-shadow {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        box-sizing: border-box;
+      }
+
+      .island-presence-head {
+        top: 3px;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--person-color);
+      }
+
+      .island-presence-body {
+        top: 9px;
+        width: 2px;
+        height: 10px;
+        border-radius: 999px;
+        background: var(--person-color);
+      }
+
+      .island-presence-arms {
+        top: 9px;
+        width: 12px;
+        height: 9px;
+        background: transparent;
+      }
+
+      .island-presence-arms::before,
+      .island-presence-arms::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 50%;
+        width: 2px;
+        height: 9px;
+        border-radius: 999px;
+        background: var(--person-color);
+        transform-origin: top center;
+      }
+
+      .island-presence-arms::before {
+        transform: translateX(-50%) rotate(24deg);
+      }
+
+      .island-presence-arms::after {
+        transform: translateX(-50%) rotate(-24deg);
+      }
+
+      .island-presence-legs {
+        top: 18px;
+        width: 12px;
+        height: 7px;
+      }
+
+      .island-presence-legs::before,
+      .island-presence-legs::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 50%;
+        width: 2px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--person-color);
+        transform-origin: top center;
+      }
+
+      .island-presence-legs::before {
+        transform: translateX(-50%) rotate(28deg);
+      }
+
+      .island-presence-legs::after {
+        transform: translateX(-50%) rotate(-28deg);
+      }
+
+      .island-presence-shadow {
+        top: 24px;
+        width: 10px;
+        height: 2px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.16);
+      }
+
       #tab-header4 {
         display: none;
       }
@@ -1224,6 +1327,13 @@
       .home-tutorial-card .ht-actions button.primary {
         background: #000;
         color: #fff;
+      }
+
+      .home-credit-note {
+        margin-top: 28px;
+        font-size: 0.86em;
+        line-height: 1.45;
+        opacity: 0.72;
       }
 
       @media (max-width: 820px), (pointer: coarse) {
@@ -1693,7 +1803,7 @@
           "molecules," the ways they combine, are entirely up to you.<br />
           These basic symbols were originally inspired by the Yijing trigrams, though they have
           already transformed a lot during development and now have a more independent identity.
-          Now, they are named "Ítí."
+          Now, the language is named "Ítí."
           </p>
 
           <p><b>How do the symbols combine?</b> There are two ways:</p>
@@ -1709,14 +1819,14 @@
           </div>
 
           <p>
-          <b>Series</b> represents <b>contiguous spatial relationships</b>: above, below, left,
+          <b>Serial</b> represents <b>contiguous spatial relationships</b>: above, below, left,
           right, inside, outside, near, covering, and so on.
           </p>
 
           <p style="text-align: center">
           <b>Examples</b><br />
-          (1) A traffic light = three lights lined up in a row.<br />
-          (2) A granary = a roof placed on top of a pile of grain.
+          (1) Traffic light: three lights lined up in a row.<br />
+          (2) Granary: a roof placed on top of a pile of grain.
           </p>
 
           <p>
@@ -1726,8 +1836,8 @@
 
           <p style="text-align: center">
           <b>Examples</b><br />
-          (1) A white rock = "white" + "hard".<br />
-          (2) A bullet = "small" + "advancing/striking forward".
+          (1) White rock: white + hard.<br />
+          (2) Bullet: small + advancing/striking forward.
           </p>
 
           <div class="image-row">
@@ -1748,58 +1858,17 @@
           </div>
 
           <p>
-          As long as the combination makes sense to you, it works - because the core principle
+          As long as the combination makes sense to you, it works -- because the core principle
           here is <b>intuitive plausibility</b>.
           </p>
 
           <p>
-          When you build a word, make sure the symbols are truly connected by magnetism:
-          <b>only symbols that belong to the same connected cluster count as one word</b>.<br />
-          You can test this by <b>clicking and holding</b> any symbol. The entire connected
-          component it belongs to will be selected.
+          If you find yourself running out of words, try creating new ones based on the vocabulary you already have!
           </p>
 
-          <p>
-          Then click <b>Insight</b> (the eye). The system will show a cloud of labels suggesting
-          possible meanings.<br />
-          You can also use this to learn the basic symbols themselves: click <b>Insight</b>
-          repeatedly, and even for the same symbol the label cloud may vary a little from time to
-          time. But underneath, those suggestions all grow out of the symbol's form and motion.
-          Gradually, you will build a fuller understanding of each basic sign.<br />
-          Even though we only begin with nine basic symbols, <b>Insight</b> will "learn" more and
-          more from the definitions and explanations you give it.
-          </p>
-
-          <p>
-          You can also click the <b>Rotate</b> button to lay a symbol flat or stand it upright,
-          or the <b>Dot</b> button to add a dot to it. That can change the meaning quite a lot.
-          Rotation changes structural direction, while adding a dot can shift a meaning from
-          static to dynamic.<br />
-          There is also a <b>Remove</b> button for deleting selected symbols if the canvas gets
-          too crowded.
-          </p>
-
-          <p>
-          When you are ready to save a new word, a window will ask you:
-          <b>what does this word mean?</b> and <b>why do you name it this way?</b>
-          The system will check whether your explanation is coherent. The main purpose is simply
-          to prevent mindless input, so I try to keep the check fairly forgiving.<br />
-          If it passes, the new word will appear in the <b>Library</b>.
-          </p>
-
-          <p>
-          After that, you can use the words you created to communicate with other people.
-          In <b>World</b>, every <b>island</b> is a separate chat room. You can drag in the
-          expressions you created, or just post emoji.<br />
-          Other people may interpret the same symbols differently, and that is fine. That is part
-          of the game. You can guess what someone else meant, ask them questions, and try to use
-          intuition to resonate with their symbols.
-          </p>
-
-          <p>
-          <i>P.S.</i> Since LLM calls cost money, there is a daily limit on how many times you can
-          validate definitions or generate emoji (<b>100 credits/day</b>). If you would like to support
-          me, you can donate on Ko-fi to upgrade (<b>$5 -> 1000 credits/day for one month</b>).
+          <p class="home-credit-note">
+          <i>P.S.</i> Definition checks use LLM credits, so free use is limited to
+          <b>100 credits/day</b>. Ko-fi support can raise the limit.
           </p>
           <br /><br />
         `,
@@ -1837,13 +1906,13 @@
                   </p>
 
                   <p>
-                  我想借这个网站探索占卜的原理。它是个符号实验游戏，让你成为“占卜师”……呃，其实就是教你用抽象的符号来窥探生活的意义。<br>
+                  我想借这个网站探索占卜的原理。它是个符号实验游戏，让你成为“占卜师”……也就是用抽象符号去窥探生活意义的人。<br>
                   我不会直接教你一整套符号语言；相反，我会帮你从零开始把它一步步自己造出来，就像堆积木。与此同时，你也会训练和强化自己的直觉。
                   </p>
 
                   <p>
                   你能摆弄的语言“原子”（基础符号）是我给好的；但“分子”（组合方式）完全由你定。<br>
-                  这些基础符号的灵感最初来自《易经》八卦，但已经在开发过程中辗转变形，面目一新。我现在叫它Ítí。
+                  这些基础符号的灵感最初来自《易经》八卦，但已经在开发过程中辗转变形，面目一新。我现在称这门语言为Ítí。
                   </p>
 
                   <p><b>符号怎么组合？</b>有两种方式：</p>
@@ -1864,8 +1933,8 @@
 
                   <p style="text-align:center;">
                   <b>例子</b><br>
-                  （1）交通灯 = 三盏灯排成一列。<br>
-                  （2）谷仓 = “屋顶”在“谷物堆”上面。
+                  （1）红绿灯：三盏灯排成一列。<br>
+                  （2）粮仓：“屋顶”盖在“粮食”上面。
                   </p>
 
                   <p>
@@ -1874,8 +1943,8 @@
 
                   <p style="text-align:center;">
                   <b>例子</b><br>
-                  （1）白色的石头 = “白” + “硬”。<br>
-                  （2）子弹 = “小” + “前进/冲击”。
+                  （1）白石：白色 + 坚硬。<br>
+                  （2）子弹：小 + 前进/冲击。
                   </p>
 
                   <div class="image-row">
@@ -1900,33 +1969,12 @@
                   </p>
 
                   <p>
-                  当你在造词时，请确保符号之间真的被“磁吸连接”起来：<b>只有连在一块的符号才算一个词</b>。<br>
-                  你可以<b>长按</b>某个符号来检查：它所在的整块<b>连通分量</b>会被选中。
+                  如果你感觉“词荒”了，那就基于已有的词语构造新词吧！
                   </p>
 
-                  <p>
-                  然后点击 <b>洞察</b>（眼睛按钮），系统会显示一团标签云来提示它的含义。<br>
-                  你也可以反过来用它学习每个基础符号：多点几次洞察，即使是同一个符号，每次标签云可能都不太一样。但溯其本源，其实都由这个符号的形状和动势衍生出来。渐渐地，你会形成对每个基础符号的综合理解。<br>
-                  虽然一开始只有九个基础符号，但 <b>洞察</b> 会随着你不断定义与解释，“学会”越来越多你教它的东西。
-                  </p>
-
-                  <p>
-                  对了，你可以点击 <b>旋转</b> 按钮来放平或者立起符号，或者是 <b>加点</b> 按钮来给符号加个点，意思可能会大有不同。旋转会变换结构方向，加点会让意义由静变动。<br>
-                  另外，点击 <b>漩涡</b> 按钮可以删除选中的符号。太挤了可不方便工作！
-                  <p>
-
-                  当你准备好保存新词时，会弹出窗口让你输入：<b>这个词是什么</b>，以及<b>你为什么这么命名</b>。系统会检查你的解释是否自洽。这一步的目的只是为了防止无脑输入，所以我尽量让系统通情达理了。<br>
-                  通过后，这个新词会出现在 <b>词库</b> 里。
-                  </p>
-
-                  <p>
-                  接下来，你就能用你造出来的词跟别人交流啦。<b>世界</b> 里的每个 <b>岛屿</b> 都是一个聊天室。你可以发送/拖拽你自己造出来的表达，也可以发 emoji。<br>
-                  别人的解释很有可能跟你不一样。没关系！这是游戏的一环。你可以猜对方想表达什么，也可以问对方问题。要诀：运用直觉理解对方的符号并与其共鸣。
-                  </p>
-
-                  <p>
-                  <i>P.S.</i> 因为调用大模型要花钱，每天能检查定义/生成emoji的次数有限（每天 <b>100</b> 点）。<br>
-                  当然，欢迎在 Ko-fi 上支持我！给我投喂五刀的可尔必思，我会给你升级到每天 <b>1000</b> 点，持续 <b>1个月</b>。
+                  <p class="home-credit-note">
+                  <i>P.S.</i> AI 检查会消耗额度，免费使用目前为每天 <b>100</b> 点。<br>
+                  如果你愿意在 Ko-fi 上支持我，可以提高每日额度。
                   </p>
                   <br /><br />
                 `,
@@ -2023,7 +2071,7 @@
       let tutorialStack = [];
       let tutorialSnapshots = new Map(); // stepIndex -> snapshot
       let tutorialLevel = 1;
-      let tutorialLevel2SeenConnections = { series: false, parallel: false };
+      let tutorialLevel2SeenConnections = { serial: false, parallel: false };
       let tutorialLevel1ToolClicks = { rotate: false, dot: false };
       let tutorialCompletedStep = null;
       let tutorialPendingDefinitionButton = null;
@@ -2640,7 +2688,7 @@
       }
 
       function getCraftConnectionKinds() {
-        const kinds = { series: false, parallel: false, any: false };
+        const kinds = { serial: false, parallel: false, any: false };
         try {
           const syms = new Set(getCraftSymbols());
           for (const sym of syms) {
@@ -2649,7 +2697,7 @@
               for (const [nbr, nbrSide] of conns[side] || []) {
                 if (!syms.has(nbr)) continue;
                 kinds.any = true;
-                const isSeries =
+                const isSerial =
                   (side === Side.START && nbrSide === Side.END) ||
                   (side === Side.END && nbrSide === Side.START) ||
                   (side === Side.START && nbrSide === Side.START) ||
@@ -2659,7 +2707,7 @@
                   side === Side.PAR_BOT ||
                   nbrSide === Side.PAR_TOP ||
                   nbrSide === Side.PAR_BOT;
-                if (isSeries) kinds.series = true;
+                if (isSerial) kinds.serial = true;
                 if (isParallel) kinds.parallel = true;
               }
             }
@@ -2669,7 +2717,7 @@
       }
 
       function getTutorialConnectionKind(aSide, bSide) {
-        const isSeries =
+        const isSerial =
           (aSide === Side.START && bSide === Side.END) ||
           (aSide === Side.END && bSide === Side.START) ||
           (aSide === Side.START && bSide === Side.START) ||
@@ -2679,7 +2727,7 @@
           aSide === Side.PAR_BOT ||
           bSide === Side.PAR_TOP ||
           bSide === Side.PAR_BOT;
-        if (isSeries) return 'series';
+        if (isSerial) return 'serial';
         if (isParallel) return 'parallel';
         return '';
       }
@@ -2695,8 +2743,8 @@
         tutorialMaybeAdvance?.();
       }
 
-      function craftHasSeriesConnection() {
-        return getCraftConnectionKinds().series;
+      function craftHasSerialConnection() {
+        return getCraftConnectionKinds().serial;
       }
 
       function craftHasParallelConnection() {
@@ -2942,13 +2990,13 @@
             title: zh ? '第 2 关 · 4/12 第一次组合' : 'Level 2 · 4/12 First Combination',
             body: zh
               ? '把两个符号吸附起来。你可以先做串联，也可以先做并联。'
-              : 'Snap the two symbols together. You may start with either series or parallel.',
+              : 'Snap the two symbols together. You may start with either serial or parallel.',
             completedBody: zh
               ? '你已经完成了第一种组合方式。'
               : 'You have completed the first kind of combination.',
             allowedTabs: [1],
             advanceWhen: () =>
-              tutorialLevel2SeenConnections.series || tutorialLevel2SeenConnections.parallel,
+              tutorialLevel2SeenConnections.serial || tutorialLevel2SeenConnections.parallel,
           },
           {
             tab: 1,
@@ -2957,25 +3005,25 @@
             body: () => {
               const kinds = tutorialLevel2SeenConnections;
               if (zh) {
-                if (kinds.series && !kinds.parallel)
+                if (kinds.serial && !kinds.parallel)
                   return '你已经做到了串联。现在请尝试并联：让两个符号在平行侧吸附。';
-                if (kinds.parallel && !kinds.series)
+                if (kinds.parallel && !kinds.serial)
                   return '你已经做到了并联。现在请尝试串联：让一个符号接到另一个符号的起点/终点。';
                 return '继续尝试，让这两个符号既体验串联，也体验并联。';
               }
-              if (kinds.series && !kinds.parallel)
-                return 'You made a series connection. Now try parallel: snap the symbols along their parallel sides.';
-              if (kinds.parallel && !kinds.series)
-                return 'You made a parallel connection. Now try series: connect one symbol to the start/end side of the other.';
-              return 'Keep experimenting until you have tried both series and parallel.';
+              if (kinds.serial && !kinds.parallel)
+                return 'You made a serial connection. Now try parallel: snap the symbols along their parallel sides.';
+              if (kinds.parallel && !kinds.serial)
+                return 'You made a parallel connection. Now try serial: connect one symbol to the start/end side of the other.';
+              return 'Keep experimenting until you have tried both serial and parallel.';
             },
             completedBody: zh
               ? '很好，你已经体验过串联和并联两种组合方式。'
-              : 'Great, you have tried both series and parallel combinations.',
+              : 'Great, you have tried both serial and parallel combinations.',
             allowedTabs: [1],
             advanceWhen: () => {
               return (
-                tutorialLevel2SeenConnections.series && tutorialLevel2SeenConnections.parallel
+                tutorialLevel2SeenConnections.serial && tutorialLevel2SeenConnections.parallel
               );
             },
           },
@@ -3294,7 +3342,7 @@
         if (!els.root || !els.spotlight || !els.bubble) return;
         if (tutorialStepIndex >= 0 && !forceRestart) return;
         tutorialLevel = Number(level) === 2 ? 2 : Number(level) === 3 ? 3 : 1;
-        tutorialLevel2SeenConnections = { series: false, parallel: false };
+        tutorialLevel2SeenConnections = { serial: false, parallel: false };
         tutorialLevel1ToolClicks = { rotate: false, dot: false };
         tutorialCompletedStep = null;
         tutorialPendingDefinitionButton = null;
@@ -5348,10 +5396,17 @@
       const db = getFirestore(app);
 
       let currentRoomId = 'default'; // default room (or null)
+      let currentPresenceIslandId = null;
+      let worldPresenceUnsubscribe = null;
+      let worldPresenceHeartbeatId = 0;
+      let currentWorldPresenceEntries = [];
+      const WORLD_PRESENCE_STALE_MS = 90 * 1000;
 
       const objsColRef = (roomId = currentRoomId) => collection(db, 'rooms', roomId, 'objs');
 
       const objDocRef = (id, roomId = currentRoomId) => doc(db, 'rooms', roomId, 'objs', id);
+      const worldPresenceColRef = () => collection(db, 'worldPresence');
+      const worldPresenceDocRef = (uid = currentUser?.uid) => doc(db, 'worldPresence', uid);
 
       // Function to Save Emoji
       async function saveObj(type, content, x, y, extraData = {}) {
@@ -5602,6 +5657,8 @@
       async function boot() {
         await restoreAnonymousSession();
         await assignUserColor().catch(console.error);
+        subscribeToWorldPresence();
+        startWorldPresenceHeartbeat();
 
         // ✅ set language BEFORE initNodes
         currentLang = localStorage.getItem('lang') || 'en';
@@ -5637,6 +5694,153 @@
           cachedUserColor = newColor;
           return cachedUserColor;
         }
+      }
+
+      function getPresenceColor(uid, data = {}) {
+        return data.color || generateColor(uid || 'guest');
+      }
+
+      function getFreshWorldPresenceEntries(snapshot) {
+        const now = Date.now();
+        const entries = [];
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data() || {};
+          const islandId = String(data.islandId || '').trim();
+          if (!islandId) return;
+          const lastSeenMs = data.lastSeen?.toMillis?.() || data.lastSeenMs || now;
+          if (now - lastSeenMs > WORLD_PRESENCE_STALE_MS) return;
+          entries.push({
+            uid: docSnap.id,
+            islandId,
+            color: getPresenceColor(docSnap.id, data),
+          });
+        });
+        return entries;
+      }
+
+      function renderWorldPresence(entries = []) {
+        const content = document.getElementById('worldContent');
+        if (!content) return;
+        currentWorldPresenceEntries = entries;
+        content.querySelectorAll('.island-presence-lines').forEach((el) => el.remove());
+        if (!worldRendered) return;
+
+        const byIsland = new Map();
+        entries.forEach((entry) => {
+          if (!byIsland.has(entry.islandId)) byIsland.set(entry.islandId, []);
+          byIsland.get(entry.islandId).push(entry);
+        });
+
+        byIsland.forEach((users, islandId) => {
+          const island = Array.from(content.querySelectorAll('svg.island')).find(
+            (el) => el.dataset.islandId === islandId,
+          );
+          if (!island) return;
+          const marker = document.createElement('div');
+          marker.className = 'island-presence-lines';
+
+          const islandLeft = parseFloat(island.style.left) || 0;
+          const islandTop = parseFloat(island.style.top) || 0;
+          const islandWidth = parseFloat(island.getAttribute('width')) || island.offsetWidth || 0;
+          const islandHeight =
+            parseFloat(island.getAttribute('height')) || island.offsetHeight || 0;
+          const islandData = worldData?.islands?.find((item) => item.id === islandId);
+          const blocks = Array.isArray(islandData?.blocks) ? islandData.blocks : [];
+          const minBlockX = blocks.length ? Math.min(...blocks.map((block) => block.x)) : 0;
+          const minBlockY = blocks.length ? Math.min(...blocks.map((block) => block.y)) : 0;
+          const blockSize = 20;
+          const pad = 5;
+
+          marker.style.left = `${islandLeft}px`;
+          marker.style.top = `${islandTop}px`;
+          marker.style.width = `${islandWidth}px`;
+          marker.style.height = `${islandHeight}px`;
+
+          users
+            .slice()
+            .sort((a, b) => a.uid.localeCompare(b.uid))
+            .slice(0, 24)
+            .forEach((user) => {
+              const seed = hash32(`${islandId}:${user.uid}`);
+              const block = blocks.length > 0 ? blocks[seed % blocks.length] : { x: 0, y: 0 };
+              const jitterX = (((seed >>> 8) % 900) / 900 - 0.5) * 9;
+              const jitterY = (((seed >>> 18) % 900) / 900 - 0.5) * 7;
+              const x = blocks.length
+                ? (block.x - minBlockX + 0.5) * blockSize + pad + jitterX
+                : islandWidth / 2 + jitterX;
+              const y = blocks.length
+                ? (block.y - minBlockY + 0.72) * blockSize + pad + jitterY
+                : islandHeight / 2 + jitterY;
+
+              const person = document.createElement('span');
+              person.className = 'island-presence-person';
+              person.style.left = `${clamp(x, 8, Math.max(8, islandWidth - 8))}px`;
+              person.style.top = `${clamp(y, 18, Math.max(18, islandHeight - 4))}px`;
+              person.style.setProperty('--person-color', user.color);
+              person.title = `${islandId}: ${users.length}`;
+
+              const head = document.createElement('span');
+              head.className = 'island-presence-head';
+              const body = document.createElement('span');
+              body.className = 'island-presence-body';
+              const arms = document.createElement('span');
+              arms.className = 'island-presence-arms';
+              const legs = document.createElement('span');
+              legs.className = 'island-presence-legs';
+              const shadow = document.createElement('span');
+              shadow.className = 'island-presence-shadow';
+              person.append(head, body, arms, legs, shadow);
+              marker.appendChild(person);
+            });
+          content.appendChild(marker);
+        });
+      }
+
+      function subscribeToWorldPresence() {
+        if (worldPresenceUnsubscribe) return;
+        worldPresenceUnsubscribe = onSnapshot(
+          worldPresenceColRef(),
+          (snapshot) => {
+            currentWorldPresenceEntries = getFreshWorldPresenceEntries(snapshot);
+            renderWorldPresence(currentWorldPresenceEntries);
+          },
+          (error) => console.warn('World presence subscription failed:', error),
+        );
+      }
+
+      async function updateWorldPresence(islandId) {
+        if (!currentUser?.uid || !islandId) return;
+        currentPresenceIslandId = String(islandId);
+        const color =
+          cachedUserColor ||
+          (await assignUserColor().catch(() => null)) ||
+          generateColor(currentUser.uid);
+        await setDoc(
+          worldPresenceDocRef(),
+          {
+            islandId: currentPresenceIslandId,
+            roomId: roomIdFromIslandId(currentPresenceIslandId),
+            color,
+            lastSeen: serverTimestamp(),
+            lastSeenMs: Date.now(),
+          },
+          { merge: true },
+        ).catch((e) => console.warn('updateWorldPresence failed:', e));
+      }
+
+      async function clearWorldPresence() {
+        currentPresenceIslandId = null;
+        if (!currentUser?.uid) return;
+        await deleteDoc(worldPresenceDocRef()).catch((e) =>
+          console.warn('clearWorldPresence failed:', e),
+        );
+      }
+
+      function startWorldPresenceHeartbeat() {
+        if (worldPresenceHeartbeatId) return;
+        worldPresenceHeartbeatId = window.setInterval(() => {
+          if (currentPresenceIslandId) updateWorldPresence(currentPresenceIslandId);
+        }, 30 * 1000);
       }
 
       function canEditElement(el) {
@@ -15327,6 +15531,7 @@
         }
 
         worldRendered = true;
+        renderWorldPresence(currentWorldPresenceEntries);
       }
 
       function createIslandSVG(islandData) {
@@ -15953,6 +16158,7 @@
           if (!selectedIsland) return;
           selectedIsland.classList.remove('selected');
           selectedIsland = null;
+          clearWorldPresence();
           hideChatTab();
           hideIslandInfoCard();
 
@@ -16042,6 +16248,14 @@
           .replace(/[\/#\.\$\[\]]/g, '_');
       }
 
+      function islandIdFromRoomId(roomId) {
+        const cleanRoomId = String(roomId || '').trim();
+        const match = worldData?.islands?.find(
+          (island) => roomIdFromIslandId(island.id) === cleanRoomId,
+        );
+        return match?.id || '';
+      }
+
       function clearChatUI() {
         const canvas = chatCanvas();
         if (!canvas) return;
@@ -16074,6 +16288,8 @@
       async function switchRoom(roomId) {
         saveChatViewportState();
         currentRoomId = roomId;
+        const presenceIslandId = selectedIsland?.dataset?.islandId || islandIdFromRoomId(roomId);
+        if (presenceIslandId) updateWorldPresence(presenceIslandId);
         updateChatQuestionPrompt(roomId);
         if (roomObjsUnsubscribe) {
           roomObjsUnsubscribe();
