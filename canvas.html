@@ -1296,6 +1296,34 @@
           z-index: 0;
         }
 
+        #tab0 {
+          width: 100vw;
+          height: calc(100dvh - 76px);
+          margin: -8px;
+          padding: 18px 24px 32px;
+          box-sizing: border-box;
+        }
+
+        #home-content {
+          max-width: 100%;
+          line-height: 1.55;
+        }
+
+        #home-content p,
+        #home-content li {
+          max-width: 34em;
+          margin-left: auto;
+          margin-right: auto;
+        }
+
+        #home-content .image-container img {
+          width: min(54vw, 220px);
+        }
+
+        #home-content .image-row img {
+          width: min(30vw, 128px);
+        }
+
         #network > .vis-network,
         #network canvas {
           display: block !important;
@@ -1490,8 +1518,8 @@
         .label-input,
         .label-textarea {
           font-size: 16px;
-          width: min(210px, 60vw);
-          max-width: min(210px, 60vw);
+          width: min(230px, calc(100vw - 32px));
+          max-width: min(230px, calc(100vw - 32px));
         }
 
         .submit-button,
@@ -1501,8 +1529,19 @@
         }
 
         #tutorialBubble {
+          width: calc(100vw - 24px);
           max-width: calc(100vw - 24px);
+          box-sizing: border-box;
           font-size: 14px;
+        }
+
+        #tutorialBubble .t-actions {
+          flex-wrap: wrap;
+        }
+
+        #tutorialBubble button {
+          flex: 1 1 auto;
+          min-width: 72px;
         }
 
         .mobile-only {
@@ -3632,6 +3671,15 @@
           : 'en';
       }
 
+      function formatSymbolOrientationTerms(text) {
+        if (typeof text !== 'string') return text;
+        const horizontal = getLang() === 'zh' ? '水平' : 'horizontal ';
+        const vertical = getLang() === 'zh' ? '垂直' : 'vertical ';
+        return text.replace(/\b([A-Za-z]+)_(h|v)\b/g, (_, symbol, direction) => {
+          return `${direction === 'h' ? horizontal : vertical}${symbol}`;
+        });
+      }
+
       function tSymbolLabels(elemIdTrue, isDynamic) {
         const lang = getLang();
         return (SYMBOL_LABELS[lang]?.[elemIdTrue]?.[Number(isDynamic)] || []).slice();
@@ -4081,6 +4129,11 @@
         return Math.max(MIN_VIEW_CONTENT_ZOOM, Math.min(MAX_VIEW_CONTENT_ZOOM, v));
       }
 
+      function clampWorldContentZoom(v) {
+        const minZoom = isCoarseMobile ? 0.28 : MIN_VIEW_CONTENT_ZOOM;
+        return Math.max(minZoom, Math.min(MAX_VIEW_CONTENT_ZOOM, v));
+      }
+
       function getHomeZoomTarget() {
         return document.getElementById('home-content');
       }
@@ -4138,7 +4191,7 @@
       }
 
       function applyWorldContentZoom(zoom) {
-        worldContentZoom = clampViewContentZoom(zoom);
+        worldContentZoom = clampWorldContentZoom(zoom);
         worldPanController?.refresh?.();
       }
 
@@ -4254,7 +4307,7 @@
 
       function zoomHomeContent(deltaY, clientX, clientY) {
         const oldZoom = homeContentZoom;
-        const nextZoom = clampViewContentZoom(
+        const nextZoom = clampWorldContentZoom(
           deltaY < 0 ? oldZoom * CANVAS_ZOOM_STEP : oldZoom / CANVAS_ZOOM_STEP,
         );
         if (Math.abs(nextZoom - oldZoom) < 0.0001) return;
@@ -4271,7 +4324,7 @@
 
       function zoomLibraryTo(nextZoom, clientX, clientY) {
         const oldZoom = libraryContentZoom;
-        nextZoom = clampViewContentZoom(nextZoom);
+        nextZoom = clampWorldContentZoom(nextZoom);
         if (Math.abs(nextZoom - oldZoom) < 0.0001) return;
         if (libraryViewMode !== 'tree' && network && container) {
           // Keep the world-point under the mouse fixed while zooming.
@@ -11601,6 +11654,39 @@
           return { canvas, rightMost, topMost };
         }
 
+        function clampDefinitionControlsToViewport() {
+          if (!isCoarseMobile) return;
+          const canvasRect = canvas.getBoundingClientRect();
+          const zoom = getCanvasZoom(canvas) || 1;
+          const viewportLeft = Math.max(0, -canvasRect.left / zoom);
+          const viewportTop = Math.max(0, -canvasRect.top / zoom);
+          const viewportRight = viewportLeft + window.innerWidth / zoom;
+          const viewportBottom = viewportTop + (window.innerHeight - 76) / zoom;
+          const gap = 8;
+          const panelWidth = Math.max(input.offsetWidth || 0, textarea.offsetWidth || 0, 180);
+          const nextX = clamp(
+            input.x,
+            viewportLeft + gap,
+            Math.max(viewportLeft + gap, viewportRight - panelWidth - gap),
+          );
+          const nextInputY = clamp(
+            input.y,
+            viewportTop + gap,
+            Math.max(viewportTop + gap, viewportBottom - 124),
+          );
+          const dx = nextX - input.x;
+          const dy = nextInputY - input.y;
+          const controls = [input, textarea, submitButton, cancelButton].filter(Boolean);
+          controls.forEach((el) => {
+            el.x = (el.x || 0) + dx;
+            el.y = (el.y || 0) + dy;
+            el.offsetX = el.x - parentLeft;
+            el.offsetY = el.y - parentTop;
+            el.style.left = `${el.x}px`;
+            el.style.top = `${el.y}px`;
+          });
+        }
+
         const inputParent = componentSymbols.values().next().value;
         if (!inputParent) return;
         const definitionComponentId = `def_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -11702,6 +11788,7 @@
         inputParent.cancelButton = cancelButton;
 
         appendToCraftCanvas(cancelButton);
+        clampDefinitionControlsToViewport();
 
         let word;
         let definition;
@@ -11863,7 +11950,7 @@
           if (tabHeadersActivated[1]) appendToCraftCanvas(outputBox);
           if (tabHeadersActivated[4]) appendToChatCanvas(outputBox);
 
-          const text = feedback;
+          const text = formatSymbolOrientationTerms(feedback);
           let index = 0;
           const speed = 10; // Speed of typing in milliseconds
 
@@ -15222,6 +15309,16 @@
         initFoam(world, content, 110);
 
         if (worldPanController && Number.isFinite(minIslandLeft)) {
+          if (isCoarseMobile) {
+            const islandBoundsWidth = Math.max(1, maxIslandRight - minIslandLeft);
+            const islandBoundsHeight = Math.max(1, maxIslandBottom - minIslandTop);
+            const fitZoom = Math.min(
+              (world.clientWidth * 0.78) / islandBoundsWidth,
+              (world.clientHeight * 0.72) / islandBoundsHeight,
+              0.75,
+            );
+            worldContentZoom = clampWorldContentZoom(fitZoom);
+          }
           const targetX =
             world.clientWidth / 2 - ((minIslandLeft + maxIslandRight) / 2) * worldContentZoom;
           const targetY =
