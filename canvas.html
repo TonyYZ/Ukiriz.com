@@ -1389,7 +1389,7 @@
         #tab2,
         #tab4 {
           width: calc(100vw + 8px);
-          height: calc(100dvh - 68px);
+          height: calc(100dvh - 76px);
           margin: -8px -8px 0 0;
         }
 
@@ -1463,6 +1463,10 @@
           width: 100vw;
           height: calc(100dvh - 76px);
           margin: -8px;
+        }
+
+        #world .world-boundary {
+          display: none;
         }
 
         .island-info-card {
@@ -3999,6 +4003,7 @@
       let worldSelectionEnabled = false;
       let worldPanController = null;
       let chatViewportBound = false;
+      let mobileLibraryInitialZoomApplied = false;
 
       // Switching between tabs
       window.showTab = function (tabIndex) {
@@ -4030,6 +4035,10 @@
         }
 
         if (tabIndex === 2) {
+          if (isCoarseMobile && !mobileLibraryInitialZoomApplied) {
+            libraryContentZoom = Math.min(libraryContentZoom || 1, 0.82);
+            mobileLibraryInitialZoomApplied = true;
+          }
           requestAnimationFrame(() => {
             refreshLibraryViewport?.();
             requestAnimationFrame(() => refreshLibraryViewport?.());
@@ -4229,6 +4238,10 @@
         try {
           network.setSize(`${width}px`, `${height}px`);
           network.redraw();
+          if (isCoarseMobile) {
+            applyLibraryContentZoom(libraryContentZoom || 0.82);
+            return;
+          }
           const ids = nodes?.getIds?.() || [];
           if (ids.length) {
             network.fit({ nodes: ids, animation: false });
@@ -15513,16 +15526,6 @@
         initFoam(world, content, 110);
 
         if (worldPanController && Number.isFinite(minIslandLeft)) {
-          if (isCoarseMobile) {
-            const islandBoundsWidth = Math.max(1, maxIslandRight - minIslandLeft);
-            const islandBoundsHeight = Math.max(1, maxIslandBottom - minIslandTop);
-            const fitZoom = Math.min(
-              (world.clientWidth * 0.78) / islandBoundsWidth,
-              (world.clientHeight * 0.72) / islandBoundsHeight,
-              0.75,
-            );
-            worldContentZoom = clampWorldContentZoom(fitZoom);
-          }
           const targetX =
             world.clientWidth / 2 - ((minIslandLeft + maxIslandRight) / 2) * worldContentZoom;
           const targetY =
