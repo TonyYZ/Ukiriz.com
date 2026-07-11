@@ -1445,6 +1445,8 @@
         #libraryTreeView {
           inset: 70px 0 0 0;
           padding-top: 0;
+          padding-bottom: 28px;
+          box-sizing: border-box;
           overflow: auto;
         }
 
@@ -4163,6 +4165,7 @@
       let homeContentZoom = 1;
       let libraryContentZoom = 1;
       let worldContentZoom = 1;
+      let mobileWorldInitialZoomApplied = false;
       let canvasZoomGestureUntil = 0;
       let canvasPinchActive = false;
 
@@ -4205,7 +4208,8 @@
       function applyLibraryContentZoom(zoom) {
         libraryContentZoom = clampViewContentZoom(zoom);
         if (libraryViewMode === 'tree') {
-          if (libraryTreeView) libraryTreeView.style.zoom = `${libraryContentZoom}`;
+          if (libraryTreeView) libraryTreeView.style.zoom = '1';
+          if (libraryTreeSurface) libraryTreeSurface.style.zoom = `${libraryContentZoom}`;
           requestAnimationFrame(() => {
             refreshLibraryTreeEdgesFromDom?.();
           });
@@ -15011,6 +15015,7 @@
         container.style.display = showTree ? 'none' : 'block';
         libraryTreeView.style.display = showTree ? 'block' : 'none';
         organizeNodeButton.style.display = showTree ? 'none' : 'block';
+        if (!showTree && libraryTreeSurface) libraryTreeSurface.style.zoom = '1';
 
         if (showTree) {
           renderLibraryTreeView();
@@ -15526,6 +15531,10 @@
         initFoam(world, content, 110);
 
         if (worldPanController && Number.isFinite(minIslandLeft)) {
+          if (isCoarseMobile && !mobileWorldInitialZoomApplied) {
+            worldContentZoom = clampWorldContentZoom(0.78);
+            mobileWorldInitialZoomApplied = true;
+          }
           const targetX =
             world.clientWidth / 2 - ((minIslandLeft + maxIslandRight) / 2) * worldContentZoom;
           const targetY =
