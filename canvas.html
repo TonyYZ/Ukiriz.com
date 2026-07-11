@@ -401,6 +401,7 @@
         padding: 4px 8px;
         font-style: normal;
         color: black;
+        overflow: visible;
       }
       .symbol-label.annotation-bubble.annotation-visible {
         display: block;
@@ -428,6 +429,35 @@
       .spawned-expression-meta .library-tree-card-definition {
         font-size: 14px;
         line-height: 1.3;
+      }
+      .spawned-expression-translate {
+        position: absolute;
+        left: 0;
+        bottom: -19px;
+        display: block;
+        width: max-content;
+        margin: 0;
+        padding: 3px 0;
+        border: 0;
+        background: transparent;
+        color: rgba(0, 0, 0, 0.58);
+        font: inherit;
+        font-size: 11px;
+        line-height: 1.2;
+        cursor: pointer;
+        pointer-events: auto;
+        touch-action: manipulation;
+      }
+      .spawned-expression-meta > .spawned-expression-translate {
+        left: 2px;
+      }
+      .spawned-expression-translate:hover {
+        color: #111;
+        text-decoration: underline;
+      }
+      .spawned-expression-translate:disabled {
+        cursor: default;
+        opacity: 0.65;
       }
 
       #chatMinimap {
@@ -818,7 +848,7 @@
         min-height: 74px;
         padding: 12px 14px;
         border: 3px solid black;
-        border-radius: 18px;
+        border-radius: 10px;
         background: rgba(255, 255, 255, 0.96);
         box-sizing: border-box;
         display: flex;
@@ -1762,7 +1792,7 @@
           <input
             type="text"
             id="symbol-message-input"
-            placeholder="Type a message to turn into symbol..."
+            placeholder="Spell a word you've created..."
             maxlength="32"
           />
           <input
@@ -1899,6 +1929,8 @@
           validationFailed: 'Validation failed.',
           whatWordIsThis: 'What word is this?',
           whyPrompt: 'Why?',
+          symbolMessagePlaceholder: "Spell a word you've created...",
+          annotationPlaceholder: 'Make an annotation...',
         },
         zh: {
           homeHTML: `
@@ -2004,6 +2036,8 @@
           validationFailed: '验证失败。',
           whatWordIsThis: '这是什么词？',
           whyPrompt: '为什么？',
+          symbolMessagePlaceholder: '写一个你造的词……',
+          annotationPlaceholder: '添加注释……',
         },
       };
 
@@ -2012,6 +2046,7 @@
 
       function setLang(lang) {
         currentLang = lang === 'zh' ? 'zh' : 'en';
+        window.currentLang = currentLang;
         localStorage.setItem('lang', currentLang);
 
         // 1) Home page content (you need a container)
@@ -2053,6 +2088,14 @@
           chatQuestionLabel.textContent =
             CHAT_QUESTION_LABELS[currentLang] || CHAT_QUESTION_LABELS.en;
         }
+        const symbolMessageInput = document.getElementById('symbol-message-input');
+        if (symbolMessageInput) {
+          symbolMessageInput.placeholder = I18N[currentLang].symbolMessagePlaceholder;
+        }
+        const annotationInput = document.getElementById('message-input');
+        if (annotationInput) {
+          annotationInput.placeholder = I18N[currentLang].annotationPlaceholder;
+        }
         updateChatQuestionPrompt?.();
 
         // If a world island is selected, refresh its info card in the new language.
@@ -2064,6 +2107,22 @@
         refreshBasicTooltips?.();
         if (network) network.redraw();
         if (libraryViewMode === 'tree') renderLibraryTreeView?.();
+        if (window.eyeButton2?.isActivated) {
+          for (const [gid, el] of spawnedExpressionMetaCardEls.entries()) {
+            if (el && el.isConnected) el.remove();
+            spawnedExpressionMetaCardEls.delete(gid);
+          }
+          document.querySelectorAll('.annotation-bubble').forEach((bubble) => {
+            bubble
+              .querySelectorAll('.spawned-expression-translate')
+              .forEach((btn) => btn.remove());
+            if (bubble.dataset?.translatedTo) {
+              setAnnotationBubbleText?.(bubble, bubble.dataset.rawContent || bubble.textContent);
+              delete bubble.dataset.translatedTo;
+            }
+          });
+          refreshChatInspectionOverlays?.();
+        }
 
         refreshI18nImages();
         document.body.classList.toggle('lang-zh', currentLang === 'zh');
@@ -2527,13 +2586,13 @@
         const uiTerms =
           currentLang === 'zh'
             ? [
-                '输入词语生成符号……',
+                '写一个你造的词……',
                 '岛屿标签页',
                 '聊天画布',
                 '网络',
                 '科技树',
                 '整理',
-                '添加注释',
+                '添加注释……',
                 '符号轮',
                 '工作台',
                 '词库',
@@ -2545,7 +2604,7 @@
                 '移除',
               ]
             : [
-                'Type a message to turn into symbol...',
+                "Spell a word you've created...",
                 'network/tree toggle',
                 'dynamic dot button',
                 'symbol wheel',
@@ -2553,7 +2612,7 @@
                 'tech tree',
                 'chat canvas',
                 'island chat tab',
-                'Make an annotation',
+                'Make an annotation...',
                 'Rotate',
                 'Dot',
                 'Remove',
@@ -3300,8 +3359,8 @@
             target: () => document.getElementById('symbol-message-input'),
             title: zh ? '第 3 关 · 10/12 发布表达' : 'Level 3 · 10/12 Post the Expression',
             body: zh
-              ? '在“输入词语生成符号……”里输入你定义的词（例如 冰淇淋），按回车把表达发布到聊天画布。'
-              : 'In “Type a message to turn into symbol...”, enter your word (for example, ice cream) and press Enter to post it.',
+              ? '在“写一个你造的词……”里输入你定义的词（例如 冰淇淋），按回车把表达发布到聊天画布。'
+              : "In “Spell a word you've created...”, enter your word (for example, ice cream) and press Enter to post it.",
             completedBody: zh
               ? '你的词已经以符号表达的形式发布到聊天画布。'
               : 'Your word has been posted to the chat canvas as a symbol expression.',
@@ -3329,8 +3388,8 @@
             target: () => document.getElementById('message-input'),
             title: zh ? '第 3 关 · 12/12 添加注释' : 'Level 3 · 12/12 Make an Annotation',
             body: zh
-              ? '在“添加注释”里写一句注释，把你的想法连接到这个表达上。'
-              : 'Write a note in Make an annotation to connect your thought to this expression.',
+              ? '在“添加注释……”里写一句注释，把你的想法连接到这个表达上。'
+              : 'Write a note in “Make an annotation...” to connect your thought to this expression.',
             hint: zh
               ? '注释只会在聊天画布的洞察模式中出现。'
               : 'Annotations appear only in chat Insight mode.',
@@ -4904,6 +4963,28 @@
           return { x: sumX / count, y: sumY / count };
         }
 
+        function getAnnotationAnchorCenter(emoji) {
+          const ids = String(emoji?.dataset?.annoSymbolIds || '')
+            .split(',')
+            .map((id) => id.trim())
+            .filter(Boolean);
+
+          if (ids.length) {
+            const centers = ids
+              .map((id) => getElementCenterInChatCanvas(symbolById.get(id)))
+              .filter(Boolean);
+            if (centers.length) {
+              return {
+                x: centers.reduce((sum, p) => sum + p.x, 0) / centers.length,
+                y: centers.reduce((sum, p) => sum + p.y, 0) / centers.length,
+              };
+            }
+          }
+
+          const rootSymbolId = emoji?.dataset?.annoRootSymbolId;
+          return rootSymbolId ? getComponentCenterFromRootSymbolId(rootSymbolId) : null;
+        }
+
         for (const link of annoLinkById.values()) {
           const fromEmoji = emojiById.get(link.fromEmojiId);
           const toEmoji = emojiById.get(link.toEmojiId);
@@ -4951,11 +5032,8 @@
           // If this annotation is chained to another annotation, it anchors to that bubble instead.
           if (annoChildToParent.has(emojiId)) continue;
 
-          const rootSymbolId = emoji.dataset?.annoRootSymbolId;
-          if (!rootSymbolId) continue;
-
           const from = getElementCenterInChatCanvas(emoji);
-          const to = getComponentCenterFromRootSymbolId(rootSymbolId);
+          const to = getAnnotationAnchorCenter(emoji);
           if (!from || !to) continue;
 
           const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -5538,6 +5616,8 @@
 
       async function persistLink(aId, aSide, bId, bSide) {
         if (!tabHeadersActivated[4]) return;
+        markLocalSymbolMutation(aId, 1600);
+        markLocalSymbolMutation(bId, 1600);
         addLocalRoomLink(aId, aSide, bId, bSide);
 
         // store on both documents
@@ -5559,6 +5639,8 @@
 
       // Remove link on both docs: A -- B
       async function removeLink(aId, aSide, bId, bSide) {
+        markLocalSymbolMutation(aId, 1600);
+        markLocalSymbolMutation(bId, 1600);
         removeLocalRoomLink(aId, aSide, bId, bSide);
         return trackSymbolOp(
           [aId, bId],
@@ -6140,6 +6222,7 @@
 
         emoji.dataset.ownerUid = data.ownerUid || '';
         emoji.textContent = data.content || '';
+        emoji.dataset.rawContent = data.content || '';
         emoji.x = data.x ?? emoji.x ?? 0;
         emoji.y = data.y ?? emoji.y ?? 0;
         emoji.style.left = `${emoji.x}px`;
@@ -6150,6 +6233,11 @@
           emoji.dataset.annoRootSymbolId = data.annoRootSymbolId
             ? String(data.annoRootSymbolId)
             : '';
+          emoji.dataset.annoSymbolIds = Array.isArray(data.annoSymbolIds)
+            ? data.annoSymbolIds.join(',')
+            : data.annoSymbolIds
+              ? String(data.annoSymbolIds)
+              : '';
           // Hide by default (shown only in inspection mode)
           emoji.classList.remove('annotation-visible');
         }
@@ -6196,6 +6284,7 @@
         }
         if (data.exprWord) symbol.dataset.exprWord = String(data.exprWord);
         if (data.exprWhy) symbol.dataset.exprWhy = String(data.exprWhy);
+        if (data.exprLang) symbol.dataset.exprLang = String(data.exprLang);
         if (data.exprAuthorUid) symbol.dataset.exprAuthorUid = String(data.exprAuthorUid);
         if (data.exprNodeId) symbol.dataset.exprNodeId = String(data.exprNodeId);
 
@@ -7807,6 +7896,233 @@
         showSpawnedExpressionMetaForSelection();
       }
 
+      function inferExpressionLang(word, why) {
+        const text = `${word || ''} ${why || ''}`;
+        if (/[\u3400-\u9fff]/.test(text)) return 'zh';
+        if (/[A-Za-z]/.test(text)) return 'en';
+        return '';
+      }
+
+      function getExpressionSourceLang(exprLang, word, why) {
+        const inferred = inferExpressionLang(word, why);
+        if (inferred) return inferred;
+        return exprLang === 'en' || exprLang === 'zh' ? exprLang : '';
+      }
+
+      function shouldOfferExpressionTranslation(sourceLang) {
+        return !!sourceLang && sourceLang !== currentLang;
+      }
+
+      const translationCache = new Map();
+      const TRANSLATION_CACHE_STORAGE_KEY = 'ukiriz.translationCache.v1';
+
+      function loadTranslationCache() {
+        try {
+          const raw = localStorage.getItem(TRANSLATION_CACHE_STORAGE_KEY);
+          if (!raw) return;
+          const entries = JSON.parse(raw);
+          if (!Array.isArray(entries)) return;
+          for (const [key, value] of entries) {
+            if (value && typeof value === 'object') translationCache.set(key, value);
+          }
+        } catch (e) {
+          console.warn('loadTranslationCache failed:', e);
+        }
+      }
+
+      function saveTranslationCache() {
+        try {
+          const resolved = Array.from(translationCache.entries()).filter(
+            ([, value]) => value && typeof value.then !== 'function',
+          );
+          localStorage.setItem(TRANSLATION_CACHE_STORAGE_KEY, JSON.stringify(resolved.slice(-80)));
+        } catch (e) {
+          console.warn('saveTranslationCache failed:', e);
+        }
+      }
+
+      loadTranslationCache();
+
+      function getTranslationCacheKey({ word = '', why = '', sourceLang = '', targetLang = '' }) {
+        return JSON.stringify({ word, why, sourceLang, targetLang });
+      }
+
+      function getResolvedCachedTranslation(args) {
+        const cached = translationCache.get(getTranslationCacheKey(args));
+        return cached && typeof cached.then !== 'function' ? cached : null;
+      }
+
+      async function requestCardTranslation({ word, why, sourceLang, targetLang }) {
+        const key = getTranslationCacheKey({ word, why, sourceLang, targetLang });
+        if (translationCache.has(key)) return translationCache.get(key);
+
+        const promise = (async () => {
+          const response = await fetch('https://divinatory-conlang.zhouyt-tony2018.workers.dev/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'translate',
+              uid: currentUser?.uid || null,
+              word,
+              why,
+              sourceLang,
+              targetLang,
+            }),
+          });
+
+          const data = await response.json();
+          if (typeof data.used === 'number' && typeof data.limit === 'number') {
+            updateQuotaBadge(data.used, data.limit);
+          }
+          if (!data.ok) throw new Error(data.message || data.error || 'Translation failed');
+
+          const translated =
+            typeof data.result === 'string' ? { explanation: data.result } : data.result || {};
+          return {
+            word: String(translated.word || word || '').trim(),
+            explanation: String(translated.explanation || why || '').trim(),
+          };
+        })();
+
+        translationCache.set(key, promise);
+        try {
+          const result = await promise;
+          translationCache.set(key, result);
+          saveTranslationCache();
+          return result;
+        } catch (e) {
+          translationCache.delete(key);
+          throw e;
+        }
+      }
+
+      function showTranslationButtonError(button, originalText, error) {
+        const msg = String(error?.message || '');
+        button.textContent =
+          msg.includes('Invalid type') || msg.includes('translate')
+            ? currentLang === 'zh'
+              ? '请先部署 Worker'
+              : 'Deploy Worker first'
+            : currentLang === 'zh'
+              ? '翻译失败'
+              : 'Failed';
+        setTimeout(() => {
+          if (button.isConnected && !button.disabled) button.textContent = originalText;
+        }, 1800);
+      }
+
+      function createLightTranslateButton(label = currentLang === 'zh' ? '翻译' : 'Translate') {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'spawned-expression-translate';
+        button.textContent = label;
+        ['pointerdown', 'mousedown', 'mouseup', 'click'].forEach((eventName) => {
+          button.addEventListener(eventName, (e) => {
+            e.stopPropagation();
+          });
+        });
+        return button;
+      }
+
+      async function translateSpawnedExpressionCard(card, { word, why, sourceLang }) {
+        const button = card?.querySelector?.('.spawned-expression-translate');
+        const titleEl = card?.querySelector?.('.library-tree-card-word');
+        let whyEl = card?.querySelector?.('.library-tree-card-definition');
+        if (!button || !titleEl) return;
+
+        const originalText = button.textContent;
+        button.disabled = true;
+        button.textContent = currentLang === 'zh' ? '翻译中...' : 'Translating...';
+
+        try {
+          const translated = await requestCardTranslation({
+            word,
+            why,
+            sourceLang,
+            targetLang: currentLang,
+          });
+
+          const translatedWord = translated.word;
+          const translatedWhy = translated.explanation;
+          titleEl.textContent = translatedWord;
+          if (!whyEl && translatedWhy) {
+            whyEl = document.createElement('div');
+            whyEl.className = 'library-tree-card-definition';
+            card.querySelector('.library-tree-card-text')?.appendChild(whyEl);
+          }
+          if (whyEl) whyEl.textContent = translatedWhy;
+          card.dataset.translatedTo = currentLang;
+          button.textContent = currentLang === 'zh' ? '已翻译' : 'Translated';
+        } catch (e) {
+          console.warn('translateSpawnedExpressionCard failed:', e);
+          button.disabled = false;
+          showTranslationButtonError(button, originalText, e);
+        }
+      }
+
+      function setAnnotationBubbleText(bubble, text) {
+        const first = bubble?.firstChild;
+        if (first && first.nodeType === Node.TEXT_NODE) {
+          first.nodeValue = text;
+        } else {
+          bubble.insertBefore(document.createTextNode(text), bubble.firstChild || null);
+        }
+      }
+
+      async function translateAnnotationBubble(bubble, sourceLang) {
+        const button = bubble?.querySelector?.('.spawned-expression-translate');
+        const original = String(bubble?.dataset?.rawContent || '').trim();
+        if (!button || !original) return;
+
+        const originalButtonText = button.textContent;
+        button.disabled = true;
+        button.textContent = currentLang === 'zh' ? '翻译中...' : 'Translating...';
+
+        try {
+          const translated = await requestCardTranslation({
+            word: '',
+            why: original,
+            sourceLang,
+            targetLang: currentLang,
+          });
+          setAnnotationBubbleText(bubble, translated.explanation || original);
+          bubble.dataset.translatedTo = currentLang;
+          button.textContent = currentLang === 'zh' ? '已翻译' : 'Translated';
+        } catch (e) {
+          console.warn('translateAnnotationBubble failed:', e);
+          button.disabled = false;
+          showTranslationButtonError(button, originalButtonText, e);
+        }
+      }
+
+      function ensureAnnotationTranslationButton(bubble) {
+        if (!bubble || bubble.dataset?.isAnnotation !== 'true') return;
+        if (bubble.querySelector('.spawned-expression-translate')) return;
+
+        const text = String(bubble.dataset.rawContent || '').trim();
+        const sourceLang = getExpressionSourceLang('', text, text);
+        if (!shouldOfferExpressionTranslation(sourceLang)) return;
+
+        const button = createLightTranslateButton();
+        const cached = getResolvedCachedTranslation({
+          word: '',
+          why: text,
+          sourceLang,
+          targetLang: currentLang,
+        });
+        if (cached) {
+          setAnnotationBubbleText(bubble, cached.explanation || text);
+          button.disabled = true;
+          button.textContent = currentLang === 'zh' ? '已翻译' : 'Translated';
+        }
+        button.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          translateAnnotationBubble(bubble, sourceLang);
+        });
+        bubble.appendChild(button);
+      }
+
       function showSpawnedExpressionMetaForSelection() {
         try {
           const canvas = chatCanvas();
@@ -7864,6 +8180,16 @@
             const first = Array.from(grp)[0];
             const word = String(first?.dataset?.exprWord || '').trim();
             const why = String(first?.dataset?.exprWhy || '').trim();
+            const exprLang = String(first?.dataset?.exprLang || '').trim();
+            const sourceLang = getExpressionSourceLang(exprLang, word, why);
+            const cachedTranslation = shouldOfferExpressionTranslation(sourceLang)
+              ? getResolvedCachedTranslation({
+                  word,
+                  why,
+                  sourceLang,
+                  targetLang: currentLang,
+                })
+              : null;
             if (!word && !why) continue;
 
             // Techtree-style card: bold word title + why text in one box.
@@ -7881,14 +8207,29 @@
 
             const titleEl = document.createElement('div');
             titleEl.className = 'library-tree-card-word';
-            titleEl.textContent = word || '';
+            titleEl.textContent = cachedTranslation?.word || word || '';
 
             const whyEl = document.createElement('div');
             whyEl.className = 'library-tree-card-definition';
-            whyEl.textContent = why || '';
+            whyEl.textContent = cachedTranslation?.explanation || why || '';
 
             textWrap.appendChild(titleEl);
-            if (why) textWrap.appendChild(whyEl);
+            if (why || cachedTranslation?.explanation) textWrap.appendChild(whyEl);
+
+            if (shouldOfferExpressionTranslation(sourceLang)) {
+              const translateButton = createLightTranslateButton();
+              if (cachedTranslation) {
+                translateButton.disabled = true;
+                translateButton.textContent = currentLang === 'zh' ? '已翻译' : 'Translated';
+              }
+              translateButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                translateSpawnedExpressionCard(card, { word, why, sourceLang });
+              });
+              card.appendChild(translateButton);
+            }
+
             card.appendChild(textWrap);
             appendToChatCanvas(card);
             spawnedExpressionMetaCardEls.set(gid, card);
@@ -8324,8 +8665,23 @@
 
         messageBox.value = '';
 
+        const ids = (
+          await Promise.all(
+            Array.from(selectedSymbols).map(async (s) => {
+              return s?.dataset?.id || (await s?._pendingIdPromise?.catch(() => null));
+            }),
+          )
+        )
+          .filter(Boolean)
+          .sort();
+        const rootSymbolId = ids[0] || '';
+
         // Create annotation bubble with plain text (no AI call)
-        const annotation = await createEmoji(userInput, null, null, null, { isAnnotation: true });
+        const annotation = await createEmoji(userInput, null, null, null, {
+          isAnnotation: true,
+          annoRootSymbolId: rootSymbolId,
+          annoSymbolIds: ids,
+        });
         annotation.classList.add('annotation-bubble');
         annotation.classList.add('annotation-visible');
         annotation.dataset.isAnnotation = 'true';
@@ -8396,7 +8752,7 @@
           null,
           null,
           null,
-          { isAnnotation: true, annoRootSymbolId: rootSymbolId },
+          { isAnnotation: true, annoRootSymbolId: rootSymbolId, annoSymbolIds: ids },
           {
             preserveSymbolSelection: true,
             // Creating a new annotation always deselects previously selected annotation bubbles.
@@ -8486,8 +8842,12 @@
 
         document.querySelectorAll('.annotation-bubble').forEach((el) => {
           const match = rootSymbolId && el.dataset?.annoRootSymbolId === rootSymbolId;
-          if (match) el.classList.add('annotation-visible');
-          else el.classList.remove('annotation-visible');
+          if (match) {
+            el.classList.add('annotation-visible');
+            ensureAnnotationTranslationButton(el);
+          } else {
+            el.classList.remove('annotation-visible');
+          }
         });
 
         scheduleAnnotationLinksUpdate?.();
@@ -9103,10 +9463,16 @@
             const libNode = nodeId && typeof nodes?.get === 'function' ? nodes.get(nodeId) : null;
             const rawTitle = String(libNode?.title || '');
             const why = rawTitle.includes('. ') ? rawTitle.split(/\. (.+)/)[1] || '' : rawTitle;
+            const exprLang = getExpressionSourceLang(
+              String(libNode?.lang || ''),
+              libNode?.word || found.word || '',
+              why,
+            );
             const payload = {
               exprGroupId: groupId,
               exprWord: String(libNode?.word || found.word || ''),
               exprWhy: String(why || ''),
+              exprLang,
               exprNodeId: nodeId ? String(nodeId) : '',
               exprAuthorUid: currentUser?.uid || '',
             };
@@ -9119,6 +9485,7 @@
                 // keep local element datasets in sync immediately
                 sym.dataset.exprWord = payload.exprWord;
                 sym.dataset.exprWhy = payload.exprWhy;
+                sym.dataset.exprLang = payload.exprLang;
                 sym.dataset.exprNodeId = payload.exprNodeId;
                 sym.dataset.exprAuthorUid = payload.exprAuthorUid;
               }),
@@ -9386,6 +9753,47 @@
         return group;
       }
 
+      function addAnnotationSubtreesForDraggedSymbols(group) {
+        const rootIds = new Set();
+        for (const el of group) {
+          if (el?.classList?.contains('symbol') && el.dataset?.id) rootIds.add(el.dataset.id);
+        }
+        if (rootIds.size === 0) return false;
+
+        const added = new Set();
+        const queue = [];
+        document.querySelectorAll('.annotation-bubble').forEach((bubble) => {
+          const symbolIds = String(bubble.dataset?.annoSymbolIds || '')
+            .split(',')
+            .map((id) => id.trim())
+            .filter(Boolean);
+          const matchesSavedGroup = symbolIds.some((id) => rootIds.has(id));
+          const matchesLegacyRoot = rootIds.has(bubble.dataset?.annoRootSymbolId);
+          if (!matchesSavedGroup && !matchesLegacyRoot) return;
+          if (!canEditElement(bubble)) return;
+          queue.push(bubble);
+        });
+
+        while (queue.length) {
+          const bubble = queue.shift();
+          if (!bubble || added.has(bubble)) continue;
+          added.add(bubble);
+          group.add(bubble);
+
+          const bubbleId = bubble.dataset?.id;
+          if (!bubbleId) continue;
+          for (const [childId, parentId] of annoChildToParent.entries()) {
+            if (parentId !== bubbleId) continue;
+            const child = emojiById.get(childId);
+            if (child?.dataset?.isAnnotation === 'true' && canEditElement(child)) {
+              queue.push(child);
+            }
+          }
+        }
+
+        return added.size > 0;
+      }
+
       async function createEmoji(
         emojiResponse,
         emojiX = null,
@@ -9402,6 +9810,11 @@
           emoji.dataset.isAnnotation = 'true';
           if (extraSaveData?.annoRootSymbolId) {
             emoji.dataset.annoRootSymbolId = String(extraSaveData.annoRootSymbolId);
+          }
+          if (extraSaveData?.annoSymbolIds) {
+            emoji.dataset.annoSymbolIds = Array.isArray(extraSaveData.annoSymbolIds)
+              ? extraSaveData.annoSymbolIds.join(',')
+              : String(extraSaveData.annoSymbolIds);
           }
           // Visible state is controlled by inspection-mode filtering.
           emoji.classList.remove('annotation-visible');
@@ -9487,8 +9900,13 @@
             resetPendingSnapState();
             dragGroupStarted = false;
             dragGroupSet = null;
+            dragGroupIncludesUnselected = false;
 
             const groupSet = buildDragGroupSet(dragLeader);
+            if (canvas === chatCanvas()) {
+              dragGroupIncludesUnselected =
+                addAnnotationSubtreesForDraggedSymbols(groupSet) || dragGroupIncludesUnselected;
+            }
             for (const el of groupSet) {
               if (!canEditElement(el)) continue; // can't drag others' items
 
@@ -9548,6 +9966,7 @@
 
         appendToChatCanvas(emoji);
         emoji.textContent = emojiResponse; // Default text
+        emoji.dataset.rawContent = emojiResponse || '';
         // Annotations should be stable (no floating) so tether offsets remain predictable.
         if (emoji.dataset?.isAnnotation !== 'true') {
           floatLabel(emoji);
@@ -9951,6 +10370,9 @@
 
             el.style.left = `${localX + off.dx}px`;
             el.style.top = `${localY + off.dy}px`;
+            if (getCanvasForElem(el) === chatCanvas()) {
+              markLocalSymbolMutation(el, 900);
+            }
           }
 
           if (
@@ -10088,7 +10510,6 @@
             scheduleChatMiniMapUpdate();
           }
 
-          groupDragActive = false;
           return;
         }
 
@@ -10452,6 +10873,64 @@
         return false;
       }
 
+      function collectLeaderSnapLinkPayloads(leader) {
+        if (!leader?.classList?.contains('symbol')) return [];
+
+        const candidates = pendingSnapLinks.filter((link) => link.active === leader);
+        if (candidates.length > 0) {
+          const payloads = [];
+          for (const link of candidates) {
+            if (violatesConflicts(link.target, link.targetSide)) {
+              console.warn('[COMMIT BLOCKED] conflict', {
+                targetElem: link.target.elemIdTrue,
+                targetSide: link.targetSide,
+              });
+              continue;
+            }
+
+            commitLink(link.active, link.activeSide, link.target, link.targetSide);
+            const aId = link.active.dataset?.id;
+            const bId = link.target.dataset?.id;
+            if (aId && bId) {
+              payloads.push({ aId, aSide: link.activeSide, bId, bSide: link.targetSide });
+            }
+          }
+          return payloads;
+        }
+
+        if (!readyActive || !readyTarget || readyActive !== leader) return [];
+        if (violatesConflicts(readyTarget, readyTargetSide)) {
+          console.warn('[COMMIT BLOCKED] conflict', {
+            targetElem: readyTarget.elemIdTrue,
+            targetSide: readyTargetSide,
+          });
+          return [];
+        }
+
+        commitLink(readyActive, readyActiveSide, readyTarget, readyTargetSide);
+        const aId = readyActive.dataset?.id;
+        const bId = readyTarget.dataset?.id;
+        return aId && bId ? [{ aId, aSide: readyActiveSide, bId, bSide: readyTargetSide }] : [];
+      }
+
+      async function persistGroupDragResult(positionPayloads, linkPayloads) {
+        const positionTasks = [];
+        for (const payload of positionPayloads) {
+          positionTasks.push(updateObjPosition(payload.id, payload.x, payload.y));
+          if (payload.dot) positionTasks.push(persistDotPosition(payload.dot));
+        }
+
+        if (positionTasks.length) {
+          await Promise.allSettled(positionTasks);
+        }
+
+        for (const payload of linkPayloads) {
+          await persistLink(payload.aId, payload.aSide, payload.bId, payload.bSide).catch(
+            console.error,
+          );
+        }
+      }
+
       document.addEventListener('mouseup', async (e) => {
         selectionClickHandled = false;
         setSymbolDragUiPassThrough(false);
@@ -10559,7 +11038,7 @@
           released._groupWasPreselectedOnDown = null;
 
           // --- 3) Commit all compatible snap candidates for this released symbol ---
-          if (shouldBeSelected) {
+          if (shouldBeSelected && !dragGroup) {
             const linksToCommit = pendingSnapLinks.filter((link) => link.active === released);
 
             if (linksToCommit.length > 0) {
@@ -10625,15 +11104,16 @@
           // --- 5) Reset per-drag flags ---
           released.moving = false;
           isGenerating = false;
-          dragGroup = null;
-          dragLeader = null;
-          dragGroupStarted = false;
-          dragGroupSet = null;
-          dragGroupIncludesUnselected = false;
-          groupDragActive = false;
-          pendingSnapDelta = null;
-          dragSnapLock = null;
-          resetPendingSnapState();
+          if (!dragGroup) {
+            dragLeader = null;
+            dragGroupStarted = false;
+            dragGroupSet = null;
+            dragGroupIncludesUnselected = false;
+            groupDragActive = false;
+            pendingSnapDelta = null;
+            dragSnapLock = null;
+            resetPendingSnapState();
+          }
         }
 
         if (activeEmoji) {
@@ -10901,21 +11381,22 @@
         }
 
         if (dragGroup) {
+          const groupPositionPayloads = [];
           for (const el of dragGroup.keys()) {
+            if (!canEditElement(el)) continue;
             const id = el.dataset?.id;
             const x = parseFloat(el.style.left);
             const y = parseFloat(el.style.top);
-            if (id) updateObjPosition(id, x, y).catch(console.error);
-
-            if (el.isDynamic && el.dot) {
-              updateDotPositionLocal(el.dot);
-              persistDotPosition(el.dot).catch(console.error);
-            }
+            if (id) groupPositionPayloads.push({ id, x, y, dot: el.isDynamic ? el.dot : null });
+            if (el.isDynamic && el.dot) updateDotPositionLocal(el.dot);
           }
 
+          const linkPayloads = collectLeaderSnapLinkPayloads(dragLeader);
+          const releasedDragGroupSet = dragGroupSet;
+
           // After group drag ends, reset per-symbol drag flags
-          if (dragGroupSet) {
-            for (const el of dragGroupSet) {
+          if (releasedDragGroupSet) {
+            for (const el of releasedDragGroupSet) {
               if (el.classList?.contains('symbol')) {
                 el.moving = false;
                 cleanupDetachedLinksFor(el, 10);
@@ -10930,6 +11411,8 @@
           pendingSnapDelta = null;
           dragSnapLock = null;
           resetPendingSnapState();
+
+          persistGroupDragResult(groupPositionPayloads, linkPayloads).catch(console.error);
         }
 
         let rect;
@@ -11220,6 +11703,7 @@
             top: parseFloat(symbol.style.top) || 0,
             exprWord: symbol.dataset?.exprWord || '',
             exprWhy: symbol.dataset?.exprWhy || '',
+            exprLang: symbol.dataset?.exprLang || '',
             exprNodeId: symbol.dataset?.exprNodeId || '',
             exprAuthorUid: symbol.dataset?.exprAuthorUid || '',
           })),
@@ -11345,6 +11829,7 @@
 
           if (snapshot.exprWord) pastedSymbol.dataset.exprWord = String(snapshot.exprWord);
           if (snapshot.exprWhy) pastedSymbol.dataset.exprWhy = String(snapshot.exprWhy);
+          if (snapshot.exprLang) pastedSymbol.dataset.exprLang = String(snapshot.exprLang);
           if (snapshot.exprNodeId) pastedSymbol.dataset.exprNodeId = String(snapshot.exprNodeId);
           if (snapshot.exprAuthorUid) {
             pastedSymbol.dataset.exprAuthorUid = String(snapshot.exprAuthorUid);
@@ -11390,10 +11875,17 @@
 
           if (usingChatCanvas) {
             const first = groupSymbols[0];
+            const exprWord = String(first?.dataset?.exprWord || '');
+            const exprWhy = String(first?.dataset?.exprWhy || '');
             const payload = {
               exprGroupId: groupId,
-              exprWord: String(first?.dataset?.exprWord || ''),
-              exprWhy: String(first?.dataset?.exprWhy || ''),
+              exprWord,
+              exprWhy,
+              exprLang: getExpressionSourceLang(
+                String(first?.dataset?.exprLang || ''),
+                exprWord,
+                exprWhy,
+              ),
               exprNodeId: String(first?.dataset?.exprNodeId || ''),
               exprAuthorUid: String(first?.dataset?.exprAuthorUid || currentUser?.uid || ''),
             };
@@ -12644,8 +13136,13 @@
             resetPendingSnapState();
             dragGroupStarted = false;
             dragGroupSet = null;
+            dragGroupIncludesUnselected = false;
 
             const groupSet = buildDragGroupSet(dragLeader);
+            if (canvas === chatCanvas()) {
+              dragGroupIncludesUnselected =
+                addAnnotationSubtreesForDraggedSymbols(groupSet) || dragGroupIncludesUnselected;
+            }
             for (const el of groupSet) {
               if (!canEditElement(el)) continue; // can't drag others' items
 
@@ -14940,6 +15437,7 @@
       libraryTreeSvg.id = 'libraryTreeSvg';
       libraryTreeSurface.appendChild(libraryTreeSvg);
       libraryTreeView.addEventListener('pointerdown', (e) => {
+        if (isCoarseMobile) return;
         const isBlankTreeArea =
           e.target === libraryTreeView ||
           e.target === libraryTreeSurface ||
@@ -15103,6 +15601,7 @@
           id: n.id,
           word: n.word || '',
           title: n.title || '',
+          lang: n.lang || '',
           svg: n._svg || null,
           x: pos[n.id]?.x ?? null,
           y: pos[n.id]?.y ?? null,
@@ -15165,6 +15664,7 @@
               image: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(scaleSVG(sn.svg)),
               word: sn.word || '',
               title: sn.title || '',
+              lang: sn.lang || '',
               x: sn.x ?? undefined,
               y: sn.y ?? undefined,
               _treeY: Number.isFinite(sn.treeY) ? sn.treeY : undefined,
@@ -15183,6 +15683,7 @@
                   ? tBasicNodeWord(existingBaseIndex)
                   : exists.word || ''),
               title: sn.title || exists.title || '',
+              lang: sn.lang || exists.lang || '',
               ...(sn.x != null && sn.y != null ? { x: sn.x, y: sn.y } : {}),
               ...(sn.treeY != null ? { _treeY: sn.treeY } : {}),
               ...(sn.svg ? { _svg: sn.svg } : {}),
@@ -15386,6 +15887,7 @@
             image: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(scaleSVG(svgString)),
             word: word,
             title: capitalizeFirstLetter(word) + '. ' + capitalizeFirstLetter(justification),
+            lang: currentLang,
             _svg: svgString,
             pattern: serializedPattern,
             layout: serializedLayout,
