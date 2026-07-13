@@ -555,13 +555,19 @@
         border-radius: 5px;
         border: 1px solid #000;
         background: rgba(255, 255, 255, 0.9);
-        font-size: 16px;
+        font-size: 14px;
         font-family: inherit;
         pointer-events: auto; /* 可选：不挡点击 */
       }
 
       #quota-badge * {
         pointer-events: auto;
+      }
+      #quota-badge .quota-daily {
+        font-size: 14px;
+      }
+      #quota-badge .quota-copy {
+        font-size: 12px;
       }
 
       /* Color palette styles */
@@ -1725,7 +1731,7 @@
           <button id="lang-zh" class="lang-item">中文</button>
         </div>
       </div>
-      <div id="quota-badge" class="quota-badge">Credits spent: --/--</div>
+      <div id="quota-badge" class="quota-badge">Credits: connecting…</div>
     </div>
 
     <div id="tutorialOverlay" aria-hidden="true">
@@ -1904,7 +1910,7 @@
 
           <p class="home-credit-note">
           <i>P.S.</i> Definition checks use LLM credits, so free use is limited to
-          <b>100 credits/day</b>. Ko-fi support can raise the limit.
+          <b>100 free credits/day</b>. Ko-fi support adds permanent credits that do not expire.
           </p>
           <br /><br />
         `,
@@ -1920,7 +1926,7 @@
           },
           supportCode: 'Support code',
           clickToCopy: '(click to copy UID)',
-          supportOnKofi: '🍹 Support on Ko-fi',
+          supportOnKofi: '🍹 Support Ítí Isles',
           fillAllFields: 'Please fill in all fields!',
           wordAlreadyDefined: 'You have already defined this word!',
           expressionAlreadyUsed:
@@ -2028,7 +2034,7 @@
           },
           supportCode: '支持码',
           clickToCopy: '（点击复制 UID）',
-          supportOnKofi: '🍹 上 Ko-fi 支持',
+          supportOnKofi: '🍹 支持一下',
           fillAllFields: '请填写所有字段！',
           wordAlreadyDefined: '你已经定义过这个词了！',
           expressionAlreadyUsed: '你已经用这个表达式定义过其他词了！',
@@ -7972,7 +7978,7 @@
 
           const data = await response.json();
           if (typeof data.used === 'number' && typeof data.limit === 'number') {
-            updateQuotaBadge(data.used, data.limit);
+            updateQuotaBadge(data.used, data.limit, data.paidBalance);
           }
           if (!data.ok) throw new Error(data.message || data.error || 'Translation failed');
 
@@ -9536,7 +9542,7 @@
           const data = await response.json();
 
           if (typeof data.used === 'number' && typeof data.limit === 'number') {
-            updateQuotaBadge(data.used, data.limit);
+            updateQuotaBadge(data.used, data.limit, data.paidBalance);
           }
 
           if (data?.code === 'RATE_LIMITED' || data?.code === 'QUOTA_EXCEEDED') {
@@ -12212,43 +12218,49 @@
         return [foundIds, elimBasic, representatives, hasDuplicateExpression];
       }
 
-      function updateQuotaBadge(used, limit) {
+      function updateQuotaBadge(used, limit, paidBalance = 0) {
         const el = document.getElementById('quota-badge');
         if (!el) return;
 
         const remaining = Math.max(0, limit - used);
+        const saved = Number.isFinite(Number(paidBalance))
+          ? Math.max(0, Math.floor(Number(paidBalance)))
+          : 0;
+        const dailyLine =
+          currentLang === 'zh'
+            ? `今日额度&nbsp; ${remaining} / ${limit}`
+            : `Credits today&nbsp; ${remaining} / ${limit}`;
+        const savedLine =
+          saved > 0
+            ? `<div style="margin-top:3px;font-size:12px;opacity:.82;">${currentLang === 'zh' ? '永久额度' : 'In reserve'}&nbsp; ${saved.toLocaleString()}</div>`
+            : '';
 
-        // short code for display, full UID copied
         const uid = currentUser?.uid || '';
-        const code = uid ? uid.slice(0, 10) : '…';
 
         const kofiUrl = 'https://ko-fi.com/ukiriz'; // 换成你的 Ko-fi 链接
 
         const t = I18N[currentLang];
+        const copyLabel = currentLang === 'zh' ? '复制 UID' : 'copy UID';
         const isMobileQuota = window.matchMedia?.(
           '(max-width: 820px), (pointer: coarse)',
         )?.matches;
         if (isMobileQuota) {
-          const creditsLabel = currentLang === 'zh' ? '额度' : 'Credits';
-          const copyLabel = currentLang === 'zh' ? '复制 UID' : 'copy UID';
-          const supportLabel = currentLang === 'zh' ? '🍹 上 Ko-fi 支持' : '🍹 Support on Ko-fi';
+          const supportLabel = currentLang === 'zh' ? '🍹 支持一下' : '🍹 Support this experiment';
           el.innerHTML = `
-            <div><strong>${creditsLabel}: ${remaining}/${limit}</strong></div>
-            <button type="button" id="support-code" style="display:block;margin:4px 0 0;padding:0;border:0;background:transparent;text-decoration:underline;cursor:pointer;font:inherit;color:inherit;">${copyLabel}</button>
-            <a id="kofi-link" href="${kofiUrl}" target="_blank" rel="noopener noreferrer" style="display:block;margin-top:4px;text-decoration:underline;color:inherit;">${supportLabel}</a>
+            <div class="quota-daily"><strong>${dailyLine}</strong></div>
+            ${savedLine}
+            <button type="button" id="support-code" class="quota-copy" style="display:block;margin:4px 0 0;padding:0;border:0;background:transparent;text-decoration:underline;cursor:pointer;font-family:inherit;color:inherit;">${copyLabel}</button>
+            <a id="kofi-link" href="${kofiUrl}" target="_blank" rel="noopener noreferrer" title="${currentLang === 'zh' ? '作为感谢，每支持 $5 可获得 10,000 永久额度' : 'As a thank-you, every $5 adds 10,000 permanent credits'}" style="display:block;margin-top:4px;text-decoration:underline;color:inherit;">${supportLabel}</a>
           `;
         } else {
           el.innerHTML = `
-                  <div><strong>${t.credits(used, limit)}</strong></div>
+                  <div class="quota-daily"><strong>${dailyLine}</strong></div>
+                  ${savedLine}
 
-                  <div style="margin-top:4px; font-size:12px;">
-                  ${t.supportCode}:
-                  <span id="support-code" style="text-decoration: underline; cursor: pointer;">${code}</span>
-                  <span style="opacity:0.8;">${t.clickToCopy}</span>
-                  </div>
+                  <button type="button" id="support-code" class="quota-copy" title="${currentLang === 'zh' ? '复制完整 Firebase UID' : 'Copy full Firebase UID'}" style="display:block;margin:4px 0 0;padding:0;border:0;background:transparent;text-decoration:underline;cursor:pointer;font-family:inherit;color:inherit;">${copyLabel}</button>
 
                   <div style="margin-top:6px; font-size:12px;">
-                  <a id="kofi-link" href="${kofiUrl}" target="_blank" rel="noopener noreferrer"
+                  <a id="kofi-link" href="${kofiUrl}" target="_blank" rel="noopener noreferrer" title="${currentLang === 'zh' ? '作为感谢，每支持 $5 可获得 10,000 永久额度' : 'As a thank-you, every $5 adds 10,000 permanent credits'}"
                       style="text-decoration: underline; color: inherit;">
                       ${t.supportOnKofi}
                   </a>
@@ -12310,11 +12322,6 @@
         }
       }
 
-      function getSupportCode() {
-        const uid = currentUser?.uid || '';
-        return uid ? uid.slice(0, 10) : '';
-      }
-
       async function refreshQuotaBadge() {
         if (!currentUser?.uid) return;
         try {
@@ -12325,7 +12332,7 @@
           });
           const data = await resp.json();
           if (data.ok && typeof data.used === 'number' && typeof data.limit === 'number') {
-            updateQuotaBadge(data.used, data.limit);
+            updateQuotaBadge(data.used, data.limit, data.paidBalance);
           }
         } catch (e) {
           console.warn('refreshQuotaBadge failed', e);
@@ -12585,7 +12592,7 @@
             console.warn('[client] usage', data.usage);
 
             if (typeof data.used === 'number' && typeof data.limit === 'number') {
-              updateQuotaBadge(data.used, data.limit);
+              updateQuotaBadge(data.used, data.limit, data.paidBalance);
             }
 
             if (data.code === 'RATE_LIMITED') {
