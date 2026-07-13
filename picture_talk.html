@@ -432,13 +432,21 @@
         <div id="quota-badge">Turns: --/--</div>
         <button id="copy-uid" type="button" title="Copy your full Firebase UID">copy UID</button>
         <a
-          id="support-link"
+          id="kofi-link"
           class="support-link"
           href="https://ko-fi.com/ukiriz"
           target="_blank"
           rel="noopener noreferrer"
           title="As a thank-you, every $5 adds 150 permanent turns"
-          >🍹 Support Picture Talk</a
+          >🍹 Ko-fi</a
+        ><a
+          id="afdian-link"
+          class="support-link"
+          href="https://afdian.com/a/ukiriz"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="As a thank-you, every ¥35 adds 150 permanent turns"
+          >⚡ 爱发电</a
         >
       </div>
       <a class="home-link" id="home-link" href="index.html">← Ukiriz</a>
@@ -627,8 +635,10 @@
           latest: 'Latest creation',
           copyUid: 'copy UID',
           copied: 'copied ✓',
-          support: '🍹 Support Picture Talk',
-          supportTitle: 'As a thank-you, every $5 adds 150 permanent turns',
+          supportKofi: '🍹 Ko-fi',
+          supportKofiTitle: 'As a thank-you, every $5 adds 150 permanent turns',
+          supportAfdian: '⚡ Afdian',
+          supportAfdianTitle: 'As a thank-you, every ¥35 adds 150 permanent turns',
           home: '← Ukiriz',
           connecting: 'connecting…',
           unavailable: 'Turns: unavailable',
@@ -683,8 +693,10 @@
           latest: '最近的创作',
           copyUid: '复制 UID',
           copied: '已复制 ✓',
-          support: '🍹 支持一下',
-          supportTitle: '作为感谢，每支持 $5 可获得 150 次永久对谈',
+          supportKofi: '🍹 Ko-fi',
+          supportKofiTitle: '作为感谢，每支持 $5 可获得 150 次永久对谈',
+          supportAfdian: '⚡ 爱发电',
+          supportAfdianTitle: '作为感谢，每发电 ¥35 可获得 150 次永久对谈',
           home: '← Ukiriz',
           connecting: '连接中…',
           unavailable: '次数暂不可用',
@@ -768,8 +780,10 @@
         $('#latest-summary').textContent = t.latest;
         $('#copy-uid').textContent = t.copyUid;
         $('#copy-uid').title = t.copyTitle;
-        $('#support-link').textContent = t.support;
-        $('#support-link').title = t.supportTitle;
+        $('#kofi-link').textContent = t.supportKofi;
+        $('#kofi-link').title = t.supportKofiTitle;
+        $('#afdian-link').textContent = t.supportAfdian;
+        $('#afdian-link').title = t.supportAfdianTitle;
         $('#home-link').textContent = t.home;
         $('#busy').textContent = t.listening;
         $('#edit-name').ariaLabel = t.editName;
@@ -1044,8 +1058,8 @@
         } catch {
           window.prompt(
             currentLang === 'zh'
-              ? '请复制这个 UID，并粘贴到你的 Ko-fi 留言中：'
-              : 'Copy this UID into your Ko-fi message:',
+              ? '请复制这个 UID，并粘贴到 Ko-fi 或爱发电的赞助留言中：'
+              : 'Copy this UID into your Ko-fi or Afdian support message:',
             value,
           );
         }

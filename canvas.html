@@ -1910,7 +1910,7 @@
 
           <p class="home-credit-note">
           <i>P.S.</i> Definition checks use LLM credits, so free use is limited to
-          <b>100 free credits/day</b>. Ko-fi support adds permanent credits that do not expire.
+          <b>100 free credits/day</b>. Support through Ko-fi or Afdian adds permanent credits that do not expire.
           </p>
           <br /><br />
         `,
@@ -1926,7 +1926,8 @@
           },
           supportCode: 'Support code',
           clickToCopy: '(click to copy UID)',
-          supportOnKofi: '🍹 Support Ítí Isles',
+          supportOnKofi: '🍹 Ko-fi',
+          supportOnAfdian: '⚡ Afdian',
           fillAllFields: 'Please fill in all fields!',
           wordAlreadyDefined: 'You have already defined this word!',
           expressionAlreadyUsed:
@@ -2018,7 +2019,7 @@
 
                   <p class="home-credit-note">
                   <i>P.S.</i> AI 检查会消耗额度，免费使用目前为每天 <b>100</b> 点。<br>
-                  如果你愿意在 Ko-fi 上支持我，可以提高每日额度。
+                  如果你愿意在 Ko-fi 或爱发电上支持我，可以获得永久额度。
                   </p>
                   <br /><br />
                 `,
@@ -2034,7 +2035,8 @@
           },
           supportCode: '支持码',
           clickToCopy: '（点击复制 UID）',
-          supportOnKofi: '🍹 支持一下',
+          supportOnKofi: '🍹 Ko-fi',
+          supportOnAfdian: '⚡ 爱发电',
           fillAllFields: '请填写所有字段！',
           wordAlreadyDefined: '你已经定义过这个词了！',
           expressionAlreadyUsed: '你已经用这个表达式定义过其他词了！',
@@ -12238,6 +12240,7 @@
         const uid = currentUser?.uid || '';
 
         const kofiUrl = 'https://ko-fi.com/ukiriz'; // 换成你的 Ko-fi 链接
+        const afdianUrl = 'https://afdian.com/a/ukiriz';
 
         const t = I18N[currentLang];
         const copyLabel = currentLang === 'zh' ? '复制 UID' : 'copy UID';
@@ -12245,12 +12248,14 @@
           '(max-width: 820px), (pointer: coarse)',
         )?.matches;
         if (isMobileQuota) {
-          const supportLabel = currentLang === 'zh' ? '🍹 支持一下' : '🍹 Support this experiment';
           el.innerHTML = `
             <div class="quota-daily"><strong>${dailyLine}</strong></div>
             ${savedLine}
             <button type="button" id="support-code" class="quota-copy" style="display:block;margin:4px 0 0;padding:0;border:0;background:transparent;text-decoration:underline;cursor:pointer;font-family:inherit;color:inherit;">${copyLabel}</button>
-            <a id="kofi-link" href="${kofiUrl}" target="_blank" rel="noopener noreferrer" title="${currentLang === 'zh' ? '作为感谢，每支持 $5 可获得 10,000 永久额度' : 'As a thank-you, every $5 adds 10,000 permanent credits'}" style="display:block;margin-top:4px;text-decoration:underline;color:inherit;">${supportLabel}</a>
+            <div style="display:flex;gap:9px;margin-top:4px;font-size:12px;">
+              <a id="kofi-link" href="${kofiUrl}" target="_blank" rel="noopener noreferrer" title="${currentLang === 'zh' ? '作为感谢，每支持 $5 可获得 10,000 点 Ítí 永久额度' : 'As a thank-you, every $5 adds 10,000 permanent Ítí credits'}" style="text-decoration:underline;color:inherit;">${t.supportOnKofi}</a>
+              <a id="afdian-link" href="${afdianUrl}" target="_blank" rel="noopener noreferrer" title="${currentLang === 'zh' ? '作为感谢，每发电 ¥35 可获得 10,000 点 Ítí 永久额度' : 'As a thank-you, every ¥35 adds 10,000 permanent Ítí credits'}" style="text-decoration:underline;color:inherit;">${t.supportOnAfdian}</a>
+            </div>
           `;
         } else {
           el.innerHTML = `
@@ -12263,6 +12268,11 @@
                   <a id="kofi-link" href="${kofiUrl}" target="_blank" rel="noopener noreferrer" title="${currentLang === 'zh' ? '作为感谢，每支持 $5 可获得 10,000 永久额度' : 'As a thank-you, every $5 adds 10,000 permanent credits'}"
                       style="text-decoration: underline; color: inherit;">
                       ${t.supportOnKofi}
+                  </a>
+                  <span style="opacity:.5;"> · </span>
+                  <a id="afdian-link" href="${afdianUrl}" target="_blank" rel="noopener noreferrer" title="${currentLang === 'zh' ? '作为感谢，每发电 ¥35 可获得 10,000 点 Ítí 永久额度' : 'As a thank-you, every ¥35 adds 10,000 permanent Ítí credits'}"
+                      style="text-decoration: underline; color: inherit;">
+                      ${t.supportOnAfdian}
                   </a>
                   </div>
               `;
@@ -12314,12 +12324,13 @@
           sc.onmouseup = (e) => e.stopPropagation();
         }
 
-        const kofi = document.getElementById('kofi-link');
-        if (kofi) {
-          kofi.onmousedown = (e) => e.stopPropagation();
-          kofi.onmouseup = (e) => e.stopPropagation();
-          kofi.onclick = (e) => e.stopPropagation();
-        }
+        ['kofi-link', 'afdian-link'].forEach((id) => {
+          const link = document.getElementById(id);
+          if (!link) return;
+          link.onmousedown = (e) => e.stopPropagation();
+          link.onmouseup = (e) => e.stopPropagation();
+          link.onclick = (e) => e.stopPropagation();
+        });
       }
 
       async function refreshQuotaBadge() {
