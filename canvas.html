@@ -84,6 +84,12 @@
         height: 100%;
       }
 
+      .symbol.white-fill-outline svg {
+        overflow: visible;
+        filter: drop-shadow(1px 0 0 #000) drop-shadow(-1px 0 0 #000) drop-shadow(0 1px 0 #000)
+          drop-shadow(0 -1px 0 #000);
+      }
+
       .dot {
         position: absolute;
         width: 5px; /* Full width = 156 */
@@ -4798,6 +4804,7 @@
 
       function appendToCraftCanvas(el) {
         craftCanvas()?.appendChild(el);
+        updateWhiteSymbolOutline(el);
       }
 
       function appendToCraftControls(el) {
@@ -5454,6 +5461,7 @@
       let readyTargetSide = null;
       let pendingSnapCandidates = [];
       let pendingSnapLinks = [];
+      let qianSnapPreviewSymbols = new Set();
       let clickOnlySymbol = null;
       let clickOnlyEmoji = null;
       let selectionClickHandled = false;
@@ -6202,6 +6210,10 @@
             }
           }
         }
+
+        for (const symbol of symbolById.values()) {
+          updateQianSymbolAppearance(symbol);
+        }
       }
 
       function hasLocalChatDragInProgress() {
@@ -6670,7 +6682,9 @@
               if (!Array.isArray(arr) || arr.length === 0) continue;
 
               // 每个元素形如 [neighbor, neighborSide]
-              conns[side] = arr.filter(([nbr, _nbrSide]) => nbr !== symbol);
+              const filtered = arr.filter(([nbr, _nbrSide]) => nbr !== symbol);
+              if (filtered.length !== arr.length) updateQianSymbolAppearance?.(node);
+              conns[side] = filtered;
             }
             this.map.set(node, conns);
           }
@@ -7188,7 +7202,7 @@
         `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M9.28 11.36V4.48h2.56v11.2h38.08v2.56H9.28Z"></path></svg>`,
         `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M9.28 11.36V4.48h2.56v11.2h26.24V4.48h2.56v13.76H9.28z"></path></svg>`,
         `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M49.915 19.513c0-1.28 0-1.28-16.31-1.28-8.438 0-12.955-.003-14.768.023-1.675.025-.909-.927-.318-1.77 6.312-9.01-4.424-20.08-13.642-14.065-5.795 3.782-5.913 12.55-.223 16.465 2.752 1.893 2.824 1.899 25.021 1.903 20.24.004 20.24.004 20.24-1.276M6.454 17.052c-6.384-3.947-3.578-13.7 3.941-13.7 8.426 0 10.363 11.493 2.437 14.459-1.796.672-4.604.338-6.378-.76"></path><path d="M49.922 19.51v-1.28h-16.31s-20.052 2.553-3.93 2.556l20.24.004z" style="fill:#000"></path></svg>`,
-        `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M21.856 20.468c-3.226-1.115-6.05-3.957-6.641-6.684-.226-1.04-.226-1.04-7.72-1.04-7.495 0-7.495 0-7.495-1.28s0-1.28 7.348-1.28c4.823 0 6.48 0 7.148-.385.35-.201.427-.508.547-.975 2.649-10.367 17.185-10.367 19.834 0 .348 1.36.348 1.36 7.695 1.36s7.348 0 7.348 1.28 0 1.28-7.495 1.28c-7.494 0-7.494 0-7.72 1.04-1.093 5.04-7.683 8.47-12.85 6.684m5.74-2.465c6.55-2.232 6.55-11.806 0-14.039-7.822-2.664-13.768 6.713-7.883 12.43 2.026 1.966 5.032 2.58 7.882 1.61"></path><path d="M35.224 10.185H49.92v2.56h-7.494m-34.928.003H.003v-2.56h14.695" style="fill:#000"></path></svg>`,
+        `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path class="qian-center-circle" style="fill:#000" d="M24.96.48a10.24 10.24 0 1 1 0 20.48 10.24 10.24 0 0 1 0-20.48Zm0 2.56a7.68 7.68 0 1 0 0 15.36 7.68 7.68 0 0 0 0-15.36Z"></path><g class="qian-outer-lines" opacity="0"><rect x="0" y="10.184" width="16.8" height="2.56" fill="#000"></rect><rect x="33.12" y="10.184" width="16.8" height="2.56" fill="#000"></rect></g></svg>`,
         `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M0 16.96v-1.28h49.92v2.56H0Zm8-11.2V4.48h33.92v2.56H8Z"></path></svg>`,
       ];
 
@@ -7196,8 +7210,82 @@
       const dotDataMini = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><circle cx="2" cy="2" r="2" fill="red"/></svg>`;
       const dotOffsetXData = [0, 45, 0, 46, -45, 0, -46, 0, 0];
       const dotOffsetYData = [0, 0, 0, -8, 0, 0, -8, -8, 0];
+      const QIAN_ELEM_ID = 7;
+      const qianCenterPath =
+        'M24.96.48a10.24 10.24 0 1 1 0 20.48 10.24 10.24 0 0 1 0-20.48Zm0 2.56a7.68 7.68 0 1 0 0 15.36 7.68 7.68 0 0 0 0-15.36Z';
       let latestPointerClientX = null;
       let latestPointerClientY = null;
+
+      function buildQianSvg(lineOpacity = 0) {
+        const line =
+          lineOpacity > 0
+            ? `<g class="qian-outer-lines" opacity="${lineOpacity}"><rect x="0" y="10.184" width="16.8" height="2.56" fill="#000"></rect><rect x="33.12" y="10.184" width="16.8" height="2.56" fill="#000"></rect></g>`
+            : '';
+        return `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path class="qian-center-circle" style="fill:#000" d="${qianCenterPath}"></path>${line}</svg>`;
+      }
+
+      function isQianSymbol(symbol) {
+        return Number(symbol?.elemIdTrue) === QIAN_ELEM_ID;
+      }
+
+      function qianHasFrontBackConnections(symbol) {
+        const conns = currentGraph?.getSymbolConnections?.(symbol);
+        return !!((conns?.[0]?.length || 0) || (conns?.[1]?.length || 0));
+      }
+
+      function updateQianSymbolAppearance(symbol, { dragging = false } = {}) {
+        if (!isQianSymbol(symbol)) return;
+        const nextMode = dragging || symbol._qianPressed || symbol._qianSnapPreview
+          ? 'pressed'
+          : qianHasFrontBackConnections(symbol)
+            ? 'full'
+            : 'center';
+        const needsSvg = !symbol.querySelector('svg .qian-center-circle');
+        if (needsSvg) {
+          symbol.innerHTML = symbolData[QIAN_ELEM_ID];
+          if (symbol.color) dyeColor(symbol, symbol.color);
+        }
+        const lines = symbol.querySelector('svg .qian-outer-lines');
+        if (lines) {
+          lines.style.opacity = nextMode === 'pressed' ? '0.5' : nextMode === 'full' ? '1' : '0';
+        }
+        symbol.dataset.qianMode = nextMode;
+        if (symbol.isDynamic && symbol.dot) updateDotPositionLocal(symbol.dot);
+      }
+
+      function updateQianSymbolsAround(...symbols) {
+        const seen = new Set();
+        for (const symbol of symbols) {
+          if (!symbol || seen.has(symbol)) continue;
+          seen.add(symbol);
+          updateQianSymbolAppearance(symbol);
+        }
+      }
+
+      function clearQianSnapPreviewSymbols() {
+        for (const symbol of qianSnapPreviewSymbols) {
+          symbol._qianSnapPreview = false;
+          updateQianSymbolAppearance(symbol);
+        }
+        qianSnapPreviewSymbols.clear();
+      }
+
+      function addQianPreviewSymbol(symbol) {
+        if (!isQianSymbol(symbol)) return;
+        symbol._qianSnapPreview = true;
+        qianSnapPreviewSymbols.add(symbol);
+        updateQianSymbolAppearance(symbol);
+      }
+
+      function previewDirectFrontBackQianNeighbors(symbol) {
+        clearQianSnapPreviewSymbols();
+        const conns = currentGraph?.getSymbolConnections?.(symbol);
+        for (const side of [0, 1]) {
+          for (const [nbr, nbrSide] of conns?.[side] || []) {
+            if (nbrSide === 0 || nbrSide === 1) addQianPreviewSymbol(nbr);
+          }
+        }
+      }
 
       function applySymbolRotationLocal(symbol, addAngle) {
         symbol.angle = (symbol.angle + addAngle) % 360;
@@ -7404,6 +7492,7 @@
             currentGraph.getSymbolConnections(nbr)[nbrSide] = back.filter(
               ([x, s]) => !(x === symbol && s === side),
             );
+            updateQianSymbolsAround(symbol, nbr);
           }
         }
       }
@@ -7433,6 +7522,7 @@
         dragSnapLock = null;
         resetPendingSnapState();
         activeSymbol = symbol;
+        symbol._qianPressed = true;
         symbol.style.cursor = 'grabbing';
         symbol.moving = false;
         symbol._downClientX = clientX;
@@ -7453,9 +7543,56 @@
         symbol.style.zIndex = '7';
         symbol.style.left = `${localX - symbol.offsetX}px`;
         symbol.style.top = `${localY - symbol.offsetY}px`;
+        updateQianSymbolAppearance(symbol, { dragging: true });
 
         if (symbol.isDynamic && symbol.dot) {
           updateDotPositionLocal(symbol.dot);
+        }
+      }
+
+      function mapSideAfterQuarterTurnFromAngle(oldAngle, side) {
+        const oldDir = oldAngle === 90 || oldAngle === 270 ? 1 : 0;
+        if (oldDir === 0) {
+          if (side === Side.MID_TOP) return Side.MID_BOT;
+          if (side === Side.MID_BOT) return Side.MID_TOP;
+          if (side === Side.PAR_TOP) return Side.PAR_BOT;
+          if (side === Side.PAR_BOT) return Side.PAR_TOP;
+          return side;
+        }
+        if (side === Side.START) return Side.END;
+        if (side === Side.END) return Side.START;
+        return side;
+      }
+
+      function mapSideAfterRotationFromAngle(oldAngle, side, addAngle) {
+        let mapped = side;
+        let angle = oldAngle;
+        const turns = (((Math.round(addAngle / 90) % 4) + 4) % 4);
+        for (let i = 0; i < turns; i++) {
+          mapped = mapSideAfterQuarterTurnFromAngle(angle, mapped);
+          angle = (angle + 90) % 360;
+        }
+        return mapped;
+      }
+
+      function remapRotatedGroupInternalLinks(group, oldInternalLinks, oldAngleBySymbol, addAngle = 90) {
+        const nextConns = new Map(group.map((symbol) => [symbol, [[], [], [], [], [], []]]));
+        for (const link of oldInternalLinks) {
+          const aSide = mapSideAfterRotationFromAngle(
+            oldAngleBySymbol.get(link.a) || 0,
+            link.aSide,
+            addAngle,
+          );
+          const bSide = mapSideAfterRotationFromAngle(
+            oldAngleBySymbol.get(link.b) || 0,
+            link.bSide,
+            addAngle,
+          );
+          nextConns.get(link.a)?.[aSide]?.push([link.b, bSide]);
+          nextConns.get(link.b)?.[bSide]?.push([link.a, aSide]);
+        }
+        for (const [symbol, conns] of nextConns.entries()) {
+          currentGraph.addSymbol(symbol, conns);
         }
       }
 
@@ -7464,6 +7601,22 @@
         if (group.length === 0) return;
 
         const groupSet = new Set(group);
+        const previousSnapshotsBySymbol = inChat
+          ? new Map(group.map((symbol) => [symbol, snapshotSymbolConnections(symbol)]))
+          : null;
+        const oldAngleBySymbol = new Map(group.map((symbol) => [symbol, symbol.angle || 0]));
+        const oldInternalLinks = [];
+        const symbolOrder = new Map(group.map((symbol, index) => [symbol, index]));
+        for (const symbol of group) {
+          const conns = currentGraph.getSymbolConnections(symbol) || [];
+          for (let side = 0; side < conns.length; side++) {
+            for (const [nbr, nbrSide] of conns[side] || []) {
+              if (!groupSet.has(nbr)) continue;
+              if ((symbolOrder.get(symbol) ?? 0) > (symbolOrder.get(nbr) ?? 0)) continue;
+              oldInternalLinks.push({ a: symbol, aSide: side, b: nbr, bSide: nbrSide });
+            }
+          }
+        }
         const centers = group.map((symbol) => ({
           symbol,
           x: (parseFloat(symbol.style.left) || 0) + (symbolWidth * symbolScale) / 2,
@@ -7491,6 +7644,8 @@
             updateDotPositionLocal(symbol.dot);
           }
         }
+
+        remapRotatedGroupInternalLinks(group, oldInternalLinks, oldAngleBySymbol, addAngle);
 
         let snapped = false;
         groupDragActive = true;
@@ -7527,6 +7682,7 @@
         if (inChat) {
           for (const symbol of group) {
             await persistSymbolVisualState(symbol, true);
+            await syncSymbolLinksRemote(symbol, previousSnapshotsBySymbol.get(symbol) || []);
           }
         }
 
@@ -8512,13 +8668,32 @@
         }
       });
 
+      function isWhiteSymbolColor(color) {
+        if (!color) return false;
+        const normalized = String(color).trim().toLowerCase().replace(/\s+/g, '');
+        return (
+          normalized === 'white' ||
+          normalized === '#fff' ||
+          normalized === '#ffffff' ||
+          normalized === 'rgb(255,255,255)' ||
+          normalized === 'rgba(255,255,255,1)'
+        );
+      }
+
+      function updateWhiteSymbolOutline(symbol) {
+        const shouldOutline =
+          isWhiteSymbolColor(symbol?.color) && getCanvasForElem(symbol) === craftCanvas();
+        symbol?.classList.toggle('white-fill-outline', shouldOutline);
+      }
+
       function dyeColor(symbol, color) {
         const svgElement = symbol.querySelector('svg');
-        const paths = svgElement.querySelectorAll('path'); // Get the first shape inside the SVG
-        paths.forEach((path) => {
-          path.setAttribute('style', 'fill:' + color); // Change the fill attribute
+        const shapes = svgElement.querySelectorAll('path, rect'); // Get the shapes inside the SVG
+        shapes.forEach((shape) => {
+          shape.style.fill = color; // Preserve per-shape opacity while changing color.
         });
         symbol.color = color;
+        updateWhiteSymbolOutline(symbol);
       }
 
       // Handle color selection
@@ -10149,10 +10324,12 @@
               if (aId && bId) {
                 removeLink(aId, side, bId, nbrSide).catch(console.error);
               }
+              updateQianSymbolsAround(sym, nbr);
             }
           }
           conns[side] = remain; // keep only internal links
         }
+        updateQianSymbolAppearance(sym);
       }
 
       function detachSymbolLocal(symbol) {
@@ -10165,9 +10342,11 @@
             // remove back-edge on neighbor
             const back = currentGraph.getSymbolConnections(nbr)?.[nbrSide] || [];
             currentGraph.getSymbolConnections(nbr)[nbrSide] = back.filter(([x]) => x !== symbol);
+            updateQianSymbolsAround(symbol, nbr);
           }
           conns[side] = [];
         }
+        updateQianSymbolAppearance(symbol);
       }
 
       // Firestore removal (optional but recommended)
@@ -10213,6 +10392,8 @@
       }
 
       function cancelDraggingState() {
+        const qianToRestore = activeSymbol;
+        const qianGroupToRestore = dragGroup ? Array.from(dragGroup.keys()) : [];
         activeSymbol = null;
         activeEmoji = null;
 
@@ -10231,6 +10412,12 @@
         // optional but usually correct: clear snap candidate
         resetPendingSnapState();
         document.body.classList.remove('symbol-drag-ui-pass-through');
+        if (qianToRestore) qianToRestore._qianPressed = false;
+        qianGroupToRestore.forEach((el) => {
+          if (el) el._qianPressed = false;
+        });
+        updateQianSymbolAppearance(qianToRestore);
+        qianGroupToRestore.forEach((el) => updateQianSymbolAppearance(el));
       }
 
       function setSymbolDragUiPassThrough(on) {
@@ -10671,10 +10858,12 @@
                   const aId = activeSymbol.dataset.id;
                   const bId = nbr.dataset.id;
                   if (aId && bId) removeLink(aId, i, bId, nbrSide).catch(console.error);
+                  updateQianSymbolsAround(activeSymbol, nbr);
                 }
                 conns[i] = [];
               }
             }
+            updateQianSymbolAppearance(activeSymbol);
             activeSymbol.moving = true;
           }
 
@@ -10723,8 +10912,10 @@
             const aId = symbol.dataset?.id;
             const bId = nbr.dataset?.id;
             if (aId && bId) removeLink(aId, side, bId, nbrSide).catch(console.error);
+            updateQianSymbolsAround(symbol, nbr);
           }
         }
+        updateQianSymbolAppearance(symbol);
       }
 
       let lastPointerDownTarget = null;
@@ -10791,15 +10982,30 @@
           registerTutorialCraftConnection?.(aSide, bSide);
           requestAnimationFrame(() => tutorialMaybeAdvance?.());
         }
+        updateQianSymbolsAround(a, b);
       }
 
       function resetPendingSnapState() {
+        clearQianSnapPreviewSymbols();
         readyActive = null;
         readyTarget = null;
         readyActiveSide = null;
         readyTargetSide = null;
         pendingSnapCandidates = [];
         pendingSnapLinks = [];
+      }
+
+      function previewQianSnapLink(link) {
+        if (!link) return;
+        const touchesTargetFrontBack = link.targetSide === Side.START || link.targetSide === Side.END;
+        if (touchesTargetFrontBack && isQianSymbol(link.target)) {
+          addQianPreviewSymbol(link.target);
+        }
+      }
+
+      function setQianSnapPreviewLinks(links = []) {
+        clearQianSnapPreviewSymbols();
+        links.forEach(previewQianSnapLink);
       }
 
       function registerPendingSnapCandidate(candidate) {
@@ -10864,6 +11070,7 @@
         active.style.top = `${oldY + dy}px`;
 
         pendingSnapLinks = selected;
+        setQianSnapPreviewLinks(selected);
         const first = selected[0];
         readyActive = first.active;
         readyTarget = first.target;
@@ -10960,6 +11167,8 @@
           const released = activeSymbol;
           activeSymbol = null;
           released.style.cursor = 'grab';
+          released._qianPressed = false;
+          updateQianSymbolAppearance(released);
 
           // --- 1) Decide final selection state for this mouseup ---
           // Default: keep selected
@@ -11205,6 +11414,8 @@
 
         if (clickOnlySymbol) {
           const s = clickOnlySymbol;
+          s._qianPressed = false;
+          updateQianSymbolAppearance(s);
 
           if (longPressFired) {
             clickOnlySymbol = null;
@@ -11407,7 +11618,9 @@
             for (const el of releasedDragGroupSet) {
               if (el.classList?.contains('symbol')) {
                 el.moving = false;
+                el._qianPressed = false;
                 cleanupDetachedLinksFor(el, 10);
+                updateQianSymbolAppearance(el);
               }
             }
           }
@@ -12897,6 +13110,8 @@
       }
 
       function triggerLongPress(symbol, representatives = null) {
+        updateQianSymbolAppearance(symbol, { dragging: true });
+        previewDirectFrontBackQianNeighbors(symbol);
         if (circle !== null) {
           circle.style.stroke = '#FFC000';
         }
@@ -13017,6 +13232,8 @@
           if (e.button !== 0) return;
           const additiveSelect = !!(e.shiftKey || e.ctrlKey || e.metaKey);
           symbol._downAdditive = additiveSelect;
+          symbol._qianPressed = true;
+          updateQianSymbolAppearance(symbol, { dragging: true });
           // If this symbol is part of a spawned expression group, select the entire group,
           // but still allow dragging + magnetic snapping like ordinary multi-selection.
           if (symbol._expressionGroupId) {
@@ -13170,6 +13387,7 @@
               const dy = top - localY;
 
               dragGroup.set(el, { dx, dy, dx0: dx, dy0: dy });
+              updateQianSymbolAppearance(el, { dragging: true });
             }
 
             activeSymbol = symbol; // leader remains active
@@ -13185,6 +13403,7 @@
             resetPendingSnapState();
 
             activeSymbol = symbol;
+            updateQianSymbolAppearance(symbol, { dragging: true });
             const left = parseFloat(symbol.style.left) || 0;
             const top = parseFloat(symbol.style.top) || 0;
             symbol.offsetX = localX - left;
@@ -13209,6 +13428,7 @@
         /* if horizontal: left, right, top perpendicular, bottom perpendicular, top parallel, bottom parallel */
         /* if vertical: top, down, left perpendicular, right perpendicular, left parallel, right parallel */
         currentGraph.addSymbol(symbol, [[], [], [], [], [], []]);
+        updateQianSymbolAppearance(symbol);
 
         if (tabHeadersActivated[1]) appendToCraftCanvas(symbol);
         if (tabHeadersActivated[4] || symbolX !== null) appendToChatCanvas(symbol);
@@ -13937,6 +14157,7 @@
           readyActiveSide = activeSide;
           readyTargetSide = targetSide;
           pendingSnapDelta = { dx, dy };
+          setQianSnapPreviewLinks([{ target, targetSide }]);
           return;
         }
 
@@ -13970,6 +14191,7 @@
       let container = document.getElementById('network');
       let data = { nodes: nodes, edges: edges };
       let basicNodeIds = new Set();
+      let basicNodeIdByElemIdTrue = new Map();
       const LIBRARY_VIEW_MODE_KEY = 'libraryViewMode';
       let libraryViewMode = 'network';
       let libraryTreeView = null;
@@ -15568,11 +15790,13 @@
             _baseIndex: i,
           });
           basicNodeIds.add(id);
+          basicNodeIdByElemIdTrue.set(i, id);
         }
 
         network = new vis.Network(container, data, options);
 
         await loadLibraryGraphForUser();
+        ensureSingleSymbolWordBasicEdges();
         rebuildLibraryFromNodes();
         renderLibraryTreeView();
         setLibraryViewMode(libraryViewMode);
@@ -15912,8 +16136,9 @@
           };
 
           nodes.add(newNode); // Add node to dataset
+          const forceBasicParentEdges = components.length === 1;
           for (const symbol of components) {
-            if (!elimBasic.has(symbol))
+            if (forceBasicParentEdges || !elimBasic.has(symbol))
               addEdge(await generateUniqueId(symbolData[symbol.elemIdTrue]), id);
           }
           for (const foundId of foundIds) {
@@ -15954,6 +16179,24 @@
           });
           console.log(`link ${sourceId} ${targetId}`);
         }
+      }
+
+      function ensureSingleSymbolWordBasicEdges() {
+        let changed = false;
+        for (const node of nodes.get()) {
+          if (basicNodeIds.has(node.id)) continue;
+          const patternNodes = node.pattern?.nodes;
+          if (!Array.isArray(patternNodes) || patternNodes.length !== 1) continue;
+
+          const elemIdTrue = patternNodes[0]?.elemIdTrue ?? patternNodes[0]?.elemId;
+          const basicId = basicNodeIdByElemIdTrue.get(Number(elemIdTrue));
+          if (!basicId || basicId === node.id) continue;
+
+          const before = edges.getIds().length;
+          addEdge(basicId, node.id);
+          if (edges.getIds().length !== before) changed = true;
+        }
+        if (changed) scheduleSaveLibraryGraph();
       }
 
       async function generateUniqueId(svgString) {
