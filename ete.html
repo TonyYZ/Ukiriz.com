@@ -98,23 +98,12 @@
         font: 600 25px/1 'UkirizWenKai', Georgia, serif;
         letter-spacing: .035em;
       }
-      .brand h1::before {
-        content: '';
-        display: inline-block;
-        width: 10px;
-        height: 20px;
-        margin-right: 10px;
-        vertical-align: -3px;
-        background: var(--accent);
-        clip-path: polygon(50% 0, 100% 68%, 50% 100%, 0 68%);
-      }
       .brand p {
-        margin: 7px 0 0 20px;
+        margin: 7px 0 0;
         color: var(--accent-deep);
-        font-size: 10px;
-        font-weight: 700;
-        letter-spacing: .17em;
-        text-transform: uppercase;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: .04em;
       }
 
       .font-switch {
@@ -262,6 +251,99 @@
       }
       button:hover { color: var(--accent-deep); border-color: var(--accent); background: #fff; }
       button:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 2px; }
+      button[aria-pressed="true"] {
+        color: #fff;
+        border-color: var(--accent);
+        background: var(--accent);
+      }
+
+      dialog {
+        width: min(680px, calc(100vw - 28px));
+        max-height: calc(100dvh - 28px);
+        padding: 0;
+        overflow: auto;
+        border: 1px solid rgba(143, 94, 13, .42);
+        border-radius: 6px;
+        color: var(--ink);
+        background: var(--paper);
+        box-shadow: 0 18px 54px rgba(48, 43, 32, .28);
+        font-family: var(--mono);
+      }
+      dialog::backdrop {
+        background: rgba(48, 43, 32, .34);
+        backdrop-filter: blur(2px);
+      }
+      .settings-form { padding: 22px; }
+      .settings-head {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 20px;
+        margin-bottom: 20px;
+      }
+      .settings-head h2 {
+        margin: 0;
+        font: 600 22px/1.1 'UkirizWenKai', Georgia, serif;
+      }
+      .settings-head p {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.45;
+      }
+      .settings-close {
+        flex: 0 0 auto;
+        min-width: 34px;
+        padding: 5px;
+        font-size: 18px;
+      }
+      .settings-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px 18px;
+      }
+      .setting {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 92px;
+        align-items: center;
+        gap: 12px;
+      }
+      .setting label {
+        font-size: 12px;
+        line-height: 1.35;
+      }
+      .setting small {
+        display: block;
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 10px;
+      }
+      .setting input {
+        width: 100%;
+        min-width: 0;
+        padding: 7px 8px;
+        border: 1px solid rgba(143, 94, 13, .3);
+        border-radius: 3px;
+        color: var(--ink);
+        background: rgba(255, 255, 255, .7);
+        font: 12px/1.2 var(--mono);
+      }
+      .setting input:focus {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
+      .settings-error {
+        min-height: 17px;
+        margin: 14px 0 0;
+        color: #9d3c31;
+        font-size: 11px;
+      }
+      .settings-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 2px;
+      }
 
       #drawing {
         display: block;
@@ -293,6 +375,7 @@
           font-size: clamp(25px, 8vw, 38px);
         }
         .drawer { min-height: 48dvh; }
+        .settings-grid { grid-template-columns: 1fr; }
       }
     </style>
   </head>
@@ -305,6 +388,7 @@
             <p>The automated scribe for Ítí</p>
           </div>
           <button type="button" id="random-text" title="Replace the editor with a generated V2 passage">Random text</button>
+          <button type="button" id="random-settings" title="Set random text parameters">Settings</button>
           <div class="font-switch" role="radiogroup" aria-label="Writing font">
             <input type="radio" id="uriti" name="font" value="uriti" checked />
             <label for="uriti">Uriti</label>
@@ -323,6 +407,7 @@
         <div class="drawer-head">
           <span class="drawer-title">Live drawing</span>
           <div class="actions">
+            <button type="button" id="maze-mode" aria-pressed="false" title="Avoid collisions using DrawerV2 maze routing">Maze</button>
             <button type="button" id="fit">Fit</button>
             <button type="button" id="download">Save SVG</button>
           </div>
@@ -332,6 +417,69 @@
         </svg>
       </section>
     </main>
+
+    <dialog id="random-settings-dialog" aria-labelledby="random-settings-title">
+      <form class="settings-form" id="random-settings-form">
+        <div class="settings-head">
+          <div>
+            <h2 id="random-settings-title">Random text settings</h2>
+            <p>These values are used the next time you generate a passage.</p>
+          </div>
+          <button class="settings-close" type="button" id="random-settings-close" aria-label="Close settings">×</button>
+        </div>
+        <div class="settings-grid">
+          <div class="setting">
+            <label for="random-elements">Elements <small>Total drawable elements</small></label>
+            <input id="random-elements" name="elements" type="number" min="1" max="5000" step="1" value="100" required />
+          </div>
+          <div class="setting">
+            <label for="random-sentences">Sentences <small>Between 1 and the element count</small></label>
+            <input id="random-sentences" name="sentences" type="number" min="1" max="1000" step="1" value="10" required />
+          </div>
+          <div class="setting">
+            <label for="random-fuseau-rate">Fuseau rate <small>Probability from 0 to 1</small></label>
+            <input id="random-fuseau-rate" name="fuseauRate" type="number" min="0" max="1" step="0.01" value="0.2" required />
+          </div>
+          <div class="setting">
+            <label for="random-gate-rate">Gate rate <small>Probability from 0 to 1</small></label>
+            <input id="random-gate-rate" name="gateRate" type="number" min="0" max="1" step="0.01" value="0.08" required />
+          </div>
+          <div class="setting">
+            <label for="random-vertical-rate">Vertical rate <small>Probability from 0 to 1</small></label>
+            <input id="random-vertical-rate" name="verticalRate" type="number" min="0" max="1" step="0.01" value="0.5" required />
+          </div>
+          <div class="setting">
+            <label for="random-nested-rate">Nested fuseau rate <small>Probability from 0 to 1</small></label>
+            <input id="random-nested-rate" name="nestedFuseauRate" type="number" min="0" max="1" step="0.01" value="0.25" required />
+          </div>
+          <div class="setting">
+            <label for="random-depth">Maximum depth <small>Nested fuseau depth</small></label>
+            <input id="random-depth" name="maxFuseauDepth" type="number" min="1" max="20" step="1" value="3" required />
+          </div>
+          <div class="setting">
+            <label for="random-branches">Maximum branches <small>Branches in one fuseau</small></label>
+            <input id="random-branches" name="maxBranches" type="number" min="2" max="30" step="1" value="6" required />
+          </div>
+          <div class="setting">
+            <label for="random-branch-length">Maximum branch length <small>Elements in one branch</small></label>
+            <input id="random-branch-length" name="maxBranchLength" type="number" min="1" max="30" step="1" value="4" required />
+          </div>
+          <div class="setting">
+            <label for="random-fanout">Maximum gate fanout <small>Targets from one source</small></label>
+            <input id="random-fanout" name="maxGateFanout" type="number" min="1" max="30" step="1" value="3" required />
+          </div>
+          <div class="setting">
+            <label for="random-seed">Seed <small>Leave blank for a new passage</small></label>
+            <input id="random-seed" name="seed" type="number" min="0" max="4294967295" step="1" placeholder="Random" />
+          </div>
+        </div>
+        <p class="settings-error" id="random-settings-error" role="alert"></p>
+        <div class="settings-actions">
+          <button type="button" id="random-settings-cancel">Cancel</button>
+          <button type="submit">Use settings</button>
+        </div>
+      </form>
+    </dialog>
 
     <script>
       (() => {
@@ -343,6 +491,9 @@
         const count = document.querySelector('#count');
         const svg = document.querySelector('#drawing');
         const drawerPanel = document.querySelector('.drawer');
+        const randomSettingsDialog = document.querySelector('#random-settings-dialog');
+        const randomSettingsForm = document.querySelector('#random-settings-form');
+        const randomSettingsError = document.querySelector('#random-settings-error');
         const viewport = document.querySelector('#viewport');
         const artwork = document.querySelector('#artwork');
         const consonants = new Set(Array.from('çşzspbtdmnfvlrcghğyw-|'));
@@ -539,34 +690,6 @@
             }
             return { type:'series', children };
           }
-          finishCompactComplex(branches, outerStops, requireFinalO = false) {
-            if (this.base() !== 'o') {
-              if (requireFinalO) this.fail('A nested fuseau must end with o');
-              return { branches, closingOmitted:true };
-            }
-            while (this.base() === 'o') {
-              const separatorSnapshot = this.snapshot();
-              this.takeVowel('o');
-              if (this.pos >= this.text.length || outerStops.has(this.base())) {
-                return { branches, closingOmitted:false };
-              }
-              let candidate;
-              try { candidate = this.compactBranch(); }
-              catch (error) {
-                if (!(error instanceof ParseError)) throw error;
-                this.restore(separatorSnapshot);
-                this.takeVowel('o');
-                return { branches, closingOmitted:false };
-              }
-              if (this.base() !== 'o') {
-                this.restore(separatorSnapshot);
-                this.takeVowel('o');
-                return { branches, closingOmitted:false };
-              }
-              branches.push(candidate);
-            }
-            return { branches, closingOmitted:true };
-          }
           tryImplicitComplex(outerStops) {
             const snapshot = this.snapshot();
             try {
@@ -624,9 +747,9 @@
               const second = this.compactBranch(true);
               if (this.base() !== 'o') this.fail('Compact fuseau needs o after its second branch');
               this.takeVowel('o'); const third = this.compactBranch();
-              const finished = this.finishCompactComplex([first, second, third], outerStops);
+              const closingOmitted = !this.takeOptionalVowel('o');
               return this.recordFuseauBoundaries(
-                { type:'parallel', branches:finished.branches }, true, finished.closingOmitted
+                { type:'parallel', branches:[first, second, third] }, true, closingOmitted
               );
             } catch (error) {
               if (!(error instanceof ParseError)) throw error;
@@ -655,11 +778,12 @@
               } else this.fail('Fuseau needs o after branch 2');
 
               const third = this.compactBranch();
-              const finished = this.finishCompactComplex(
-                [first, second, third], outerStops, requireFinalO
-              );
+              const closingOmitted = !this.takeOptionalVowel('o');
+              if (closingOmitted && requireFinalO) {
+                this.fail('A nested three-branch fuseau must end with o');
+              }
               return this.recordFuseauBoundaries(
-                { type:'parallel', branches:finished.branches }, false, finished.closingOmitted
+                { type:'parallel', branches:[first, second, third] }, false, closingOmitted
               );
             } catch (error) {
               if (!(error instanceof ParseError)) throw error;
@@ -748,7 +872,7 @@
         }
 
         const generatorDefaults = {
-          elements:28, sentences:2, fuseauRate:.2, gateRate:.08,
+          elements:100, sentences:10, fuseauRate:.2, gateRate:.08,
           verticalRate:.5, nestedFuseauRate:.25, maxFuseauDepth:3,
           maxBranches:6, maxBranchLength:4, maxGateFanout:3,
         };
@@ -920,13 +1044,13 @@
         function serializeElement(node, markers, continuation = false, orientationVowel = 'á') {
           return repeatMarker('i', markers.outgoing.get(node.id) || 0)
             + repeatMarker('u', markers.incoming.get(node.id) || 0)
-            + (continuation ? 'a' : '')
+            + (continuation && !node.orientation ? 'a' : '')
             + (node.orientation ? orientationVowel : '')
             + node.char;
         }
 
         function serializeSeries(node, markers, insideBranch = false) {
-          return node.children.map((child, index) => {
+          const rendered = node.children.map((child, index) => {
             if (child.type !== 'parallel') return serializeNode(child, markers);
             const previous = index ? node.children[index - 1] : null;
             const following = index + 1 < node.children.length ? node.children[index + 1] : null;
@@ -939,17 +1063,66 @@
             );
             if (insideBranch) text = `'${text}'`;
             return text;
-          }).join('');
+          });
+          return insideBranch
+            ? rendered.join('')
+            : spaceFuseauBoundaries(node.children, rendered);
         }
 
-        function serializeCompactSeries(node, markers, secondBranch = false) {
+        function spaceFuseauBoundaries(children, rendered) {
+          const segments = [];
+          let current = '';
+
+          children.forEach((child, index) => {
+            let text = rendered[index];
+            if (child.type !== 'parallel') {
+              current += text;
+              return;
+            }
+
+            const previousIsPlain = index > 0
+              && children[index - 1].type !== 'parallel';
+            const followingIsPlain = index + 1 < children.length
+              && children[index + 1].type !== 'parallel';
+
+            if (previousIsPlain) {
+              if (!text.startsWith('e')) {
+                throw new Error('A fuseau after a plain segment must begin with e');
+              }
+              current += 'e';
+              segments.push(current);
+              current = '';
+              text = text.slice(1);
+            }
+
+            if (followingIsPlain) {
+              if (!text.endsWith('o')) {
+                throw new Error('A fuseau before a plain segment must end with o');
+              }
+              current += text.slice(0, -1);
+              segments.push(current);
+              current = 'o';
+            } else {
+              current += text;
+            }
+          });
+
+          if (current) segments.push(current);
+          return segments.join(' ');
+        }
+
+        function serializeCompactSeries(
+          node, markers, secondBranch = false, firstOrientationVowel = null
+        ) {
           const rendered = [];
           node.children.forEach((child, index) => {
             let text;
             if (child.type === 'element') {
               text = serializeElement(
                 child, markers, index > 0,
-                secondBranch && index === 0 ? 'ớ' : 'á'
+                index === 0 && firstOrientationVowel !== null
+                  ? firstOrientationVowel
+                  : secondBranch && index === 0 ? 'ớ' : 'á'
               );
             } else {
               text = child.type === 'parallel'
@@ -970,8 +1143,11 @@
           );
           if (node.branches.length === 2) {
             if (framed) return `e${compact[0]}${compact[1]}o`;
-            const branches = node.branches.map(branch => serializeSeries(branch, markers, true));
-            return `${omitOpening ? '' : 'e'}${branches[0]}ơ${branches[1]}${omitClosing ? '' : 'o'}`;
+            const left = serializeCompactSeries(node.branches[0], markers);
+            const right = serializeCompactSeries(node.branches[1], markers, false, '');
+            const rightFirst = node.branches[1].children[0];
+            const marker = rightFirst.type === 'element' && rightFirst.orientation ? 'ớ' : 'ơ';
+            return `${omitOpening ? '' : 'e'}${left}${marker}${right}${omitClosing ? '' : 'o'}`;
           }
           if (node.branches.length === 3) {
             const safelyCompact = node.branches.every(
@@ -981,7 +1157,14 @@
             const closing = omitClosing && !framed && safelyCompact ? '' : 'o';
             return `${opening}${compact[0]}${compact[1]}o${compact[2]}${closing}`;
           }
-          return `e${compact[0]}${compact[1]}o${compact.slice(2).map(branch => `${branch}o`).join('')}`;
+          const branches = node.branches.map(
+            branch => serializeSeries(branch, markers, true)
+          );
+          const middle = branches.slice(1, -2)
+            .map(branch => `e${branch}o`)
+            .join('');
+          return `e${branches[0]}${middle}`
+            + `${branches.at(-2)}o${branches.at(-1)}o`;
         }
 
         function serializeNode(node, markers) {
@@ -990,9 +1173,15 @@
           return serializeParallel(node, markers);
         }
 
+        function capitalizeFirstLetter(text) {
+          return text.replace(/\p{L}/u, letter => letter.toUpperCase());
+        }
+
         function serializeDocument(document) {
           const markers = gateMarkerMaps(document);
-          return document.sentences.map(root => serializeSeries(root, markers)).join('. ');
+          return document.sentences
+            .map(root => capitalizeFirstLetter(serializeSeries(root, markers)))
+            .join('. ');
         }
 
         function generateRandomText(seed = browserRandomSeed(), overrides = {}) {
@@ -1010,8 +1199,29 @@
           throw new Error('Could not generate a valid V2 passage');
         }
 
+        function readRandomSettings() {
+          if (!randomSettingsForm.reportValidity()) return null;
+          const data = new FormData(randomSettingsForm);
+          const options = {};
+          for (const key of Object.keys(generatorDefaults)) {
+            options[key] = Number(data.get(key));
+          }
+          if (options.sentences > options.elements) {
+            randomSettingsError.textContent = 'Sentence count cannot exceed the element count.';
+            return null;
+          }
+          randomSettingsError.textContent = '';
+          const seedText = String(data.get('seed') || '').trim();
+          return {
+            seed: seedText === '' ? browserRandomSeed() : Number(seedText),
+            options,
+          };
+        }
+
         let drawingLayer = artwork;
         const occupied = [];
+        const MAZE_CHANCES = 4;
+        let mazeMode = false;
         function make(tag, attrs = {}, parent = drawingLayer) {
           const node = document.createElementNS(NS, tag);
           for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
@@ -1224,28 +1434,26 @@
           return widths.slice(0, ordered.length);
         }
 
-        function renderNode(node, turtle, state, boundaryStart = false, boundaryEnd = false) {
+        function renderNode(
+          node, turtle, state, boundaryStart = false, boundaryEnd = false,
+          componentBoxes = null
+        ) {
           if (node.type === 'element') {
             const start = { x:turtle.x, y:turtle.y };
-            const saved = turtle.clone(); const periodCircle = boundaryEnd && 'şç'.includes(node.char);
-            let group;
-            for (let attempt = 0; attempt < 2; attempt++) {
-              group = make('g', { 'data-node':node.id }, artwork); drawingLayer = group;
-              drawElement(turtle, node, state.normalDir, state.alter, boundaryStart || periodCircle, boundaryEnd);
-              drawingLayer = artwork;
+            const periodCircle = boundaryEnd && 'şç'.includes(node.char);
+            const parent = drawingLayer;
+            const group = make('g', { 'data-node':node.id }, parent);
+            drawingLayer = group;
+            drawElement(turtle, node, state.normalDir, state.alter, boundaryStart || periodCircle, boundaryEnd);
+            drawingLayer = parent;
+            if (componentBoxes) {
               const box = group.getBBox();
-              const collision = occupied.some(other => {
-                const width = Math.min(box.x + box.width, other.x + other.width) - Math.max(box.x, other.x);
-                const height = Math.min(box.y + box.height, other.y + other.height) - Math.max(box.y, other.y);
-                return width > 3 && height > 3;
+              componentBoxes.push({
+                x:box.x + 1,
+                y:box.y + 1,
+                width:Math.max(0, box.width - 2),
+                height:Math.max(0, box.height - 2),
               });
-              if (!collision || attempt === 1) {
-                occupied.push({ x:box.x + 1, y:box.y + 1, width:Math.max(0, box.width - 2), height:Math.max(0, box.height - 2) });
-                break;
-              }
-              group.remove(); anchors.delete(node.id);
-              turtle.x = saved.x; turtle.y = saved.y; turtle.heading = saved.heading; turtle.down = saved.down;
-              state.normalDir = 1 - state.normalDir;
             }
             state.alter *= -1; state.direction = node.orientation;
             return { start, end:{x:turtle.x,y:turtle.y} };
@@ -1253,7 +1461,12 @@
           if (node.type === 'series') {
             let result = { start:{x:turtle.x,y:turtle.y}, end:{x:turtle.x,y:turtle.y} };
             node.children.forEach((child, index) => {
-              result = renderNode(child, turtle, state, boundaryStart || index > 0, boundaryEnd || index < node.children.length - 1);
+              result = renderNode(
+                child, turtle, state,
+                boundaryStart || index > 0,
+                boundaryEnd || index < node.children.length - 1,
+                componentBoxes
+              );
             });
             return result;
           }
@@ -1279,7 +1492,7 @@
             }
             turtle.pendown();
             const branchState = { ...state, alter:branchSide, normalDir:state.normalDir };
-            renderNode(entry.branch, turtle, branchState, true, true);
+            renderNode(entry.branch, turtle, branchState, true, true, componentBoxes);
             if (!drawIndex) stemEnd = { x:turtle.x, y:turtle.y };
             side *= -1;
           });
@@ -1288,15 +1501,113 @@
           return { start:origin, end:stemEnd };
         }
 
-        function gatePath(start, end) {
+        function boxesOverlap(first, second, threshold = 3) {
+          const width = Math.min(first.x + first.width, second.x + second.width)
+            - Math.max(first.x, second.x);
+          const height = Math.min(first.y + first.height, second.y + second.height)
+            - Math.max(first.y, second.y);
+          return width > threshold && height > threshold;
+        }
+
+        function collisionCount(boxes) {
+          return boxes.reduce(
+            (count, box) => count + occupied.filter(other => boxesOverlap(box, other)).length,
+            0
+          );
+        }
+
+        function captureRenderState(turtle, state) {
+          return {
+            turtle:{ x:turtle.x, y:turtle.y, heading:turtle.heading, down:turtle.down },
+            state:{ ...state },
+            artworkCount:artwork.childNodes.length,
+            anchors:new Map(anchors),
+          };
+        }
+
+        function restoreRenderState(snapshot, turtle, state) {
+          while (artwork.childNodes.length > snapshot.artworkCount) artwork.lastChild.remove();
+          Object.assign(turtle, snapshot.turtle);
+          Object.keys(state).forEach(key => delete state[key]);
+          Object.assign(state, snapshot.state);
+          anchors.clear();
+          snapshot.anchors.forEach((value, key) => anchors.set(key, value));
+          drawingLayer = artwork;
+        }
+
+        function runMazeCandidate(
+          node, turtle, state, boundaryStart, boundaryEnd, spacingStep, normalDir
+        ) {
+          if (spacingStep) turtle.forward(UNIT / 2 * spacingStep);
+          state.normalDir = normalDir;
+          const boxes = [];
+          const result = renderNode(node, turtle, state, boundaryStart, boundaryEnd, boxes);
+          return {
+            boxes,
+            result,
+            collisions:collisionCount(boxes),
+            distance:Math.hypot(turtle.x, turtle.y),
+          };
+        }
+
+        function renderMazeComponent(node, turtle, state, boundaryStart, boundaryEnd) {
+          const snapshot = captureRenderState(turtle, state);
+          let chosen = null;
+          let fallback = null;
+          const directions = [snapshot.state.normalDir, 1 - snapshot.state.normalDir];
+
+          for (let spacingStep = 0; spacingStep < MAZE_CHANCES; spacingStep++) {
+            const valid = [];
+            for (const normalDir of directions) {
+              restoreRenderState(snapshot, turtle, state);
+              const candidate = runMazeCandidate(
+                node, turtle, state, boundaryStart, boundaryEnd, spacingStep, normalDir
+              );
+              const route = { spacingStep, normalDir, ...candidate };
+              if (!fallback || route.collisions < fallback.collisions
+                  || route.collisions === fallback.collisions && route.distance < fallback.distance) {
+                fallback = route;
+              }
+              if (!route.collisions) valid.push(route);
+            }
+            if (valid.length) {
+              chosen = valid.sort((a, b) => a.distance - b.distance)[0];
+              break;
+            }
+          }
+
+          chosen ||= fallback;
+          restoreRenderState(snapshot, turtle, state);
+          const committed = runMazeCandidate(
+            node, turtle, state, boundaryStart, boundaryEnd,
+            chosen?.spacingStep || 0,
+            chosen?.normalDir ?? snapshot.state.normalDir
+          );
+          occupied.push(...committed.boxes);
+          return committed.result;
+        }
+
+        function renderMazeSeries(node, turtle, state, boundaryStart = false, boundaryEnd = false) {
+          let result = { start:{ x:turtle.x, y:turtle.y }, end:{ x:turtle.x, y:turtle.y } };
+          node.children.forEach((child, index) => {
+            result = renderMazeComponent(
+              child, turtle, state,
+              boundaryStart || index > 0,
+              boundaryEnd || index < node.children.length - 1
+            );
+          });
+          return result;
+        }
+
+        function gateCurve(start, end, lift) {
           const dx = end.x - start.x, dy = end.y - start.y;
-          const distance = Math.hypot(dx, dy); if (!distance) return '';
+          const distance = Math.hypot(dx, dy); if (!distance) return { path:'', points:[] };
           let nx = -dy / distance, ny = dx / distance;
           if (ny < 0 || Math.abs(ny) < .05 && nx < 0) { nx *= -1; ny *= -1; }
-          const lift = Math.max(UNIT / SCALE * 2, Math.min(UNIT * 2, distance * .18));
           const c1 = { x:start.x + dx * .28 + nx * lift, y:start.y + dy * .28 + ny * lift };
           const c2 = { x:start.x + dx * .72 + nx * lift, y:start.y + dy * .72 + ny * lift };
           const steps = Math.max(24, Math.floor(distance / 3)); let path = `M${start.x} ${start.y}`;
+          const points = [start];
           for (let step = 1; step <= steps; step++) {
             const ratio = step / steps, inv = 1 - ratio;
             let x = inv ** 3 * start.x + 3 * inv ** 2 * ratio * c1.x + 3 * inv * ratio ** 2 * c2.x + ratio ** 3 * end.x;
@@ -1306,8 +1617,35 @@
               x += nx * wave; y += ny * wave;
             }
             path += `L${x} ${y}`;
+            points.push({ x, y });
           }
-          return path;
+          return { path, points };
+        }
+
+        function gateCurveCollides(points) {
+          const margin = Math.max(2, Math.floor(points.length / 14));
+          for (let index = margin; index < points.length - margin - 1; index++) {
+            const first = points[index], second = points[index + 1], pad = .5;
+            const bounds = {
+              x:Math.min(first.x, second.x) - pad,
+              y:Math.min(first.y, second.y) - pad,
+              width:Math.abs(second.x - first.x) + pad * 2,
+              height:Math.abs(second.y - first.y) + pad * 2,
+            };
+            if (occupied.some(box => boxesOverlap(bounds, box, 0))) return true;
+          }
+          return false;
+        }
+
+        function gatePath(start, end) {
+          const distance = Math.hypot(end.x - start.x, end.y - start.y);
+          const baseLift = Math.max(UNIT / SCALE * 2, Math.min(UNIT * 2, distance * .18));
+          let curve = gateCurve(start, end, baseLift);
+          if (!mazeMode) return curve.path;
+          for (let attempt = 0; attempt < 24 && gateCurveCollides(curve.points); attempt++) {
+            curve = gateCurve(start, end, baseLift + (attempt + 1) * UNIT / SCALE);
+          }
+          return curve.path;
         }
 
         function drawTurtleCursor(turtle) {
@@ -1339,7 +1677,8 @@
             const drawingState = { direction:0, normalDir:0, alter:1 };
             documentTree.sentences.forEach((sentence, index) => {
               const hasPeriod = documentTree.periods[index];
-              renderNode(sentence, turtle, drawingState, false, hasPeriod);
+              if (mazeMode) renderMazeSeries(sentence, turtle, drawingState, false, hasPeriod);
+              else renderNode(sentence, turtle, drawingState, false, hasPeriod);
               if (hasPeriod) turtle.dot(UNIT / SCALE / 2);
               if (index < documentTree.sentences.length - 1) {
                 turtle.penup(); turtle.forward(UNIT / SCALE); turtle.pendown();
@@ -1420,14 +1759,54 @@
           source.classList.toggle('font-nuaiti', event.target.value === 'nuaiti'); source.focus();
         }));
         document.querySelector('#random-text').addEventListener('click', () => {
-          source.value = generateRandomText();
+          const settings = readRandomSettings();
+          if (!settings) {
+            randomSettingsDialog.showModal();
+            return;
+          }
+          source.value = generateRandomText(settings.seed, settings.options);
           source.setSelectionRange(source.value.length, source.value.length);
           draw();
           source.focus();
         });
+        document.querySelector('#random-settings').addEventListener('click', () => {
+          randomSettingsError.textContent = '';
+          randomSettingsDialog.showModal();
+        });
+        document.querySelector('#random-settings-close').addEventListener('click', () => randomSettingsDialog.close());
+        document.querySelector('#random-settings-cancel').addEventListener('click', () => randomSettingsDialog.close());
+        randomSettingsForm.addEventListener('submit', event => {
+          event.preventDefault();
+          if (readRandomSettings()) randomSettingsDialog.close();
+        });
+        document.querySelector('#maze-mode').addEventListener('click', event => {
+          mazeMode = !mazeMode;
+          event.currentTarget.setAttribute('aria-pressed', String(mazeMode));
+          draw();
+        });
         document.querySelector('#fit').addEventListener('click', fitDrawing);
         document.querySelector('#download').addEventListener('click', () => {
-          const clone = svg.cloneNode(true); clone.setAttribute('xmlns', NS);
+          const clone = svg.cloneNode(true);
+          clone.setAttribute('xmlns', NS);
+          clone.setAttribute('width', Math.max(1, Math.round(svg.clientWidth)));
+          clone.setAttribute('height', Math.max(1, Math.round(svg.clientHeight)));
+          clone.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
+
+          const palette = getComputedStyle(document.documentElement);
+          const ink = palette.getPropertyValue('--ink').trim() || '#302b20';
+          const gate = palette.getPropertyValue('--accent-deep').trim() || '#8f5e0d';
+
+          const defs = document.createElementNS(NS, 'defs');
+          const style = document.createElementNS(NS, 'style');
+          style.textContent = `
+            #artwork { fill: none; stroke: ${ink}; stroke-width: 2.6;
+              stroke-linecap: round; stroke-linejoin: round; }
+            #artwork .gate { fill: none; stroke: ${gate}; stroke-width: 1.5; opacity: .72; }
+            #artwork .node-dot, #artwork .turtle-cursor { fill: ${ink}; stroke: none; }
+          `;
+          defs.append(style);
+          clone.prepend(defs);
+
           const blob = new Blob([new XMLSerializer().serializeToString(clone)], { type:'image/svg+xml' });
           const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'ete-drawing.svg'; link.click();
           setTimeout(() => URL.revokeObjectURL(link.href), 1000);
