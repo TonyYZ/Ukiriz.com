@@ -7,7 +7,7 @@
     <style>
       @font-face {
         font-family: 'Uriti';
-        src: url('./Uriti.otf') format('opentype');
+        src: url('./Uriti.otf?v=20260717-134520') format('opentype');
         font-display: swap;
       }
 
@@ -17,14 +17,32 @@
         font-display: swap;
       }
 
+      @font-face {
+        font-family: 'UkirizWenKai';
+        src: url('./fonts/LXGWWenKai-Regular.woff2') format('woff2');
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: 'UkirizSarasaUiSC';
+        src: url('./fonts/SarasaUiSC-Regular.woff2') format('woff2');
+        font-display: swap;
+      }
+
       :root {
         color-scheme: light;
-        --ink: #1e241e;
-        --muted: #697269;
-        --paper: #f7f3e7;
-        --paper-deep: #e9e2cf;
-        --line: rgba(30, 36, 30, 0.18);
-        --accent: #445e52;
+        --mono: Consolas, 'Courier New', 'UkirizSarasaUiSC', ui-monospace, monospace;
+        --ink: #302b20;
+        --muted: #776c55;
+        --studio: #f4ecd0;
+        --paper: #fff2b8;
+        --paper-deep: #ead98a;
+        --line: rgba(75, 62, 35, 0.18);
+        --rule: rgba(65, 85, 100, 0.1);
+        --margin-rule: rgba(192, 86, 67, 0.42);
+        --accent: #c98b22;
+        --accent-deep: #8f5e0d;
+        --accent-soft: rgba(201, 139, 34, 0.16);
       }
 
       * { box-sizing: border-box; }
@@ -34,8 +52,8 @@
       body {
         overflow: hidden;
         color: var(--ink);
-        background: var(--paper);
-        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: var(--studio);
+        font-family: var(--mono);
       }
 
       .app {
@@ -43,6 +61,7 @@
         grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         width: 100%;
         height: 100dvh;
+        background: var(--studio);
       }
 
       .editor,
@@ -55,45 +74,70 @@
       .editor {
         display: flex;
         flex-direction: column;
-        background:
-          radial-gradient(circle at 0 0, rgba(255,255,255,.82), transparent 38%),
-          var(--paper);
-        border-right: 1px solid var(--line);
+        z-index: 1;
+        overflow: hidden;
+        background: var(--paper);
+        border-right: 4px solid var(--accent);
+        box-shadow: 12px 0 30px rgba(27, 41, 51, 0.08);
       }
 
       .toolbar {
         display: flex;
         align-items: center;
         gap: 12px;
-        min-height: 72px;
-        padding: 12px 18px;
+        min-height: 80px;
+        padding: 13px 22px;
         border-bottom: 1px solid var(--line);
+        background: rgba(248, 239, 207, 0.96);
+        box-shadow: 0 5px 18px rgba(28, 40, 49, 0.055);
       }
 
       .brand { margin-right: auto; min-width: 0; }
-      .brand h1 { margin: 0; font: 600 20px/1.05 Georgia, serif; letter-spacing: .03em; }
-      .brand p { margin: 5px 0 0; color: var(--muted); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
+      .brand h1 {
+        margin: 0;
+        font: 600 25px/1 'UkirizWenKai', Georgia, serif;
+        letter-spacing: .035em;
+      }
+      .brand h1::before {
+        content: '';
+        display: inline-block;
+        width: 10px;
+        height: 20px;
+        margin-right: 10px;
+        vertical-align: -3px;
+        background: var(--accent);
+        clip-path: polygon(50% 0, 100% 68%, 50% 100%, 0 68%);
+      }
+      .brand p {
+        margin: 7px 0 0 20px;
+        color: var(--accent-deep);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: .17em;
+        text-transform: uppercase;
+      }
 
       .font-switch {
         display: inline-flex;
         flex: 0 0 auto;
         padding: 3px;
-        border: 1px solid var(--line);
-        border-radius: 999px;
-        background: rgba(255,255,255,.48);
+        border: 1px solid rgba(201, 139, 34, 0.44);
+        border-radius: 4px;
+        background: rgba(255,255,255,.84);
+        box-shadow: 0 2px 7px rgba(27, 42, 52, 0.06);
       }
 
       .font-switch input { position: absolute; opacity: 0; pointer-events: none; }
       .font-switch label {
         padding: 7px 11px;
-        border-radius: 999px;
+        border-radius: 2px;
         color: var(--muted);
         cursor: pointer;
         font-size: 12px;
         line-height: 1;
       }
       .font-switch input:checked + label { color: #fff; background: var(--accent); }
-      .font-switch input:focus-visible + label { outline: 2px solid #739184; outline-offset: 2px; }
+      .font-switch input:focus-visible + label { outline: 2px solid var(--accent-deep); outline-offset: 2px; }
 
       textarea {
         display: block;
@@ -101,40 +145,73 @@
         width: 100%;
         min-height: 0;
         resize: none;
-        padding: clamp(22px, 4vw, 56px);
+        padding: clamp(34px, 4vw, 58px) clamp(26px, 4vw, 58px) clamp(48px, 5vw, 72px) clamp(54px, 6vw, 88px);
         border: 0;
         outline: 0;
         color: var(--ink);
-        background: transparent;
+        background:
+          linear-gradient(90deg,
+            transparent 0,
+            transparent clamp(38px, 5vw, 70px),
+            var(--margin-rule) clamp(38px, 5vw, 70px),
+            var(--margin-rule) calc(clamp(38px, 5vw, 70px) + 1px),
+            transparent calc(clamp(38px, 5vw, 70px) + 1px)),
+          repeating-linear-gradient(
+            to bottom,
+            transparent 0,
+            transparent calc(1.55em - 1px),
+            var(--rule) calc(1.55em - 1px),
+            var(--rule) 1.55em
+          ),
+          linear-gradient(120deg, var(--paper), #f7e4a2);
         font-family: 'Uriti', serif;
         font-size: clamp(26px, 3.1vw, 47px);
         line-height: 1.55;
         letter-spacing: .025em;
         caret-color: var(--accent);
+        box-shadow: inset -18px 0 32px rgba(68, 55, 31, 0.035);
       }
       textarea.font-nuaiti { font-family: 'Nuaiti', serif; }
-      textarea::placeholder { color: #9c9b91; opacity: 1; }
+      textarea::placeholder { color: #9b998f; opacity: 1; }
+      textarea::selection { color: var(--ink); background: rgba(201, 139, 34, 0.26); }
 
       .editor-footer {
         display: flex;
         align-items: center;
-        min-height: 42px;
-        padding: 8px 18px;
+        min-height: 44px;
+        padding: 8px 22px;
         border-top: 1px solid var(--line);
+        background: var(--studio);
         color: var(--muted);
-        font-size: 12px;
+        font-size: 11px;
+        letter-spacing: .04em;
       }
       .status { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .status:not(.error)::before {
+        content: '';
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        margin-right: 8px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 0 3px var(--accent-soft);
+        vertical-align: 1px;
+      }
       .status.error { color: #9d3c31; }
       .count { margin-left: auto; padding-left: 12px; white-space: nowrap; }
 
       .drawer {
         overflow: hidden;
+        touch-action: none;
+        overscroll-behavior: none;
         background:
-          linear-gradient(rgba(68,94,82,.055) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(68,94,82,.055) 1px, transparent 1px),
-          #fbfaf5;
-        background-size: 32px 32px;
+          linear-gradient(to right, rgba(0, 0, 0, 0.055) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(0, 0, 0, 0.055) 1px, transparent 1px),
+          linear-gradient(to right, rgba(201, 139, 34, 0.11) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(201, 139, 34, 0.11) 1px, transparent 1px),
+          var(--studio);
+        background-size: 40px 40px, 40px 40px, 200px 200px, 200px 200px;
       }
 
       .drawer::after {
@@ -142,7 +219,9 @@
         position: absolute;
         inset: 0;
         pointer-events: none;
-        box-shadow: inset 18px 0 38px rgba(50,55,45,.055);
+        box-shadow:
+          inset 14px 0 28px rgba(30, 42, 51, 0.045),
+          inset 0 80px 90px rgba(255,255,255,.2);
       }
 
       .drawer-head {
@@ -156,14 +235,15 @@
         pointer-events: none;
       }
       .drawer-title {
-        padding: 7px 10px;
-        border: 1px solid var(--line);
-        border-radius: 999px;
-        color: var(--muted);
-        background: rgba(251,250,245,.8);
-        backdrop-filter: blur(8px);
+        padding: 8px 11px;
+        border: 1px solid var(--accent);
+        border-radius: 4px;
+        color: #fff;
+        background: var(--accent);
+        box-shadow: 0 3px 9px rgba(0, 128, 175, .18);
         font-size: 11px;
-        letter-spacing: .12em;
+        font-weight: 700;
+        letter-spacing: .11em;
         text-transform: uppercase;
       }
       .actions { display: flex; gap: 7px; margin-left: auto; pointer-events: auto; }
@@ -171,16 +251,17 @@
         min-height: 32px;
         padding: 6px 10px;
         border: 1px solid var(--line);
-        border-radius: 999px;
+        border-radius: 4px;
         color: var(--ink);
-        background: rgba(251,250,245,.86);
+        background: rgba(255,255,255,.88);
         backdrop-filter: blur(8px);
         cursor: pointer;
-        font: inherit;
+        font: 12px/1 var(--mono);
         font-size: 12px;
+        box-shadow: 0 2px 7px rgba(27, 42, 52, 0.07);
       }
-      button:hover { border-color: rgba(30,36,30,.4); background: #fff; }
-      button:focus-visible { outline: 2px solid #739184; outline-offset: 2px; }
+      button:hover { color: var(--accent-deep); border-color: var(--accent); background: #fff; }
+      button:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 2px; }
 
       #drawing {
         display: block;
@@ -195,18 +276,22 @@
         stroke-linecap: round;
         stroke-linejoin: round;
       }
-      #artwork .gate { stroke: #77847d; stroke-width: 1.5; }
+      #artwork .gate { stroke: var(--accent-deep); stroke-width: 1.5; opacity: .72; }
       #artwork .node-dot { fill: var(--ink); stroke: none; }
       #artwork .turtle-cursor { fill: var(--ink); stroke: none; }
 
       @media (max-width: 760px) {
         body { overflow: auto; }
         .app { grid-template-columns: 1fr; grid-template-rows: minmax(52dvh, 1fr) minmax(48dvh, 1fr); height: auto; min-height: 100dvh; }
-        .editor { border-right: 0; border-bottom: 1px solid var(--line); }
+        .editor { border-right: 0; border-bottom: 4px solid var(--accent); }
         .toolbar { min-height: 66px; padding: 10px 12px; gap: 8px; }
         .brand p { display: none; }
         .font-switch label { padding: 7px 9px; }
-        textarea { min-height: 38dvh; padding: 22px; font-size: clamp(25px, 8vw, 38px); }
+        textarea {
+          min-height: 38dvh;
+          padding: 28px 22px 40px 48px;
+          font-size: clamp(25px, 8vw, 38px);
+        }
         .drawer { min-height: 48dvh; }
       }
     </style>
@@ -219,6 +304,7 @@
             <h1 id="editor-title">Ete</h1>
             <p>The automated scribe for Ítí</p>
           </div>
+          <button type="button" id="random-text" title="Replace the editor with a generated V2 passage">Random text</button>
           <div class="font-switch" role="radiogroup" aria-label="Writing font">
             <input type="radio" id="uriti" name="font" value="uriti" checked />
             <label for="uriti">Uriti</label>
@@ -256,6 +342,7 @@
         const status = document.querySelector('#status');
         const count = document.querySelector('#count');
         const svg = document.querySelector('#drawing');
+        const drawerPanel = document.querySelector('.drawer');
         const viewport = document.querySelector('#viewport');
         const artwork = document.querySelector('#artwork');
         const consonants = new Set(Array.from('çşzspbtdmnfvlrcghğyw-|'));
@@ -291,33 +378,95 @@
           constructor(text, sentence, gates, sources) {
             this.text = text.replace(/\s/g, ''); this.pos = 0; this.sentence = sentence;
             this.number = 0; this.gates = gates; this.sources = sources; this.orientation = 0;
+            this.componentContinuesBranch = false;
+            this.omittedFuseauOpenings = [];
+            this.omittedFuseauClosings = [];
           }
           peek() { return this.text[this.pos] || ''; }
           base(char = this.peek()) { return vowelBase[char] || char; }
           fail(message) { throw new ParseError(`${message} at character ${this.pos + 1}`); }
           take(expected) { const c = this.peek(); if (!c) this.fail('Unexpected end of input'); if (expected && c !== expected) this.fail(`Expected ${expected}`); this.pos++; return c; }
           takeVowel(expected) { const c = this.peek(); if (this.base(c) !== expected) this.fail(`Expected ${expected}`); this.pos++; if (accents.has(c)) this.orientation++; }
+          takeOptionalVowel(expected) {
+            if (this.base() !== expected) return false;
+            this.takeVowel(expected);
+            return true;
+          }
+          atSeriesBoundary(stops) {
+            return this.pos >= this.text.length || stops.has(this.base());
+          }
           parse() { const root = this.series(new Set()); if (this.pos !== this.text.length) this.fail('Unexpected input'); return root; }
           series(stops) {
             let children = [];
+            let simpleLeftStart = 0;
+            const appendComponent = component => {
+              if (children.length) {
+                const previous = children.at(-1);
+                if (this.hasOmittedClosing(previous) && component.type !== 'parallel') {
+                  this.fail('A fuseau followed by a non-fuseau element must retain its final o');
+                }
+                if (this.hasOmittedOpening(component) && previous.type !== 'parallel') {
+                  this.fail('A fuseau preceded by a non-fuseau element must retain its first e');
+                }
+              }
+              children.push(component);
+            };
             while (this.pos < this.text.length) {
               if (this.peek() === "'" && stops.has("'") && children.length) break;
               if (stops.has(this.base()) && this.peek() !== "'") break;
-              if (this.peek() === "'") children.push(this.quoted());
-              else if (this.base() === 'e') children.push(this.complex(stops));
+              if (this.peek() === "'") {
+                if (!this.componentContinuesBranch) simpleLeftStart = children.length;
+                appendComponent(this.quoted());
+                this.componentContinuesBranch = false;
+              } else if (this.base() === 'e') {
+                simpleLeftStart = children.length;
+                const explicitSimple = this.tryExplicitSimpleFuseau(stops);
+                appendComponent(explicitSimple || this.complex(stops));
+                this.componentContinuesBranch = false;
+              }
               else if (this.base() === 'ơ') {
                 if (!children.length) this.fail('ơ needs a branch before it');
                 this.takeVowel('ơ'); const right = this.simpleRightBranch(stops);
                 if (!right.children.length) this.fail('ơ needs a branch after it');
-                const left = { type:'series', children };
-                children = [{ type:'parallel', branches:[left, right] }];
+                const prefix = children.slice(0, simpleLeftStart);
+                const left = { type:'series', children:children.slice(simpleLeftStart) };
+                const simple = { type:'parallel', branches:[left, right] };
+                const closingOmitted = !this.takeOptionalVowel('o');
+                this.recordFuseauBoundaries(simple, true, closingOmitted);
+                if (prefix.length && prefix.at(-1).type !== 'parallel') {
+                  this.fail('A fuseau preceded by a non-fuseau element must retain its first e');
+                }
+                children = [...prefix, simple];
+                simpleLeftStart = prefix.length;
+                this.componentContinuesBranch = false;
               } else {
                 const implicit = stops.has('o') ? null : this.tryImplicitComplex(stops);
-                if (implicit) { children.push(implicit); continue; }
-                const element = this.element(children.length > 0); if (element) children.push(element);
+                if (implicit) {
+                  simpleLeftStart = children.length;
+                  appendComponent(implicit);
+                  this.componentContinuesBranch = false;
+                  continue;
+                }
+                const element = this.element(children.length > 0);
+                if (element) {
+                  if (!this.componentContinuesBranch) simpleLeftStart = children.length;
+                  appendComponent(element);
+                  this.componentContinuesBranch = false;
+                }
               }
             }
             return { type:'series', children };
+          }
+          hasOmittedOpening(node) {
+            return node?.type === 'parallel' && this.omittedFuseauOpenings.includes(node);
+          }
+          hasOmittedClosing(node) {
+            return node?.type === 'parallel' && this.omittedFuseauClosings.includes(node);
+          }
+          recordFuseauBoundaries(node, openingOmitted, closingOmitted) {
+            if (openingOmitted) this.omittedFuseauOpenings.push(node);
+            if (closingOmitted) this.omittedFuseauClosings.push(node);
+            return node;
           }
           simpleRightBranch(outerStops) {
             if (this.peek() === "'") return { type:'series', children:[this.quoted()] };
@@ -326,16 +475,43 @@
             if (implicit) return { type:'series', children:[implicit] };
             return this.compactBranch();
           }
+          tryExplicitSimpleFuseau(outerStops) {
+            const snapshot = this.snapshot();
+            try {
+              this.takeVowel('e');
+              const left = this.series(new Set(['ơ']));
+              if (!left.children.length || this.peek() !== 'ơ') {
+                this.fail('Explicit simple fuseau needs ơ between its branches');
+              }
+              this.takeVowel('ơ');
+              const right = this.simpleRightBranch(new Set(['o', ...outerStops]));
+              if (!right.children.length) this.fail('Explicit simple fuseau needs a right branch');
+              const closingOmitted = !this.takeOptionalVowel('o');
+              return this.recordFuseauBoundaries(
+                { type:'parallel', branches:[left, right] }, false, closingOmitted
+              );
+            } catch (error) {
+              if (!(error instanceof ParseError)) throw error;
+              this.restore(snapshot);
+              return null;
+            }
+          }
           snapshot() {
             return {
-              pos:this.pos, number:this.number, orientation:this.orientation, gateCount:this.gates.length,
+              pos:this.pos, number:this.number, orientation:this.orientation,
+              continues:this.componentContinuesBranch, gateCount:this.gates.length,
               sources:this.sources.map(source => ({ id:source.id, remaining:source.remaining })),
+              openingCount:this.omittedFuseauOpenings.length,
+              closingCount:this.omittedFuseauClosings.length,
             };
           }
           restore(snapshot) {
             this.pos = snapshot.pos; this.number = snapshot.number; this.orientation = snapshot.orientation;
+            this.componentContinuesBranch = snapshot.continues;
             this.gates.length = snapshot.gateCount;
             this.sources.splice(0, this.sources.length, ...snapshot.sources.map(source => ({ ...source })));
+            this.omittedFuseauOpenings.length = snapshot.openingCount;
+            this.omittedFuseauClosings.length = snapshot.closingCount;
           }
           branchAtom(secondBranch = false) {
             if (this.peek() === "'") return this.quoted();
@@ -346,8 +522,50 @@
           }
           compactBranch(secondBranch = false) {
             const children = [this.branchAtom(secondBranch)];
-            while (this.base() === 'a') children.push(this.branchAtom());
+            while (this.pos < this.text.length) {
+              const continuationSnapshot = this.snapshot();
+              let candidate;
+              try { candidate = this.branchAtom(); }
+              catch (error) {
+                if (!(error instanceof ParseError)) throw error;
+                this.restore(continuationSnapshot);
+                break;
+              }
+              if (!this.componentContinuesBranch) {
+                this.restore(continuationSnapshot);
+                break;
+              }
+              children.push(candidate);
+            }
             return { type:'series', children };
+          }
+          finishCompactComplex(branches, outerStops, requireFinalO = false) {
+            if (this.base() !== 'o') {
+              if (requireFinalO) this.fail('A nested fuseau must end with o');
+              return { branches, closingOmitted:true };
+            }
+            while (this.base() === 'o') {
+              const separatorSnapshot = this.snapshot();
+              this.takeVowel('o');
+              if (this.pos >= this.text.length || outerStops.has(this.base())) {
+                return { branches, closingOmitted:false };
+              }
+              let candidate;
+              try { candidate = this.compactBranch(); }
+              catch (error) {
+                if (!(error instanceof ParseError)) throw error;
+                this.restore(separatorSnapshot);
+                this.takeVowel('o');
+                return { branches, closingOmitted:false };
+              }
+              if (this.base() !== 'o') {
+                this.restore(separatorSnapshot);
+                this.takeVowel('o');
+                return { branches, closingOmitted:false };
+              }
+              branches.push(candidate);
+            }
+            return { branches, closingOmitted:true };
           }
           tryImplicitComplex(outerStops) {
             const snapshot = this.snapshot();
@@ -359,6 +577,20 @@
                   || source.remaining !== snapshot.sources[index]?.remaining);
 
               if (this.base() === 'e' && !firstChangedGates) {
+                const explicitSnapshot = this.snapshot();
+                let explicitSuffixIsFuseau = false;
+                try {
+                  this.complex(outerStops);
+                  explicitSuffixIsFuseau = true;
+                } catch (error) {
+                  if (!(error instanceof ParseError)) throw error;
+                }
+                this.restore(explicitSnapshot);
+                if (explicitSuffixIsFuseau) {
+                  this.restore(snapshot);
+                  return null;
+                }
+
                 const branches = [first];
                 while (this.base() === 'e') {
                   this.takeVowel('e'); const middle = this.series(new Set(['o']));
@@ -371,17 +603,31 @@
                 this.takeVowel('o');
                 const finalSnapshot = this.snapshot();
                 let final = this.series(new Set(['o', ...outerStops]));
-                if (final.children.length && this.base() === 'o') this.takeVowel('o');
-                else { this.restore(finalSnapshot); final = this.compactBranch(); }
+                let closingOmitted;
+                if (final.children.length && this.base() === 'o') {
+                  this.takeVowel('o');
+                  closingOmitted = false;
+                } else if (final.children.length
+                    && (this.pos >= this.text.length || outerStops.has(this.base()))) {
+                  closingOmitted = true;
+                } else {
+                  this.restore(finalSnapshot);
+                  final = this.compactBranch();
+                  closingOmitted = true;
+                }
                 branches.push(penultimate, final);
-                return { type:'parallel', branches };
+                return this.recordFuseauBoundaries(
+                  { type:'parallel', branches }, true, closingOmitted
+                );
               }
 
               const second = this.compactBranch(true);
               if (this.base() !== 'o') this.fail('Compact fuseau needs o after its second branch');
               this.takeVowel('o'); const third = this.compactBranch();
-              if (this.base() === 'o') this.takeVowel('o');
-              return { type:'parallel', branches:[first, second, third] };
+              const finished = this.finishCompactComplex([first, second, third], outerStops);
+              return this.recordFuseauBoundaries(
+                { type:'parallel', branches:finished.branches }, true, finished.closingOmitted
+              );
             } catch (error) {
               if (!(error instanceof ParseError)) throw error;
               this.restore(snapshot); return null;
@@ -409,9 +655,12 @@
               } else this.fail('Fuseau needs o after branch 2');
 
               const third = this.compactBranch();
-              if (this.base() === 'o') this.takeVowel('o');
-              else if (requireFinalO) this.fail('A nested three-branch fuseau must end with o');
-              return { type:'parallel', branches:[first, second, third] };
+              const finished = this.finishCompactComplex(
+                [first, second, third], outerStops, requireFinalO
+              );
+              return this.recordFuseauBoundaries(
+                { type:'parallel', branches:finished.branches }, false, finished.closingOmitted
+              );
             } catch (error) {
               if (!(error instanceof ParseError)) throw error;
               this.restore(afterOpening);
@@ -432,14 +681,25 @@
             this.takeVowel('o');
             const finalSnapshot = this.snapshot();
             let final = this.series(new Set(['o', ...outerStops]));
-            if (final.children.length && this.base() === 'o') this.takeVowel('o');
+            let closingOmitted;
+            if (final.children.length && this.base() === 'o') {
+              this.takeVowel('o');
+              closingOmitted = false;
+            }
+            else if (final.children.length && !requireFinalO
+                && (this.pos >= this.text.length || outerStops.has(this.base()))) {
+              closingOmitted = true;
+            }
             else {
               this.restore(finalSnapshot);
               if (requireFinalO) this.fail('A nested complex fuseau must end with o');
               final = this.compactBranch();
+              closingOmitted = true;
             }
             branches.push(penultimate, final);
-            return { type:'parallel', branches };
+            return this.recordFuseauBoundaries(
+              { type:'parallel', branches }, false, closingOmitted
+            );
           }
           markers(marker) {
             let n = 0;
@@ -451,10 +711,14 @@
             return n;
           }
           element(allowTrailingNeutral = false, compactSecond = false) {
+            this.componentContinuesBranch = false;
             const outgoing = this.base() === 'i' ? this.markers('i') : 0;
             const incoming = this.base() === 'u' ? this.markers('u') : 0;
             if (compactSecond && this.peek() === 'ớ') this.takeVowel('ơ');
-            while (this.base() === 'a') this.takeVowel('a');
+            while (this.base() === 'a') {
+              this.componentContinuesBranch = true;
+              this.takeVowel('a');
+            }
             if (!this.peek() && allowTrailingNeutral && !outgoing && !incoming && this.orientation === 0) {
               // Neutral a may frame/close a series (for example, cra)
               // without introducing another drawable element.
@@ -481,6 +745,269 @@
           const sentences = records.map((record, index) => new Parser(record.text, index + 1, gates, sources).parse());
           if (sources.length) throw new ParseError('One or more gate sources are still open');
           return { sentences, gates, periods:records.map(record => record.hasPeriod) };
+        }
+
+        const generatorDefaults = {
+          elements:28, sentences:2, fuseauRate:.2, gateRate:.08,
+          verticalRate:.5, nestedFuseauRate:.25, maxFuseauDepth:3,
+          maxBranches:6, maxBranchLength:4, maxGateFanout:3,
+        };
+
+        function seededRandom(seed) {
+          let state = seed >>> 0;
+          return () => {
+            state = (state + 0x6D2B79F5) >>> 0;
+            let value = state;
+            value = Math.imul(value ^ value >>> 15, value | 1);
+            value ^= value + Math.imul(value ^ value >>> 7, value | 61);
+            return ((value ^ value >>> 14) >>> 0) / 4294967296;
+          };
+        }
+
+        function browserRandomSeed() {
+          if (globalThis.crypto?.getRandomValues) {
+            return globalThis.crypto.getRandomValues(new Uint32Array(1))[0];
+          }
+          return (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0;
+        }
+
+        function randomChoice(values, random) {
+          return values[Math.floor(random() * values.length)];
+        }
+
+        function orderedElements(node, result = []) {
+          if (node.type === 'element') result.push(node);
+          else if (node.type === 'series') node.children.forEach(child => orderedElements(child, result));
+          else node.branches.forEach(branch => orderedElements(branch, result));
+          return result;
+        }
+
+        class RandomV2Generator {
+          constructor(options, seed) {
+            this.options = options;
+            this.random = seededRandom(seed);
+            this.sentenceNumber = 0;
+            this.elementNumber = 0;
+          }
+          element() {
+            const chars = 'çşzspbtdmnfvlrcghğyw';
+            return {
+              type:'element',
+              id:`s${this.sentenceNumber}n${++this.elementNumber}`,
+              char:randomChoice(Array.from(chars), this.random),
+              orientation:Number(this.random() < this.options.verticalRate),
+            };
+          }
+          branch(length, depth = 1) {
+            const canNest = length >= 2
+              && depth < this.options.maxFuseauDepth
+              && this.random() < this.options.nestedFuseauRate;
+            if (!canNest) {
+              return { type:'series', children:Array.from({ length }, () => this.element()) };
+            }
+            const allowed = Math.min(this.options.maxBranches, length);
+            const branchCount = 2 + Math.floor(this.random() * (allowed - 1));
+            const lengths = Array(branchCount).fill(1);
+            for (let index = 0; index < length - branchCount; index++) {
+              const candidates = lengths.map((value, i) => value < this.options.maxBranchLength ? i : -1)
+                .filter(i => i >= 0);
+              if (!candidates.length) {
+                return { type:'series', children:Array.from({ length }, () => this.element()) };
+              }
+              lengths[randomChoice(candidates, this.random)]++;
+            }
+            return {
+              type:'series',
+              children:[{
+                type:'parallel',
+                branches:lengths.map(value => this.branch(value, depth + 1)),
+              }],
+            };
+          }
+          sentence(elementCount) {
+            this.sentenceNumber++;
+            this.elementNumber = 0;
+            const children = [];
+            let remaining = elementCount;
+            while (remaining) {
+              const canFuse = remaining >= 2 && this.random() < this.options.fuseauRate;
+              if (!canFuse) {
+                children.push(this.element());
+                remaining--;
+                continue;
+              }
+              const allowed = Math.min(this.options.maxBranches, remaining);
+              const choices = Array.from({ length:Math.max(0, allowed - 2) }, (_, index) => index + 3);
+              if (!children.length && remaining <= 2 * this.options.maxBranchLength) choices.unshift(2);
+              if (!choices.length) {
+                children.push(this.element());
+                remaining--;
+                continue;
+              }
+              const branchCount = randomChoice(choices, this.random);
+              const lengths = Array(branchCount).fill(1);
+              const spare = Math.min(
+                remaining - branchCount,
+                branchCount * (this.options.maxBranchLength - 1)
+              );
+              for (let index = 0; index < spare; index++) {
+                const candidates = lengths.map((value, i) => value < this.options.maxBranchLength ? i : -1)
+                  .filter(i => i >= 0);
+                if (!candidates.length || (branchCount !== 2 && this.random() < .45)) break;
+                lengths[randomChoice(candidates, this.random)]++;
+              }
+              children.push({
+                type:'parallel',
+                branches:lengths.map(length => this.branch(length)),
+              });
+              remaining -= lengths.reduce((sum, value) => sum + value, 0);
+            }
+            return { type:'series', children };
+          }
+          gates(document) {
+            const elements = document.sentences.flatMap(root => orderedElements(root, []));
+            const gates = [];
+            let index = 0;
+            while (index < elements.length - 1) {
+              if (this.random() >= this.options.gateRate) {
+                index++;
+                continue;
+              }
+              const available = elements.length - index - 1;
+              const fanout = 1 + Math.floor(
+                this.random() * Math.min(this.options.maxGateFanout, available)
+              );
+              const pool = Array.from({ length:available }, (_, offset) => index + offset + 1);
+              for (let cursor = pool.length - 1; cursor > 0; cursor--) {
+                const swap = Math.floor(this.random() * (cursor + 1));
+                [pool[cursor], pool[swap]] = [pool[swap], pool[cursor]];
+              }
+              const targets = pool.slice(0, fanout).sort((a, b) => a - b);
+              targets.forEach(target => gates.push({
+                source:elements[index].id,
+                target:elements[target].id,
+              }));
+              index = targets.at(-1) + 1;
+            }
+            return gates;
+          }
+          build() {
+            const quotient = Math.floor(this.options.elements / this.options.sentences);
+            const remainder = this.options.elements % this.options.sentences;
+            const sentences = Array.from(
+              { length:this.options.sentences },
+              (_, index) => this.sentence(quotient + Number(index < remainder))
+            );
+            const document = { sentences, gates:[] };
+            document.gates = this.gates(document);
+            return document;
+          }
+        }
+
+        function gateMarkerMaps(document) {
+          const outgoing = new Map(), incoming = new Map();
+          document.gates.forEach(gate => {
+            outgoing.set(gate.source, (outgoing.get(gate.source) || 0) + 1);
+            incoming.set(gate.target, (incoming.get(gate.target) || 0) + 1);
+          });
+          return { outgoing, incoming };
+        }
+
+        function repeatMarker(marker, count) {
+          return Array(count).fill(marker).join("'");
+        }
+
+        function serializeElement(node, markers, continuation = false, orientationVowel = 'á') {
+          return repeatMarker('i', markers.outgoing.get(node.id) || 0)
+            + repeatMarker('u', markers.incoming.get(node.id) || 0)
+            + (continuation ? 'a' : '')
+            + (node.orientation ? orientationVowel : '')
+            + node.char;
+        }
+
+        function serializeSeries(node, markers, insideBranch = false) {
+          return node.children.map((child, index) => {
+            if (child.type !== 'parallel') return serializeNode(child, markers);
+            const previous = index ? node.children[index - 1] : null;
+            const following = index + 1 < node.children.length ? node.children[index + 1] : null;
+            const mayOmitOpening = previous === null || previous.type === 'parallel';
+            const mayOmitClosing = following === null || following.type === 'parallel';
+            let text = serializeParallel(
+              child, markers, insideBranch,
+              !insideBranch && mayOmitOpening,
+              !insideBranch && mayOmitClosing
+            );
+            if (insideBranch) text = `'${text}'`;
+            return text;
+          }).join('');
+        }
+
+        function serializeCompactSeries(node, markers, secondBranch = false) {
+          const rendered = [];
+          node.children.forEach((child, index) => {
+            let text;
+            if (child.type === 'element') {
+              text = serializeElement(
+                child, markers, index > 0,
+                secondBranch && index === 0 ? 'ớ' : 'á'
+              );
+            } else {
+              text = child.type === 'parallel'
+                ? serializeParallel(child, markers, true)
+                : serializeNode(child, markers);
+              if (child.type === 'parallel') text = `'${text}'`;
+              if (rendered.length) text = `a${text}`;
+            }
+            rendered.push(text);
+          });
+          return rendered.join('');
+        }
+
+        function serializeParallel(node, markers, framed = false, omitOpening = false, omitClosing = false) {
+          if (node.branches.length < 2) throw new Error('A V2 fuseau needs at least two branches');
+          const compact = node.branches.map(
+            (branch, index) => serializeCompactSeries(branch, markers, index === 1)
+          );
+          if (node.branches.length === 2) {
+            if (framed) return `e${compact[0]}${compact[1]}o`;
+            const branches = node.branches.map(branch => serializeSeries(branch, markers, true));
+            return `${omitOpening ? '' : 'e'}${branches[0]}ơ${branches[1]}${omitClosing ? '' : 'o'}`;
+          }
+          if (node.branches.length === 3) {
+            const safelyCompact = node.branches.every(
+              branch => branch.children.every(child => child.type === 'element')
+            );
+            const opening = omitOpening && !framed && safelyCompact ? '' : 'e';
+            const closing = omitClosing && !framed && safelyCompact ? '' : 'o';
+            return `${opening}${compact[0]}${compact[1]}o${compact[2]}${closing}`;
+          }
+          return `e${compact[0]}${compact[1]}o${compact.slice(2).map(branch => `${branch}o`).join('')}`;
+        }
+
+        function serializeNode(node, markers) {
+          if (node.type === 'element') return serializeElement(node, markers);
+          if (node.type === 'series') return serializeSeries(node, markers);
+          return serializeParallel(node, markers);
+        }
+
+        function serializeDocument(document) {
+          const markers = gateMarkerMaps(document);
+          return document.sentences.map(root => serializeSeries(root, markers)).join('. ');
+        }
+
+        function generateRandomText(seed = browserRandomSeed(), overrides = {}) {
+          const options = { ...generatorDefaults, ...overrides };
+          for (let attempt = 0; attempt < 12; attempt++) {
+            const generator = new RandomV2Generator(options, (seed + attempt) >>> 0);
+            const text = `${serializeDocument(generator.build())}.`;
+            try {
+              parse(text);
+              return text;
+            } catch (error) {
+              if (!(error instanceof ParseError)) throw error;
+            }
+          }
+          throw new Error('Could not generate a valid V2 passage');
         }
 
         let drawingLayer = artwork;
@@ -824,7 +1351,7 @@
               make('path', { class:'gate', d:gatePath(a, b) });
             });
             if (elements) drawTurtleCursor(turtle);
-            status.textContent = elements ? 'Live · eu → ư · ` acute · - grave · = macron' : 'Ready';
+            status.textContent = elements ? 'Live' : 'Ready';
             count.textContent = `${elements} element${elements === 1 ? '' : 's'}`;
             requestAnimationFrame(fitDrawing);
           } catch (error) {
@@ -892,6 +1419,12 @@
         document.querySelectorAll('input[name="font"]').forEach(input => input.addEventListener('change', event => {
           source.classList.toggle('font-nuaiti', event.target.value === 'nuaiti'); source.focus();
         }));
+        document.querySelector('#random-text').addEventListener('click', () => {
+          source.value = generateRandomText();
+          source.setSelectionRange(source.value.length, source.value.length);
+          draw();
+          source.focus();
+        });
         document.querySelector('#fit').addEventListener('click', fitDrawing);
         document.querySelector('#download').addEventListener('click', () => {
           const clone = svg.cloneNode(true); clone.setAttribute('xmlns', NS);
@@ -902,16 +1435,28 @@
 
         let pan = null;
         svg.addEventListener('pointerdown', event => {
+          if (event.pointerType === 'mouse' && event.button !== 0) return;
+          if (event.cancelable) event.preventDefault();
           pan = { clientX:event.clientX, clientY:event.clientY, viewX:viewBox.x, viewY:viewBox.y };
           svg.setPointerCapture(event.pointerId);
-        });
+        }, { passive:false });
         svg.addEventListener('pointermove', event => {
-          if (!pan) return; const scaleX = viewBox.w / svg.clientWidth, scaleY = viewBox.h / svg.clientHeight;
+          if (!pan) return;
+          if (event.cancelable) event.preventDefault();
+          const scaleX = viewBox.w / svg.clientWidth, scaleY = viewBox.h / svg.clientHeight;
           viewBox.x = pan.viewX - (event.clientX-pan.clientX) * scaleX;
           viewBox.y = pan.viewY - (event.clientY-pan.clientY) * scaleY;
           svg.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
-        });
-        svg.addEventListener('pointerup', () => { pan = null; });
+        }, { passive:false });
+        const endPan = () => { pan = null; };
+        svg.addEventListener('pointerup', endPan);
+        svg.addEventListener('pointercancel', endPan);
+        svg.addEventListener('lostpointercapture', endPan);
+        // iOS fallback: a drag anywhere in the drawing panel belongs to the
+        // drawing surface, never to the page's vertical scroller.
+        drawerPanel.addEventListener('touchmove', event => {
+          if (event.cancelable) event.preventDefault();
+        }, { passive:false });
         svg.addEventListener('wheel', event => {
           event.preventDefault(); const factor = event.deltaY > 0 ? 1.12 : .89; const rect = svg.getBoundingClientRect();
           const px = viewBox.x + (event.clientX-rect.left)/rect.width*viewBox.w; const py = viewBox.y + (event.clientY-rect.top)/rect.height*viewBox.h;
