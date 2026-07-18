@@ -921,6 +921,19 @@
         max-width: 100%;
       }
 
+      .library-tree-card-serialization {
+        margin-top: 5px;
+        font-size: 12px;
+        line-height: 1.3;
+        word-break: break-word;
+        max-width: 100%;
+        opacity: 0.82;
+      }
+
+      .library-tree-card-serialization em {
+        font-style: italic;
+      }
+
       .library-tree-context-menu {
         position: fixed;
         display: none;
@@ -14338,6 +14351,7 @@
       function getLibraryTreeCardContent(node) {
         const word = node.word || node.title || '(unnamed)';
         let definition = '';
+        let primitiveSpeech = '';
         if (node.word && node.title && node.title !== word) {
           const titleText = String(node.title).trim();
           const prefix = `${String(node.word).trim()}.`;
@@ -14345,7 +14359,572 @@
             ? titleText.slice(prefix.length).trim()
             : titleText;
         }
-        return { word, definition };
+        if (node?._baseIndex != null && definition) {
+          const speechMarker = currentLang === 'zh' ? '文：' : 'Grapheme:';
+          const speechStart = definition.indexOf(speechMarker);
+          if (speechStart >= 0) {
+            primitiveSpeech = definition.slice(speechStart).trim();
+            definition = definition.slice(0, speechStart).trim();
+          }
+        }
+        return { word, definition, primitiveSpeech };
+      }
+
+      const LIBRARY_V2_SYMBOL_SPEECH = [
+        [
+          { written: 'ğ', ipa: 'ɣ' },
+          { written: 'h', ipa: 'x' },
+        ],
+        [
+          { written: 'g', ipa: 'g' },
+          { written: 'c', ipa: 'k' },
+        ],
+        [
+          { written: 'l', ipa: 'l' },
+          { written: 'r', ipa: 'ɾ' },
+        ],
+        [
+          { written: 'v', ipa: 'v' },
+          { written: 'f', ipa: 'f' },
+        ],
+        [
+          { written: 'd', ipa: 'd' },
+          { written: 't', ipa: 't' },
+        ],
+        [
+          { written: 'b', ipa: 'b' },
+          { written: 'p', ipa: 'p' },
+        ],
+        [
+          { written: 's', ipa: 's' },
+          { written: 'z', ipa: 't͡s' },
+        ],
+        [
+          { written: 'ş', ipa: 'ʃ' },
+          { written: 'ç', ipa: 't͡ʃ' },
+        ],
+        [
+          { written: 'n', ipa: 'n' },
+          { written: 'm', ipa: 'm' },
+        ],
+      ];
+
+      const LIBRARY_V2_VOWEL_SPEECH = {
+        a: ['a', '˧'],
+        á: ['a', '˥'],
+        à: ['a', '˩'],
+        ā: ['aː', '˧'],
+        e: ['e', '˧'],
+        é: ['e', '˥'],
+        è: ['e', '˩'],
+        ē: ['eː', '˧'],
+        i: ['i', '˧'],
+        í: ['i', '˥'],
+        ì: ['i', '˩'],
+        ī: ['iː', '˧'],
+        o: ['o', '˧'],
+        ó: ['o', '˥'],
+        ò: ['o', '˩'],
+        ō: ['oː', '˧'],
+        ơ: ['ə', '˧'],
+        ớ: ['ə', '˥'],
+        ờ: ['ə', '˩'],
+        u: ['u', '˧'],
+        ú: ['u', '˥'],
+        ù: ['u', '˩'],
+        ū: ['uː', '˧'],
+        ẽ: ['æ', '˧'],
+        õ: ['ɔ', '˧'],
+        ĩ: ['ɪ', '˧'],
+        ị: ['y', '˧'],
+        ẹ: ['ø', '˧'],
+        ư: ['ɯ', '˧'],
+        ũ: ['ʊ', '˧'],
+        ȡ: ['œ', '˧'],
+        ẻ: ['æ', '˥'],
+        ț: ['ø', '˥'],
+        ȟ: ['œ', '˥'],
+        ỉ: ['ɪ', '˥'],
+        ȍ: ['y', '˥'],
+        ỏ: ['ɔ', '˥'],
+        ủ: ['ʊ', '˥'],
+        ứ: ['ɯ', '˥'],
+      };
+
+      const LIBRARY_V2_COMPOUND_SPELLINGS = new Map([
+        ['áóé', 'ȟ'],
+        ['aoe', 'ȡ'],
+        ['áé', 'ẻ'],
+        ['óé', 'ț'],
+        ['éí', 'ỉ'],
+        ['óí', 'ȍ'],
+        ['áó', 'ỏ'],
+        ['óú', 'ủ'],
+        ['éú', 'ứ'],
+        ['ei', 'ĩ'],
+        ['oi', 'ị'],
+        ['oe', 'ẹ'],
+        ['ae', 'ẽ'],
+        ['eu', 'ư'],
+        ['ou', 'ũ'],
+        ['oa', 'õ'],
+      ]);
+
+      function getLibraryV2Graph(node) {
+        const layoutNodes = Array.isArray(node?.layout?.nodes) ? node.layout.nodes : null;
+        const patternNodes = Array.isArray(node?.pattern?.nodes) ? node.pattern.nodes : null;
+        const symbolNodes = layoutNodes?.length ? layoutNodes : patternNodes;
+        if (!symbolNodes?.length) return null;
+
+        let rawLinks;
+        if (layoutNodes?.length) {
+          rawLinks = node.layout.links || [];
+        } else if (Array.isArray(node.pattern?.edges)) {
+          rawLinks = node.pattern.edges;
+        } else {
+          rawLinks = [];
+          (node.pattern?.adj || []).forEach((sides, from) => {
+            (sides || []).forEach((neighbors, fromSide) => {
+              (neighbors || []).forEach(([to, toSide]) => {
+                rawLinks.push({ from, fromSide, to, toSide });
+              });
+            });
+          });
+        }
+        const links = [];
+        const seen = new Set();
+        for (const link of rawLinks) {
+          const from = Number(link?.from);
+          const to = Number(link?.to);
+          const fromSide = Number(link?.fromSide);
+          const toSide = Number(link?.toSide);
+          if (
+            !Number.isInteger(from) ||
+            !Number.isInteger(to) ||
+            from < 0 ||
+            to < 0 ||
+            from >= symbolNodes.length ||
+            to >= symbolNodes.length ||
+            from === to
+          )
+            continue;
+          const forward = from < to;
+          const key = forward
+            ? `${from}|${fromSide}|${to}|${toSide}`
+            : `${to}|${toSide}|${from}|${fromSide}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          links.push({ from, fromSide, to, toSide });
+        }
+        return { nodes: symbolNodes, links };
+      }
+
+      function isLibraryV2ParallelLink(link) {
+        return (
+          link.fromSide === Side.PAR_TOP ||
+          link.fromSide === Side.PAR_BOT ||
+          link.toSide === Side.PAR_TOP ||
+          link.toSide === Side.PAR_BOT
+        );
+      }
+
+      function getLibraryV2Components(size, links, includeLink) {
+        const adjacency = Array.from({ length: size }, () => []);
+        links.forEach((link) => {
+          if (!includeLink(link)) return;
+          adjacency[link.from].push(link.to);
+          adjacency[link.to].push(link.from);
+        });
+        adjacency.forEach((neighbors) => neighbors.sort((a, b) => a - b));
+
+        const components = [];
+        const visited = new Set();
+        for (let start = 0; start < size; start++) {
+          if (visited.has(start)) continue;
+          const component = [];
+          const stack = [start];
+          visited.add(start);
+          while (stack.length) {
+            const current = stack.pop();
+            component.push(current);
+            for (const neighbor of [...adjacency[current]].reverse()) {
+              if (visited.has(neighbor)) continue;
+              visited.add(neighbor);
+              stack.push(neighbor);
+            }
+          }
+          component.sort((a, b) => a - b);
+          components.push({ nodes: component, adjacency });
+        }
+        return components;
+      }
+
+      function orderLibraryV2Branch(component) {
+        const members = new Set(component.nodes);
+        const endpoints = component.nodes.filter(
+          (index) =>
+            component.adjacency[index].filter((neighbor) => members.has(neighbor)).length <= 1,
+        );
+        const pending = endpoints.length ? endpoints : component.nodes;
+        const ordered = [];
+        const visited = new Set();
+
+        function visit(index) {
+          if (visited.has(index)) return;
+          visited.add(index);
+          ordered.push(index);
+          component.adjacency[index]
+            .filter((neighbor) => members.has(neighbor))
+            .sort((a, b) => a - b)
+            .forEach(visit);
+        }
+
+        visit(Math.min(...pending));
+        component.nodes.forEach(visit);
+        return ordered;
+      }
+
+      function libraryV2Element(symbol, index) {
+        const pair = LIBRARY_V2_SYMBOL_SPEECH[Number(symbol?.elemIdTrue)];
+        const speech = pair?.[Number(!!symbol?.isDynamic)];
+        if (!speech) throw new Error(`Unknown V2 symbol at index ${index}`);
+        const angle = ((Number(symbol?.angle) || 0) % 180 + 180) % 180;
+        return {
+          type: 'element',
+          id: `library-${index}`,
+          char: speech.written,
+          orientation: Math.abs(angle - 90) < 0.001 ? 1 : 0,
+        };
+      }
+
+      function buildLibraryV2Series(node) {
+        const graph = getLibraryV2Graph(node);
+        if (!graph) return null;
+
+        const serialComponents = getLibraryV2Components(
+          graph.nodes.length,
+          graph.links,
+          (link) => !isLibraryV2ParallelLink(link),
+        );
+        const componentByNode = new Map();
+        serialComponents.forEach((component, componentIndex) => {
+          component.nodes.forEach((nodeIndex) => componentByNode.set(nodeIndex, componentIndex));
+        });
+
+        const parallelComponentLinks = [];
+        const seenParallelComponentLinks = new Set();
+        graph.links.filter(isLibraryV2ParallelLink).forEach((link) => {
+          const from = componentByNode.get(link.from);
+          const to = componentByNode.get(link.to);
+          if (from === to || from == null || to == null) return;
+          const key = from < to ? `${from}|${to}` : `${to}|${from}`;
+          if (seenParallelComponentLinks.has(key)) return;
+          seenParallelComponentLinks.add(key);
+          parallelComponentLinks.push({ from, to });
+        });
+
+        const groups = getLibraryV2Components(
+          serialComponents.length,
+          parallelComponentLinks.map((link) => ({
+            ...link,
+            fromSide: Side.PAR_TOP,
+            toSide: Side.PAR_BOT,
+          })),
+          () => true,
+        ).sort(
+          (left, right) =>
+            Math.min(...left.nodes.flatMap((index) => serialComponents[index].nodes)) -
+            Math.min(...right.nodes.flatMap((index) => serialComponents[index].nodes)),
+        );
+
+        const children = [];
+        for (const group of groups) {
+          const orderedComponents = [...group.nodes].sort(
+            (left, right) =>
+              Math.min(...serialComponents[left].nodes) -
+              Math.min(...serialComponents[right].nodes),
+          );
+          const branches = orderedComponents.map((componentIndex) => ({
+            type: 'series',
+            children: orderLibraryV2Branch(serialComponents[componentIndex]).map((index) =>
+              libraryV2Element(graph.nodes[index], index),
+            ),
+          }));
+          if (branches.length > 1) {
+            children.push({ type: 'parallel', branches });
+          } else {
+            children.push(...branches[0].children);
+          }
+        }
+        return { type: 'series', children };
+      }
+
+      function compactLibraryV2Vowels(text) {
+        const sequences = [...LIBRARY_V2_COMPOUND_SPELLINGS.keys()].sort(
+          (left, right) => right.length - left.length,
+        );
+        let result = '';
+        for (let index = 0; index < text.length; ) {
+          const match = sequences.find((sequence) => text.startsWith(sequence, index));
+          if (!match) {
+            result += text[index++];
+          } else {
+            result += LIBRARY_V2_COMPOUND_SPELLINGS.get(match);
+            index += match.length;
+          }
+        }
+        return result;
+      }
+
+      function separateLibraryV2ConsonantRuns(text, maximum = 2) {
+        const consonants = new Set(
+          LIBRARY_V2_SYMBOL_SPEECH.flatMap((pair) => pair.map((speech) => speech.written)),
+        );
+        let result = '';
+        let runLength = 0;
+        for (const char of text) {
+          if (consonants.has(char.toLowerCase())) {
+            if (runLength === maximum) {
+              result += 'a';
+              runLength = 0;
+            }
+            runLength++;
+          } else {
+            runLength = 0;
+          }
+          result += char;
+        }
+        return result;
+      }
+
+      function serializeLibraryV2Element(element, continuation = false, orientationVowel = 'á') {
+        return (
+          (continuation && !element.orientation ? 'a' : '') +
+          (element.orientation ? orientationVowel : '') +
+          element.char
+        );
+      }
+
+      function serializeLibraryV2Series(
+        series,
+        insideBranch = false,
+        separatePlainPairs = false,
+      ) {
+        const rendered = series.children.map((child, index) => {
+          if (child.type !== 'parallel') return serializeLibraryV2Node(child);
+          const previous = index ? series.children[index - 1] : null;
+          const following = index + 1 < series.children.length ? series.children[index + 1] : null;
+          const mayOmitOpening = previous === null || previous.type === 'parallel';
+          const mayOmitClosing = following === null || following.type === 'parallel';
+          let text = serializeLibraryV2Parallel(
+            child,
+            insideBranch,
+            !insideBranch && mayOmitOpening,
+            !insideBranch && mayOmitClosing,
+          );
+          if (insideBranch) text = `'${text}'`;
+          return text;
+        });
+        if (insideBranch) return rendered.join('');
+        if (separatePlainPairs) {
+          separateLibraryV2PlainElementPairs(series.children, rendered);
+        }
+
+        const segments = [];
+        let current = '';
+        series.children.forEach((child, index) => {
+          let text = rendered[index];
+          if (child.type !== 'parallel') {
+            current += text;
+            return;
+          }
+          const previousIsPlain = index > 0 && series.children[index - 1].type !== 'parallel';
+          const followingIsPlain =
+            index + 1 < series.children.length &&
+            series.children[index + 1].type !== 'parallel';
+          if (previousIsPlain) {
+            if (!text.startsWith('e')) throw new Error('Missing V2 fuseau opening');
+            current += 'e';
+            segments.push(current);
+            current = '';
+            text = text.slice(1);
+          }
+          if (followingIsPlain) {
+            if (!text.endsWith('o')) throw new Error('Missing V2 fuseau closing');
+            current += text.slice(0, -1);
+            segments.push(current);
+            current = 'o';
+          } else {
+            current += text;
+          }
+        });
+        if (current) segments.push(current);
+        return segments.join(' ');
+      }
+
+      function separateLibraryV2PlainElementPairs(children, rendered) {
+        const consonants = new Set(
+          LIBRARY_V2_SYMBOL_SPEECH.flatMap((pair) => pair.map((speech) => speech.written)),
+        );
+        if (
+          children.length === 1 &&
+          children[0].type === 'element' &&
+          rendered[0].length === 1 &&
+          consonants.has(rendered[0].toLowerCase())
+        ) {
+          rendered[0] += 'a';
+          return;
+        }
+
+        let index = 0;
+        while (index < children.length) {
+          if (children[index].type !== 'element') {
+            index++;
+            continue;
+          }
+          let end = index;
+          while (end < children.length && children[end].type === 'element') end++;
+          if (
+            end - index === 2 &&
+            consonants.has(rendered[index].at(-1).toLowerCase()) &&
+            consonants.has(rendered[index + 1][0].toLowerCase())
+          ) {
+            rendered[index + 1] = `a${rendered[index + 1]}`;
+          }
+          index = end;
+        }
+      }
+
+      function serializeLibraryV2CompactSeries(
+        series,
+        secondBranch = false,
+        firstOrientationVowel = null,
+      ) {
+        return series.children
+          .map((child, index) => {
+            if (child.type === 'element') {
+              return serializeLibraryV2Element(
+                child,
+                index > 0,
+                index === 0 && firstOrientationVowel !== null
+                  ? firstOrientationVowel
+                  : secondBranch && index === 0
+                    ? 'ớ'
+                    : 'á',
+              );
+            }
+            let text =
+              child.type === 'parallel'
+                ? serializeLibraryV2Parallel(child, true)
+                : serializeLibraryV2Node(child);
+            if (child.type === 'parallel') text = `'${text}'`;
+            return index ? `a${text}` : text;
+          })
+          .join('');
+      }
+
+      function serializeLibraryV2Parallel(
+        parallel,
+        framed = false,
+        omitOpening = false,
+        omitClosing = false,
+      ) {
+        const branches = parallel.branches;
+        if (branches.length < 2) throw new Error('A V2 fuseau needs at least two branches');
+        const compact = branches.map((branch, index) =>
+          serializeLibraryV2CompactSeries(branch, index === 1),
+        );
+        if (branches.length === 2) {
+          if (framed) return `e${compact[0]}${compact[1]}o`;
+          const left = serializeLibraryV2CompactSeries(branches[0]);
+          const right = serializeLibraryV2CompactSeries(branches[1], false, '');
+          const rightFirst = branches[1].children[0];
+          const marker = rightFirst.type === 'element' && rightFirst.orientation ? 'ớ' : 'ơ';
+          const opening = omitOpening ? '' : 'e';
+          const closing = omitClosing ? '' : 'o';
+          return `${opening}${left}${marker}${right}${closing}`;
+        }
+        if (branches.length === 3) {
+          const safelyCompact = branches.every((branch) =>
+            branch.children.every((child) => child.type === 'element'),
+          );
+          const opening = omitOpening && !framed && safelyCompact ? '' : 'e';
+          const closing = omitClosing && !framed && safelyCompact ? '' : 'o';
+          return `${opening}${compact[0]}${compact[1]}o${compact[2]}${closing}`;
+        }
+        const rendered = branches.map((branch) => serializeLibraryV2Series(branch, true));
+        const middle = rendered
+          .slice(1, -2)
+          .map((branch) => `e${branch}o`)
+          .join('');
+        return `e${rendered[0]}${middle}${rendered.at(-2)}o${rendered.at(-1)}o`;
+      }
+
+      function serializeLibraryV2Node(node) {
+        if (node.type === 'element') return serializeLibraryV2Element(node);
+        if (node.type === 'series') return serializeLibraryV2Series(node);
+        return serializeLibraryV2Parallel(node);
+      }
+
+      function transcribeLibraryV2(text) {
+        const consonants = new Map(
+          LIBRARY_V2_SYMBOL_SPEECH.flatMap((pair) =>
+            pair.map((speech) => [speech.written, speech.ipa]),
+          ),
+        );
+        let ipa = '';
+        for (const char of String(text).normalize('NFC').toLowerCase()) {
+          const vowel = LIBRARY_V2_VOWEL_SPEECH[char];
+          if (vowel) ipa += vowel.join('');
+          else if (consonants.has(char)) ipa += consonants.get(char);
+          else if (char === "'" || char === '’') ipa += 'ʔ';
+          else if (/\s/u.test(char)) ipa += ' ';
+        }
+        return ipa.replace(/\s+/g, ' ').trim();
+      }
+
+      function getLibraryTreeSerialization(node) {
+        try {
+          const series = buildLibraryV2Series(node);
+          if (!series?.children?.length) return null;
+          const written = separateLibraryV2ConsonantRuns(
+            compactLibraryV2Vowels(serializeLibraryV2Series(series, false, true)),
+          );
+          return {
+            written,
+            ipa: transcribeLibraryV2(written),
+          };
+        } catch (error) {
+          console.warn('Unable to serialize library card as V2', error);
+          return null;
+        }
+      }
+
+      function getLibraryTreeSerializationPlainText(serialization) {
+        if (!serialization) return '';
+        return currentLang === 'zh'
+          ? `写作：${serialization.written}，读作：/${serialization.ipa}/`
+          : `Written as ${serialization.written}, pronounced as /${serialization.ipa}/`;
+      }
+
+      function appendLibraryTreeSerialization(container, serialization) {
+        if (!container || !serialization) return;
+
+        const line = document.createElement('div');
+        line.className = 'library-tree-card-serialization';
+        line.append(document.createTextNode(currentLang === 'zh' ? '写作：' : 'Written as '));
+
+        const written = document.createElement('em');
+        written.textContent = serialization.written;
+        line.appendChild(written);
+        line.append(
+          document.createTextNode(
+            currentLang === 'zh'
+              ? `，读作：/${serialization.ipa}/`
+              : `, pronounced as /${serialization.ipa}/`,
+          ),
+        );
+        container.appendChild(line);
       }
 
       function computeLibraryNetworkArrangePositions() {
@@ -14525,15 +15104,32 @@
       }
 
       function estimateLibraryTreeCardSize(node) {
-        const { word, definition } = getLibraryTreeCardContent(node);
-        const longest = Math.max(word.length, definition.length || 0);
+        const { word, definition, primitiveSpeech } = getLibraryTreeCardContent(node);
+        const serialization = getLibraryTreeSerialization(node);
+        const serializationText = getLibraryTreeSerializationPlainText(serialization);
+        const longest = Math.max(
+          word.length,
+          definition.length || 0,
+          primitiveSpeech.length || 0,
+          serializationText.length || 0,
+        );
         const width = clamp(200 + Math.max(0, longest - 14) * 5.5, 200, 420);
         const usableTextWidth = Math.max(120, width - 86);
         const charsPerLine = Math.max(14, Math.floor(usableTextWidth / 7.2));
         const definitionLines = definition
           ? Math.max(1, Math.ceil(definition.length / charsPerLine))
           : 0;
-        const height = 70 + Math.max(0, definitionLines - 1) * 17;
+        const smallText = serializationText || primitiveSpeech;
+        const smallTextLines = smallText
+          ? Math.max(1, Math.ceil(smallText.length / charsPerLine))
+          : 0;
+        const textHeight =
+          20 +
+          (definitionLines ? 4 + definitionLines * 17 : 0) +
+          (smallTextLines ? 5 + smallTextLines * 16 : 0);
+        const height = smallText
+          ? Math.max(70, textHeight + 24)
+          : 70 + Math.max(0, definitionLines - 1) * 17;
         return { width, height };
       }
 
@@ -15449,7 +16045,8 @@
           const pos = positions.get(node.id);
           if (!pos) continue;
           const size = sizes.get(node.id);
-          const { word, definition } = getLibraryTreeCardContent(node);
+          const { word, definition, primitiveSpeech } = getLibraryTreeCardContent(node);
+          const serialization = getLibraryTreeSerialization(node);
 
           const card = document.createElement('div');
           card.className = 'library-tree-card';
@@ -15481,6 +16078,13 @@
             definitionEl.textContent = definition;
             textWrap.appendChild(definitionEl);
           }
+          if (primitiveSpeech) {
+            const primitiveSpeechEl = document.createElement('div');
+            primitiveSpeechEl.className = 'library-tree-card-serialization';
+            primitiveSpeechEl.textContent = primitiveSpeech;
+            textWrap.appendChild(primitiveSpeechEl);
+          }
+          appendLibraryTreeSerialization(textWrap, serialization);
 
           card.appendChild(img);
           card.appendChild(textWrap);

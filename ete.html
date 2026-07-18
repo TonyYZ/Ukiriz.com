@@ -297,9 +297,37 @@
       }
       .actions {
         display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
         gap: 7px;
         margin-left: auto;
         pointer-events: auto;
+      }
+      .gate-style-control {
+        display: flex;
+        min-height: 32px;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 7px 5px 9px;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        color: var(--muted);
+        background: rgba(255, 255, 255, 0.88);
+        backdrop-filter: blur(8px);
+        box-shadow: 0 2px 7px rgba(27, 42, 52, 0.07);
+        font: 11px/1 var(--mono);
+      }
+      .gate-style-control select {
+        padding: 2px 20px 2px 3px;
+        border: 0;
+        color: var(--ink);
+        background: transparent;
+        cursor: pointer;
+        font: 12px/1 var(--mono);
+      }
+      .gate-style-control select:focus-visible {
+        outline: 2px solid var(--accent-deep);
+        outline-offset: 2px;
       }
       button {
         min-height: 32px;
@@ -541,6 +569,14 @@
         <div class="drawer-head">
           <span class="drawer-title">Live drawing</span>
           <div class="actions">
+            <label class="gate-style-control">
+              Gate
+              <select id="gate-style" aria-label="Gate style">
+                <option value="wavy" selected>Wavy</option>
+                <option value="solid">Solid</option>
+                <option value="dashed">Dashed</option>
+              </select>
+            </label>
             <button
               type="button"
               id="maze-mode" aria-pressed="true"
@@ -762,6 +798,7 @@
         const randomSettingsError = document.querySelector('#random-settings-error');
         const viewport = document.querySelector('#viewport');
         const artwork = document.querySelector('#artwork');
+        const gateStyleSelect = document.querySelector('#gate-style');
         const consonants = new Set(Array.from('çşzspbtdmnfvlrcghğ'));
         const fuseauBranchMarks = new Set(['y', 'w']);
         const vowelBase = Object.fromEntries(
@@ -837,7 +874,7 @@
           constructor(text, sentence, gates, sources) {
             this.text = text
               .replace(/\s/g, '')
-              .replace(/[aà](?=[eéèēoóòōơớờ])/gu, '');
+              .replace(/[aà](?=[eéèēoóòō])/gu, '');
             this.pos = 0;
             this.sentence = sentence;
             this.number = 0;
@@ -845,6 +882,7 @@
             this.sources = sources;
             this.orientation = 0;
             this.componentContinuesBranch = false;
+            this.elementHasNeutralPrefix = false;
             this.omittedFuseauOpenings = [];
             this.omittedFuseauClosings = [];
           }
@@ -886,6 +924,7 @@
           series(stops) {
             let children = [];
             let simpleLeftStart = 0;
+            let simpleLeftHasVowelPrefix = false;
             const appendComponent = (component) => children.push(component);
             while (this.pos < this.text.length) {
               if (this.peek() === "'" && stops.has("'") && children.length) break;
@@ -901,6 +940,9 @@
                 this.componentContinuesBranch = false;
               } else if (this.base() === 'ơ') {
                 if (!children.length) this.fail('ơ needs a branch before it');
+                if (simpleLeftHasVowelPrefix) {
+                  this.fail('A vowel before a fuseau requires its opening e');
+                }
                 this.takeVowel('ơ');
                 const right = this.simpleRightBranch(stops);
                 if (!right.children.length) this.fail('ơ needs a branch after it');
@@ -914,6 +956,7 @@
                 }
                 children = [...prefix, simple];
                 simpleLeftStart = prefix.length;
+                simpleLeftHasVowelPrefix = false;
                 this.componentContinuesBranch = false;
               } else {
                 const implicit = stops.has('o') ? null : this.tryImplicitComplex(stops);
@@ -925,11 +968,26 @@
                 }
                 const element = this.element(children.length > 0);
                 if (element) {
-                  if (!this.componentContinuesBranch) simpleLeftStart = children.length;
+                  if (!this.componentContinuesBranch) {
+                    simpleLeftStart = children.length;
+                    simpleLeftHasVowelPrefix = false;
+                  } else if (
+                    children.length === simpleLeftStart &&
+                    this.elementHasNeutralPrefix
+                  ) {
+                    simpleLeftHasVowelPrefix = true;
+                  }
                   appendComponent(element);
                   this.componentContinuesBranch = false;
                 }
               }
+            }
+            if (
+              this.componentContinuesBranch &&
+              children.length &&
+              this.hasOmittedClosing(children.at(-1))
+            ) {
+              this.fail('A vowel after a fuseau requires its closing o');
             }
             this.validateFuseauBoundaries(children);
             return { type: 'series', children };
@@ -994,6 +1052,7 @@
               number: this.number,
               orientation: this.orientation,
               continues: this.componentContinuesBranch,
+              neutralPrefix: this.elementHasNeutralPrefix,
               gateCount: this.gates.length,
               sources: this.sources.map((source) => ({
                 id: source.id,
@@ -1008,6 +1067,7 @@
             this.number = snapshot.number;
             this.orientation = snapshot.orientation;
             this.componentContinuesBranch = snapshot.continues;
+            this.elementHasNeutralPrefix = snapshot.neutralPrefix;
             this.gates.length = snapshot.gateCount;
             this.sources.splice(
               0,
@@ -1045,6 +1105,7 @@
             return { type: 'series', children };
           }
           tryImplicitComplex(outerStops) {
+            if (this.base() === 'a' && !accents.has(this.peek())) return null;
             const snapshot = this.snapshot();
             try {
               const first = this.compactBranch();
@@ -1226,9 +1287,11 @@
           }
           element(allowTrailingNeutral = false, compactSecond = false) {
             this.componentContinuesBranch = false;
+            this.elementHasNeutralPrefix = false;
             if (compactSecond && this.peek() === 'ớ') this.takeVowel('ơ');
             while (this.base() === 'a') {
               this.componentContinuesBranch = true;
+              this.elementHasNeutralPrefix ||= !accents.has(this.peek());
               this.takeVowel('a');
             }
             const outgoing = this.base() === 'i' ? this.markers('i') : 0;
@@ -1539,7 +1602,12 @@
           return vowels + prefix + node.char;
         }
 
-        function serializeSeries(node, markers, insideBranch = false) {
+        function serializeSeries(
+          node,
+          markers,
+          insideBranch = false,
+          separatePlainPairs = false,
+        ) {
           const rendered = node.children.map((child, index) => {
             if (child.type !== 'parallel') return serializeNode(child, markers);
             const previous = index ? node.children[index - 1] : null;
@@ -1556,7 +1624,39 @@
             if (insideBranch) text = `'${text}'`;
             return text;
           });
-          return insideBranch ? rendered.join('') : spaceFuseauBoundaries(node.children, rendered);
+          if (insideBranch) return rendered.join('');
+          if (separatePlainPairs) separatePlainElementPairs(node.children, rendered);
+          return spaceFuseauBoundaries(node.children, rendered);
+        }
+
+        function separatePlainElementPairs(children, rendered) {
+          if (
+            children.length === 1 &&
+            children[0].type === 'element' &&
+            rendered[0].length === 1 &&
+            consonants.has(rendered[0].toLowerCase())
+          ) {
+            rendered[0] += 'a';
+            return;
+          }
+
+          let index = 0;
+          while (index < children.length) {
+            if (children[index].type !== 'element') {
+              index++;
+              continue;
+            }
+            let end = index;
+            while (end < children.length && children[end].type === 'element') end++;
+            if (
+              end - index === 2 &&
+              consonants.has(rendered[index].at(-1).toLowerCase()) &&
+              consonants.has(rendered[index + 1][0].toLowerCase())
+            ) {
+              rendered[index + 1] = `a${rendered[index + 1]}`;
+            }
+            index = end;
+          }
         }
 
         function spaceFuseauBoundaries(children, rendered) {
@@ -1700,10 +1800,14 @@
           return text.replace(/\p{L}/u, (letter) => letter.toUpperCase());
         }
 
-        function serializeDocument(document) {
+        function serializeDocument(document, separatePlainPairs = false) {
           const markers = gateMarkerMaps(document);
           return document.sentences
-            .map((root) => capitalizeFirstLetter(compactVowels(serializeSeries(root, markers))))
+            .map((root) =>
+              capitalizeFirstLetter(
+                compactVowels(serializeSeries(root, markers, false, separatePlainPairs)),
+              ),
+            )
             .join('. ');
         }
 
@@ -1729,7 +1833,7 @@
           const options = { ...generatorDefaults, ...overrides };
           for (let attempt = 0; attempt < 12; attempt++) {
             const generator = new RandomV2Generator(options, (seed + attempt) >>> 0);
-            const text = `${separateConsonantRuns(serializeDocument(generator.build()))}.`;
+            const text = `${separateConsonantRuns(serializeDocument(generator.build(), true))}.`;
             try {
               parse(text);
               return text;
@@ -1837,6 +1941,7 @@
         // spaced before they can overlap. The toolbar button can still expose
         // the unadjusted layout for comparison.
         let mazeMode = true;
+        let gateStyle = 'wavy';
         function make(tag, attrs = {}, parent = drawingLayer) {
           const node = document.createElementNS(NS, tag);
           for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
@@ -2499,7 +2604,7 @@
           return result;
         }
 
-        function gateCurve(start, end, lift) {
+        function gateCurve(start, end, lift, wavy = false) {
           const dx = end.x - start.x,
             dy = end.y - start.y;
           const distance = Math.hypot(dx, dy);
@@ -2510,8 +2615,13 @@
             nx *= -1;
             ny *= -1;
           }
-          const c1 = { x: start.x + dx * 0.28 + nx * lift, y: start.y + dy * 0.28 + ny * lift };
-          const c2 = { x: start.x + dx * 0.72 + nx * lift, y: start.y + dy * 0.72 + ny * lift };
+          // Match DrawerV2's broad, balanced tangents so collision-avoidance
+          // lifts stay softly curved instead of forming pointed roofs.
+          const c1 = { x: start.x + dx / 3 + nx * lift, y: start.y + dy / 3 + ny * lift };
+          const c2 = {
+            x: start.x + (dx * 2) / 3 + nx * lift,
+            y: start.y + (dy * 2) / 3 + ny * lift,
+          };
           const steps = Math.max(24, Math.floor(distance / 3));
           let path = `M${start.x} ${start.y}`;
           const points = [start];
@@ -2528,7 +2638,7 @@
               3 * inv ** 2 * ratio * c1.y +
               3 * inv * ratio ** 2 * c2.y +
               ratio ** 3 * end.y;
-            if (step < steps) {
+            if (wavy && step < steps) {
               const wave =
                 (UNIT / SCALE / 4) *
                 Math.sin(Math.PI * ratio) *
@@ -2559,13 +2669,20 @@
           return false;
         }
 
-        function gatePath(start, end) {
+        function gatePath(start, end, wavy = false) {
           const distance = Math.hypot(end.x - start.x, end.y - start.y);
-          const baseLift = Math.max((UNIT / SCALE) * 2, Math.min(UNIT * 2, distance * 0.18));
-          let curve = gateCurve(start, end, baseLift);
-          if (!mazeMode) return curve.path;
-          for (let attempt = 0; attempt < 24 && gateCurveCollides(curve.points); attempt++) {
-            curve = gateCurve(start, end, baseLift + ((attempt + 1) * UNIT) / SCALE);
+          const baseLift = Math.max(
+            (UNIT / SCALE) * 1.25,
+            Math.min(UNIT * 0.45, distance * 0.1),
+          );
+          const maxLift = Math.max(baseLift, Math.min(UNIT * 0.9, distance * 0.22));
+          const attempts = 8;
+          let curve = gateCurve(start, end, baseLift, wavy);
+          for (let attempt = 0; attempt < attempts; attempt++) {
+            const progress = attempt / (attempts - 1);
+            const lift = baseLift + (maxLift - baseLift) * progress;
+            curve = gateCurve(start, end, lift, wavy);
+            if (!mazeMode || !gateCurveCollides(curve.points)) break;
           }
           return curve.path;
         }
@@ -2584,16 +2701,21 @@
         }
 
         let viewBox = { x: 0, y: 0, w: 100, h: 100 };
-        function fitDrawing() {
+        function getArtworkViewBox(pad = 54) {
           if (!artwork.childNodes.length) return;
           const box = artwork.getBBox();
-          const pad = 54;
-          viewBox = {
+          return {
             x: box.x - pad,
             y: box.y - pad,
             w: Math.max(100, box.width + pad * 2),
             h: Math.max(100, box.height + pad * 2),
           };
+        }
+
+        function fitDrawing() {
+          const fitted = getArtworkViewBox();
+          if (!fitted) return;
+          viewBox = fitted;
           svg.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
         }
 
@@ -2623,7 +2745,12 @@
               const a = anchors.get(gate.source),
                 b = anchors.get(gate.target);
               if (!a || !b) return;
-              make('path', { class: 'gate', d: gatePath(a, b) });
+              const attributes = {
+                class: 'gate',
+                d: gatePath(a, b, gateStyle === 'wavy'),
+              };
+              if (gateStyle === 'dashed') attributes['stroke-dasharray'] = '7 5';
+              make('path', attributes);
             });
             if (elements) drawTurtleCursor(turtle);
             status.textContent = elements ? 'Live' : 'Ready';
@@ -2720,6 +2847,60 @@
         }
 
         let timer;
+        const sourceUndoStack = [];
+        const sourceRedoStack = [];
+        const SOURCE_HISTORY_LIMIT = 200;
+
+        function snapshotSource() {
+          return {
+            value: source.value,
+            start: source.selectionStart,
+            end: source.selectionEnd,
+          };
+        }
+
+        function sameSourceSnapshot(left, right) {
+          return (
+            left?.value === right?.value &&
+            left?.start === right?.start &&
+            left?.end === right?.end
+          );
+        }
+
+        function rememberSourceState() {
+          const snapshot = snapshotSource();
+          if (!sameSourceSnapshot(sourceUndoStack.at(-1), snapshot)) {
+            sourceUndoStack.push(snapshot);
+            if (sourceUndoStack.length > SOURCE_HISTORY_LIMIT) sourceUndoStack.shift();
+          }
+          sourceRedoStack.length = 0;
+        }
+
+        function restoreSourceState(snapshot) {
+          if (!snapshot) return;
+          source.value = snapshot.value;
+          const start = Math.min(snapshot.start, source.value.length);
+          const end = Math.min(snapshot.end, source.value.length);
+          source.setSelectionRange(start, end);
+          clearTimeout(timer);
+          draw();
+          source.focus();
+        }
+
+        function undoSourceEdit() {
+          const previous = sourceUndoStack.pop();
+          if (!previous) return;
+          sourceRedoStack.push(snapshotSource());
+          restoreSourceState(previous);
+        }
+
+        function redoSourceEdit() {
+          const next = sourceRedoStack.pop();
+          if (!next) return;
+          sourceUndoStack.push(snapshotSource());
+          restoreSourceState(next);
+        }
+
         function scheduleDraw() {
           clearTimeout(timer);
           timer = setTimeout(draw, 90);
@@ -2736,6 +2917,11 @@
           }
         });
 
+        source.addEventListener('beforeinput', (event) => {
+          if (event.isComposing || event.inputType?.startsWith('history')) return;
+          rememberSourceState();
+        });
+        source.addEventListener('compositionstart', rememberSourceState);
         source.addEventListener('input', (event) => {
           if (!event.isComposing) {
             while (composeAtCaret()) {
@@ -2745,6 +2931,14 @@
           scheduleDraw();
         });
         source.addEventListener('keydown', (event) => {
+          const commandKey = (event.ctrlKey || event.metaKey) && !event.altKey;
+          const key = event.key.toLowerCase();
+          if (commandKey && (key === 'z' || key === 'y')) {
+            event.preventDefault();
+            if (key === 'y' || event.shiftKey) redoSourceEdit();
+            else undoSourceEdit();
+            return;
+          }
           if (
             event.isComposing ||
             event.ctrlKey ||
@@ -2759,6 +2953,7 @@
           const accented = accentKeys[event.key].get(previous);
           if (!accented) return;
           event.preventDefault();
+          rememberSourceState();
           source.setRangeText(accented, caret - 1, caret, 'end');
           while (composeAtCaret()) {
             /* accented sequences can also collapse */
@@ -2777,6 +2972,7 @@
             randomSettingsDialog.showModal();
             return;
           }
+          rememberSourceState();
           source.value = generateRandomText(settings.seed, settings.options);
           source.setSelectionRange(source.value.length, source.value.length);
           draw();
@@ -2801,13 +2997,25 @@
           event.currentTarget.setAttribute('aria-pressed', String(mazeMode));
           draw();
         });
+        gateStyleSelect.addEventListener('change', (event) => {
+          const nextStyle = event.target.value;
+          if (!['solid', 'dashed', 'wavy'].includes(nextStyle)) return;
+          gateStyle = nextStyle;
+          draw();
+        });
         document.querySelector('#fit').addEventListener('click', fitDrawing);
         document.querySelector('#download').addEventListener('click', () => {
+          const exportViewBox = getArtworkViewBox();
+          if (!exportViewBox) return;
+
           const clone = svg.cloneNode(true);
           clone.setAttribute('xmlns', NS);
-          clone.setAttribute('width', Math.max(1, Math.round(svg.clientWidth)));
-          clone.setAttribute('height', Math.max(1, Math.round(svg.clientHeight)));
-          clone.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
+          clone.setAttribute('width', Math.max(1, Math.ceil(exportViewBox.w)));
+          clone.setAttribute('height', Math.max(1, Math.ceil(exportViewBox.h)));
+          clone.setAttribute(
+            'viewBox',
+            `${exportViewBox.x} ${exportViewBox.y} ${exportViewBox.w} ${exportViewBox.h}`,
+          );
 
           const palette = getComputedStyle(document.documentElement);
           const ink = palette.getPropertyValue('--ink').trim() || '#302b20';
