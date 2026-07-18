@@ -16400,7 +16400,7 @@
         network = new vis.Network(container, data, options);
 
         await loadLibraryGraphForUser();
-        ensureSingleSymbolWordBasicEdges();
+        ensurePrimitiveParentEdgesForRootWords();
         rebuildLibraryFromNodes();
         renderLibraryTreeView();
         setLibraryViewMode(libraryViewMode);
@@ -16740,7 +16740,7 @@
           };
 
           nodes.add(newNode); // Add node to dataset
-          const forceBasicParentEdges = components.length === 1;
+          const forceBasicParentEdges = foundIds.length === 0;
           for (const symbol of components) {
             if (forceBasicParentEdges || !elimBasic.has(symbol))
               addEdge(await generateUniqueId(symbolData[symbol.elemIdTrue]), id);
@@ -16785,20 +16785,34 @@
         }
       }
 
-      function ensureSingleSymbolWordBasicEdges() {
+      function ensurePrimitiveParentEdgesForRootWords() {
         let changed = false;
+        const nodesWithParents = new Set(
+          edges
+            .get()
+            .filter((edge) => basicNodeIds.has(edge.from) || nodes.get(edge.from))
+            .map((edge) => edge.to),
+        );
         for (const node of nodes.get()) {
           if (basicNodeIds.has(node.id)) continue;
+          if (nodesWithParents.has(node.id)) continue;
+
           const patternNodes = node.pattern?.nodes;
-          if (!Array.isArray(patternNodes) || patternNodes.length !== 1) continue;
+          if (!Array.isArray(patternNodes) || patternNodes.length === 0) continue;
 
-          const elemIdTrue = patternNodes[0]?.elemIdTrue ?? patternNodes[0]?.elemId;
-          const basicId = basicNodeIdByElemIdTrue.get(Number(elemIdTrue));
-          if (!basicId || basicId === node.id) continue;
+          const primitiveParentIds = new Set();
+          for (const patternNode of patternNodes) {
+            const elemIdTrue = patternNode?.elemIdTrue ?? patternNode?.elemId;
+            const basicId = basicNodeIdByElemIdTrue.get(Number(elemIdTrue));
+            if (basicId && basicId !== node.id) primitiveParentIds.add(basicId);
+          }
+          if (!primitiveParentIds.size) continue;
 
-          const before = edges.getIds().length;
-          addEdge(basicId, node.id);
-          if (edges.getIds().length !== before) changed = true;
+          for (const basicId of primitiveParentIds) {
+            const before = edges.getIds().length;
+            addEdge(basicId, node.id);
+            if (edges.getIds().length !== before) changed = true;
+          }
         }
         if (changed) scheduleSaveLibraryGraph();
       }
