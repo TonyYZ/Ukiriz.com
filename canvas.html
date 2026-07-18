@@ -4124,12 +4124,18 @@
 
         if (tabIndex === 2) {
           if (isCoarseMobile && !mobileLibraryInitialZoomApplied) {
-            libraryContentZoom = Math.min(libraryContentZoom || 1, 0.82);
+            libraryContentZoom =
+              libraryViewMode === 'tree'
+                ? MIN_MOBILE_LIBRARY_ZOOM
+                : Math.min(libraryContentZoom || 1, 0.82);
             mobileLibraryInitialZoomApplied = true;
           }
           requestAnimationFrame(() => {
             refreshLibraryViewport?.();
-            requestAnimationFrame(() => refreshLibraryViewport?.());
+            requestAnimationFrame(() => {
+              if (libraryViewMode === 'tree') applyMobileLibraryTreeInitialZoom?.();
+              else refreshLibraryViewport?.();
+            });
           });
         }
 
@@ -4244,6 +4250,7 @@
       const MIN_CRAFT_CANVAS_ZOOM = 1;
       const MAX_CANVAS_ZOOM = 2.4;
       const MIN_VIEW_CONTENT_ZOOM = 0.6;
+      const MIN_MOBILE_LIBRARY_ZOOM = 0.44;
       const MAX_VIEW_CONTENT_ZOOM = 2.4;
       const CANVAS_ZOOM_STEP = 1.1;
       let craftCanvasZoom = 1;
@@ -4275,6 +4282,11 @@
         return Math.max(MIN_VIEW_CONTENT_ZOOM, Math.min(MAX_VIEW_CONTENT_ZOOM, v));
       }
 
+      function clampLibraryContentZoom(v) {
+        const minZoom = isCoarseMobile ? MIN_MOBILE_LIBRARY_ZOOM : MIN_VIEW_CONTENT_ZOOM;
+        return Math.max(minZoom, Math.min(MAX_VIEW_CONTENT_ZOOM, v));
+      }
+
       function clampWorldContentZoom(v) {
         const minZoom = isCoarseMobile ? 0.28 : MIN_VIEW_CONTENT_ZOOM;
         return Math.max(minZoom, Math.min(MAX_VIEW_CONTENT_ZOOM, v));
@@ -4292,7 +4304,7 @@
       }
 
       function applyLibraryContentZoom(zoom) {
-        libraryContentZoom = clampViewContentZoom(zoom);
+        libraryContentZoom = clampLibraryContentZoom(zoom);
         if (libraryViewMode === 'tree') {
           if (libraryTreeView) libraryTreeView.style.zoom = '1';
           if (libraryTreeSurface) libraryTreeSurface.style.zoom = `${libraryContentZoom}`;
@@ -4467,7 +4479,7 @@
 
       function zoomLibraryContent(deltaY, clientX, clientY) {
         const oldZoom = libraryContentZoom;
-        const nextZoom = clampViewContentZoom(
+        const nextZoom = clampLibraryContentZoom(
           deltaY < 0 ? oldZoom * CANVAS_ZOOM_STEP : oldZoom / CANVAS_ZOOM_STEP,
         );
         zoomLibraryTo(nextZoom, clientX, clientY);
@@ -4475,7 +4487,7 @@
 
       function zoomLibraryTo(nextZoom, clientX, clientY) {
         const oldZoom = libraryContentZoom;
-        nextZoom = clampWorldContentZoom(nextZoom);
+        nextZoom = clampLibraryContentZoom(nextZoom);
         if (Math.abs(nextZoom - oldZoom) < 0.0001) return;
         if (libraryViewMode !== 'tree' && network && container) {
           // Keep the world-point under the mouse fixed while zooming.
@@ -6227,6 +6239,29 @@
         for (const symbol of symbolById.values()) {
           updateQianSymbolAppearance(symbol);
         }
+      }
+
+      function getMobileLibraryTreeFitZoom() {
+        if (!libraryTreeView || !libraryTreeSurface) return MIN_MOBILE_LIBRARY_ZOOM;
+        const viewWidth = libraryTreeView.clientWidth || window.innerWidth;
+        const viewHeight = libraryTreeView.clientHeight || Math.max(240, window.innerHeight - 146);
+        const surfaceWidth =
+          parseFloat(libraryTreeSurface.style.width) || libraryTreeSurface.scrollWidth || viewWidth;
+        const surfaceHeight =
+          parseFloat(libraryTreeSurface.style.height) || libraryTreeSurface.scrollHeight || viewHeight;
+        const fit = Math.min(viewWidth / Math.max(surfaceWidth, 1), viewHeight / Math.max(surfaceHeight, 1));
+        return clampLibraryContentZoom(Math.min(1, fit * 0.94));
+      }
+
+      function applyMobileLibraryTreeInitialZoom() {
+        if (!isCoarseMobile || libraryViewMode !== 'tree') return;
+        renderLibraryTreeView?.();
+        applyLibraryContentZoom(getMobileLibraryTreeFitZoom());
+        if (libraryTreeView) {
+          libraryTreeView.scrollLeft = 0;
+          libraryTreeView.scrollTop = 0;
+        }
+        requestAnimationFrame(() => refreshLibraryTreeEdgesFromDom?.());
       }
 
       function hasLocalChatDragInProgress() {
@@ -15127,9 +15162,10 @@
           20 +
           (definitionLines ? 4 + definitionLines * 17 : 0) +
           (smallTextLines ? 5 + smallTextLines * 16 : 0);
-        const height = smallText
+        let height = smallText
           ? Math.max(70, textHeight + 24)
           : 70 + Math.max(0, definitionLines - 1) * 17;
+        if (isCoarseMobile) height += 12;
         return { width, height };
       }
 
@@ -15977,8 +16013,8 @@
 
         const startX = 90;
         const startY = 120;
-        const rowGap = LIBRARY_TREE_ROW_GAP;
-        const columnGap = 80;
+        const rowGap = isCoarseMobile ? LIBRARY_TREE_ROW_GAP + 18 : LIBRARY_TREE_ROW_GAP;
+        const columnGap = isCoarseMobile ? 120 : 80;
         let currentX = startX;
 
         const treeColumns = new Map();
@@ -16361,8 +16397,12 @@
 
         if (showTree) {
           renderLibraryTreeView();
-          applyLibraryContentZoom(libraryContentZoom || 1);
-          requestAnimationFrame(() => refreshLibraryViewport?.());
+          if (isCoarseMobile) {
+            requestAnimationFrame(() => applyMobileLibraryTreeInitialZoom?.());
+          } else {
+            applyLibraryContentZoom(libraryContentZoom || 1);
+            requestAnimationFrame(() => refreshLibraryViewport?.());
+          }
           emitTutorialEvent?.('library_tree_view');
         } else if (network) {
           setTimeout(() => {
