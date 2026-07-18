@@ -15150,22 +15150,25 @@
         );
         const width = clamp(200 + Math.max(0, longest - 14) * 5.5, 200, 420);
         const usableTextWidth = Math.max(120, width - 86);
-        const charsPerLine = Math.max(14, Math.floor(usableTextWidth / 7.2));
+        const charsPerLine = Math.max(10, Math.floor(usableTextWidth / (isCoarseMobile ? 10.5 : 7.2)));
         const definitionLines = definition
           ? Math.max(1, Math.ceil(definition.length / charsPerLine))
           : 0;
-        const smallText = serializationText || primitiveSpeech;
-        const smallTextLines = smallText
-          ? Math.max(1, Math.ceil(smallText.length / charsPerLine))
+        const primitiveLines = primitiveSpeech
+          ? Math.max(1, Math.ceil(primitiveSpeech.length / charsPerLine))
           : 0;
+        const serializationLines = serializationText
+          ? Math.max(1, Math.ceil(serializationText.length / charsPerLine))
+          : 0;
+        const wordLineHeight = isCoarseMobile ? 24 : 20;
+        const definitionLineHeight = isCoarseMobile ? 22 : 17;
+        const smallLineHeight = isCoarseMobile ? 21 : 16;
         const textHeight =
-          20 +
-          (definitionLines ? 4 + definitionLines * 17 : 0) +
-          (smallTextLines ? 5 + smallTextLines * 16 : 0);
-        let height = smallText
-          ? Math.max(70, textHeight + 24)
-          : 70 + Math.max(0, definitionLines - 1) * 17;
-        if (isCoarseMobile) height += 12;
+          wordLineHeight +
+          (definitionLines ? 6 + definitionLines * definitionLineHeight : 0) +
+          (primitiveLines ? 7 + primitiveLines * smallLineHeight : 0) +
+          (serializationLines ? 7 + serializationLines * smallLineHeight : 0);
+        let height = Math.max(70, textHeight + (isCoarseMobile ? 42 : 24));
         return { width, height };
       }
 
@@ -15268,6 +15271,53 @@
         delete path.dataset.visualRouteY;
         const midX = x1 + Math.max(28, (x2 - x1) / 2);
         path.setAttribute('d', `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`);
+      }
+
+      function drawLibraryTreeEdges(positions, sizes) {
+        if (!libraryTreeSvg) return;
+        libraryTreeSvg.innerHTML = '';
+        for (const edge of edges.get()) {
+          const fromPos = positions.get(edge.from);
+          const toPos = positions.get(edge.to);
+          if (!fromPos || !toPos) continue;
+          const fromSize = sizes.get(edge.from);
+          const toSize = sizes.get(edge.to);
+          if (!fromSize || !toSize) continue;
+
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          path.dataset.from = String(edge.from);
+          path.dataset.to = String(edge.to);
+          updateLibraryTreeEdgePath(path, fromPos, fromSize, toPos, toSize, edge.from, edge.to);
+          path.setAttribute('stroke', 'black');
+          path.setAttribute('stroke-width', '3');
+          path.setAttribute('fill', 'none');
+          libraryTreeSvg.appendChild(path);
+        }
+      }
+
+      function repackLibraryTreeCardsFromDom(sortedLevels, columns, positions, sizes, rowGap, startY) {
+        let maxBottom = 0;
+        for (const level of sortedLevels) {
+          let currentY = startY;
+          for (const node of columns.get(level) || []) {
+            const card = libraryTreeSurface?.querySelector(
+              `.library-tree-card[data-node-id="${String(node.id)}"]`,
+            );
+            const size = sizes.get(node.id);
+            const pos = positions.get(node.id);
+            if (!card || !size || !pos) continue;
+
+            const measuredHeight = Math.ceil(card.scrollHeight || card.offsetHeight || size.height);
+            const height = Math.max(size.height, measuredHeight + (isCoarseMobile ? 12 : 0));
+            size.height = height;
+            pos.y = currentY;
+            card.style.top = `${currentY}px`;
+            card.style.minHeight = `${height}px`;
+            currentY += height + rowGap;
+            maxBottom = Math.max(maxBottom, currentY - rowGap);
+          }
+        }
+        return maxBottom;
       }
 
       function getLibraryTreeCardDomPosition(nodeId) {
@@ -16054,29 +16104,6 @@
           levelById: new Map([...levelById.entries()].map(([id, level]) => [String(id), level])),
         };
 
-        for (const edge of edges.get()) {
-          const fromPos = positions.get(edge.from);
-          const toPos = positions.get(edge.to);
-          if (!fromPos || !toPos) continue;
-          const fromSize = sizes.get(edge.from);
-          const toSize = sizes.get(edge.to);
-          if (!fromSize || !toSize) continue;
-
-          const x1 = fromPos.x + fromSize.width;
-          const y1 = fromPos.y + fromSize.height / 2;
-          const x2 = toPos.x;
-          const y2 = toPos.y + toSize.height / 2;
-          const midX = x1 + Math.max(28, (x2 - x1) / 2);
-          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-          path.dataset.from = String(edge.from);
-          path.dataset.to = String(edge.to);
-          updateLibraryTreeEdgePath(path, fromPos, fromSize, toPos, toSize, edge.from, edge.to);
-          path.setAttribute('stroke', 'black');
-          path.setAttribute('stroke-width', '3');
-          path.setAttribute('fill', 'none');
-          libraryTreeSvg.appendChild(path);
-        }
-
         for (const node of allNodes) {
           const pos = positions.get(node.id);
           if (!pos) continue;
@@ -16127,6 +16154,22 @@
           libraryTreeSurface.appendChild(card);
           attachLibraryTreeCardDrag(card, node.id, positions, sizes);
         }
+
+        const measuredMaxBottom = repackLibraryTreeCardsFromDom(
+          sortedLevels,
+          columns,
+          positions,
+          sizes,
+          rowGap,
+          startY,
+        );
+        const measuredSurfaceHeight = Math.max(700, measuredMaxBottom + startY);
+        if (measuredSurfaceHeight !== surfaceHeight) {
+          libraryTreeSurface.style.height = `${measuredSurfaceHeight}px`;
+          libraryTreeSvg.setAttribute('height', measuredSurfaceHeight);
+          libraryTreeSvg.setAttribute('viewBox', `0 0 ${surfaceWidth} ${measuredSurfaceHeight}`);
+        }
+        drawLibraryTreeEdges(positions, sizes);
       }
 
       function organizeLibraryNetwork() {
