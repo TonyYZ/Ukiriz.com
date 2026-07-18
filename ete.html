@@ -53,9 +53,16 @@
         --accent-soft: rgba(201, 139, 34, 0.16);
       }
 
-      * { box-sizing: border-box; }
+      * {
+        box-sizing: border-box;
+      }
 
-      html, body { width: 100%; height: 100%; margin: 0; }
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+      }
 
       body {
         overflow: hidden;
@@ -100,18 +107,24 @@
         box-shadow: 0 5px 18px rgba(28, 40, 49, 0.055);
       }
 
-      .brand { margin-right: auto; min-width: 0; }
+      .brand {
+        margin-right: auto;
+        min-width: 0;
+      }
       .brand h1 {
         margin: 0;
-        font: 600 25px/1 'UkirizWenKai', Georgia, serif;
-        letter-spacing: .035em;
+        font:
+          600 25px/1 'UkirizWenKai',
+          Georgia,
+          serif;
+        letter-spacing: 0.035em;
       }
       .brand p {
         margin: 7px 0 0;
         color: var(--accent-deep);
         font-size: 11px;
         font-weight: 600;
-        letter-spacing: .04em;
+        letter-spacing: 0.04em;
       }
 
       .font-switch {
@@ -120,11 +133,15 @@
         padding: 3px;
         border: 1px solid rgba(201, 139, 34, 0.44);
         border-radius: 4px;
-        background: rgba(255,255,255,.84);
+        background: rgba(255, 255, 255, 0.84);
         box-shadow: 0 2px 7px rgba(27, 42, 52, 0.06);
       }
 
-      .font-switch input { position: absolute; opacity: 0; pointer-events: none; }
+      .font-switch input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+      }
       .font-switch label {
         padding: 7px 11px;
         border-radius: 2px;
@@ -133,8 +150,14 @@
         font-size: 12px;
         line-height: 1;
       }
-      .font-switch input:checked + label { color: #fff; background: var(--accent); }
-      .font-switch input:focus-visible + label { outline: 2px solid var(--accent-deep); outline-offset: 2px; }
+      .font-switch input:checked + label {
+        color: #fff;
+        background: var(--accent);
+      }
+      .font-switch input:focus-visible + label {
+        outline: 2px solid var(--accent-deep);
+        outline-offset: 2px;
+      }
 
       textarea {
         display: block;
@@ -142,17 +165,20 @@
         width: 100%;
         min-height: 0;
         resize: none;
-        padding: clamp(34px, 4vw, 58px) clamp(26px, 4vw, 58px) clamp(48px, 5vw, 72px) clamp(54px, 6vw, 88px);
+        padding: clamp(34px, 4vw, 58px) clamp(26px, 4vw, 58px) clamp(48px, 5vw, 72px)
+          clamp(54px, 6vw, 88px);
         border: 0;
         outline: 0;
         color: var(--ink);
         background:
-          linear-gradient(90deg,
+          linear-gradient(
+            90deg,
             transparent 0,
             transparent clamp(38px, 5vw, 70px),
             var(--margin-rule) clamp(38px, 5vw, 70px),
             var(--margin-rule) calc(clamp(38px, 5vw, 70px) + 1px),
-            transparent calc(clamp(38px, 5vw, 70px) + 1px)),
+            transparent calc(clamp(38px, 5vw, 70px) + 1px)
+          ),
           repeating-linear-gradient(
             to bottom,
             transparent 0,
@@ -164,13 +190,21 @@
         font-family: 'Uriti', serif;
         font-size: clamp(26px, 3.1vw, 47px);
         line-height: 1.55;
-        letter-spacing: .025em;
+        letter-spacing: 0.025em;
         caret-color: var(--accent);
         box-shadow: inset -18px 0 32px rgba(68, 55, 31, 0.035);
       }
-      textarea.font-nuaiti { font-family: 'Nuaiti', serif; }
-      textarea::placeholder { color: #9b998f; opacity: 1; }
-      textarea::selection { color: var(--ink); background: rgba(201, 139, 34, 0.26); }
+      textarea.font-nuaiti {
+        font-family: 'Nuaiti', serif;
+      }
+      textarea::placeholder {
+        color: #9b998f;
+        opacity: 1;
+      }
+      textarea::selection {
+        color: var(--ink);
+        background: rgba(201, 139, 34, 0.26);
+      }
 
       .editor-footer {
         display: flex;
@@ -181,9 +215,13 @@
         background: var(--studio);
         color: var(--muted);
         font-size: 11px;
-        letter-spacing: .04em;
+        letter-spacing: 0.04em;
       }
-      .status { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .status {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
       .status:not(.error)::before {
         content: '';
         display: inline-block;
@@ -195,9 +233,20 @@
         box-shadow: 0 0 0 3px var(--accent-soft);
         vertical-align: 1px;
       }
-      .status.error { color: #9d3c31; }
-      .count { margin-left: auto; padding-left: 12px; white-space: nowrap; }
-
+      .status.error {
+        color: #9d3c31;
+      }
+      .count {
+        margin-left: 12px;
+        padding-left: 12px;
+        white-space: nowrap;
+      }
+      .speech-button {
+        min-height: 28px;
+        margin-left: auto;
+        padding: 5px 10px;
+        font-size: 11px;
+      }
       .drawer {
         overflow: hidden;
         touch-action: none;
@@ -206,9 +255,12 @@
           linear-gradient(to right, rgba(0, 0, 0, 0.055) 1px, transparent 1px),
           linear-gradient(to bottom, rgba(0, 0, 0, 0.055) 1px, transparent 1px),
           linear-gradient(to right, rgba(201, 139, 34, 0.11) 1px, transparent 1px),
-          linear-gradient(to bottom, rgba(201, 139, 34, 0.11) 1px, transparent 1px),
-          var(--studio);
-        background-size: 40px 40px, 40px 40px, 200px 200px, 200px 200px;
+          linear-gradient(to bottom, rgba(201, 139, 34, 0.11) 1px, transparent 1px), var(--studio);
+        background-size:
+          40px 40px,
+          40px 40px,
+          200px 200px,
+          200px 200px;
       }
 
       .drawer::after {
@@ -218,7 +270,7 @@
         pointer-events: none;
         box-shadow:
           inset 14px 0 28px rgba(30, 42, 51, 0.045),
-          inset 0 80px 90px rgba(255,255,255,.2);
+          inset 0 80px 90px rgba(255, 255, 255, 0.2);
       }
 
       .drawer-head {
@@ -237,29 +289,41 @@
         border-radius: 4px;
         color: #fff;
         background: var(--accent);
-        box-shadow: 0 3px 9px rgba(0, 128, 175, .18);
+        box-shadow: 0 3px 9px rgba(0, 128, 175, 0.18);
         font-size: 11px;
         font-weight: 700;
-        letter-spacing: .11em;
+        letter-spacing: 0.11em;
         text-transform: uppercase;
       }
-      .actions { display: flex; gap: 7px; margin-left: auto; pointer-events: auto; }
+      .actions {
+        display: flex;
+        gap: 7px;
+        margin-left: auto;
+        pointer-events: auto;
+      }
       button {
         min-height: 32px;
         padding: 6px 10px;
         border: 1px solid var(--line);
         border-radius: 4px;
         color: var(--ink);
-        background: rgba(255,255,255,.88);
+        background: rgba(255, 255, 255, 0.88);
         backdrop-filter: blur(8px);
         cursor: pointer;
         font: 12px/1 var(--mono);
         font-size: 12px;
         box-shadow: 0 2px 7px rgba(27, 42, 52, 0.07);
       }
-      button:hover { color: var(--accent-deep); border-color: var(--accent); background: #fff; }
-      button:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 2px; }
-      button[aria-pressed="true"] {
+      button:hover {
+        color: var(--accent-deep);
+        border-color: var(--accent);
+        background: #fff;
+      }
+      button:focus-visible {
+        outline: 2px solid var(--accent-deep);
+        outline-offset: 2px;
+      }
+      button[aria-pressed='true'] {
         color: #fff;
         border-color: var(--accent);
         background: var(--accent);
@@ -270,18 +334,20 @@
         max-height: calc(100dvh - 28px);
         padding: 0;
         overflow: auto;
-        border: 1px solid rgba(143, 94, 13, .42);
+        border: 1px solid rgba(143, 94, 13, 0.42);
         border-radius: 6px;
         color: var(--ink);
         background: var(--paper);
-        box-shadow: 0 18px 54px rgba(48, 43, 32, .28);
+        box-shadow: 0 18px 54px rgba(48, 43, 32, 0.28);
         font-family: var(--mono);
       }
       dialog::backdrop {
-        background: rgba(48, 43, 32, .34);
+        background: rgba(48, 43, 32, 0.34);
         backdrop-filter: blur(2px);
       }
-      .settings-form { padding: 22px; }
+      .settings-form {
+        padding: 22px;
+      }
       .settings-head {
         display: flex;
         align-items: start;
@@ -291,7 +357,10 @@
       }
       .settings-head h2 {
         margin: 0;
-        font: 600 22px/1.1 'UkirizWenKai', Georgia, serif;
+        font:
+          600 22px/1.1 'UkirizWenKai',
+          Georgia,
+          serif;
       }
       .settings-head p {
         margin: 6px 0 0;
@@ -330,10 +399,10 @@
         width: 100%;
         min-width: 0;
         padding: 7px 8px;
-        border: 1px solid rgba(143, 94, 13, .3);
+        border: 1px solid rgba(143, 94, 13, 0.3);
         border-radius: 3px;
         color: var(--ink);
-        background: rgba(255, 255, 255, .7);
+        background: rgba(255, 255, 255, 0.7);
         font: 12px/1.2 var(--mono);
       }
       .setting input:focus {
@@ -366,24 +435,56 @@
         stroke-linecap: round;
         stroke-linejoin: round;
       }
-      #artwork .gate { stroke: var(--accent-deep); stroke-width: 1.5; opacity: .72; }
-      #artwork .node-dot { fill: var(--ink); stroke: none; }
-      #artwork .turtle-cursor { fill: var(--ink); stroke: none; }
+      #artwork .gate {
+        stroke: var(--accent-deep);
+        stroke-width: 1.5;
+        opacity: 0.72;
+      }
+      #artwork .node-dot {
+        fill: var(--ink);
+        stroke: none;
+      }
+      #artwork .turtle-cursor {
+        fill: var(--ink);
+        stroke: none;
+      }
 
       @media (max-width: 760px) {
-        body { overflow: auto; }
-        .app { grid-template-columns: 1fr; grid-template-rows: minmax(52dvh, 1fr) minmax(48dvh, 1fr); height: auto; min-height: 100dvh; }
-        .editor { border-right: 0; border-bottom: 4px solid var(--accent); }
-        .toolbar { min-height: 66px; padding: 10px 12px; gap: 8px; }
-        .brand p { display: none; }
-        .font-switch label { padding: 7px 9px; }
+        body {
+          overflow: auto;
+        }
+        .app {
+          grid-template-columns: 1fr;
+          grid-template-rows: minmax(52dvh, 1fr) minmax(48dvh, 1fr);
+          height: auto;
+          min-height: 100dvh;
+        }
+        .editor {
+          border-right: 0;
+          border-bottom: 4px solid var(--accent);
+        }
+        .toolbar {
+          min-height: 66px;
+          padding: 10px 12px;
+          gap: 8px;
+        }
+        .brand p {
+          display: none;
+        }
+        .font-switch label {
+          padding: 7px 9px;
+        }
         textarea {
           min-height: 38dvh;
           padding: 28px 22px 40px 48px;
           font-size: clamp(25px, 8vw, 38px);
         }
-        .drawer { min-height: 48dvh; }
-        .settings-grid { grid-template-columns: 1fr; }
+        .drawer {
+          min-height: 48dvh;
+        }
+        .settings-grid {
+          grid-template-columns: 1fr;
+        }
       }
     </style>
   </head>
@@ -395,8 +496,16 @@
             <h1 id="editor-title">Ete</h1>
             <p>The automated scribe for Ítí</p>
           </div>
-          <button type="button" id="random-text" title="Replace the editor with a generated V2 passage">Random text</button>
-          <button type="button" id="random-settings" title="Set random text parameters">Settings</button>
+          <button
+            type="button"
+            id="random-text"
+            title="Replace the editor with a generated V2 passage"
+          >
+            Random text
+          </button>
+          <button type="button" id="random-settings" title="Set random text parameters">
+            Settings
+          </button>
           <div class="font-switch" role="radiogroup" aria-label="Writing font">
             <input type="radio" id="uriti" name="font" value="uriti" checked />
             <label for="uriti">Uriti</label>
@@ -404,9 +513,26 @@
             <label for="nuaiti">Nuaiti</label>
           </div>
         </header>
-        <textarea id="source" lang="art-x-iti" spellcheck="false" autocomplete="off" aria-label="Ítí text" placeholder="Type Ítí here…">çrağ rám. Zacan. Can zág. Gğaman.</textarea>
+        <textarea
+          id="source"
+          lang="art-x-iti"
+          spellcheck="false"
+          autocomplete="off"
+          aria-label="Ítí text"
+          placeholder="Type Ítí here…"
+        >
+çrağ rám. Zacan. Can zág. Graman.</textarea
+        >
         <footer class="editor-footer">
           <span class="status" id="status" role="status">Ready</span>
+          <button
+            class="speech-button"
+            type="button"
+            id="speak-text"
+            title="Open the Ítí transcription in IPA Reader"
+          >
+            Speak
+          </button>
           <span class="count" id="count">0 elements</span>
         </footer>
       </section>
@@ -415,12 +541,23 @@
         <div class="drawer-head">
           <span class="drawer-title">Live drawing</span>
           <div class="actions">
-            <button type="button" id="maze-mode" aria-pressed="false" title="Avoid collisions using DrawerV2 maze routing">Maze</button>
+            <button
+              type="button"
+              id="maze-mode" aria-pressed="true"
+              title="Collision avoidance is on; click to use the unadjusted layout"
+            >
+              Maze
+            </button>
             <button type="button" id="fit">Fit</button>
             <button type="button" id="download">Save SVG</button>
           </div>
         </div>
-        <svg id="drawing" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Generated Ítí drawing">
+        <svg
+          id="drawing"
+          xmlns="http://www.w3.org/2000/svg"
+          role="img"
+          aria-label="Generated Ítí drawing"
+        >
           <g id="viewport"><g id="artwork"></g></g>
         </svg>
       </section>
@@ -433,52 +570,171 @@
             <h2 id="random-settings-title">Random text settings</h2>
             <p>These values are used the next time you generate a passage.</p>
           </div>
-          <button class="settings-close" type="button" id="random-settings-close" aria-label="Close settings">×</button>
+          <button
+            class="settings-close"
+            type="button"
+            id="random-settings-close"
+            aria-label="Close settings"
+          >
+            ×
+          </button>
         </div>
         <div class="settings-grid">
           <div class="setting">
             <label for="random-elements">Elements <small>Total drawable elements</small></label>
-            <input id="random-elements" name="elements" type="number" min="1" max="5000" step="1" value="100" required />
+            <input
+              id="random-elements"
+              name="elements"
+              type="number"
+              min="1"
+              max="5000"
+              step="1"
+              value="20"
+              required
+            />
           </div>
           <div class="setting">
-            <label for="random-sentences">Sentences <small>Between 1 and the element count</small></label>
-            <input id="random-sentences" name="sentences" type="number" min="1" max="1000" step="1" value="10" required />
+            <label for="random-sentences"
+              >Sentences <small>Between 1 and the element count</small></label
+            >
+            <input
+              id="random-sentences"
+              name="sentences"
+              type="number"
+              min="1"
+              max="1000"
+              step="1"
+              value="5"
+              required
+            />
           </div>
           <div class="setting">
-            <label for="random-fuseau-rate">Fuseau rate <small>Probability from 0 to 1</small></label>
-            <input id="random-fuseau-rate" name="fuseauRate" type="number" min="0" max="1" step="0.01" value="0.2" required />
+            <label for="random-fuseau-rate"
+              >Fuseau rate <small>Probability from 0 to 1</small></label
+            >
+            <input
+              id="random-fuseau-rate"
+              name="fuseauRate"
+              type="number"
+              min="0"
+              max="1"
+              step="0.01"
+              value="0.2"
+              required
+            />
           </div>
           <div class="setting">
             <label for="random-gate-rate">Gate rate <small>Probability from 0 to 1</small></label>
-            <input id="random-gate-rate" name="gateRate" type="number" min="0" max="1" step="0.01" value="0.08" required />
+            <input
+              id="random-gate-rate"
+              name="gateRate"
+              type="number"
+              min="0"
+              max="1"
+              step="0.01"
+              value="0.08"
+              required
+            />
           </div>
           <div class="setting">
-            <label for="random-vertical-rate">Vertical rate <small>Probability from 0 to 1</small></label>
-            <input id="random-vertical-rate" name="verticalRate" type="number" min="0" max="1" step="0.01" value="0.5" required />
+            <label for="random-vertical-rate"
+              >Vertical rate <small>Probability from 0 to 1</small></label
+            >
+            <input
+              id="random-vertical-rate"
+              name="verticalRate"
+              type="number"
+              min="0"
+              max="1"
+              step="0.01"
+              value="0.5"
+              required
+            />
           </div>
           <div class="setting">
-            <label for="random-nested-rate">Nested fuseau rate <small>Probability from 0 to 1</small></label>
-            <input id="random-nested-rate" name="nestedFuseauRate" type="number" min="0" max="1" step="0.01" value="0.25" required />
+            <label for="random-nested-rate"
+              >Nested fuseau rate <small>Probability from 0 to 1</small></label
+            >
+            <input
+              id="random-nested-rate"
+              name="nestedFuseauRate"
+              type="number"
+              min="0"
+              max="1"
+              step="0.01"
+              value="0.25"
+              required
+            />
           </div>
           <div class="setting">
             <label for="random-depth">Maximum depth <small>Nested fuseau depth</small></label>
-            <input id="random-depth" name="maxFuseauDepth" type="number" min="1" max="20" step="1" value="3" required />
+            <input
+              id="random-depth"
+              name="maxFuseauDepth"
+              type="number"
+              min="1"
+              max="20"
+              step="1"
+              value="3"
+              required
+            />
           </div>
           <div class="setting">
-            <label for="random-branches">Maximum branches <small>Branches in one fuseau</small></label>
-            <input id="random-branches" name="maxBranches" type="number" min="2" max="30" step="1" value="6" required />
+            <label for="random-branches"
+              >Maximum branches <small>Branches in one fuseau</small></label
+            >
+            <input
+              id="random-branches"
+              name="maxBranches"
+              type="number"
+              min="2"
+              max="30"
+              step="1"
+              value="6"
+              required
+            />
           </div>
           <div class="setting">
-            <label for="random-branch-length">Maximum branch length <small>Elements in one branch</small></label>
-            <input id="random-branch-length" name="maxBranchLength" type="number" min="1" max="30" step="1" value="4" required />
+            <label for="random-branch-length"
+              >Maximum branch length <small>Elements in one branch</small></label
+            >
+            <input
+              id="random-branch-length"
+              name="maxBranchLength"
+              type="number"
+              min="1"
+              max="30"
+              step="1"
+              value="4"
+              required
+            />
           </div>
           <div class="setting">
-            <label for="random-fanout">Maximum gate fanout <small>Targets from one source</small></label>
-            <input id="random-fanout" name="maxGateFanout" type="number" min="1" max="30" step="1" value="3" required />
+            <label for="random-fanout"
+              >Maximum gate fanout <small>Targets from one source</small></label
+            >
+            <input
+              id="random-fanout"
+              name="maxGateFanout"
+              type="number"
+              min="1"
+              max="30"
+              step="1"
+              value="3"
+              required
+            />
           </div>
           <div class="setting">
             <label for="random-seed">Seed <small>Leave blank for a new passage</small></label>
-            <input id="random-seed" name="seed" type="number" min="0" max="4294967295" step="1" placeholder="Random" />
+            <input
+              id="random-seed"
+              name="seed"
+              type="number"
+              min="0"
+              max="4294967295"
+              step="1"
+              placeholder="Random"
+            />
           </div>
         </div>
         <p class="settings-error" id="random-settings-error" role="alert"></p>
@@ -489,6 +745,7 @@
       </form>
     </dialog>
 
+    <script src="./ete-speech.js"></script>
     <script>
       (() => {
         'use strict';
@@ -497,6 +754,7 @@
         const source = document.querySelector('#source');
         const status = document.querySelector('#status');
         const count = document.querySelector('#count');
+        const speakButton = document.querySelector('#speak-text');
         const svg = document.querySelector('#drawing');
         const drawerPanel = document.querySelector('.drawer');
         const randomSettingsDialog = document.querySelector('#random-settings-dialog');
@@ -504,48 +762,114 @@
         const randomSettingsError = document.querySelector('#random-settings-error');
         const viewport = document.querySelector('#viewport');
         const artwork = document.querySelector('#artwork');
-        const consonants = new Set(Array.from('çşzspbtdmnfvlrcghğyw-|'));
-        const vowelBase = Object.fromEntries([
-          ['aáàā','a'], ['eéèē','e'], ['iíìī','i'],
-          ['oóòō','o'], ['uúùū','u'], ['ơớờ','ơ'],
-        ].flatMap(([chars, base]) => Array.from(chars, char => [char, base])));
+        const consonants = new Set(Array.from('çşzspbtdmnfvlrcghğ'));
+        const fuseauBranchMarks = new Set(['y', 'w']);
+        const vowelBase = Object.fromEntries(
+          [
+            ['aáà', 'a'],
+            ['eéèē', 'e'],
+            ['iíìī', 'i'],
+            ['oóòō', 'o'],
+            ['uúùū', 'u'],
+            ['ơớờ', 'ơ'],
+          ].flatMap(([chars, base]) => Array.from(chars, (char) => [char, base])),
+        );
         const accents = new Set(Array.from('áéíóúớ'));
-        const compounds = { 'ẻ':'áé', 'ț':'óé', 'ȟ':'áóé', 'ỉ':'éí', 'ȍ':'óí', 'ỏ':'áó', 'ủ':'óú', 'ứ':'éú', 'ĩ':'ei', 'ị':'oi', 'ẹ':'oe', 'ẽ':'ae', 'ȡ':'aoe', 'õ':'ao', 'ư':'eu', 'ũ':'ou' };
+        const compounds = {
+          ẻ: 'áé',
+          ț: 'óé',
+          ȟ: 'áóé',
+          ỉ: 'éí',
+          ȍ: 'óí',
+          ỏ: 'áó',
+          ủ: 'óú',
+          ứ: 'éú',
+          ĩ: 'ei',
+          ị: 'oi',
+          ẹ: 'oe',
+          ẽ: 'ae',
+          ȡ: 'aoe',
+          õ: 'ao',
+          ư: 'eu',
+          ũ: 'ou',
+        };
+        const compoundSpellings = new Map([
+          ...Object.entries(compounds).map(([compound, expanded]) => [expanded, compound]),
+          ['oa', 'õ'],
+        ]);
+        const compactVowelSequences = Array.from(compoundSpellings.keys()).sort(
+          (left, right) => right.length - left.length,
+        );
 
         class ParseError extends Error {}
 
         function normalize(text) {
-          return Array.from(text.toLowerCase().replaceAll('Ƞ', 'ȡ').replaceAll('Ȍ', 'ȍ').replaceAll('Ț', 'ț').replaceAll('Ȟ', 'ȟ'))
-            .map(char => compounds[char] || char).join('');
+          return Array.from(
+            text
+              .toLowerCase()
+              .replaceAll('Ƞ', 'ȡ')
+              .replaceAll('Ȍ', 'ȍ')
+              .replaceAll('Ț', 'ț')
+              .replaceAll('Ȟ', 'ȟ'),
+          )
+            .map((char) => compounds[char] || char)
+            .join('');
         }
 
         function splitSentenceRecords(text) {
           const normalized = normalize(text).replace(/\([^)]*\)/g, '');
-          const separator = / {4,}|-\s+|[,.!?;:\n]+/g; const records = [];
-          let start = 0; let match;
+          const separator = / {4,}|-\s+|[,.!?;:\n]+/g;
+          const records = [];
+          let start = 0;
+          let match;
           while ((match = separator.exec(normalized))) {
             const part = normalized.slice(start, match.index).trim();
-            if (part && !/^\d+$/.test(part)) records.push({ text:part, hasPeriod:match[0].includes('.') });
+            if (part && !/^\d+$/.test(part))
+              records.push({ text: part, hasPeriod: match[0].includes('.') });
             start = separator.lastIndex;
           }
           const part = normalized.slice(start).trim();
-          if (part && !/^\d+$/.test(part)) records.push({ text:part, hasPeriod:false });
+          if (part && !/^\d+$/.test(part)) records.push({ text: part, hasPeriod: false });
           return records;
         }
 
         class Parser {
           constructor(text, sentence, gates, sources) {
-            this.text = text.replace(/\s/g, ''); this.pos = 0; this.sentence = sentence;
-            this.number = 0; this.gates = gates; this.sources = sources; this.orientation = 0;
+            this.text = text
+              .replace(/\s/g, '')
+              .replace(/[aà](?=[eéèēoóòōơớờ])/gu, '');
+            this.pos = 0;
+            this.sentence = sentence;
+            this.number = 0;
+            this.gates = gates;
+            this.sources = sources;
+            this.orientation = 0;
             this.componentContinuesBranch = false;
             this.omittedFuseauOpenings = [];
             this.omittedFuseauClosings = [];
           }
-          peek() { return this.text[this.pos] || ''; }
-          base(char = this.peek()) { return vowelBase[char] || char; }
-          fail(message) { throw new ParseError(`${message} at character ${this.pos + 1}`); }
-          take(expected) { const c = this.peek(); if (!c) this.fail('Unexpected end of input'); if (expected && c !== expected) this.fail(`Expected ${expected}`); this.pos++; return c; }
-          takeVowel(expected) { const c = this.peek(); if (this.base(c) !== expected) this.fail(`Expected ${expected}`); this.pos++; if (accents.has(c)) this.orientation++; }
+          peek() {
+            return this.text[this.pos] || '';
+          }
+          base(char = this.peek()) {
+            return vowelBase[char] || char;
+          }
+          fail(message) {
+            throw new ParseError(`${message} at character ${this.pos + 1}`);
+          }
+          take(expected) {
+            const c = this.peek();
+            if (!c) this.fail('Unexpected end of input');
+            if (expected && c !== expected) this.fail(`Expected ${expected}`);
+            this.pos++;
+            return c;
+          }
+          takeVowel(expected) {
+            const c = this.peek();
+            if (this.base(c) !== expected) this.fail(`Expected ${expected}`);
+            this.pos++;
+            if (accents.has(c)) this.orientation++;
+          }
           takeOptionalVowel(expected) {
             if (this.base() !== expected) return false;
             this.takeVowel(expected);
@@ -554,22 +878,15 @@
           atSeriesBoundary(stops) {
             return this.pos >= this.text.length || stops.has(this.base());
           }
-          parse() { const root = this.series(new Set()); if (this.pos !== this.text.length) this.fail('Unexpected input'); return root; }
+          parse() {
+            const root = this.series(new Set());
+            if (this.pos !== this.text.length) this.fail('Unexpected input');
+            return root;
+          }
           series(stops) {
             let children = [];
             let simpleLeftStart = 0;
-            const appendComponent = component => {
-              if (children.length) {
-                const previous = children.at(-1);
-                if (this.hasOmittedClosing(previous) && component.type !== 'parallel') {
-                  this.fail('A fuseau followed by a non-fuseau element must retain its final o');
-                }
-                if (this.hasOmittedOpening(component) && previous.type !== 'parallel') {
-                  this.fail('A fuseau preceded by a non-fuseau element must retain its first e');
-                }
-              }
-              children.push(component);
-            };
+            const appendComponent = (component) => children.push(component);
             while (this.pos < this.text.length) {
               if (this.peek() === "'" && stops.has("'") && children.length) break;
               if (stops.has(this.base()) && this.peek() !== "'") break;
@@ -582,14 +899,14 @@
                 const explicitSimple = this.tryExplicitSimpleFuseau(stops);
                 appendComponent(explicitSimple || this.complex(stops));
                 this.componentContinuesBranch = false;
-              }
-              else if (this.base() === 'ơ') {
+              } else if (this.base() === 'ơ') {
                 if (!children.length) this.fail('ơ needs a branch before it');
-                this.takeVowel('ơ'); const right = this.simpleRightBranch(stops);
+                this.takeVowel('ơ');
+                const right = this.simpleRightBranch(stops);
                 if (!right.children.length) this.fail('ơ needs a branch after it');
                 const prefix = children.slice(0, simpleLeftStart);
-                const left = { type:'series', children:children.slice(simpleLeftStart) };
-                const simple = { type:'parallel', branches:[left, right] };
+                const left = { type: 'series', children: children.slice(simpleLeftStart) };
+                const simple = { type: 'parallel', branches: [left, right] };
                 const closingOmitted = !this.takeOptionalVowel('o');
                 this.recordFuseauBoundaries(simple, true, closingOmitted);
                 if (prefix.length && prefix.at(-1).type !== 'parallel') {
@@ -614,7 +931,20 @@
                 }
               }
             }
-            return { type:'series', children };
+            this.validateFuseauBoundaries(children);
+            return { type: 'series', children };
+          }
+          validateFuseauBoundaries(children) {
+            for (let index = 1; index < children.length; index++) {
+              const previous = children[index - 1];
+              const component = children[index];
+              if (this.hasOmittedClosing(previous) && component.type !== 'parallel') {
+                this.fail('A fuseau followed by a non-fuseau element must retain its final o');
+              }
+              if (this.hasOmittedOpening(component) && previous.type !== 'parallel') {
+                this.fail('A fuseau preceded by a non-fuseau element must retain its first e');
+              }
+            }
           }
           hasOmittedOpening(node) {
             return node?.type === 'parallel' && this.omittedFuseauOpenings.includes(node);
@@ -628,10 +958,11 @@
             return node;
           }
           simpleRightBranch(outerStops) {
-            if (this.peek() === "'") return { type:'series', children:[this.quoted()] };
-            if (this.base() === 'e') return { type:'series', children:[this.complex(outerStops)] };
+            if (this.peek() === "'") return { type: 'series', children: [this.quoted()] };
+            if (this.base() === 'e')
+              return { type: 'series', children: [this.complex(outerStops)] };
             const implicit = outerStops.has('o') ? null : this.tryImplicitComplex(outerStops);
-            if (implicit) return { type:'series', children:[implicit] };
+            if (implicit) return { type: 'series', children: [implicit] };
             return this.compactBranch();
           }
           tryExplicitSimpleFuseau(outerStops) {
@@ -647,7 +978,9 @@
               if (!right.children.length) this.fail('Explicit simple fuseau needs a right branch');
               const closingOmitted = !this.takeOptionalVowel('o');
               return this.recordFuseauBoundaries(
-                { type:'parallel', branches:[left, right] }, false, closingOmitted
+                { type: 'parallel', branches: [left, right] },
+                false,
+                closingOmitted,
               );
             } catch (error) {
               if (!(error instanceof ParseError)) throw error;
@@ -657,18 +990,30 @@
           }
           snapshot() {
             return {
-              pos:this.pos, number:this.number, orientation:this.orientation,
-              continues:this.componentContinuesBranch, gateCount:this.gates.length,
-              sources:this.sources.map(source => ({ id:source.id, remaining:source.remaining })),
-              openingCount:this.omittedFuseauOpenings.length,
-              closingCount:this.omittedFuseauClosings.length,
+              pos: this.pos,
+              number: this.number,
+              orientation: this.orientation,
+              continues: this.componentContinuesBranch,
+              gateCount: this.gates.length,
+              sources: this.sources.map((source) => ({
+                id: source.id,
+                remaining: source.remaining,
+              })),
+              openingCount: this.omittedFuseauOpenings.length,
+              closingCount: this.omittedFuseauClosings.length,
             };
           }
           restore(snapshot) {
-            this.pos = snapshot.pos; this.number = snapshot.number; this.orientation = snapshot.orientation;
+            this.pos = snapshot.pos;
+            this.number = snapshot.number;
+            this.orientation = snapshot.orientation;
             this.componentContinuesBranch = snapshot.continues;
             this.gates.length = snapshot.gateCount;
-            this.sources.splice(0, this.sources.length, ...snapshot.sources.map(source => ({ ...source })));
+            this.sources.splice(
+              0,
+              this.sources.length,
+              ...snapshot.sources.map((source) => ({ ...source })),
+            );
             this.omittedFuseauOpenings.length = snapshot.openingCount;
             this.omittedFuseauClosings.length = snapshot.closingCount;
           }
@@ -684,8 +1029,9 @@
             while (this.pos < this.text.length) {
               const continuationSnapshot = this.snapshot();
               let candidate;
-              try { candidate = this.branchAtom(); }
-              catch (error) {
+              try {
+                candidate = this.branchAtom();
+              } catch (error) {
                 if (!(error instanceof ParseError)) throw error;
                 this.restore(continuationSnapshot);
                 break;
@@ -696,16 +1042,20 @@
               }
               children.push(candidate);
             }
-            return { type:'series', children };
+            return { type: 'series', children };
           }
           tryImplicitComplex(outerStops) {
             const snapshot = this.snapshot();
             try {
               const first = this.compactBranch();
-              const firstChangedGates = this.gates.length !== snapshot.gateCount
-                || this.sources.length !== snapshot.sources.length
-                || this.sources.some((source, index) => source.id !== snapshot.sources[index]?.id
-                  || source.remaining !== snapshot.sources[index]?.remaining);
+              const firstChangedGates =
+                this.gates.length !== snapshot.gateCount ||
+                this.sources.length !== snapshot.sources.length ||
+                this.sources.some(
+                  (source, index) =>
+                    source.id !== snapshot.sources[index]?.id ||
+                    source.remaining !== snapshot.sources[index]?.remaining,
+                );
 
               if (this.base() === 'e' && !firstChangedGates) {
                 const explicitSnapshot = this.snapshot();
@@ -724,13 +1074,16 @@
 
                 const branches = [first];
                 while (this.base() === 'e') {
-                  this.takeVowel('e'); const middle = this.series(new Set(['o']));
+                  this.takeVowel('e');
+                  const middle = this.series(new Set(['o']));
                   if (!middle.children.length) this.fail('Empty middle fuseau branch');
-                  this.takeVowel('o'); branches.push(middle);
+                  this.takeVowel('o');
+                  branches.push(middle);
                   if (this.base() !== 'e') break;
                 }
                 const penultimate = this.series(new Set(['o']));
-                if (!penultimate.children.length) this.fail('Complex fuseau needs its penultimate branch');
+                if (!penultimate.children.length)
+                  this.fail('Complex fuseau needs its penultimate branch');
                 this.takeVowel('o');
                 const finalSnapshot = this.snapshot();
                 let final = this.series(new Set(['o', ...outerStops]));
@@ -738,8 +1091,10 @@
                 if (final.children.length && this.base() === 'o') {
                   this.takeVowel('o');
                   closingOmitted = false;
-                } else if (final.children.length
-                    && (this.pos >= this.text.length || outerStops.has(this.base()))) {
+                } else if (
+                  final.children.length &&
+                  (this.pos >= this.text.length || outerStops.has(this.base()))
+                ) {
                   closingOmitted = true;
                 } else {
                   this.restore(finalSnapshot);
@@ -748,41 +1103,57 @@
                 }
                 branches.push(penultimate, final);
                 return this.recordFuseauBoundaries(
-                  { type:'parallel', branches }, true, closingOmitted
+                  { type: 'parallel', branches },
+                  true,
+                  closingOmitted,
                 );
               }
 
               const second = this.compactBranch(true);
               if (this.base() !== 'o') this.fail('Compact fuseau needs o after its second branch');
-              this.takeVowel('o'); const third = this.compactBranch();
+              this.takeVowel('o');
+              const third = this.compactBranch();
               const closingOmitted = !this.takeOptionalVowel('o');
               return this.recordFuseauBoundaries(
-                { type:'parallel', branches:[first, second, third] }, true, closingOmitted
+                { type: 'parallel', branches: [first, second, third] },
+                true,
+                closingOmitted,
               );
             } catch (error) {
               if (!(error instanceof ParseError)) throw error;
-              this.restore(snapshot); return null;
+              this.restore(snapshot);
+              return null;
             }
           }
           quoted() {
-            const opening = this.pos; this.take("'");
-            if (this.base() !== 'e') { this.pos = opening; this.fail('An apostrophe-delimited inner fuseau must begin with e'); }
+            const opening = this.pos;
+            this.take("'");
+            if (this.base() !== 'e') {
+              this.pos = opening;
+              this.fail('An apostrophe-delimited inner fuseau must begin with e');
+            }
             const contents = this.complex(new Set(["'"]), true);
-            if (this.peek() !== "'") { this.pos = opening; this.fail("An apostrophe-delimited inner fuseau must end with o'"); }
-            this.take("'"); return contents;
+            if (this.peek() !== "'") {
+              this.pos = opening;
+              this.fail("An apostrophe-delimited inner fuseau must end with o'");
+            }
+            this.take("'");
+            return contents;
           }
           complex(outerStops = new Set(), requireFinalO = false) {
-            this.takeVowel('e'); const afterOpening = this.snapshot();
+            this.takeVowel('e');
+            const afterOpening = this.snapshot();
             try {
-              const first = this.compactBranch(); const second = this.compactBranch(true);
+              const first = this.compactBranch();
+              const second = this.compactBranch(true);
               if (this.base() === 'o') {
                 this.takeVowel('o');
                 if (this.pos >= this.text.length || outerStops.has(this.base())) {
-                  return { type:'parallel', branches:[first, second] };
+                  return { type: 'parallel', branches: [first, second] };
                 }
               } else if (this.pos >= this.text.length || outerStops.has(this.base())) {
                 if (requireFinalO) this.fail('A nested two-branch fuseau must end with o');
-                return { type:'parallel', branches:[first, second] };
+                return { type: 'parallel', branches: [first, second] };
               } else this.fail('Fuseau needs o after branch 2');
 
               const third = this.compactBranch();
@@ -791,7 +1162,9 @@
                 this.fail('A nested three-branch fuseau must end with o');
               }
               return this.recordFuseauBoundaries(
-                { type:'parallel', branches:[first, second, third] }, false, closingOmitted
+                { type: 'parallel', branches: [first, second, third] },
+                false,
+                closingOmitted,
               );
             } catch (error) {
               if (!(error instanceof ParseError)) throw error;
@@ -803,13 +1176,16 @@
             if (this.base() !== 'e') this.fail('Complex fuseau needs e before its middle branch');
             const branches = [first];
             while (this.base() === 'e') {
-              this.takeVowel('e'); const middle = this.series(new Set(['o']));
+              this.takeVowel('e');
+              const middle = this.series(new Set(['o']));
               if (!middle.children.length) this.fail('Empty fuseau branch');
-              this.takeVowel('o'); branches.push(middle);
+              this.takeVowel('o');
+              branches.push(middle);
               if (this.base() !== 'e') break;
             }
             const penultimate = this.series(new Set(['o']));
-            if (!penultimate.children.length) this.fail('Complex fuseau needs a penultimate branch');
+            if (!penultimate.children.length)
+              this.fail('Complex fuseau needs a penultimate branch');
             this.takeVowel('o');
             const finalSnapshot = this.snapshot();
             let final = this.series(new Set(['o', ...outerStops]));
@@ -817,12 +1193,13 @@
             if (final.children.length && this.base() === 'o') {
               this.takeVowel('o');
               closingOmitted = false;
-            }
-            else if (final.children.length && !requireFinalO
-                && (this.pos >= this.text.length || outerStops.has(this.base()))) {
+            } else if (
+              final.children.length &&
+              !requireFinalO &&
+              (this.pos >= this.text.length || outerStops.has(this.base()))
+            ) {
               closingOmitted = true;
-            }
-            else {
+            } else {
               this.restore(finalSnapshot);
               if (requireFinalO) this.fail('A nested complex fuseau must end with o');
               final = this.compactBranch();
@@ -830,41 +1207,71 @@
             }
             branches.push(penultimate, final);
             return this.recordFuseauBoundaries(
-              { type:'parallel', branches }, false, closingOmitted
+              { type: 'parallel', branches },
+              false,
+              closingOmitted,
             );
           }
           markers(marker) {
             let n = 0;
             while (this.base() === marker) {
-              this.takeVowel(marker); n++;
-              if (this.peek() === "'") { this.take("'"); if (this.base() !== marker) this.fail(`Apostrophe after ${marker} must repeat it`); }
-              else break;
+              this.takeVowel(marker);
+              n++;
+              if (this.peek() === "'") {
+                this.take("'");
+                if (this.base() !== marker) this.fail(`Apostrophe after ${marker} must repeat it`);
+              } else break;
             }
             return n;
           }
           element(allowTrailingNeutral = false, compactSecond = false) {
             this.componentContinuesBranch = false;
-            const outgoing = this.base() === 'i' ? this.markers('i') : 0;
-            const incoming = this.base() === 'u' ? this.markers('u') : 0;
             if (compactSecond && this.peek() === 'ớ') this.takeVowel('ơ');
             while (this.base() === 'a') {
               this.componentContinuesBranch = true;
               this.takeVowel('a');
             }
-            if (!this.peek() && allowTrailingNeutral && !outgoing && !incoming && this.orientation === 0) {
+            const outgoing = this.base() === 'i' ? this.markers('i') : 0;
+            const incoming = this.base() === 'u' ? this.markers('u') : 0;
+            if ((outgoing || incoming) && !consonants.has(this.peek())) {
+              this.fail(`${outgoing ? 'i' : 'u'} gate marker must be followed by a consonant`);
+            }
+            if (
+              !this.peek() &&
+              allowTrailingNeutral &&
+              !outgoing &&
+              !incoming &&
+              this.orientation === 0
+            ) {
               // Neutral a may frame/close a series (for example, cra)
               // without introducing another drawable element.
               return null;
             }
             if (this.peek() === "'" && !outgoing && !incoming) return null;
-            if (this.orientation > 1) this.fail('Only one accented orientation vowel is allowed per element');
-            const char = this.peek(); if (!consonants.has(char)) this.fail(`Expected an Ítí consonant, found ${char || 'nothing'}`);
-            this.take(); const node = { type:'element', id:`s${this.sentence}n${++this.number}`, char, orientation:this.orientation };
+            if (this.orientation > 1)
+              this.fail('Only one accented orientation vowel is allowed per element');
+            const char = this.peek();
+            if (fuseauBranchMarks.has(char)) {
+              const following = this.text.slice(this.pos + 1, this.pos + 2);
+              if (!Object.hasOwn(vowelBase, following)) {
+                this.fail(`${char} fuseau mark must be followed by a vowel`);
+              }
+            } else if (!consonants.has(char) && char !== 'ā') {
+              this.fail(`Expected an Ítí drawable element, found ${char || 'nothing'}`);
+            }
+            this.take();
+            const node = {
+              type: 'element',
+              id: `s${this.sentence}n${++this.number}`,
+              char,
+              orientation: this.orientation,
+            };
             this.orientation = 0;
-            if (outgoing) this.sources.push({ id:node.id, remaining:outgoing });
+            if (outgoing) this.sources.push({ id: node.id, remaining: outgoing });
             for (let i = 0; i < incoming; i++) {
               if (!this.sources.length) this.fail('Gate target has no open source');
-              const open = this.sources[this.sources.length - 1]; this.gates.push({ source:open.id, target:node.id });
+              const open = this.sources[this.sources.length - 1];
+              this.gates.push({ source: open.id, target: node.id });
               if (--open.remaining === 0) this.sources.pop();
             }
             return node;
@@ -872,27 +1279,71 @@
         }
 
         function parse(text) {
-          const gates = [], sources = [];
+          const gates = [],
+            sources = [];
           const records = splitSentenceRecords(text);
-          const sentences = records.map((record, index) => new Parser(record.text, index + 1, gates, sources).parse());
+          const sentences = records.map((record, index) =>
+            new Parser(record.text, index + 1, gates, sources).parse(),
+          );
+          sentences.forEach((root) => validateFuseauBranchMarks(root));
           if (sources.length) throw new ParseError('One or more gate sources are still open');
-          return { sentences, gates, periods:records.map(record => record.hasPeriod) };
+          return { sentences, gates, periods: records.map((record) => record.hasPeriod) };
+        }
+
+        function validateFuseauBranchMarks(node, insideBranch = false) {
+          if (node.type === 'element') {
+            if (fuseauBranchMarks.has(node.char) && !insideBranch) {
+              throw new ParseError(`${node.char} may only appear inside a fuseau branch`);
+            }
+            return;
+          }
+          if (node.type === 'parallel') {
+            const allChevronBranches = node.branches.every(
+              (branch) =>
+                branch.children.length === 1 &&
+                branch.children[0].type === 'element' &&
+                'yw'.includes(branch.children[0].char),
+            );
+            if (allChevronBranches) {
+              throw new ParseError('A fuseau needs at least one non-chevron branch for its stem');
+            }
+            node.branches.forEach((branch) => {
+              const marks = branch.children.filter(
+                (child) => child.type === 'element' && fuseauBranchMarks.has(child.char),
+              );
+              if (marks.length && (marks.length !== 1 || branch.children.length !== 1)) {
+                throw new ParseError(
+                  `${marks[0].char} must be the only element in its fuseau branch`,
+                );
+              }
+              validateFuseauBranchMarks(branch, true);
+            });
+            return;
+          }
+          node.children.forEach((child) => validateFuseauBranchMarks(child, insideBranch));
         }
 
         const generatorDefaults = {
-          elements:100, sentences:10, fuseauRate:.2, gateRate:.08,
-          verticalRate:.5, nestedFuseauRate:.25, maxFuseauDepth:3,
-          maxBranches:6, maxBranchLength:4, maxGateFanout:3,
+          elements: 100,
+          sentences: 10,
+          fuseauRate: 0.2,
+          gateRate: 0.08,
+          verticalRate: 0.5,
+          nestedFuseauRate: 0.25,
+          maxFuseauDepth: 3,
+          maxBranches: 6,
+          maxBranchLength: 4,
+          maxGateFanout: 3,
         };
 
         function seededRandom(seed) {
           let state = seed >>> 0;
           return () => {
-            state = (state + 0x6D2B79F5) >>> 0;
+            state = (state + 0x6d2b79f5) >>> 0;
             let value = state;
-            value = Math.imul(value ^ value >>> 15, value | 1);
-            value ^= value + Math.imul(value ^ value >>> 7, value | 61);
-            return ((value ^ value >>> 14) >>> 0) / 4294967296;
+            value = Math.imul(value ^ (value >>> 15), value | 1);
+            value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+            return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
           };
         }
 
@@ -909,8 +1360,9 @@
 
         function orderedElements(node, result = []) {
           if (node.type === 'element') result.push(node);
-          else if (node.type === 'series') node.children.forEach(child => orderedElements(child, result));
-          else node.branches.forEach(branch => orderedElements(branch, result));
+          else if (node.type === 'series')
+            node.children.forEach((child) => orderedElements(child, result));
+          else node.branches.forEach((branch) => orderedElements(branch, result));
           return result;
         }
 
@@ -922,38 +1374,42 @@
             this.elementNumber = 0;
           }
           element() {
-            const chars = 'çşzspbtdmnfvlrcghğyw';
+            const chars = 'çşzspbtdmnfvlrcghğ';
             return {
-              type:'element',
-              id:`s${this.sentenceNumber}n${++this.elementNumber}`,
-              char:randomChoice(Array.from(chars), this.random),
-              orientation:Number(this.random() < this.options.verticalRate),
+              type: 'element',
+              id: `s${this.sentenceNumber}n${++this.elementNumber}`,
+              char: randomChoice(Array.from(chars), this.random),
+              orientation: Number(this.random() < this.options.verticalRate),
             };
           }
           branch(length, depth = 1) {
-            const canNest = length >= 2
-              && depth < this.options.maxFuseauDepth
-              && this.random() < this.options.nestedFuseauRate;
+            const canNest =
+              length >= 2 &&
+              depth < this.options.maxFuseauDepth &&
+              this.random() < this.options.nestedFuseauRate;
             if (!canNest) {
-              return { type:'series', children:Array.from({ length }, () => this.element()) };
+              return { type: 'series', children: Array.from({ length }, () => this.element()) };
             }
             const allowed = Math.min(this.options.maxBranches, length);
             const branchCount = 2 + Math.floor(this.random() * (allowed - 1));
             const lengths = Array(branchCount).fill(1);
             for (let index = 0; index < length - branchCount; index++) {
-              const candidates = lengths.map((value, i) => value < this.options.maxBranchLength ? i : -1)
-                .filter(i => i >= 0);
+              const candidates = lengths
+                .map((value, i) => (value < this.options.maxBranchLength ? i : -1))
+                .filter((i) => i >= 0);
               if (!candidates.length) {
-                return { type:'series', children:Array.from({ length }, () => this.element()) };
+                return { type: 'series', children: Array.from({ length }, () => this.element()) };
               }
               lengths[randomChoice(candidates, this.random)]++;
             }
             return {
-              type:'series',
-              children:[{
-                type:'parallel',
-                branches:lengths.map(value => this.branch(value, depth + 1)),
-              }],
+              type: 'series',
+              children: [
+                {
+                  type: 'parallel',
+                  branches: lengths.map((value) => this.branch(value, depth + 1)),
+                },
+              ],
             };
           }
           sentence(elementCount) {
@@ -969,8 +1425,12 @@
                 continue;
               }
               const allowed = Math.min(this.options.maxBranches, remaining);
-              const choices = Array.from({ length:Math.max(0, allowed - 2) }, (_, index) => index + 3);
-              if (!children.length && remaining <= 2 * this.options.maxBranchLength) choices.unshift(2);
+              const choices = Array.from(
+                { length: Math.max(0, allowed - 2) },
+                (_, index) => index + 3,
+              );
+              if (!children.length && remaining <= 2 * this.options.maxBranchLength)
+                choices.unshift(2);
               if (!choices.length) {
                 children.push(this.element());
                 remaining--;
@@ -980,24 +1440,25 @@
               const lengths = Array(branchCount).fill(1);
               const spare = Math.min(
                 remaining - branchCount,
-                branchCount * (this.options.maxBranchLength - 1)
+                branchCount * (this.options.maxBranchLength - 1),
               );
               for (let index = 0; index < spare; index++) {
-                const candidates = lengths.map((value, i) => value < this.options.maxBranchLength ? i : -1)
-                  .filter(i => i >= 0);
-                if (!candidates.length || (branchCount !== 2 && this.random() < .45)) break;
+                const candidates = lengths
+                  .map((value, i) => (value < this.options.maxBranchLength ? i : -1))
+                  .filter((i) => i >= 0);
+                if (!candidates.length || (branchCount !== 2 && this.random() < 0.45)) break;
                 lengths[randomChoice(candidates, this.random)]++;
               }
               children.push({
-                type:'parallel',
-                branches:lengths.map(length => this.branch(length)),
+                type: 'parallel',
+                branches: lengths.map((length) => this.branch(length)),
               });
               remaining -= lengths.reduce((sum, value) => sum + value, 0);
             }
-            return { type:'series', children };
+            return { type: 'series', children };
           }
           gates(document) {
-            const elements = document.sentences.flatMap(root => orderedElements(root, []));
+            const elements = document.sentences.flatMap((root) => orderedElements(root, []));
             const gates = [];
             let index = 0;
             while (index < elements.length - 1) {
@@ -1006,19 +1467,20 @@
                 continue;
               }
               const available = elements.length - index - 1;
-              const fanout = 1 + Math.floor(
-                this.random() * Math.min(this.options.maxGateFanout, available)
-              );
-              const pool = Array.from({ length:available }, (_, offset) => index + offset + 1);
+              const fanout =
+                1 + Math.floor(this.random() * Math.min(this.options.maxGateFanout, available));
+              const pool = Array.from({ length: available }, (_, offset) => index + offset + 1);
               for (let cursor = pool.length - 1; cursor > 0; cursor--) {
                 const swap = Math.floor(this.random() * (cursor + 1));
                 [pool[cursor], pool[swap]] = [pool[swap], pool[cursor]];
               }
               const targets = pool.slice(0, fanout).sort((a, b) => a - b);
-              targets.forEach(target => gates.push({
-                source:elements[index].id,
-                target:elements[target].id,
-              }));
+              targets.forEach((target) =>
+                gates.push({
+                  source: elements[index].id,
+                  target: elements[target].id,
+                }),
+              );
               index = targets.at(-1) + 1;
             }
             return gates;
@@ -1026,19 +1488,19 @@
           build() {
             const quotient = Math.floor(this.options.elements / this.options.sentences);
             const remainder = this.options.elements % this.options.sentences;
-            const sentences = Array.from(
-              { length:this.options.sentences },
-              (_, index) => this.sentence(quotient + Number(index < remainder))
+            const sentences = Array.from({ length: this.options.sentences }, (_, index) =>
+              this.sentence(quotient + Number(index < remainder)),
             );
-            const document = { sentences, gates:[] };
+            const document = { sentences, gates: [] };
             document.gates = this.gates(document);
             return document;
           }
         }
 
         function gateMarkerMaps(document) {
-          const outgoing = new Map(), incoming = new Map();
-          document.gates.forEach(gate => {
+          const outgoing = new Map(),
+            incoming = new Map();
+          document.gates.forEach((gate) => {
             outgoing.set(gate.source, (outgoing.get(gate.source) || 0) + 1);
             incoming.set(gate.target, (incoming.get(gate.target) || 0) + 1);
           });
@@ -1049,12 +1511,32 @@
           return Array(count).fill(marker).join("'");
         }
 
+        function compactVowels(text) {
+          let result = '';
+          let index = 0;
+          while (index < text.length) {
+            const match = compactVowelSequences.find((sequence) =>
+              text.startsWith(sequence, index),
+            );
+            if (match === undefined) {
+              result += text[index];
+              index++;
+            } else {
+              result += compoundSpellings.get(match);
+              index += match.length;
+            }
+          }
+          return result;
+        }
+
         function serializeElement(node, markers, continuation = false, orientationVowel = 'á') {
-          return repeatMarker('i', markers.outgoing.get(node.id) || 0)
-            + repeatMarker('u', markers.incoming.get(node.id) || 0)
-            + (continuation && !node.orientation ? 'a' : '')
-            + (node.orientation ? orientationVowel : '')
-            + node.char;
+          const prefix =
+            repeatMarker('i', markers.outgoing.get(node.id) || 0) +
+            repeatMarker('u', markers.incoming.get(node.id) || 0);
+          const vowels =
+            (continuation && !node.orientation ? 'a' : '') +
+            (node.orientation ? orientationVowel : '');
+          return vowels + prefix + node.char;
         }
 
         function serializeSeries(node, markers, insideBranch = false) {
@@ -1065,16 +1547,16 @@
             const mayOmitOpening = previous === null || previous.type === 'parallel';
             const mayOmitClosing = following === null || following.type === 'parallel';
             let text = serializeParallel(
-              child, markers, insideBranch,
+              child,
+              markers,
+              insideBranch,
               !insideBranch && mayOmitOpening,
-              !insideBranch && mayOmitClosing
+              !insideBranch && mayOmitClosing,
             );
             if (insideBranch) text = `'${text}'`;
             return text;
           });
-          return insideBranch
-            ? rendered.join('')
-            : spaceFuseauBoundaries(node.children, rendered);
+          return insideBranch ? rendered.join('') : spaceFuseauBoundaries(node.children, rendered);
         }
 
         function spaceFuseauBoundaries(children, rendered) {
@@ -1088,10 +1570,9 @@
               return;
             }
 
-            const previousIsPlain = index > 0
-              && children[index - 1].type !== 'parallel';
-            const followingIsPlain = index + 1 < children.length
-              && children[index + 1].type !== 'parallel';
+            const previousIsPlain = index > 0 && children[index - 1].type !== 'parallel';
+            const followingIsPlain =
+              index + 1 < children.length && children[index + 1].type !== 'parallel';
 
             if (previousIsPlain) {
               if (!text.startsWith('e')) {
@@ -1120,22 +1601,30 @@
         }
 
         function serializeCompactSeries(
-          node, markers, secondBranch = false, firstOrientationVowel = null
+          node,
+          markers,
+          secondBranch = false,
+          firstOrientationVowel = null,
         ) {
           const rendered = [];
           node.children.forEach((child, index) => {
             let text;
             if (child.type === 'element') {
               text = serializeElement(
-                child, markers, index > 0,
+                child,
+                markers,
+                index > 0,
                 index === 0 && firstOrientationVowel !== null
                   ? firstOrientationVowel
-                  : secondBranch && index === 0 ? 'ớ' : 'á'
+                  : secondBranch && index === 0
+                    ? 'ớ'
+                    : 'á',
               );
             } else {
-              text = child.type === 'parallel'
-                ? serializeParallel(child, markers, true)
-                : serializeNode(child, markers);
+              text =
+                child.type === 'parallel'
+                  ? serializeParallel(child, markers, true)
+                  : serializeNode(child, markers);
               if (child.type === 'parallel') text = `'${text}'`;
               if (rendered.length) text = `a${text}`;
             }
@@ -1144,10 +1633,16 @@
           return rendered.join('');
         }
 
-        function serializeParallel(node, markers, framed = false, omitOpening = false, omitClosing = false) {
+        function serializeParallel(
+          node,
+          markers,
+          framed = false,
+          omitOpening = false,
+          omitClosing = false,
+        ) {
           if (node.branches.length < 2) throw new Error('A V2 fuseau needs at least two branches');
-          const compact = node.branches.map(
-            (branch, index) => serializeCompactSeries(branch, markers, index === 1)
+          const compact = node.branches.map((branch, index) =>
+            serializeCompactSeries(branch, markers, index === 1),
           );
           if (node.branches.length === 2) {
             if (framed) return `e${compact[0]}${compact[1]}o`;
@@ -1155,24 +1650,44 @@
             const right = serializeCompactSeries(node.branches[1], markers, false, '');
             const rightFirst = node.branches[1].children[0];
             const marker = rightFirst.type === 'element' && rightFirst.orientation ? 'ớ' : 'ơ';
-            return `${omitOpening ? '' : 'e'}${left}${marker}${right}${omitClosing ? '' : 'o'}`;
+            const rightIsMark =
+              node.branches[1].children.length === 1 &&
+              rightFirst.type === 'element' &&
+              fuseauBranchMarks.has(rightFirst.char);
+            const leftStartsNested = node.branches[0].children[0]?.type === 'parallel';
+            const rightEndsNested = node.branches[1].children.at(-1)?.type === 'parallel';
+            const opening = omitOpening && !leftStartsNested ? '' : 'e';
+            const closing = omitClosing && !rightIsMark && !rightEndsNested ? '' : 'o';
+            return `${opening}${left}${marker}${right}${closing}`;
           }
           if (node.branches.length === 3) {
-            const safelyCompact = node.branches.every(
-              branch => branch.children.every(child => child.type === 'element')
+            const first = node.branches[0].children;
+            if (
+              first.length === 1 &&
+              first[0].type === 'element' &&
+              fuseauBranchMarks.has(first[0].char)
+            ) {
+              throw new Error('A three-branch fuseau cannot place y or w in branch 1');
+            }
+            const safelyCompact = node.branches.every((branch) =>
+              branch.children.every((child) => child.type === 'element'),
             );
             const opening = omitOpening && !framed && safelyCompact ? '' : 'e';
-            const closing = omitClosing && !framed && safelyCompact ? '' : 'o';
+            const final = node.branches.at(-1).children;
+            const finalIsMark =
+              final.length === 1 &&
+              final[0].type === 'element' &&
+              fuseauBranchMarks.has(final[0].char);
+            const closing =
+              omitClosing && !framed && safelyCompact && !finalIsMark ? '' : 'o';
             return `${opening}${compact[0]}${compact[1]}o${compact[2]}${closing}`;
           }
-          const branches = node.branches.map(
-            branch => serializeSeries(branch, markers, true)
-          );
-          const middle = branches.slice(1, -2)
-            .map(branch => `e${branch}o`)
+          const branches = node.branches.map((branch) => serializeSeries(branch, markers, true));
+          const middle = branches
+            .slice(1, -2)
+            .map((branch) => `e${branch}o`)
             .join('');
-          return `e${branches[0]}${middle}`
-            + `${branches.at(-2)}o${branches.at(-1)}o`;
+          return `e${branches[0]}${middle}` + `${branches.at(-2)}o${branches.at(-1)}o`;
         }
 
         function serializeNode(node, markers) {
@@ -1182,21 +1697,39 @@
         }
 
         function capitalizeFirstLetter(text) {
-          return text.replace(/\p{L}/u, letter => letter.toUpperCase());
+          return text.replace(/\p{L}/u, (letter) => letter.toUpperCase());
         }
 
         function serializeDocument(document) {
           const markers = gateMarkerMaps(document);
           return document.sentences
-            .map(root => capitalizeFirstLetter(serializeSeries(root, markers)))
+            .map((root) => capitalizeFirstLetter(compactVowels(serializeSeries(root, markers))))
             .join('. ');
+        }
+
+        function separateConsonantRuns(text, maximum = 2) {
+          let result = '';
+          let runLength = 0;
+          for (const char of text) {
+            if (consonants.has(char.toLowerCase())) {
+              if (runLength === maximum) {
+                result += 'a';
+                runLength = 0;
+              }
+              runLength++;
+            } else {
+              runLength = 0;
+            }
+            result += char;
+          }
+          return result;
         }
 
         function generateRandomText(seed = browserRandomSeed(), overrides = {}) {
           const options = { ...generatorDefaults, ...overrides };
           for (let attempt = 0; attempt < 12; attempt++) {
             const generator = new RandomV2Generator(options, (seed + attempt) >>> 0);
-            const text = `${serializeDocument(generator.build())}.`;
+            const text = `${separateConsonantRuns(serializeDocument(generator.build()))}.`;
             try {
               parse(text);
               return text;
@@ -1226,14 +1759,89 @@
           };
         }
 
+        function chooseFuseauDirection(node, currentDirection) {
+          let eligible = 0;
+          let matching = 0;
+          node.branches.forEach((branch) => {
+            const first = branch.type === 'series' ? branch.children[0] : branch;
+            // DrawerV2 excludes branches beginning with a nested fuseau from
+            // the direction vote because they cannot provide the outer stem.
+            if (!first || first.type !== 'element') return;
+            eligible++;
+            if (first.orientation === currentDirection) matching++;
+          });
+          return eligible && matching < eligible / 2 ? 1 - currentDirection : currentDirection;
+        }
+
+        function fuseauElementNormalDir(
+          elementOrientation,
+          fuseauDirection,
+          side,
+          parentNormalDir,
+        ) {
+          const mirror =
+            (elementOrientation === 1 && fuseauDirection === 0 && side === -1) ||
+            (elementOrientation === 0 && fuseauDirection === 1 && side === 1)
+              ? -1
+              : 1;
+          const parentMirror = parentNormalDir ? -1 : 1;
+          return mirror * parentMirror === -1 ? 1 : 0;
+        }
+
+        function isChevronBranch(branch) {
+          return (
+            branch.type === 'series' &&
+            branch.children.length === 1 &&
+            branch.children[0].type === 'element' &&
+            'yw'.includes(branch.children[0].char)
+          );
+        }
+
+        function chooseFuseauStemIndex(node, direction, measuredLengths = null) {
+          let chosenIndex = -1;
+          let chosenLength = -Infinity;
+          node.branches.forEach((branch, index) => {
+            // y and w have only an invisible longitudinal reference line.
+            // They may sit beside the stem, but can never provide the stem.
+            if (isChevronBranch(branch)) return;
+            const length =
+              measuredLengths === null
+                ? projectedLength(branch, direction)
+                : measuredLengths[index];
+            if (length > chosenLength) {
+              chosenIndex = index;
+              chosenLength = length;
+            }
+          });
+          return chosenIndex;
+        }
+
+        function mazeNormalDirections(node, state) {
+          let componentDirection = state.direction;
+          if (node.type === 'element') componentDirection = node.orientation;
+          else if (node.type === 'parallel')
+            componentDirection = chooseFuseauDirection(node, state.direction);
+
+          // DrawerV2 only explores the opposite side when the component
+          // changes axis. Aligned components must keep travelling forward;
+          // otherwise repeated ā elements retrace the same line.
+          return componentDirection === state.direction
+            ? [state.normalDir]
+            : [state.normalDir, 1 - state.normalDir];
+        }
+
         let drawingLayer = artwork;
         const occupied = [];
         const MAZE_CHANCES = 4;
-        let mazeMode = false;
+        // DrawerV2 enables maze routing by default so adjacent components are
+        // spaced before they can overlap. The toolbar button can still expose
+        // the unadjusted layout for comparison.
+        let mazeMode = true;
         function make(tag, attrs = {}, parent = drawingLayer) {
           const node = document.createElementNS(NS, tag);
           for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
-          parent.appendChild(node); return node;
+          parent.appendChild(node);
+          return node;
         }
 
         const UNIT = 50;
@@ -1244,45 +1852,71 @@
         // ItiDrawerV2.drawElem, including pen lifts and full turtle circles.
         class SvgTurtle {
           constructor(x = 0, y = 0, heading = 180) {
-            this.x = x; this.y = y; this.heading = heading; this.down = true;
+            this.x = x;
+            this.y = y;
+            this.heading = heading;
+            this.down = true;
           }
-          clone() { const t = new SvgTurtle(this.x, this.y, this.heading); t.down = this.down; return t; }
-          setheading(value) { this.heading = ((value % 360) + 360) % 360; }
-          left(value) { this.setheading(this.heading + value); }
-          right(value) { this.setheading(this.heading - value); }
-          penup() { this.down = false; }
-          pendown() { this.down = true; }
+          clone() {
+            const t = new SvgTurtle(this.x, this.y, this.heading);
+            t.down = this.down;
+            return t;
+          }
+          setheading(value) {
+            this.heading = ((value % 360) + 360) % 360;
+          }
+          left(value) {
+            this.setheading(this.heading + value);
+          }
+          right(value) {
+            this.setheading(this.heading - value);
+          }
+          penup() {
+            this.down = false;
+          }
+          pendown() {
+            this.down = true;
+          }
           vector(distance, heading = this.heading) {
-            const radians = heading * Math.PI / 180;
-            return { x:Math.cos(radians) * distance, y:-Math.sin(radians) * distance };
+            const radians = (heading * Math.PI) / 180;
+            return { x: Math.cos(radians) * distance, y: -Math.sin(radians) * distance };
           }
           forward(distance) {
-            const delta = this.vector(distance); const nx = this.x + delta.x; const ny = this.y + delta.y;
-            if (this.down && distance) make('path', { d:`M${this.x} ${this.y}L${nx} ${ny}` });
-            this.x = nx; this.y = ny;
+            const delta = this.vector(distance);
+            const nx = this.x + delta.x;
+            const ny = this.y + delta.y;
+            if (this.down && distance) make('path', { d: `M${this.x} ${this.y}L${nx} ${ny}` });
+            this.x = nx;
+            this.y = ny;
           }
           goto(x, y) {
-            if (this.down) make('path', { d:`M${this.x} ${this.y}L${x} ${y}` });
-            this.x = x; this.y = y;
+            if (this.down) make('path', { d: `M${this.x} ${this.y}L${x} ${y}` });
+            this.x = x;
+            this.y = y;
           }
           circle(radius) {
-            const side = radius < 0 ? -1 : 1; const r = Math.abs(radius);
+            const side = radius < 0 ? -1 : 1;
+            const r = Math.abs(radius);
             const normal = this.vector(r, this.heading + 90 * side);
-            make('circle', { cx:this.x + normal.x, cy:this.y + normal.y, r });
+            make('circle', { cx: this.x + normal.x, cy: this.y + normal.y, r });
           }
-          dot(size) { make('circle', { cx:this.x, cy:this.y, r:size / 2, class:'node-dot' }); }
+          dot(size) {
+            make('circle', { cx: this.x, cy: this.y, r: size / 2, class: 'node-dot' });
+          }
         }
 
-        function isDynamic(char) { return 'çzptmflch|'.includes(char); }
+        function isDynamic(char) {
+          return 'çzptmflch|'.includes(char);
+        }
         function calcDist(char, dotted = true) {
           if (!dotted) return 0;
-          if ('şçszvf'.includes(char)) return ('şç'.includes(char) ? 1.5 : 2.5) * UNIT / SCALE;
-          if ('yw|-hğ'.includes(char)) return UNIT / SCALE;
-          if ('mn'.includes(char)) return 2 * UNIT / SCALE;
-          return 1.5 * UNIT / SCALE;
+          if ('şçszvf'.includes(char)) return (('şç'.includes(char) ? 1.5 : 2.5) * UNIT) / SCALE;
+          if ('ywā|-hğ'.includes(char)) return UNIT / SCALE;
+          if ('mn'.includes(char)) return (2 * UNIT) / SCALE;
+          return (1.5 * UNIT) / SCALE;
         }
         function calcPos(char) {
-          if ('çşpbmnlrhğyw|-'.includes(char)) return UNIT / 2;
+          if ('çşpbmnlrhğywā|-'.includes(char)) return UNIT / 2;
           if ('zstd'.includes(char)) return UNIT - UNIT / SCALE;
           if ('fvcg'.includes(char)) return UNIT / SCALE;
           return 0;
@@ -1292,93 +1926,228 @@
           turtle.setheading(orientation ? headings[2 + normalDir] : headings[normalDir]);
         }
 
-        function drawElement(turtle, node, normalDir, alter, connectedStart = true, connectedEnd = true) {
+        function drawElement(
+          turtle,
+          node,
+          normalDir,
+          alter,
+          connectedStart = true,
+          connectedEnd = true,
+          fuseauContext = null,
+        ) {
           calibrate(turtle, node.orientation, normalDir);
           const char = node.char;
           if ('şç'.includes(char)) {
-            const radius = UNIT / SCALE; const side = UNIT / 2 - radius;
+            const radius = UNIT / SCALE;
+            const side = UNIT / 2 - radius;
             if (!connectedStart) turtle.penup();
-            turtle.forward(side); turtle.pendown(); turtle.right(90 * alter);
-            turtle.circle(radius * alter); turtle.left(90 * alter); turtle.penup();
-            turtle.forward(radius * 2); if (connectedEnd) turtle.pendown();
-            turtle.forward(side); turtle.pendown();
+            turtle.forward(side);
+            turtle.pendown();
+            turtle.right(90 * alter);
+            turtle.circle(radius * alter);
+            turtle.left(90 * alter);
+            turtle.penup();
+            turtle.forward(radius * 2);
+            if (connectedEnd) turtle.pendown();
+            turtle.forward(side);
+            turtle.pendown();
           }
           if ('sz'.includes(char)) {
-            turtle.penup(); turtle.forward(UNIT / SCALE); turtle.pendown();
-            if (alter === 1) turtle.left(180); turtle.circle(UNIT / SCALE);
-            if (alter === 1) turtle.right(180); turtle.forward(UNIT * (1 - 1 / SCALE));
+            turtle.penup();
+            turtle.forward(UNIT / SCALE);
+            turtle.pendown();
+            if (alter === 1) turtle.left(180);
+            turtle.circle(UNIT / SCALE);
+            if (alter === 1) turtle.right(180);
+            turtle.forward(UNIT * (1 - 1 / SCALE));
           }
           if ('pb'.includes(char)) {
-            turtle.forward(UNIT * (1 - 1 / SCALE) / 2); turtle.right(90 * alter);
-            turtle.forward(UNIT / SCALE); turtle.left(180); turtle.penup();
-            turtle.forward(UNIT / SCALE); turtle.right(90 * alter); turtle.forward(UNIT / SCALE);
-            turtle.pendown(); turtle.right(90 * alter); turtle.forward(UNIT / SCALE);
-            turtle.left(180); turtle.penup(); turtle.forward(UNIT / SCALE); turtle.right(90 * alter);
-            turtle.pendown(); turtle.forward(UNIT * (1 - 1 / SCALE) / 2);
+            turtle.forward((UNIT * (1 - 1 / SCALE)) / 2);
+            turtle.right(90 * alter);
+            turtle.forward(UNIT / SCALE);
+            turtle.left(180);
+            turtle.penup();
+            turtle.forward(UNIT / SCALE);
+            turtle.right(90 * alter);
+            turtle.forward(UNIT / SCALE);
+            turtle.pendown();
+            turtle.right(90 * alter);
+            turtle.forward(UNIT / SCALE);
+            turtle.left(180);
+            turtle.penup();
+            turtle.forward(UNIT / SCALE);
+            turtle.right(90 * alter);
+            turtle.pendown();
+            turtle.forward((UNIT * (1 - 1 / SCALE)) / 2);
           }
           if ('td'.includes(char)) {
-            turtle.penup(); turtle.forward(UNIT / SCALE); turtle.pendown();
-            turtle.right(90 * alter); turtle.forward(UNIT / SCALE); turtle.left(180);
-            turtle.penup(); turtle.forward(UNIT / SCALE); turtle.right(90 * alter);
-            turtle.pendown(); turtle.forward(UNIT * (1 - 1 / SCALE));
+            turtle.penup();
+            turtle.forward(UNIT / SCALE);
+            turtle.pendown();
+            turtle.right(90 * alter);
+            turtle.forward(UNIT / SCALE);
+            turtle.left(180);
+            turtle.penup();
+            turtle.forward(UNIT / SCALE);
+            turtle.right(90 * alter);
+            turtle.pendown();
+            turtle.forward(UNIT * (1 - 1 / SCALE));
           }
           if ('mn'.includes(char)) {
-            turtle.forward(UNIT); turtle.penup(); turtle.right(180);
-            turtle.forward(UNIT * (1 - 1 / SCALE)); turtle.left(90 * alter);
-            turtle.forward(UNIT / SCALE); turtle.left(90 * alter); turtle.pendown();
-            turtle.forward(UNIT * (1 - 2 / SCALE)); turtle.left(90 * alter);
-            turtle.penup(); turtle.forward(UNIT / SCALE); turtle.right(90 * alter);
-            turtle.forward(UNIT / SCALE); turtle.pendown();
+            turtle.forward(UNIT);
+            turtle.penup();
+            turtle.right(180);
+            turtle.forward(UNIT * (1 - 1 / SCALE));
+            turtle.left(90 * alter);
+            turtle.forward(UNIT / SCALE);
+            turtle.left(90 * alter);
+            turtle.pendown();
+            turtle.forward(UNIT * (1 - 2 / SCALE));
+            turtle.left(90 * alter);
+            turtle.penup();
+            turtle.forward(UNIT / SCALE);
+            turtle.right(90 * alter);
+            turtle.forward(UNIT / SCALE);
+            turtle.pendown();
           }
           if ('fv'.includes(char)) {
             turtle.forward(UNIT * (1 - 1 / SCALE));
-            if (alter === 1) turtle.left(180); turtle.circle(UNIT / SCALE);
-            if (alter === 1) turtle.right(180); turtle.penup();
-            turtle.forward(UNIT / SCALE); turtle.pendown();
+            if (alter === 1) turtle.left(180);
+            turtle.circle(UNIT / SCALE);
+            if (alter === 1) turtle.right(180);
+            turtle.penup();
+            turtle.forward(UNIT / SCALE);
+            turtle.pendown();
           }
           if ('lr'.includes(char)) {
-            turtle.forward(UNIT); turtle.left(180); turtle.penup();
-            turtle.forward(UNIT / 2); turtle.left(90 * alter); turtle.forward(UNIT / SCALE);
-            turtle.pendown(); turtle.left(180); turtle.forward(UNIT / SCALE);
-            turtle.right(90 * alter); turtle.forward(UNIT / 2);
+            turtle.forward(UNIT);
+            turtle.left(180);
+            turtle.penup();
+            turtle.forward(UNIT / 2);
+            turtle.left(90 * alter);
+            turtle.forward(UNIT / SCALE);
+            turtle.pendown();
+            turtle.left(180);
+            turtle.forward(UNIT / SCALE);
+            turtle.right(90 * alter);
+            turtle.forward(UNIT / 2);
           }
           if ('cg'.includes(char)) {
-            turtle.forward(UNIT * (1 - 1 / SCALE)); turtle.right(90 * alter);
-            turtle.forward(UNIT / SCALE); turtle.left(180); turtle.penup();
-            turtle.forward(UNIT / SCALE); turtle.right(90 * alter); turtle.penup();
-            turtle.forward(UNIT / SCALE); turtle.pendown();
+            turtle.forward(UNIT * (1 - 1 / SCALE));
+            turtle.right(90 * alter);
+            turtle.forward(UNIT / SCALE);
+            turtle.left(180);
+            turtle.penup();
+            turtle.forward(UNIT / SCALE);
+            turtle.right(90 * alter);
+            turtle.penup();
+            turtle.forward(UNIT / SCALE);
+            turtle.pendown();
           }
           if ('hğ'.includes(char)) {
-            turtle.forward(UNIT * (.5 + .5 / SCALE)); turtle.right(90 * alter);
-            turtle.penup(); turtle.forward(UNIT / SCALE); turtle.right(90 * alter);
-            turtle.forward(UNIT / SCALE); turtle.left(180); turtle.pendown();
-            turtle.forward(UNIT * (.5 + .5 / SCALE));
+            turtle.forward(UNIT * (0.5 + 0.5 / SCALE));
+            turtle.right(90 * alter);
+            turtle.penup();
+            turtle.forward(UNIT / SCALE);
+            turtle.right(90 * alter);
+            turtle.forward(UNIT / SCALE);
+            turtle.left(180);
+            turtle.pendown();
+            turtle.forward(UNIT * (0.5 + 0.5 / SCALE));
           }
-          if ('yw|-'.includes(char)) turtle.forward(UNIT);
+          if ('yw'.includes(char)) {
+            const start = { x: turtle.x, y: turtle.y };
+            const elementForward = turtle.vector(1);
+            const stemHeadings = [
+              [180, 0],
+              [90, 270],
+            ];
+            const stemHeading = fuseauContext
+              ? stemHeadings[fuseauContext.direction][fuseauContext.parentNormalDir]
+              : turtle.heading;
+            const stemForward = turtle.vector(1, stemHeading);
+            const stemRight = turtle.vector(1, stemHeading - 90);
+            const side = fuseauContext?.side ?? 1;
+            const inward = {
+              x: -side * stemRight.x,
+              y: -side * stemRight.y,
+            };
+            const pointing =
+              char === 'w' ? inward : { x: -inward.x, y: -inward.y };
+            const center = {
+              x: start.x + elementForward.x * UNIT / 2,
+              y: start.y + elementForward.y * UNIT / 2,
+            };
+            const depth = UNIT / SCALE;
+            const halfWidth = UNIT / SCALE;
+            const apex = {
+              x: center.x + pointing.x * depth / 2,
+              y: center.y + pointing.y * depth / 2,
+            };
+            const armCenter = {
+              x: center.x - pointing.x * depth / 2,
+              y: center.y - pointing.y * depth / 2,
+            };
+            const arms = [-1, 1].map((armSide) => ({
+              x: armCenter.x + stemForward.x * halfWidth * armSide,
+              y: armCenter.y + stemForward.y * halfWidth * armSide,
+            }));
+            const end = {
+              x: start.x + elementForward.x * UNIT,
+              y: start.y + elementForward.y * UNIT,
+            };
+            turtle.penup();
+            turtle.goto(arms[0].x, arms[0].y);
+            turtle.pendown();
+            turtle.goto(apex.x, apex.y);
+            turtle.goto(arms[1].x, arms[1].y);
+            turtle.penup();
+            turtle.goto(end.x, end.y);
+            turtle.pendown();
+          }
+          if ('ā|-'.includes(char)) turtle.forward(UNIT);
 
-          const forward = turtle.vector(1); const right = turtle.vector(1, turtle.heading - 90 * alter);
-          const pos = calcPos(char); const dist = calcDist(char);
-          const gate = { x:turtle.x - pos * forward.x + dist * right.x, y:turtle.y - pos * forward.y + dist * right.y };
+          const forward = turtle.vector(1);
+          const right = turtle.vector(1, turtle.heading - 90 * alter);
+          const pos = calcPos(char);
+          const dist = calcDist(char);
+          const gate = {
+            x: turtle.x - pos * forward.x + dist * right.x,
+            y: turtle.y - pos * forward.y + dist * right.y,
+          };
           if (isDynamic(char)) {
-            turtle.penup(); turtle.forward(-pos); turtle.right(90 * alter); turtle.forward(dist);
-            turtle.pendown(); turtle.dot(UNIT / SCALE / 2); turtle.penup();
-            turtle.right(180); turtle.forward(dist); turtle.right(90 * alter);
-            turtle.forward(pos); turtle.pendown();
+            turtle.penup();
+            turtle.forward(-pos);
+            turtle.right(90 * alter);
+            turtle.forward(dist);
+            turtle.pendown();
+            turtle.dot(UNIT / SCALE / 2);
+            turtle.penup();
+            turtle.right(180);
+            turtle.forward(dist);
+            turtle.right(90 * alter);
+            turtle.forward(pos);
+            turtle.pendown();
           }
           anchors.set(node.id, gate);
         }
 
         function projectedLength(node, direction) {
           if (node.type === 'element') return node.orientation === direction ? UNIT : UNIT / SCALE;
-          if (node.type === 'series') return node.children.reduce((sum, child) => sum + projectedLength(child, direction), 0);
-          return Math.max(...node.branches.map(branch => projectedLength(branch, direction)));
+          if (node.type === 'series')
+            return node.children.reduce(
+              (sum, child) => sum + projectedLength(child, direction),
+              0,
+            );
+          return Math.max(...node.branches.map((branch) => projectedLength(branch, direction)));
         }
         function projectedWidth(node, direction) {
           if (node.type === 'element') return node.orientation === direction ? UNIT / SCALE : UNIT;
           // V2 allocWidth does not impose a UNIT-sized minimum on a branch.
           // A branch aligned with the fuseau stem starts at the exact equal
           // interval, UNIT / SCALE (10 with the canonical 50/5 settings).
-          if (node.type === 'series') return Math.max(0, ...node.children.map(child => projectedWidth(child, direction)));
+          if (node.type === 'series')
+            return Math.max(0, ...node.children.map((child) => projectedWidth(child, direction)));
           return node.branches.reduce((sum, branch) => sum + projectedWidth(branch, direction), 0);
         }
 
@@ -1387,7 +2156,7 @@
           const checkDirection = 1 - direction;
           if (node.orientation === checkDirection) return UNIT;
           if ('şç'.includes(node.char)) return UNIT / SCALE;
-          const base = 'svzf'.includes(node.char) ? UNIT * 2 / SCALE : UNIT / SCALE;
+          const base = 'svzf'.includes(node.char) ? (UNIT * 2) / SCALE : UNIT / SCALE;
           const extra = calcDist(node.char, isDynamic(node.char));
           return extra || base;
         }
@@ -1395,10 +2164,19 @@
         function allocateFuseauWidths(ordered, direction) {
           const widths = [0];
           ordered.forEach((entry, drawIndex) => {
-            const components = entry.branch.type === 'series' ? entry.branch.children : [entry.branch];
-            const centeredRadius = components.some(component => component.type === 'element'
-              && 'şç'.includes(component.char) && component.orientation === direction) ? UNIT / SCALE : 0;
-            let offMax = 0, offMaxBack = 0, currentWidth = 0;
+            const components =
+              entry.branch.type === 'series' ? entry.branch.children : [entry.branch];
+            const centeredRadius = components.some(
+              (component) =>
+                component.type === 'element' &&
+                'şç'.includes(component.char) &&
+                component.orientation === direction,
+            )
+              ? UNIT / SCALE
+              : 0;
+            let offMax = 0,
+              offMaxBack = 0,
+              currentWidth = 0;
             if (drawIndex > 0) {
               const first = components[0];
               if (first?.type === 'element' && first.orientation === direction) {
@@ -1407,12 +2185,20 @@
               if (centeredRadius) widths[drawIndex] = (widths[drawIndex] || 0) + centeredRadius;
             }
 
-            let lastSame = -1, sameCombo = false, firstDifferent = -1, hasDifferent = false;
+            let lastSame = -1,
+              sameCombo = false,
+              firstDifferent = -1,
+              hasDifferent = false;
             components.forEach((component, index) => {
               const same = component.type === 'element' && component.orientation === direction;
-              if (!hasDifferent && !same) { firstDifferent = index; hasDifferent = true; }
-              if (same) { if (!sameCombo) lastSame = index; sameCombo = true; }
-              else sameCombo = false;
+              if (!hasDifferent && !same) {
+                firstDifferent = index;
+                hasDifferent = true;
+              }
+              if (same) {
+                if (!sameCombo) lastSame = index;
+                sameCombo = true;
+              } else sameCombo = false;
             });
 
             let alter = 1;
@@ -1420,9 +2206,19 @@
               const same = component.type === 'element' && component.orientation === direction;
               if (same) {
                 const measured = perpendicularMeasure(component, direction);
-                if (measured > offMax && alter !== -1 && (alter !== 1 || sameCombo && index >= lastSame)) offMax = measured;
-                if (drawIndex === 0 && measured > offMaxBack && alter === -1
-                  && (index < firstDifferent || firstDifferent === -1) && !'|-'.includes(component.char)) {
+                if (
+                  measured > offMax &&
+                  alter !== -1 &&
+                  (alter !== 1 || (sameCombo && index >= lastSame))
+                )
+                  offMax = measured;
+                if (
+                  drawIndex === 0 &&
+                  measured > offMaxBack &&
+                  alter === -1 &&
+                  (index < firstDifferent || firstDifferent === -1) &&
+                  !'|-'.includes(component.char)
+                ) {
                   offMaxBack = measured;
                 }
                 if ('şç'.includes(component.char)) {
@@ -1430,7 +2226,8 @@
                   if (drawIndex === 0) offMaxBack = Math.max(offMaxBack, UNIT / SCALE);
                 }
               } else {
-                currentWidth += offMax; offMax = 0;
+                currentWidth += offMax;
+                offMax = 0;
                 currentWidth += perpendicularMeasure(component, direction);
               }
               alter *= -1;
@@ -1443,100 +2240,168 @@
         }
 
         function renderNode(
-          node, turtle, state, boundaryStart = false, boundaryEnd = false,
-          componentBoxes = null
+          node,
+          turtle,
+          state,
+          boundaryStart = false,
+          boundaryEnd = false,
+          componentBoxes = null,
         ) {
           if (node.type === 'element') {
-            const start = { x:turtle.x, y:turtle.y };
+            const start = { x: turtle.x, y: turtle.y };
             const periodCircle = boundaryEnd && 'şç'.includes(node.char);
+            const normalDir = state.fuseauContext
+              ? fuseauElementNormalDir(
+                  node.orientation,
+                  state.fuseauContext.direction,
+                  state.fuseauContext.side,
+                  state.fuseauContext.parentNormalDir,
+                )
+              : state.normalDir;
             const parent = drawingLayer;
-            const group = make('g', { 'data-node':node.id }, parent);
+            const group = make('g', { 'data-node': node.id }, parent);
             drawingLayer = group;
-            drawElement(turtle, node, state.normalDir, state.alter, boundaryStart || periodCircle, boundaryEnd);
+            drawElement(
+              turtle,
+              node,
+              normalDir,
+              state.alter,
+              boundaryStart || periodCircle,
+              boundaryEnd,
+              state.fuseauContext || null,
+            );
             drawingLayer = parent;
             if (componentBoxes) {
               const box = group.getBBox();
               componentBoxes.push({
-                x:box.x + 1,
-                y:box.y + 1,
-                width:Math.max(0, box.width - 2),
-                height:Math.max(0, box.height - 2),
+                x: box.x + 1,
+                y: box.y + 1,
+                width: Math.max(0, box.width - 2),
+                height: Math.max(0, box.height - 2),
               });
             }
-            state.alter *= -1; state.direction = node.orientation;
-            return { start, end:{x:turtle.x,y:turtle.y} };
+            state.alter *= -1;
+            state.direction = node.orientation;
+            return { start, end: { x: turtle.x, y: turtle.y } };
           }
           if (node.type === 'series') {
-            let result = { start:{x:turtle.x,y:turtle.y}, end:{x:turtle.x,y:turtle.y} };
+            let result = {
+              start: { x: turtle.x, y: turtle.y },
+              end: { x: turtle.x, y: turtle.y },
+            };
             node.children.forEach((child, index) => {
               result = renderNode(
-                child, turtle, state,
+                child,
+                turtle,
+                state,
                 boundaryStart || index > 0,
                 boundaryEnd || index < node.children.length - 1,
-                componentBoxes
+                componentBoxes,
               );
             });
             return result;
           }
 
-          // ItiDrawer chooses its fuseau stem by projected length and draws
-          // remaining branches on alternating sides of that stem.
-          const direction = state.direction;
-          const ordered = node.branches.map((branch, index) => ({
-            branch, index, length:projectedLength(branch, direction), width:projectedWidth(branch, direction),
-          })).sort((a, b) => b.length - a.length || a.index - b.index);
-          const origin = { x:turtle.x, y:turtle.y };
-          const stem = ordered[0]; const widths = allocateFuseauWidths(ordered, direction);
-          let side = 1; let stemEnd = origin;
+          // DrawerV2 votes on the outer direction before measuring branches.
+          // The longest eligible branch in that direction becomes the stem.
+          // y/w chevrons are side-only, even if they occur first or tie for
+          // greatest length. Remaining branches retain the ordinary
+          // length/source ordering and alternate sides.
+          const direction = chooseFuseauDirection(node, state.direction);
+          const measured = node.branches.map((branch, index) => ({
+            branch,
+            index,
+            length: projectedLength(branch, direction),
+            width: projectedWidth(branch, direction),
+          }));
+          const stemIndex = chooseFuseauStemIndex(
+            node,
+            direction,
+            measured.map((entry) => entry.length),
+          );
+          if (stemIndex < 0) {
+            throw new ParseError('A fuseau needs at least one non-chevron branch for its stem');
+          }
+          const stem = measured[stemIndex];
+          const ordered = [
+            stem,
+            ...measured
+              .filter((entry) => entry.index !== stemIndex)
+              .sort((a, b) => b.length - a.length || a.index - b.index),
+          ];
+          const origin = { x: turtle.x, y: turtle.y };
+          const widths = allocateFuseauWidths(ordered, direction);
+          let side = 1;
+          let stemEnd = origin;
 
           ordered.forEach((entry, drawIndex) => {
             const branchSide = side;
-            turtle.penup(); turtle.goto(origin.x, origin.y); calibrate(turtle, direction, state.normalDir);
+            turtle.penup();
+            turtle.goto(origin.x, origin.y);
+            calibrate(turtle, direction, state.normalDir);
             if (drawIndex) {
               let lastStep = 0;
-              for (let index = drawIndex % 2; index <= drawIndex; index += 2) lastStep += widths[index] || 0;
-              turtle.right(90 * branchSide); turtle.forward(lastStep);
-              turtle.left(90 * branchSide); turtle.forward(Math.max(0, (stem.length - entry.length) / 2));
+              for (let index = drawIndex % 2; index <= drawIndex; index += 2)
+                lastStep += widths[index] || 0;
+              turtle.right(90 * branchSide);
+              turtle.forward(lastStep);
+              turtle.left(90 * branchSide);
+              turtle.forward(Math.max(0, (stem.length - entry.length) / 2));
             }
             turtle.pendown();
-            const branchState = { ...state, alter:branchSide, normalDir:state.normalDir };
+            const branchState = {
+              ...state,
+              direction,
+              alter: branchSide,
+              normalDir: state.normalDir,
+              fuseauContext: {
+                direction,
+                side: branchSide,
+                parentNormalDir: state.normalDir,
+              },
+            };
             renderNode(entry.branch, turtle, branchState, true, true, componentBoxes);
-            if (!drawIndex) stemEnd = { x:turtle.x, y:turtle.y };
+            if (!drawIndex) stemEnd = { x: turtle.x, y: turtle.y };
             side *= -1;
           });
-          turtle.penup(); turtle.goto(stemEnd.x, stemEnd.y); calibrate(turtle, direction, state.normalDir); turtle.pendown();
+          turtle.penup();
+          turtle.goto(stemEnd.x, stemEnd.y);
+          calibrate(turtle, direction, state.normalDir);
+          turtle.pendown();
+          state.direction = direction;
           state.alter *= -1;
-          return { start:origin, end:stemEnd };
+          return { start: origin, end: stemEnd };
         }
 
         function boxesOverlap(first, second, threshold = 3) {
-          const width = Math.min(first.x + first.width, second.x + second.width)
-            - Math.max(first.x, second.x);
-          const height = Math.min(first.y + first.height, second.y + second.height)
-            - Math.max(first.y, second.y);
+          const width =
+            Math.min(first.x + first.width, second.x + second.width) - Math.max(first.x, second.x);
+          const height =
+            Math.min(first.y + first.height, second.y + second.height) -
+            Math.max(first.y, second.y);
           return width > threshold && height > threshold;
         }
 
         function collisionCount(boxes) {
           return boxes.reduce(
-            (count, box) => count + occupied.filter(other => boxesOverlap(box, other)).length,
-            0
+            (count, box) => count + occupied.filter((other) => boxesOverlap(box, other)).length,
+            0,
           );
         }
 
         function captureRenderState(turtle, state) {
           return {
-            turtle:{ x:turtle.x, y:turtle.y, heading:turtle.heading, down:turtle.down },
-            state:{ ...state },
-            artworkCount:artwork.childNodes.length,
-            anchors:new Map(anchors),
+            turtle: { x: turtle.x, y: turtle.y, heading: turtle.heading, down: turtle.down },
+            state: { ...state },
+            artworkCount: artwork.childNodes.length,
+            anchors: new Map(anchors),
           };
         }
 
         function restoreRenderState(snapshot, turtle, state) {
           while (artwork.childNodes.length > snapshot.artworkCount) artwork.lastChild.remove();
           Object.assign(turtle, snapshot.turtle);
-          Object.keys(state).forEach(key => delete state[key]);
+          Object.keys(state).forEach((key) => delete state[key]);
           Object.assign(state, snapshot.state);
           anchors.clear();
           snapshot.anchors.forEach((value, key) => anchors.set(key, value));
@@ -1544,17 +2409,23 @@
         }
 
         function runMazeCandidate(
-          node, turtle, state, boundaryStart, boundaryEnd, spacingStep, normalDir
+          node,
+          turtle,
+          state,
+          boundaryStart,
+          boundaryEnd,
+          spacingStep,
+          normalDir,
         ) {
-          if (spacingStep) turtle.forward(UNIT / 2 * spacingStep);
+          if (spacingStep) turtle.forward((UNIT / 2) * spacingStep);
           state.normalDir = normalDir;
           const boxes = [];
           const result = renderNode(node, turtle, state, boundaryStart, boundaryEnd, boxes);
           return {
             boxes,
             result,
-            collisions:collisionCount(boxes),
-            distance:Math.hypot(turtle.x, turtle.y),
+            collisions: collisionCount(boxes),
+            distance: Math.hypot(turtle.x, turtle.y),
           };
         }
 
@@ -1562,18 +2433,27 @@
           const snapshot = captureRenderState(turtle, state);
           let chosen = null;
           let fallback = null;
-          const directions = [snapshot.state.normalDir, 1 - snapshot.state.normalDir];
+          const directions = mazeNormalDirections(node, snapshot.state);
 
           for (let spacingStep = 0; spacingStep < MAZE_CHANCES; spacingStep++) {
             const valid = [];
             for (const normalDir of directions) {
               restoreRenderState(snapshot, turtle, state);
               const candidate = runMazeCandidate(
-                node, turtle, state, boundaryStart, boundaryEnd, spacingStep, normalDir
+                node,
+                turtle,
+                state,
+                boundaryStart,
+                boundaryEnd,
+                spacingStep,
+                normalDir,
               );
               const route = { spacingStep, normalDir, ...candidate };
-              if (!fallback || route.collisions < fallback.collisions
-                  || route.collisions === fallback.collisions && route.distance < fallback.distance) {
+              if (
+                !fallback ||
+                route.collisions < fallback.collisions ||
+                (route.collisions === fallback.collisions && route.distance < fallback.distance)
+              ) {
                 fallback = route;
               }
               if (!route.collisions) valid.push(route);
@@ -1587,42 +2467,74 @@
           chosen ||= fallback;
           restoreRenderState(snapshot, turtle, state);
           const committed = runMazeCandidate(
-            node, turtle, state, boundaryStart, boundaryEnd,
+            node,
+            turtle,
+            state,
+            boundaryStart,
+            boundaryEnd,
             chosen?.spacingStep || 0,
-            chosen?.normalDir ?? snapshot.state.normalDir
+            chosen?.normalDir ?? snapshot.state.normalDir,
           );
           occupied.push(...committed.boxes);
           return committed.result;
         }
 
-        function renderMazeSeries(node, turtle, state, boundaryStart = false, boundaryEnd = false) {
-          let result = { start:{ x:turtle.x, y:turtle.y }, end:{ x:turtle.x, y:turtle.y } };
+        function renderMazeSeries(
+          node,
+          turtle,
+          state,
+          boundaryStart = false,
+          boundaryEnd = false,
+        ) {
+          let result = { start: { x: turtle.x, y: turtle.y }, end: { x: turtle.x, y: turtle.y } };
           node.children.forEach((child, index) => {
             result = renderMazeComponent(
-              child, turtle, state,
+              child,
+              turtle,
+              state,
               boundaryStart || index > 0,
-              boundaryEnd || index < node.children.length - 1
+              boundaryEnd || index < node.children.length - 1,
             );
           });
           return result;
         }
 
         function gateCurve(start, end, lift) {
-          const dx = end.x - start.x, dy = end.y - start.y;
-          const distance = Math.hypot(dx, dy); if (!distance) return { path:'', points:[] };
-          let nx = -dy / distance, ny = dx / distance;
-          if (ny < 0 || Math.abs(ny) < .05 && nx < 0) { nx *= -1; ny *= -1; }
-          const c1 = { x:start.x + dx * .28 + nx * lift, y:start.y + dy * .28 + ny * lift };
-          const c2 = { x:start.x + dx * .72 + nx * lift, y:start.y + dy * .72 + ny * lift };
-          const steps = Math.max(24, Math.floor(distance / 3)); let path = `M${start.x} ${start.y}`;
+          const dx = end.x - start.x,
+            dy = end.y - start.y;
+          const distance = Math.hypot(dx, dy);
+          if (!distance) return { path: '', points: [] };
+          let nx = -dy / distance,
+            ny = dx / distance;
+          if (ny < 0 || (Math.abs(ny) < 0.05 && nx < 0)) {
+            nx *= -1;
+            ny *= -1;
+          }
+          const c1 = { x: start.x + dx * 0.28 + nx * lift, y: start.y + dy * 0.28 + ny * lift };
+          const c2 = { x: start.x + dx * 0.72 + nx * lift, y: start.y + dy * 0.72 + ny * lift };
+          const steps = Math.max(24, Math.floor(distance / 3));
+          let path = `M${start.x} ${start.y}`;
           const points = [start];
           for (let step = 1; step <= steps; step++) {
-            const ratio = step / steps, inv = 1 - ratio;
-            let x = inv ** 3 * start.x + 3 * inv ** 2 * ratio * c1.x + 3 * inv * ratio ** 2 * c2.x + ratio ** 3 * end.x;
-            let y = inv ** 3 * start.y + 3 * inv ** 2 * ratio * c1.y + 3 * inv * ratio ** 2 * c2.y + ratio ** 3 * end.y;
+            const ratio = step / steps,
+              inv = 1 - ratio;
+            let x =
+              inv ** 3 * start.x +
+              3 * inv ** 2 * ratio * c1.x +
+              3 * inv * ratio ** 2 * c2.x +
+              ratio ** 3 * end.x;
+            let y =
+              inv ** 3 * start.y +
+              3 * inv ** 2 * ratio * c1.y +
+              3 * inv * ratio ** 2 * c2.y +
+              ratio ** 3 * end.y;
             if (step < steps) {
-              const wave = (UNIT / SCALE / 4) * Math.sin(Math.PI * ratio) * Math.sin(2 * Math.PI * distance * ratio / (UNIT / SCALE * 2.5));
-              x += nx * wave; y += ny * wave;
+              const wave =
+                (UNIT / SCALE / 4) *
+                Math.sin(Math.PI * ratio) *
+                Math.sin((2 * Math.PI * distance * ratio) / ((UNIT / SCALE) * 2.5));
+              x += nx * wave;
+              y += ny * wave;
             }
             path += `L${x} ${y}`;
             points.push({ x, y });
@@ -1633,103 +2545,164 @@
         function gateCurveCollides(points) {
           const margin = Math.max(2, Math.floor(points.length / 14));
           for (let index = margin; index < points.length - margin - 1; index++) {
-            const first = points[index], second = points[index + 1], pad = .5;
+            const first = points[index],
+              second = points[index + 1],
+              pad = Math.max(0.5, UNIT / SCALE / 12);
             const bounds = {
-              x:Math.min(first.x, second.x) - pad,
-              y:Math.min(first.y, second.y) - pad,
-              width:Math.abs(second.x - first.x) + pad * 2,
-              height:Math.abs(second.y - first.y) + pad * 2,
+              x: Math.min(first.x, second.x) - pad,
+              y: Math.min(first.y, second.y) - pad,
+              width: Math.abs(second.x - first.x) + pad * 2,
+              height: Math.abs(second.y - first.y) + pad * 2,
             };
-            if (occupied.some(box => boxesOverlap(bounds, box, 0))) return true;
+            if (occupied.some((box) => boxesOverlap(bounds, box, 0))) return true;
           }
           return false;
         }
 
         function gatePath(start, end) {
           const distance = Math.hypot(end.x - start.x, end.y - start.y);
-          const baseLift = Math.max(UNIT / SCALE * 2, Math.min(UNIT * 2, distance * .18));
+          const baseLift = Math.max((UNIT / SCALE) * 2, Math.min(UNIT * 2, distance * 0.18));
           let curve = gateCurve(start, end, baseLift);
           if (!mazeMode) return curve.path;
           for (let attempt = 0; attempt < 24 && gateCurveCollides(curve.points); attempt++) {
-            curve = gateCurve(start, end, baseLift + (attempt + 1) * UNIT / SCALE);
+            curve = gateCurve(start, end, baseLift + ((attempt + 1) * UNIT) / SCALE);
           }
           return curve.path;
         }
 
         function drawTurtleCursor(turtle) {
-          const forward = turtle.vector(1); const side = turtle.vector(1, turtle.heading + 90);
-          const tip = { x:turtle.x + forward.x * 10, y:turtle.y + forward.y * 10 };
-          const back = { x:turtle.x - forward.x * 8, y:turtle.y - forward.y * 8 };
+          const forward = turtle.vector(1);
+          const side = turtle.vector(1, turtle.heading + 90);
+          const tip = { x: turtle.x + forward.x * 10, y: turtle.y + forward.y * 10 };
+          const back = { x: turtle.x - forward.x * 8, y: turtle.y - forward.y * 8 };
           const points = [
             `${tip.x},${tip.y}`,
             `${back.x + side.x * 6},${back.y + side.y * 6}`,
             `${back.x - side.x * 6},${back.y - side.y * 6}`,
           ].join(' ');
-          make('polygon', { points, class:'turtle-cursor', 'aria-hidden':'true' }, artwork);
+          make('polygon', { points, class: 'turtle-cursor', 'aria-hidden': 'true' }, artwork);
         }
 
-        let viewBox = { x:0, y:0, w:100, h:100 };
+        let viewBox = { x: 0, y: 0, w: 100, h: 100 };
         function fitDrawing() {
           if (!artwork.childNodes.length) return;
-          const box = artwork.getBBox(); const pad = 54;
-          viewBox = { x:box.x-pad, y:box.y-pad, w:Math.max(100,box.width+pad*2), h:Math.max(100,box.height+pad*2) };
+          const box = artwork.getBBox();
+          const pad = 54;
+          viewBox = {
+            x: box.x - pad,
+            y: box.y - pad,
+            w: Math.max(100, box.width + pad * 2),
+            h: Math.max(100, box.height + pad * 2),
+          };
           svg.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
         }
 
         function draw() {
-          artwork.replaceChildren(); anchors.clear(); status.classList.remove('error');
-          occupied.length = 0; drawingLayer = artwork;
+          artwork.replaceChildren();
+          anchors.clear();
+          status.classList.remove('error');
+          occupied.length = 0;
+          drawingLayer = artwork;
           try {
             const documentTree = parse(source.value);
             const turtle = new SvgTurtle(0, 0, 180);
-            const drawingState = { direction:0, normalDir:0, alter:1 };
+            const drawingState = { direction: 0, normalDir: 0, alter: 1 };
             documentTree.sentences.forEach((sentence, index) => {
               const hasPeriod = documentTree.periods[index];
               if (mazeMode) renderMazeSeries(sentence, turtle, drawingState, false, hasPeriod);
               else renderNode(sentence, turtle, drawingState, false, hasPeriod);
               if (hasPeriod) turtle.dot(UNIT / SCALE / 2);
               if (index < documentTree.sentences.length - 1) {
-                turtle.penup(); turtle.forward(UNIT / SCALE); turtle.pendown();
+                turtle.penup();
+                turtle.forward(UNIT / SCALE);
+                turtle.pendown();
               }
             });
             const elements = anchors.size;
-            documentTree.gates.forEach(gate => {
-              const a = anchors.get(gate.source), b = anchors.get(gate.target); if (!a || !b) return;
-              make('path', { class:'gate', d:gatePath(a, b) });
+            documentTree.gates.forEach((gate) => {
+              const a = anchors.get(gate.source),
+                b = anchors.get(gate.target);
+              if (!a || !b) return;
+              make('path', { class: 'gate', d: gatePath(a, b) });
             });
             if (elements) drawTurtleCursor(turtle);
             status.textContent = elements ? 'Live' : 'Ready';
             count.textContent = `${elements} element${elements === 1 ? '' : 's'}`;
             requestAnimationFrame(fitDrawing);
           } catch (error) {
-            status.textContent = error.message; status.classList.add('error');
+            status.textContent = error.message;
+            status.classList.add('error');
             count.textContent = `${anchors.size} elements`;
             if (artwork.childNodes.length) requestAnimationFrame(fitDrawing);
           }
         }
 
         const typedCompounds = new Map([
-          ['ae', 'ẽ'], ['ao', 'õ'], ['ei', 'ĩ'], ['oi', 'ị'], ['oe', 'ẹ'], ['eo', 'ơ'], ['eu', 'ư'], ['ou', 'ũ'],
-          ['aoe', 'ȡ'], ['õe', 'ȡ'], ['áé', 'ẻ'], ['óé', 'ț'], ['áóé', 'ȟ'], ['ỏé', 'ȟ'], ['éí', 'ỉ'], ['óí', 'ȍ'],
-          ['áó', 'ỏ'], ['óú', 'ủ'], ['éú', 'ứ'],
+          ['ae', 'ẽ'],
+          ['ao', 'õ'],
+          ['ei', 'ĩ'],
+          ['oi', 'ị'],
+          ['oe', 'ẹ'],
+          ['eo', 'ơ'],
+          ['eu', 'ư'],
+          ['ou', 'ũ'],
+          ['aoe', 'ȡ'],
+          ['õe', 'ȡ'],
+          ['áé', 'ẻ'],
+          ['óé', 'ț'],
+          ['áóé', 'ȟ'],
+          ['ỏé', 'ȟ'],
+          ['éí', 'ỉ'],
+          ['óí', 'ȍ'],
+          ['áó', 'ỏ'],
+          ['óú', 'ủ'],
+          ['éú', 'ứ'],
         ]);
         // Keyboard spellings for the replacement symbols in the V2 inventory.
         // Plain h is already the dynamic h symbol and needs no composition.
         const dottedConsonants = new Map([
-          ['s', 'ş'], ['c', 'ç'], ['g', 'ğ'],
+          ['s', 'ş'],
+          ['c', 'ç'],
+          ['g', 'ğ'],
         ]);
         const accentKeys = {
           '`': new Map([
-            ['a','á'], ['e','é'], ['i','í'], ['o','ó'], ['ơ','ớ'], ['u','ú'],
-            ['ẽ','ẻ'], ['ị','ȍ'], ['ẹ','ț'], ['ȡ','ȟ'], ['õ','ỏ'], ['ư','ứ'], ['ũ','ủ'], ['ĩ','ỉ'],
+            ['a', 'á'],
+            ['e', 'é'],
+            ['i', 'í'],
+            ['o', 'ó'],
+            ['ơ', 'ớ'],
+            ['u', 'ú'],
+            ['ẽ', 'ẻ'],
+            ['ị', 'ȍ'],
+            ['ẹ', 'ț'],
+            ['ȡ', 'ȟ'],
+            ['õ', 'ỏ'],
+            ['ư', 'ứ'],
+            ['ũ', 'ủ'],
+            ['ĩ', 'ỉ'],
           ]),
-          '-': new Map([['a','à'], ['e','è'], ['i','ì'], ['o','ò'], ['ơ','ờ'], ['u','ù']]),
-          '=': new Map([['a','ā'], ['e','ē'], ['i','ī'], ['o','ō'], ['u','ū']]),
+          '-': new Map([
+            ['a', 'à'],
+            ['e', 'è'],
+            ['i', 'ì'],
+            ['o', 'ò'],
+            ['ơ', 'ờ'],
+            ['u', 'ù'],
+          ]),
+          '=': new Map([
+            ['a', 'ā'],
+            ['e', 'ē'],
+            ['i', 'ī'],
+            ['o', 'ō'],
+            ['u', 'ū'],
+          ]),
         };
 
         function composeAtCaret() {
           if (source.selectionStart !== source.selectionEnd) return false;
-          const caret = source.selectionStart; const before = source.value.slice(0, caret);
+          const caret = source.selectionStart;
+          const before = source.value.slice(0, caret);
           if (before.length >= 2 && before.at(-1).toLowerCase() === 'h') {
             const dotted = dottedConsonants.get(before.at(-2).toLowerCase());
             if (dotted) {
@@ -1747,25 +2720,57 @@
         }
 
         let timer;
-        function scheduleDraw() { clearTimeout(timer); timer = setTimeout(draw, 90); }
-        source.addEventListener('input', event => {
+        function scheduleDraw() {
+          clearTimeout(timer);
+          timer = setTimeout(draw, 90);
+        }
+
+        speakButton.addEventListener('click', () => {
+          try {
+            EteSpeech.openReader(source.value);
+            status.classList.remove('error');
+            status.textContent = 'Opened IPA Reader';
+          } catch (error) {
+            status.textContent = error.message;
+            status.classList.add('error');
+          }
+        });
+
+        source.addEventListener('input', (event) => {
           if (!event.isComposing) {
-            while (composeAtCaret()) { /* fold the longest compound suffix */ }
+            while (composeAtCaret()) {
+              /* fold the longest compound suffix */
+            }
           }
           scheduleDraw();
         });
-        source.addEventListener('keydown', event => {
-          if (event.isComposing || event.ctrlKey || event.metaKey || event.altKey || !accentKeys[event.key]) return;
+        source.addEventListener('keydown', (event) => {
+          if (
+            event.isComposing ||
+            event.ctrlKey ||
+            event.metaKey ||
+            event.altKey ||
+            !accentKeys[event.key]
+          )
+            return;
           if (source.selectionStart !== source.selectionEnd || source.selectionStart === 0) return;
-          const caret = source.selectionStart; const previous = source.value.slice(caret - 1, caret);
-          const accented = accentKeys[event.key].get(previous); if (!accented) return;
-          event.preventDefault(); source.setRangeText(accented, caret - 1, caret, 'end');
-          while (composeAtCaret()) { /* accented sequences can also collapse */ }
+          const caret = source.selectionStart;
+          const previous = source.value.slice(caret - 1, caret);
+          const accented = accentKeys[event.key].get(previous);
+          if (!accented) return;
+          event.preventDefault();
+          source.setRangeText(accented, caret - 1, caret, 'end');
+          while (composeAtCaret()) {
+            /* accented sequences can also collapse */
+          }
           scheduleDraw();
         });
-        document.querySelectorAll('input[name="font"]').forEach(input => input.addEventListener('change', event => {
-          source.classList.toggle('font-nuaiti', event.target.value === 'nuaiti'); source.focus();
-        }));
+        document.querySelectorAll('input[name="font"]').forEach((input) =>
+          input.addEventListener('change', (event) => {
+            source.classList.toggle('font-nuaiti', event.target.value === 'nuaiti');
+            source.focus();
+          }),
+        );
         document.querySelector('#random-text').addEventListener('click', () => {
           const settings = readRandomSettings();
           if (!settings) {
@@ -1781,13 +2786,17 @@
           randomSettingsError.textContent = '';
           randomSettingsDialog.showModal();
         });
-        document.querySelector('#random-settings-close').addEventListener('click', () => randomSettingsDialog.close());
-        document.querySelector('#random-settings-cancel').addEventListener('click', () => randomSettingsDialog.close());
-        randomSettingsForm.addEventListener('submit', event => {
+        document
+          .querySelector('#random-settings-close')
+          .addEventListener('click', () => randomSettingsDialog.close());
+        document
+          .querySelector('#random-settings-cancel')
+          .addEventListener('click', () => randomSettingsDialog.close());
+        randomSettingsForm.addEventListener('submit', (event) => {
           event.preventDefault();
           if (readRandomSettings()) randomSettingsDialog.close();
         });
-        document.querySelector('#maze-mode').addEventListener('click', event => {
+        document.querySelector('#maze-mode').addEventListener('click', (event) => {
           mazeMode = !mazeMode;
           event.currentTarget.setAttribute('aria-pressed', String(mazeMode));
           draw();
@@ -1815,41 +2824,76 @@
           defs.append(style);
           clone.prepend(defs);
 
-          const blob = new Blob([new XMLSerializer().serializeToString(clone)], { type:'image/svg+xml' });
-          const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'ete-drawing.svg'; link.click();
+          const blob = new Blob([new XMLSerializer().serializeToString(clone)], {
+            type: 'image/svg+xml',
+          });
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = 'ete-drawing.svg';
+          link.click();
           setTimeout(() => URL.revokeObjectURL(link.href), 1000);
         });
 
         let pan = null;
-        svg.addEventListener('pointerdown', event => {
-          if (event.pointerType === 'mouse' && event.button !== 0) return;
-          if (event.cancelable) event.preventDefault();
-          pan = { clientX:event.clientX, clientY:event.clientY, viewX:viewBox.x, viewY:viewBox.y };
-          svg.setPointerCapture(event.pointerId);
-        }, { passive:false });
-        svg.addEventListener('pointermove', event => {
-          if (!pan) return;
-          if (event.cancelable) event.preventDefault();
-          const scaleX = viewBox.w / svg.clientWidth, scaleY = viewBox.h / svg.clientHeight;
-          viewBox.x = pan.viewX - (event.clientX-pan.clientX) * scaleX;
-          viewBox.y = pan.viewY - (event.clientY-pan.clientY) * scaleY;
-          svg.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
-        }, { passive:false });
-        const endPan = () => { pan = null; };
+        svg.addEventListener(
+          'pointerdown',
+          (event) => {
+            if (event.pointerType === 'mouse' && event.button !== 0) return;
+            if (event.cancelable) event.preventDefault();
+            pan = {
+              clientX: event.clientX,
+              clientY: event.clientY,
+              viewX: viewBox.x,
+              viewY: viewBox.y,
+            };
+            svg.setPointerCapture(event.pointerId);
+          },
+          { passive: false },
+        );
+        svg.addEventListener(
+          'pointermove',
+          (event) => {
+            if (!pan) return;
+            if (event.cancelable) event.preventDefault();
+            const scaleX = viewBox.w / svg.clientWidth,
+              scaleY = viewBox.h / svg.clientHeight;
+            viewBox.x = pan.viewX - (event.clientX - pan.clientX) * scaleX;
+            viewBox.y = pan.viewY - (event.clientY - pan.clientY) * scaleY;
+            svg.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
+          },
+          { passive: false },
+        );
+        const endPan = () => {
+          pan = null;
+        };
         svg.addEventListener('pointerup', endPan);
         svg.addEventListener('pointercancel', endPan);
         svg.addEventListener('lostpointercapture', endPan);
         // iOS fallback: a drag anywhere in the drawing panel belongs to the
         // drawing surface, never to the page's vertical scroller.
-        drawerPanel.addEventListener('touchmove', event => {
-          if (event.cancelable) event.preventDefault();
-        }, { passive:false });
-        svg.addEventListener('wheel', event => {
-          event.preventDefault(); const factor = event.deltaY > 0 ? 1.12 : .89; const rect = svg.getBoundingClientRect();
-          const px = viewBox.x + (event.clientX-rect.left)/rect.width*viewBox.w; const py = viewBox.y + (event.clientY-rect.top)/rect.height*viewBox.h;
-          viewBox.x = px - (px-viewBox.x)*factor; viewBox.y = py - (py-viewBox.y)*factor; viewBox.w *= factor; viewBox.h *= factor;
-          svg.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
-        }, { passive:false });
+        drawerPanel.addEventListener(
+          'touchmove',
+          (event) => {
+            if (event.cancelable) event.preventDefault();
+          },
+          { passive: false },
+        );
+        svg.addEventListener(
+          'wheel',
+          (event) => {
+            event.preventDefault();
+            const factor = event.deltaY > 0 ? 1.12 : 0.89;
+            const rect = svg.getBoundingClientRect();
+            const px = viewBox.x + ((event.clientX - rect.left) / rect.width) * viewBox.w;
+            const py = viewBox.y + ((event.clientY - rect.top) / rect.height) * viewBox.h;
+            viewBox.x = px - (px - viewBox.x) * factor;
+            viewBox.y = py - (py - viewBox.y) * factor;
+            viewBox.w *= factor;
+            viewBox.h *= factor;
+            svg.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
+          },
+          { passive: false },
+        );
 
         draw();
       })();
