@@ -5506,6 +5506,8 @@
       var chatMiniMapTransform = null;
       var chatMiniMapDragging = false;
       var chatMiniMapDragOffset = null;
+      var chatMiniMapBoundsCache = null;
+      var chatMiniMapBoundsRoomId = null;
 
       function getChatMiniMapItems() {
         const canvas = chatCanvas();
@@ -5889,12 +5891,17 @@
         if (!box || !canvas || !viewport || !tab || !surface) return;
         ensureChatAnchorLayer();
 
+        const zoom = getCanvasZoom(surface) || 1;
+        const width = Math.max(1, Math.round(canvas.clientWidth || box.clientWidth || canvas.width));
+        const height = Math.max(1, Math.round(canvas.clientHeight || box.clientHeight || canvas.height));
+        if (canvas.width !== width) canvas.width = width;
+        if (canvas.height !== height) canvas.height = height;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
-
-        const zoom = getCanvasZoom(surface) || 1;
-        const width = canvas.width;
-        const height = canvas.height;
+        if (chatMiniMapBoundsRoomId !== currentRoomId) {
+          chatMiniMapBoundsRoomId = currentRoomId;
+          chatMiniMapBoundsCache = null;
+        }
         const inset = 8;
         const items = getChatMiniMapItems();
         const visibleBounds = getChatVisibleCanvasBounds();
@@ -5904,10 +5911,10 @@
         const contentRight = visibleBounds.right;
         const contentBottom = visibleBounds.bottom;
 
-        let minX = contentLeft;
-        let minY = contentTop;
-        let maxX = contentRight;
-        let maxY = contentBottom;
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
 
         for (const el of items) {
           const left = parseFloat(el.style.left) || 0;
@@ -5922,12 +5929,24 @@
         }
 
         const pad = 180;
-        minX = Math.max(0, minX - pad);
-        minY = Math.max(0, minY - pad);
-        const worldMaxX = Math.max(surface.scrollWidth / zoom, contentRight);
-        const worldMaxY = Math.max(surface.scrollHeight / zoom, contentBottom);
-        maxX = Math.min(worldMaxX, maxX + pad);
-        maxY = Math.min(worldMaxY, maxY + pad);
+        if (!Number.isFinite(minX)) {
+          minX = contentLeft;
+          minY = contentTop;
+          maxX = contentRight;
+          maxY = contentBottom;
+        }
+        minX = Math.max(0, Math.min(minX, contentLeft) - pad);
+        minY = Math.max(0, Math.min(minY, contentTop) - pad);
+        maxX = Math.max(maxX, contentRight) + pad;
+        maxY = Math.max(maxY, contentBottom) + pad;
+
+        if (chatMiniMapBoundsCache) {
+          minX = Math.min(chatMiniMapBoundsCache.minX, minX);
+          minY = Math.min(chatMiniMapBoundsCache.minY, minY);
+          maxX = Math.max(chatMiniMapBoundsCache.maxX, maxX);
+          maxY = Math.max(chatMiniMapBoundsCache.maxY, maxY);
+        }
+        chatMiniMapBoundsCache = { minX, minY, maxX, maxY };
 
         const worldW = Math.max(visibleBounds.width, maxX - minX, 1);
         const worldH = Math.max(visibleBounds.height, maxY - minY, 1);
@@ -6009,16 +6028,6 @@
         const desiredTop = worldY - visibleBounds.height / 2;
         let nextLeft = tab.scrollLeft + (desiredLeft - visibleBounds.left) * zoom;
         let nextTop = tab.scrollTop + (desiredTop - visibleBounds.top) * zoom;
-        const edgeSnap = 16;
-
-        if (clampedCenterX <= centerMinX + 0.5) nextLeft = 0;
-        if (clampedCenterX >= centerMaxX - 0.5) nextLeft = maxLeft;
-        if (clampedCenterY <= centerMinY + 0.5) nextTop = 0;
-        if (clampedCenterY >= centerMaxY - 0.5) nextTop = maxTop;
-        if (localX <= offsetX + edgeSnap) nextLeft = 0;
-        if (localX >= offsetX + miniWorldW - edgeSnap) nextLeft = maxLeft;
-        if (localY <= offsetY + edgeSnap) nextTop = 0;
-        if (localY >= offsetY + miniWorldH - edgeSnap) nextTop = maxTop;
 
         nextLeft = Math.max(0, Math.min(maxLeft, nextLeft));
         nextTop = Math.max(0, Math.min(maxTop, nextTop));
