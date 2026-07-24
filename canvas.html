@@ -496,7 +496,8 @@
         background: rgba(0, 176, 240, 0.12);
         border-radius: 6px;
         box-sizing: border-box;
-        pointer-events: none;
+        pointer-events: auto;
+        touch-action: none;
       }
 
       #craftMinimap {
@@ -1893,7 +1894,8 @@
           position: fixed !important;
           left: 10px !important;
           right: 10px !important;
-          bottom: var(--mobile-keyboard-bottom, 10px) !important;
+          top: var(--mobile-keyboard-input-top, calc(100vh - 56px)) !important;
+          bottom: auto !important;
           width: calc(100vw - 20px) !important;
           max-width: calc(100vw - 20px) !important;
           z-index: 100001;
@@ -4286,22 +4288,21 @@
         }, 900);
       }
 
-      function updateMobileKeyboardBottomInset() {
+      function updateMobileKeyboardInputTop() {
         if (!isCoarseMobile) return;
         const vv = window.visualViewport;
-        const keyboardInset = vv
-          ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
-          : 0;
+        const visibleBottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
+        const inputHeight = 44;
         document.documentElement.style.setProperty(
-          '--mobile-keyboard-bottom',
-          `${Math.round(keyboardInset + 10)}px`,
+          '--mobile-keyboard-input-top',
+          `${Math.max(8, Math.round(visibleBottom - inputHeight - 10))}px`,
         );
       }
 
       function setMobileKeyboardMode(on) {
         if (!isCoarseMobile) return;
         if (on) {
-          updateMobileKeyboardBottomInset();
+          updateMobileKeyboardInputTop();
           mobileKeyboardBaselineHeight = Math.max(
             mobileKeyboardBaselineHeight || 0,
             window.visualViewport?.height || window.innerHeight,
@@ -4310,7 +4311,7 @@
         }
         document.body.classList.toggle('mobile-keyboard-open', !!on);
         if (!on) {
-          document.documentElement.style.removeProperty('--mobile-keyboard-bottom');
+          document.documentElement.style.removeProperty('--mobile-keyboard-input-top');
           if (isMobileKeyboardTextTarget(document.activeElement)) {
             document.activeElement.blur();
           }
@@ -4334,6 +4335,11 @@
       function clearMobileKeyboardModeIfDone() {
         if (!document.body.classList.contains('mobile-keyboard-open')) return;
         if (!isEditingDefinitionText()) setMobileKeyboardMode(false);
+      }
+
+      function settleMobileKeyboardUi() {
+        updateMobileKeyboardInputTop();
+        keepFocusedCanvasInputVisible();
       }
 
       function keepFocusedCanvasInputVisible() {
@@ -4371,10 +4377,10 @@
           ) {
             markMobileKeyboardPending(e.target);
             setMobileKeyboardMode(true);
-            updateMobileKeyboardBottomInset();
+            updateMobileKeyboardInputTop();
             keepFocusedCanvasInputVisible();
-            window.setTimeout(keepFocusedCanvasInputVisible, 260);
-            window.setTimeout(keepFocusedCanvasInputVisible, 520);
+            window.setTimeout(settleMobileKeyboardUi, 260);
+            window.setTimeout(settleMobileKeyboardUi, 520);
           }
         },
         true,
@@ -4420,7 +4426,7 @@
 
       function handleMobileViewportMaybeRestored() {
         if (!document.body.classList.contains('mobile-keyboard-open')) return;
-        updateMobileKeyboardBottomInset();
+        updateMobileKeyboardInputTop();
         const viewportHeight = window.visualViewport?.height || window.innerHeight;
         const baseline = Math.max(mobileKeyboardBaselineHeight || 0, window.innerHeight || 0);
         if (viewportHeight > baseline * 0.88) {
@@ -4642,6 +4648,7 @@
       const tab4 = document.getElementById('tab4');
       const chatMiniMap = document.getElementById('chatMinimap');
       const chatMiniMapCanvas = document.getElementById('chatMinimapCanvas');
+      const chatMiniMapViewport = document.getElementById('chatMinimapViewport');
       const craftMiniMapCanvas = document.getElementById('craftMinimapCanvas');
 
       const chatCanvas = () => document.getElementById('chatCanvas');
@@ -4998,6 +5005,18 @@
       chatMiniMapCanvas?.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         chatMiniMapDragging = true;
+        chatMiniMapDragOffset = null;
+        jumpChatViewportFromMiniMap(e.clientX, e.clientY);
+      });
+      chatMiniMapViewport?.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const frameRect = chatMiniMapViewport.getBoundingClientRect();
+        chatMiniMapDragOffset = {
+          x: e.clientX - (frameRect.left + frameRect.width / 2),
+          y: e.clientY - (frameRect.top + frameRect.height / 2),
+        };
+        chatMiniMapDragging = true;
         jumpChatViewportFromMiniMap(e.clientX, e.clientY);
       });
       craftMiniMapCanvas?.addEventListener('pointerdown', (e) => {
@@ -5034,6 +5053,7 @@
       });
       window.addEventListener('pointerup', () => {
         chatMiniMapDragging = false;
+        chatMiniMapDragOffset = null;
         craftMiniMapDragging = false;
         scheduleCraftMiniMapUpdate?.();
       });
@@ -5474,6 +5494,7 @@
       var chatMiniMapFrame = 0;
       var chatMiniMapTransform = null;
       var chatMiniMapDragging = false;
+      var chatMiniMapDragOffset = null;
 
       function getChatMiniMapItems() {
         const canvas = chatCanvas();
@@ -5935,16 +5956,25 @@
         const maxTop = Math.max(0, tab.scrollHeight - tab.clientHeight);
         const miniWorldW = worldW * scale;
         const miniWorldH = worldH * scale;
-        const edgeSnap = Math.max(10, Math.min(24, miniWorldW * 0.08));
-        const worldX = minX + (localX - offsetX) / scale;
-        const worldY = minY + (localY - offsetY) / scale;
+        const miniViewW = (tab.clientWidth / zoom) * scale;
+        const miniViewH = (tab.clientHeight / zoom) * scale;
+        const centerX = localX - (chatMiniMapDragOffset?.x || 0);
+        const centerY = localY - (chatMiniMapDragOffset?.y || 0);
+        const centerMinX = offsetX + miniViewW / 2;
+        const centerMinY = offsetY + miniViewH / 2;
+        const centerMaxX = offsetX + miniWorldW - miniViewW / 2;
+        const centerMaxY = offsetY + miniWorldH - miniViewH / 2;
+        const clampedCenterX = Math.max(centerMinX, Math.min(centerMaxX, centerX));
+        const clampedCenterY = Math.max(centerMinY, Math.min(centerMaxY, centerY));
+        const worldX = minX + (clampedCenterX - offsetX) / scale;
+        const worldY = minY + (clampedCenterY - offsetY) / scale;
         let nextLeft = worldX * zoom - tab.clientWidth / 2;
         let nextTop = worldY * zoom - tab.clientHeight / 2;
 
-        if (localX <= offsetX + edgeSnap) nextLeft = 0;
-        if (localX >= offsetX + miniWorldW - edgeSnap) nextLeft = maxLeft;
-        if (localY <= offsetY + edgeSnap) nextTop = 0;
-        if (localY >= offsetY + miniWorldH - edgeSnap) nextTop = maxTop;
+        if (clampedCenterX <= centerMinX + 0.5) nextLeft = 0;
+        if (clampedCenterX >= centerMaxX - 0.5) nextLeft = maxLeft;
+        if (clampedCenterY <= centerMinY + 0.5) nextTop = 0;
+        if (clampedCenterY >= centerMaxY - 0.5) nextTop = maxTop;
 
         nextLeft = Math.max(0, Math.min(maxLeft, nextLeft));
         nextTop = Math.max(0, Math.min(maxTop, nextTop));
