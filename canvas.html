@@ -4290,10 +4290,16 @@
       });
 
       var isCoarseMobile = window.matchMedia?.('(max-width: 820px), (pointer: coarse)')?.matches;
+      var isTouchKeyboardDevice =
+        window.matchMedia?.('(pointer: coarse)')?.matches || navigator.maxTouchPoints > 0;
       var craftMiniMapFrame = 0;
       var craftMiniMapTransform = null;
       var craftMiniMapDragging = false;
       var mobileKeyboardBaselineHeight = window.visualViewport?.height || window.innerHeight;
+
+      function shouldUseMobileKeyboardMode() {
+        return isCoarseMobile && isTouchKeyboardDevice;
+      }
 
       function isMobileKeyboardTextTarget(target) {
         return !!target?.matches?.(
@@ -4306,7 +4312,7 @@
       }
 
       function markMobileKeyboardPending(target) {
-        if (!isCoarseMobile || !isMobileKeyboardTextTarget(target)) return;
+        if (!shouldUseMobileKeyboardMode() || !isMobileKeyboardTextTarget(target)) return;
         target.classList.add('mobile-keyboard-pending');
         window.setTimeout(() => {
           target.classList.remove('mobile-keyboard-pending');
@@ -4314,7 +4320,7 @@
       }
 
       function updateMobileKeyboardInputTop() {
-        if (!isCoarseMobile) return;
+        if (!shouldUseMobileKeyboardMode()) return;
         const vv = window.visualViewport;
         const visibleBottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
         const inputHeight = 44;
@@ -4327,7 +4333,7 @@
       }
 
       function setMobileKeyboardMode(on) {
-        if (!isCoarseMobile) return;
+        if (!shouldUseMobileKeyboardMode()) return;
         if (on) {
           updateMobileKeyboardInputTop();
           mobileKeyboardBaselineHeight = Math.max(
@@ -4370,7 +4376,7 @@
       }
 
       function keepFocusedCanvasInputVisible() {
-        if (!isCoarseMobile) return;
+        if (!shouldUseMobileKeyboardMode()) return;
         const active = document.activeElement;
         if (!isDefinitionTextTarget(active)) return;
         const container = active.closest?.('#craftCanvas')
@@ -4400,6 +4406,7 @@
       document.addEventListener(
         'focusin',
         (e) => {
+          if (!shouldUseMobileKeyboardMode()) return;
           if (isMobileKeyboardTextTarget(e.target) && !e.target.readOnly && !e.target.disabled) {
             markMobileKeyboardPending(e.target);
             setMobileKeyboardMode(true);
@@ -4415,6 +4422,7 @@
       document.addEventListener(
         'focusout',
         (e) => {
+          if (!shouldUseMobileKeyboardMode()) return;
           if (!isMobileKeyboardTextTarget(e.target)) return;
           setTimeout(() => {
             clearMobileKeyboardModeIfDone();
@@ -4426,6 +4434,7 @@
       document.addEventListener(
         'pointerdown',
         (e) => {
+          if (!shouldUseMobileKeyboardMode()) return;
           if (isMobileKeyboardTextTarget(e.target) && !e.target.readOnly && !e.target.disabled) {
             markMobileKeyboardPending(e.target);
           }
@@ -4448,6 +4457,7 @@
       );
 
       function handleMobileViewportMaybeRestored() {
+        if (!shouldUseMobileKeyboardMode()) return;
         if (!document.body.classList.contains('mobile-keyboard-open')) return;
         updateMobileKeyboardInputTop();
         const viewportHeight = window.visualViewport?.height || window.innerHeight;
@@ -5520,6 +5530,7 @@
       var chatMiniMapBoundsCache = null;
       var chatMiniMapBoundsRoomId = null;
       var chatMiniMapBoundsSettleFrame = 0;
+      const spawnedExpressionMetaCardGroups = new Map();
 
       function getChatMiniMapItems() {
         const canvas = chatCanvas();
@@ -6080,7 +6091,7 @@
         return `chatViewport:${roomId || 'default'}`;
       }
 
-      function saveChatViewportState() {
+      function saveChatViewportState(touched = true) {
         const tab = tab4 || document.getElementById('tab4');
         if (!tab || !currentRoomId) return;
 
@@ -6089,6 +6100,7 @@
           JSON.stringify({
             scrollLeft: tab.scrollLeft,
             scrollTop: tab.scrollTop,
+            touched: !!touched,
           }),
         );
       }
@@ -6159,10 +6171,14 @@
           try {
             const saved = JSON.parse(savedRaw);
             if (Number.isFinite(saved?.scrollLeft) && Number.isFinite(saved?.scrollTop)) {
-              tab.scrollLeft = saved.scrollLeft;
-              tab.scrollTop = saved.scrollTop;
-              scheduleChatMiniMapUpdate();
-              return;
+              const isLegacyTopLeft =
+                saved.touched !== true && saved.scrollLeft <= 2 && saved.scrollTop <= 2;
+              if (!isLegacyTopLeft) {
+                tab.scrollLeft = saved.scrollLeft;
+                tab.scrollTop = saved.scrollTop;
+                scheduleChatMiniMapUpdate();
+                return;
+              }
             }
           } catch {}
         }
@@ -6178,6 +6194,7 @@
           tab.scrollTop = Math.max(0, (canvas.scrollHeight - tab.clientHeight) / 2);
         }
         scheduleChatMiniMapUpdate();
+        saveChatViewportState(false);
       }
 
       let pendingDeleteCommits = 0;
@@ -7789,6 +7806,8 @@
       const centerY = 200; // Center of the canvas (half of canvas height)
 
       isCoarseMobile = window.matchMedia?.('(max-width: 820px), (pointer: coarse)')?.matches;
+      isTouchKeyboardDevice =
+        window.matchMedia?.('(pointer: coarse)')?.matches || navigator.maxTouchPoints > 0;
       const symbolScale = isCoarseMobile ? 0.6 : 0.75;
       const symbolWidth = 156;
       const symbolHeight = 67;
@@ -9088,12 +9107,51 @@
             for (const [gid, el] of spawnedExpressionMetaCardEls.entries()) {
               if (el && el.isConnected) el.remove();
               spawnedExpressionMetaCardEls.delete(gid);
+              spawnedExpressionMetaCardGroups.delete(gid);
             }
             return;
           }
 
-          // Determine which expression groups are fully selected (even if selection includes other symbols).
-          const wanted = new Set();
+          function makeManualExpressionKey(component, nodeId) {
+            const ids = [...component]
+              .map(
+                (sym) =>
+                  sym?.dataset?.id ||
+                  `${parseFloat(sym.style.left) || 0},${parseFloat(sym.style.top) || 0}`,
+              )
+              .sort()
+              .join('|');
+            return `manual:${nodeId}:${ids}`;
+          }
+
+          function findManualExpressionMeta(component) {
+            if (!component || component.size < 1) return null;
+            for (const [storedWord, entry] of library) {
+              const storedId = entry?.[0];
+              const storedGraph = entry?.[1];
+              if (!storedId || !storedGraph?.nodes?.length) continue;
+              if (storedGraph.nodes.length !== component.size) continue;
+              const matched = matchPatternOnSelection(component, storedGraph);
+              if (!matched || !areSetsEqual(matched, component)) continue;
+
+              const libNode = typeof nodes?.get === 'function' ? nodes.get(storedId) : null;
+              const rawTitle = String(libNode?.title || '');
+              const why = rawTitle.includes('. ') ? rawTitle.split(/\. (.+)/)[1] || '' : rawTitle;
+              const word = String(libNode?.word || storedWord || '').trim();
+              return {
+                key: makeManualExpressionKey(component, storedId),
+                group: component,
+                word,
+                why,
+                exprLang: getExpressionSourceLang(String(libNode?.lang || ''), word, why),
+                nodeId: String(storedId),
+              };
+            }
+            return null;
+          }
+
+          // Determine which expression groups/components are fully selected (even if selection includes other symbols).
+          const wanted = new Map();
           for (const s of selectedSymbols) {
             if (!s) continue;
             if (getCanvasForElem(s) !== canvas) continue;
@@ -9108,32 +9166,59 @@
                 break;
               }
             }
-            if (all) wanted.add(gid);
+            if (all) {
+              const first = Array.from(grp)[0];
+              wanted.set(gid, {
+                key: gid,
+                group: grp,
+                word: String(first?.dataset?.exprWord || '').trim(),
+                why: String(first?.dataset?.exprWhy || '').trim(),
+                exprLang: String(first?.dataset?.exprLang || '').trim(),
+                nodeId: String(first?.dataset?.exprNodeId || ''),
+              });
+            }
+          }
+
+          const components = getConnectedSymbolComponents(selectedSymbols, currentGraph);
+          for (const component of components) {
+            if (!component || component.size < 1) continue;
+            let alreadyCovered = false;
+            for (const meta of wanted.values()) {
+              if (areSetsEqual(meta.group, component)) {
+                alreadyCovered = true;
+                break;
+              }
+            }
+            if (alreadyCovered) continue;
+            const meta = findManualExpressionMeta(component);
+            if (meta) wanted.set(meta.key, meta);
           }
 
           // Remove stale cards
           for (const [gid, el] of spawnedExpressionMetaCardEls.entries()) {
             if (!el || !el.isConnected) {
               spawnedExpressionMetaCardEls.delete(gid);
+              spawnedExpressionMetaCardGroups.delete(gid);
               continue;
             }
             if (!wanted.has(gid)) {
               el.remove();
               spawnedExpressionMetaCardEls.delete(gid);
+              spawnedExpressionMetaCardGroups.delete(gid);
             }
           }
 
           // Create cards for each fully-selected expression group.
-          for (const gid of wanted) {
+          for (const [gid, meta] of wanted.entries()) {
             const existing = spawnedExpressionMetaCardEls.get(gid);
+            spawnedExpressionMetaCardGroups.set(gid, meta.group);
             if (existing && existing.isConnected) continue;
 
-            const grp = expressionGroups.get(gid);
+            const grp = meta.group || expressionGroups.get(gid);
             if (!grp || grp.size < 1) continue;
-            const first = Array.from(grp)[0];
-            const word = String(first?.dataset?.exprWord || '').trim();
-            const why = String(first?.dataset?.exprWhy || '').trim();
-            const exprLang = String(first?.dataset?.exprLang || '').trim();
+            const word = String(meta.word || '').trim();
+            const why = String(meta.why || '').trim();
+            const exprLang = String(meta.exprLang || '').trim();
             const sourceLang = getExpressionSourceLang(exprLang, word, why);
             const cachedTranslation = shouldOfferExpressionTranslation(sourceLang)
               ? getResolvedCachedTranslation({
@@ -9208,10 +9293,11 @@
             continue;
           }
 
-          const grp = expressionGroups.get(gid);
+          const grp = spawnedExpressionMetaCardGroups.get(gid) || expressionGroups.get(gid);
           if (!grp || grp.size < 1) {
             card.remove();
             spawnedExpressionMetaCardEls.delete(gid);
+            spawnedExpressionMetaCardGroups.delete(gid);
             continue;
           }
 
