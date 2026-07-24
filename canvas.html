@@ -5508,6 +5508,7 @@
       var chatMiniMapDragOffset = null;
       var chatMiniMapBoundsCache = null;
       var chatMiniMapBoundsRoomId = null;
+      var chatMiniMapBoundsSettleFrame = 0;
 
       function getChatMiniMapItems() {
         const canvas = chatCanvas();
@@ -5901,6 +5902,8 @@
         if (chatMiniMapBoundsRoomId !== currentRoomId) {
           chatMiniMapBoundsRoomId = currentRoomId;
           chatMiniMapBoundsCache = null;
+          if (chatMiniMapBoundsSettleFrame) cancelAnimationFrame(chatMiniMapBoundsSettleFrame);
+          chatMiniMapBoundsSettleFrame = 0;
         }
         const inset = 8;
         const items = getChatMiniMapItems();
@@ -5940,13 +5943,27 @@
         maxX = Math.max(maxX, contentRight) + pad;
         maxY = Math.max(maxY, contentBottom) + pad;
 
+        const targetBounds = { minX, minY, maxX, maxY };
         if (chatMiniMapBoundsCache) {
-          minX = Math.min(chatMiniMapBoundsCache.minX, minX);
-          minY = Math.min(chatMiniMapBoundsCache.minY, minY);
-          maxX = Math.max(chatMiniMapBoundsCache.maxX, maxX);
-          maxY = Math.max(chatMiniMapBoundsCache.maxY, maxY);
+          const ease = chatMiniMapDragging ? 0.35 : 0.18;
+          minX = chatMiniMapBoundsCache.minX + (targetBounds.minX - chatMiniMapBoundsCache.minX) * ease;
+          minY = chatMiniMapBoundsCache.minY + (targetBounds.minY - chatMiniMapBoundsCache.minY) * ease;
+          maxX = chatMiniMapBoundsCache.maxX + (targetBounds.maxX - chatMiniMapBoundsCache.maxX) * ease;
+          maxY = chatMiniMapBoundsCache.maxY + (targetBounds.maxY - chatMiniMapBoundsCache.maxY) * ease;
         }
         chatMiniMapBoundsCache = { minX, minY, maxX, maxY };
+        const boundsDelta = Math.max(
+          Math.abs(minX - targetBounds.minX),
+          Math.abs(minY - targetBounds.minY),
+          Math.abs(maxX - targetBounds.maxX),
+          Math.abs(maxY - targetBounds.maxY),
+        );
+        if (boundsDelta > 1 && !chatMiniMapBoundsSettleFrame) {
+          chatMiniMapBoundsSettleFrame = requestAnimationFrame(() => {
+            chatMiniMapBoundsSettleFrame = 0;
+            scheduleChatMiniMapUpdate();
+          });
+        }
 
         const worldW = Math.max(visibleBounds.width, maxX - minX, 1);
         const worldH = Math.max(visibleBounds.height, maxY - minY, 1);
@@ -9940,6 +9957,14 @@
       function getPatternSpawnOrigin() {
         const canvas = chatCanvas();
         const container = tab4 || canvas;
+        const visibleBounds = getChatVisibleCanvasBounds?.();
+        if (isCoarseMobile && visibleBounds) {
+          return {
+            left: visibleBounds.left + visibleBounds.width * 0.48,
+            top: visibleBounds.top + visibleBounds.height * 0.34,
+          };
+        }
+
         return {
           left:
             (container?.scrollLeft || 0) + Math.max(80, (container?.clientWidth || 800) * 0.32),
