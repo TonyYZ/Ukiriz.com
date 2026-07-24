@@ -7929,23 +7929,23 @@
         en: [
           'Based on Trigram Kun ☷. Empty and still. Grapheme: gh (static), h (dynamic). Phoneme: [ɣ] (static), [x] (dynamic).',
           'Based on Trigram Gen ☶. Constrain and fall. Grapheme: g (static), c (dynamic). Phoneme: [g] (static), [k] (dynamic).',
-          'Based on Trigram Kan ☵. Occupy and radiate. Grapheme: l (static), r (dynamic). Phoneme: [l] (static), [ɾ] (dynamic).',
+          'Based on Trigram Kan ☵. Occupy and radiate. Grapheme: r (static), l (dynamic). Phoneme: [ɾ] (static), [l] (dynamic).',
           'Based on Trigram Xun ☴. Airy and leak. Grapheme: v (static), f (dynamic). Phoneme: [v] (static), [f] (dynamic).',
           'Based on Trigram Zhen ☳. Load and rise. Grapheme: d (static), t (dynamic). Phoneme: [d] (static), [t] (dynamic).',
           'Based on Trigram Li ☲. Contain and attach. Grapheme: b (static), p (dynamic). Phoneme: [b] (static), [p] (dynamic).',
           'Based on Trigram Dui ☱. Broken and express. Grapheme: s (static), z (dynamic). Phoneme: [s] (static), [t͡s] (dynamic).',
-          'Based on Trigram Qian ☰. Multiple and vibrant. Grapheme: sh (static), ch (dynamic). Phoneme: [ʃ] (static), [t͡ʃ] (dynamic).',
+          'Based on Trigram Qian ☰. Multiple and vibrant. Grapheme: ş (static), ç (dynamic). Phoneme: [ʃ] (static), [t͡ʃ] (dynamic).',
           'A uniquely Ítí symbol. It is always balancing all elements, so it can be either monotonous or filled with variegated order. Grapheme: n (static), m (dynamic). Phoneme: [n] (static), [m] (dynamic).',
         ],
         zh: [
           '取象自坤卦 ☷：空虚、安静。文：gh（静）/ h（动）。音：[ɣ]（静）/ [x]（动）。',
           '取象自艮卦 ☶：覆盖、下降。文：g（静）/ c（动）。音：[g]（静）/ [k]（动）。',
-          '取象自坎卦 ☵：阻隔、分离。文：l（静）/ r（动）。音：[l]（静）/ [ɾ]（动）。',
+          '取象自坎卦 ☵：阻隔、分离。文：r（静）/ l（动）。音：[ɾ]（静）/ [l]（动）。',
           '取象自巽卦 ☴：虚浮、泄漏。文：v（静）/ f（动）。音：[v]（静）/ [f]（动）。',
           '取象自震卦 ☳：承载、上升。文：d（静）/ t（动）。音：[d]（静）/ [t]（动）。',
           '取象自离卦 ☲：包围、依附。文：b（静）/ p（动）。音：[b]（静）/ [p]（动）。',
           '取象自兑卦 ☱：破缺、发出。文：s（静）/ z（动）。音：[s]（静）/ [t͡s]（动）。',
-          '取象自乾卦 ☰：完满、活跃。文：sh（静）/ ch（动）。音：[ʃ]（静）/ [t͡ʃ]（动）。',
+          '取象自乾卦 ☰：完满、活跃。文：ş（静）/ ç（动）。音：[ʃ]（静）/ [t͡ʃ]（动）。',
           'Ítí 的特殊符号（太极）：在诸元素之间维持平衡，因此既可能“单调”，也可能呈现“繁复的秩序”。文：n（静）/ m（动）。音：[n]（静）/ [m]（动）。',
         ],
       };
@@ -15190,8 +15190,8 @@
           { written: 'c', ipa: 'k' },
         ],
         [
-          { written: 'l', ipa: 'l' },
           { written: 'r', ipa: 'ɾ' },
+          { written: 'l', ipa: 'l' },
         ],
         [
           { written: 'v', ipa: 'v' },
@@ -15458,13 +15458,13 @@
           return runDelta || left.componentIndex - right.componentIndex;
         });
 
-        // Read a fuseau from its visible stem outward: center, first below
-        // (or right), first above (or left), second below, second above, …
+        // Read a fuseau from its visible stem outward: center, first above
+        // (or left), first below (or right), second above, second below, …
         const center = Math.floor((entries.length - 1) / 2);
         const ordered = [entries[center]];
         for (let distance = 1; ordered.length < entries.length; distance++) {
-          if (center + distance < entries.length) ordered.push(entries[center + distance]);
           if (center - distance >= 0) ordered.push(entries[center - distance]);
+          if (center + distance < entries.length) ordered.push(entries[center + distance]);
         }
         return ordered.map((entry) => entry.componentIndex);
       }
