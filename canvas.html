@@ -1884,7 +1884,7 @@
           padding-bottom: 0;
         }
 
-        body.mobile-keyboard-open #chatControls input:not(:focus) {
+        body.mobile-keyboard-open #chatControls input:not(:focus):not(.mobile-keyboard-pending) {
           display: none !important;
         }
 
@@ -4269,6 +4269,18 @@
         );
       }
 
+      function isDefinitionTextTarget(target) {
+        return !!target?.matches?.('.label-input, .label-textarea');
+      }
+
+      function markMobileKeyboardPending(target) {
+        if (!isCoarseMobile || !isMobileKeyboardTextTarget(target)) return;
+        target.classList.add('mobile-keyboard-pending');
+        window.setTimeout(() => {
+          target.classList.remove('mobile-keyboard-pending');
+        }, 900);
+      }
+
       function setMobileKeyboardMode(on) {
         if (!isCoarseMobile) return;
         if (on) {
@@ -4305,6 +4317,31 @@
         if (!isEditingDefinitionText()) setMobileKeyboardMode(false);
       }
 
+      function keepFocusedCanvasInputVisible() {
+        if (!isCoarseMobile) return;
+        const active = document.activeElement;
+        if (!isDefinitionTextTarget(active)) return;
+        const container =
+          active.closest?.('#craftCanvas') ? tab1 : active.closest?.('#chatCanvas') ? tab4 : null;
+        if (!container) return;
+
+        requestAnimationFrame(() => {
+          const rect = active.getBoundingClientRect();
+          const vv = window.visualViewport;
+          const visibleTop = vv?.offsetTop || 0;
+          const visibleBottom = visibleTop + (vv?.height || window.innerHeight);
+          const pad = 22;
+
+          if (rect.bottom > visibleBottom - pad) {
+            container.scrollTop += rect.bottom - (visibleBottom - pad);
+          } else if (rect.top < visibleTop + pad) {
+            container.scrollTop -= visibleTop + pad - rect.top;
+          }
+          scheduleCraftMiniMapUpdate?.();
+          scheduleChatMiniMapUpdate?.();
+        });
+      }
+
       document.addEventListener(
         'focusin',
         (e) => {
@@ -4313,7 +4350,11 @@
             !e.target.readOnly &&
             !e.target.disabled
           ) {
+            markMobileKeyboardPending(e.target);
             setMobileKeyboardMode(true);
+            keepFocusedCanvasInputVisible();
+            window.setTimeout(keepFocusedCanvasInputVisible, 260);
+            window.setTimeout(keepFocusedCanvasInputVisible, 520);
           }
         },
         true,
@@ -4338,7 +4379,15 @@
             !e.target.readOnly &&
             !e.target.disabled
           ) {
+            markMobileKeyboardPending(e.target);
+          }
+          if (
+            isDefinitionTextTarget(e.target) &&
+            !e.target.readOnly &&
+            !e.target.disabled
+          ) {
             setMobileKeyboardMode(true);
+            keepFocusedCanvasInputVisible();
             return;
           }
           if (!document.body.classList.contains('mobile-keyboard-open')) return;
@@ -4355,6 +4404,8 @@
         const baseline = Math.max(mobileKeyboardBaselineHeight || 0, window.innerHeight || 0);
         if (viewportHeight > baseline * 0.88) {
           setTimeout(() => setMobileKeyboardMode(false), 80);
+        } else {
+          window.setTimeout(keepFocusedCanvasInputVisible, 80);
         }
       }
 
@@ -5807,7 +5858,7 @@
         const offsetX = (width - worldW * scale) / 2;
         const offsetY = (height - worldH * scale) / 2;
 
-        chatMiniMapTransform = { minX, minY, scale, offsetX, offsetY };
+        chatMiniMapTransform = { minX, minY, worldW, worldH, scale, offsetX, offsetY };
 
         ctx.clearRect(0, 0, width, height);
         ctx.fillStyle = '#edf7fb';
@@ -5856,15 +5907,40 @@
         const rect = canvas.getBoundingClientRect();
         const localX = clientX - rect.left;
         const localY = clientY - rect.top;
-        const { minX, minY, scale, offsetX, offsetY } = chatMiniMapTransform;
+        const { minX, minY, worldW, worldH, scale, offsetX, offsetY } = chatMiniMapTransform;
         if (!scale) return;
 
-        const worldX = minX + (localX - offsetX) / scale;
-        const worldY = minY + (localY - offsetY) / scale;
         const maxLeft = Math.max(0, tab.scrollWidth - tab.clientWidth);
         const maxTop = Math.max(0, tab.scrollHeight - tab.clientHeight);
-        const nextLeft = Math.max(0, Math.min(maxLeft, worldX * zoom - tab.clientWidth / 2));
-        const nextTop = Math.max(0, Math.min(maxTop, worldY * zoom - tab.clientHeight / 2));
+        const miniWorldW = worldW * scale;
+        const miniWorldH = worldH * scale;
+        const miniViewW = (tab.clientWidth / zoom) * scale;
+        const miniViewH = (tab.clientHeight / zoom) * scale;
+        const miniTravelW = Math.max(0, miniWorldW - miniViewW);
+        const miniTravelH = Math.max(0, miniWorldH - miniViewH);
+        const miniCenterMinX = offsetX + miniViewW / 2;
+        const miniCenterMinY = offsetY + miniViewH / 2;
+        const miniCenterMaxX = offsetX + miniWorldW - miniViewW / 2;
+        const miniCenterMaxY = offsetY + miniWorldH - miniViewH / 2;
+        const clampedX = Math.max(miniCenterMinX, Math.min(miniCenterMaxX, localX));
+        const clampedY = Math.max(miniCenterMinY, Math.min(miniCenterMaxY, localY));
+        const ratioX = miniTravelW > 0 ? (clampedX - miniCenterMinX) / miniTravelW : 0;
+        const ratioY = miniTravelH > 0 ? (clampedY - miniCenterMinY) / miniTravelH : 0;
+        let nextLeft = ratioX * maxLeft;
+        let nextTop = ratioY * maxTop;
+
+        // If the minimap world is larger than the actual scrollable extent because of
+        // symbol padding, fall back to canvas coordinates so empty padded regions remain reachable.
+        if (maxLeft && miniTravelW === 0) {
+          const worldX = minX + (localX - offsetX) / scale;
+          nextLeft = worldX * zoom - tab.clientWidth / 2;
+        }
+        if (maxTop && miniTravelH === 0) {
+          const worldY = minY + (localY - offsetY) / scale;
+          nextTop = worldY * zoom - tab.clientHeight / 2;
+        }
+        nextLeft = Math.max(0, Math.min(maxLeft, nextLeft));
+        nextTop = Math.max(0, Math.min(maxTop, nextTop));
 
         tab.scrollLeft = nextLeft;
         tab.scrollTop = nextTop;
