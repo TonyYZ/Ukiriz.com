@@ -481,6 +481,7 @@
         overflow: hidden;
         backdrop-filter: blur(3px);
         -webkit-backdrop-filter: blur(3px);
+        touch-action: none;
       }
 
       #chatMinimapCanvas {
@@ -514,12 +515,14 @@
         overflow: hidden;
         backdrop-filter: blur(3px);
         -webkit-backdrop-filter: blur(3px);
+        touch-action: none;
       }
 
       #craftMinimapCanvas {
         display: block;
         width: 100%;
         height: 100%;
+        touch-action: none;
       }
 
       #craftMinimapViewport {
@@ -1792,9 +1795,14 @@
 
         .label-input,
         .label-textarea {
-          font-size: 16px;
-          width: min(230px, calc(100vw - 32px));
-          max-width: min(230px, calc(100vw - 32px));
+          font-size: 13px;
+          padding: 4px;
+          width: min(184px, calc(100vw - 40px));
+          max-width: min(184px, calc(100vw - 40px));
+        }
+
+        .label-textarea {
+          min-height: 34px;
         }
 
         .symbol-label[data-inspection-label='true'] {
@@ -1813,7 +1821,7 @@
 
         .submit-button,
         .cancel-button {
-          transform: scale(0.9);
+          transform: scale(0.78);
           transform-origin: top left;
         }
 
@@ -4868,12 +4876,29 @@
       }
 
       chatMiniMapCanvas?.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
         chatMiniMapDragging = true;
         jumpChatViewportFromMiniMap(e.clientX, e.clientY);
       });
       craftMiniMapCanvas?.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
         craftMiniMapDragging = true;
         jumpCraftViewportFromMiniMap(e.clientX, e.clientY);
+      });
+      chatMiniMap?.addEventListener('dblclick', (e) => e.preventDefault());
+      document.getElementById('craftMinimap')?.addEventListener('dblclick', (e) => e.preventDefault());
+      [chatMiniMap, document.getElementById('craftMinimap')].forEach((miniMapEl) => {
+        if (!miniMapEl) return;
+        let lastTap = 0;
+        miniMapEl.addEventListener(
+          'touchend',
+          (e) => {
+            const now = Date.now();
+            if (now - lastTap < 360) e.preventDefault();
+            lastTap = now;
+          },
+          { passive: false },
+        );
       });
       window.addEventListener('pointermove', (e) => {
         if (!chatMiniMapDragging) return;
@@ -6708,12 +6733,18 @@
       function applyMobileLibraryTreeInitialZoom() {
         if (!isCoarseMobile || libraryViewMode !== 'tree') return;
         renderLibraryTreeView?.();
-        applyLibraryContentZoom(getMobileLibraryTreeFitZoom());
-        if (libraryTreeView) {
-          libraryTreeView.scrollLeft = 0;
-          libraryTreeView.scrollTop = 0;
-        }
-        requestAnimationFrame(() => refreshLibraryTreeEdgesFromDom?.());
+        requestAnimationFrame(() => {
+          renderLibraryTreeView?.();
+          requestAnimationFrame(() => {
+            renderLibraryTreeView?.();
+            applyLibraryContentZoom(getMobileLibraryTreeFitZoom());
+            if (libraryTreeView) {
+              libraryTreeView.scrollLeft = 0;
+              libraryTreeView.scrollTop = 0;
+            }
+            refreshLibraryTreeEdgesFromDom?.();
+          });
+        });
       }
 
       function hasLocalChatDragInProgress() {
@@ -16643,7 +16674,7 @@
 
         const startX = 90;
         const startY = 120;
-        const rowGap = isCoarseMobile ? LIBRARY_TREE_ROW_GAP + 18 : LIBRARY_TREE_ROW_GAP;
+        const rowGap = isCoarseMobile ? LIBRARY_TREE_ROW_GAP + 34 : LIBRARY_TREE_ROW_GAP;
         const columnGap = isCoarseMobile ? 120 : 80;
         let currentX = startX;
 
@@ -17021,7 +17052,7 @@
         if (showTree) {
           renderLibraryTreeView();
           if (isCoarseMobile) {
-            requestAnimationFrame(() => applyMobileLibraryTreeInitialZoom?.());
+            applyMobileLibraryTreeInitialZoom?.();
           } else {
             applyLibraryContentZoom(libraryContentZoom || 1);
             requestAnimationFrame(() => refreshLibraryViewport?.());
