@@ -153,7 +153,7 @@
 
       /* Tab styles */
       .tab {
-        color: white;
+        color: rgba(255, 255, 255, 0.56);
         text-align: center;
         line-height: 100px;
         font-size: 40px;
@@ -166,8 +166,9 @@
         border-radius: 0; /* Remove rounded corners */
         transition:
           background-color 1s ease-in-out,
+          color 1s ease-in-out,
           opacity 1s ease-in-out;
-        opacity: 0.5; /* Start at a slightly faded state */
+        opacity: 1;
       }
 
       .tab:hover {
@@ -177,10 +178,13 @@
 
       .tab-active {
         background-color: rgba(255, 255, 255, 0.6);
+        color: white;
         opacity: 1; /* Fully visible */
       }
 
       .tab-current {
+        background-color: rgba(255, 255, 255, 0.34);
+        color: white;
         opacity: 1;
       }
 
@@ -1525,11 +1529,11 @@
           margin: 0;
           font-size: clamp(17px, 5vw, 30px);
           transition:
-            background-color 0.25s ease,
-            opacity 0.75s ease;
+            background-color 0.75s ease,
+            color 0.75s ease;
         }
 
-        .tab:hover {
+        .tab:hover:not(.tab-current) {
           background-color: transparent;
         }
 
