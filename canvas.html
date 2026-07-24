@@ -2069,8 +2069,8 @@
           I am not going to hand you a complete symbolic language. Instead, I want to help you
           build one for yourself from scratch, step by step, almost like building with blocks.
           At the same time, you will also train and strengthen your own intuition. <br />
-          After crafting out words, you can try to respond to the questions posted in <b>World</b>.
-          You can see others' answers there as well!
+          After crafting your words, you can try responding to the questions posted in <b>World</b>.
+          Others' words are posted there as well!
           </p>
 
           <p>
@@ -3836,7 +3836,10 @@
             ? window.innerWidth - bubbleRect.width - 24
             : left;
         const mobileBottomReserve = isCoarseMobile ? 128 : 12;
-        const maxBubbleTop = Math.max(12, window.innerHeight - mobileBottomReserve - bubbleRect.height);
+        const maxBubbleTop = Math.max(
+          12,
+          window.innerHeight - mobileBottomReserve - bubbleRect.height,
+        );
         const belowTop = top + height + 12;
         const aboveTop = top - bubbleRect.height - 12;
         const preferMobileBottom =
@@ -4349,11 +4352,7 @@
 
       function isEditingDefinitionText() {
         const active = document.activeElement;
-        return (
-          isMobileKeyboardTextTarget(active) &&
-          !active.readOnly &&
-          !active.disabled
-        );
+        return isMobileKeyboardTextTarget(active) && !active.readOnly && !active.disabled;
       }
 
       function clearMobileKeyboardModeIfDone() {
@@ -4374,8 +4373,11 @@
         if (!isCoarseMobile) return;
         const active = document.activeElement;
         if (!isDefinitionTextTarget(active)) return;
-        const container =
-          active.closest?.('#craftCanvas') ? tab1 : active.closest?.('#chatCanvas') ? tab4 : null;
+        const container = active.closest?.('#craftCanvas')
+          ? tab1
+          : active.closest?.('#chatCanvas')
+            ? tab4
+            : null;
         if (!container) return;
 
         requestAnimationFrame(() => {
@@ -4398,11 +4400,7 @@
       document.addEventListener(
         'focusin',
         (e) => {
-          if (
-            isMobileKeyboardTextTarget(e.target) &&
-            !e.target.readOnly &&
-            !e.target.disabled
-          ) {
+          if (isMobileKeyboardTextTarget(e.target) && !e.target.readOnly && !e.target.disabled) {
             markMobileKeyboardPending(e.target);
             setMobileKeyboardMode(true);
             updateMobileKeyboardInputTop();
@@ -4428,24 +4426,21 @@
       document.addEventListener(
         'pointerdown',
         (e) => {
-          if (
-            isMobileKeyboardTextTarget(e.target) &&
-            !e.target.readOnly &&
-            !e.target.disabled
-          ) {
+          if (isMobileKeyboardTextTarget(e.target) && !e.target.readOnly && !e.target.disabled) {
             markMobileKeyboardPending(e.target);
           }
-          if (
-            isDefinitionTextTarget(e.target) &&
-            !e.target.readOnly &&
-            !e.target.disabled
-          ) {
+          if (isDefinitionTextTarget(e.target) && !e.target.readOnly && !e.target.disabled) {
             setMobileKeyboardMode(true);
             keepFocusedCanvasInputVisible();
             return;
           }
           if (!document.body.classList.contains('mobile-keyboard-open')) return;
-          if (e.target?.closest?.('.label-input, .label-textarea, #symbol-message-input, #message-input')) return;
+          if (
+            e.target?.closest?.(
+              '.label-input, .label-textarea, #symbol-message-input, #message-input',
+            )
+          )
+            return;
           if (isEditingDefinitionText()) document.activeElement.blur();
           setTimeout(clearMobileKeyboardModeIfDone, 160);
         },
@@ -5050,7 +5045,9 @@
         jumpCraftViewportFromMiniMap(e.clientX, e.clientY);
       });
       chatMiniMap?.addEventListener('dblclick', (e) => e.preventDefault());
-      document.getElementById('craftMinimap')?.addEventListener('dblclick', (e) => e.preventDefault());
+      document
+        .getElementById('craftMinimap')
+        ?.addEventListener('dblclick', (e) => e.preventDefault());
       [chatMiniMap, document.getElementById('craftMinimap')].forEach((miniMapEl) => {
         if (!miniMapEl) return;
         let lastTap = 0;
@@ -5907,8 +5904,14 @@
         ensureChatAnchorLayer();
 
         const zoom = getCanvasZoom(surface) || 1;
-        const width = Math.max(1, Math.round(canvas.clientWidth || box.clientWidth || canvas.width));
-        const height = Math.max(1, Math.round(canvas.clientHeight || box.clientHeight || canvas.height));
+        const width = Math.max(
+          1,
+          Math.round(canvas.clientWidth || box.clientWidth || canvas.width),
+        );
+        const height = Math.max(
+          1,
+          Math.round(canvas.clientHeight || box.clientHeight || canvas.height),
+        );
         if (canvas.width !== width) canvas.width = width;
         if (canvas.height !== height) canvas.height = height;
         const ctx = canvas.getContext('2d');
@@ -5960,10 +5963,14 @@
         const targetBounds = { minX, minY, maxX, maxY };
         if (chatMiniMapBoundsCache) {
           const ease = chatMiniMapDragging ? 0.35 : 0.18;
-          minX = chatMiniMapBoundsCache.minX + (targetBounds.minX - chatMiniMapBoundsCache.minX) * ease;
-          minY = chatMiniMapBoundsCache.minY + (targetBounds.minY - chatMiniMapBoundsCache.minY) * ease;
-          maxX = chatMiniMapBoundsCache.maxX + (targetBounds.maxX - chatMiniMapBoundsCache.maxX) * ease;
-          maxY = chatMiniMapBoundsCache.maxY + (targetBounds.maxY - chatMiniMapBoundsCache.maxY) * ease;
+          minX =
+            chatMiniMapBoundsCache.minX + (targetBounds.minX - chatMiniMapBoundsCache.minX) * ease;
+          minY =
+            chatMiniMapBoundsCache.minY + (targetBounds.minY - chatMiniMapBoundsCache.minY) * ease;
+          maxX =
+            chatMiniMapBoundsCache.maxX + (targetBounds.maxX - chatMiniMapBoundsCache.maxX) * ease;
+          maxY =
+            chatMiniMapBoundsCache.maxY + (targetBounds.maxY - chatMiniMapBoundsCache.maxY) * ease;
         }
         chatMiniMapBoundsCache = { minX, minY, maxX, maxY };
         const boundsDelta = Math.max(
