@@ -2026,6 +2026,15 @@
           if ('fvcg'.includes(char)) return UNIT / SCALE;
           return 0;
         }
+        function anchorAtSymbolSurface(anchor, box) {
+          const surface = { ...anchor.dot };
+          if (Math.abs(anchor.right.x) > Math.abs(anchor.right.y)) {
+            surface.x = anchor.right.x > 0 ? box.x + box.width : box.x;
+          } else {
+            surface.y = anchor.right.y > 0 ? box.y + box.height : box.y;
+          }
+          return surface;
+        }
         function calibrate(turtle, orientation, normalDir = 0) {
           const headings = [180, 0, 90, 270];
           turtle.setheading(orientation ? headings[2 + normalDir] : headings[normalDir]);
@@ -2220,7 +2229,8 @@
             x: turtle.x - pos * forward.x + dist * right.x,
             y: turtle.y - pos * forward.y + dist * right.y,
           };
-          if (isDynamic(char)) {
+          const dynamic = isDynamic(char);
+          if (dynamic) {
             turtle.penup();
             turtle.forward(-pos);
             turtle.right(90 * alter);
@@ -2234,7 +2244,7 @@
             turtle.forward(pos);
             turtle.pendown();
           }
-          anchors.set(node.id, gate);
+          anchors.set(node.id, { dot: gate, surface: gate, dynamic, right });
         }
 
         function projectedLength(node, direction) {
@@ -2375,9 +2385,11 @@
               boundaryEnd,
               state.fuseauContext || null,
             );
+            const box = group.getBBox();
+            const anchor = anchors.get(node.id);
+            if (anchor && !anchor.dynamic) anchor.surface = anchorAtSymbolSurface(anchor, box);
             drawingLayer = parent;
             if (componentBoxes) {
-              const box = group.getBBox();
               componentBoxes.push({
                 x: box.x + 1,
                 y: box.y + 1,
@@ -2727,8 +2739,10 @@
           drawingLayer = artwork;
           try {
             const documentTree = parse(source.value);
-            const turtle = new SvgTurtle(0, 0, 180);
-            const drawingState = { direction: 0, normalDir: 0, alter: 1 };
+            // Read ordinary series in screen order: horizontal paths advance
+            // left-to-right and vertical paths advance top-to-bottom.
+            const turtle = new SvgTurtle(0, 0, 0);
+            const drawingState = { direction: 0, normalDir: 1, alter: 1 };
             documentTree.sentences.forEach((sentence, index) => {
               const hasPeriod = documentTree.periods[index];
               if (mazeMode) renderMazeSeries(sentence, turtle, drawingState, false, hasPeriod);
@@ -2742,9 +2756,12 @@
             });
             const elements = anchors.size;
             documentTree.gates.forEach((gate) => {
-              const a = anchors.get(gate.source),
-                b = anchors.get(gate.target);
-              if (!a || !b) return;
+              const sourceAnchor = anchors.get(gate.source),
+                targetAnchor = anchors.get(gate.target);
+              if (!sourceAnchor || !targetAnchor) return;
+              const gateEndpoint = (anchor) => (anchor.dynamic ? anchor.dot : anchor.surface);
+              const a = gateEndpoint(sourceAnchor),
+                b = gateEndpoint(targetAnchor);
               const attributes = {
                 class: 'gate',
                 d: gatePath(a, b, gateStyle === 'wavy'),

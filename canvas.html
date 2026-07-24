@@ -638,6 +638,14 @@
         z-index: 9;
       }
 
+      .symbol-label[data-inspection-label='true'] {
+        z-index: 20;
+      }
+
+      .symbol-label[data-inspection-label='true'].active {
+        z-index: 21;
+      }
+
       .symbol-label.user-created-label {
         background: #fff1bf;
         border-color: #c78a00;
@@ -1129,6 +1137,40 @@
         user-select: none;
         -webkit-user-select: none;
         -webkit-touch-callout: none;
+        overflow: visible;
+      }
+
+      .decorative-reef {
+        position: absolute;
+        overflow: visible;
+        pointer-events: none;
+        user-select: none;
+        -webkit-user-select: none;
+        opacity: 0.96;
+      }
+
+      .decorative-reef .island-base {
+        stroke-width: 1.6px;
+      }
+
+      .decorative-reef .island-shadow {
+        opacity: 0.72;
+      }
+
+      .island-shadow {
+        fill: rgba(0, 0, 0, 0.16);
+        filter: blur(3px);
+        pointer-events: none;
+      }
+
+      .island-waterline {
+        fill: none;
+        stroke: rgba(255, 255, 255, 0.82);
+        stroke-width: 3px;
+        stroke-linejoin: round;
+        stroke-linecap: round;
+        stroke-dasharray: 9 12;
+        pointer-events: none;
       }
 
       .island-block {
@@ -1606,15 +1648,39 @@
         }
 
         #quota-badge {
-          font-size: 11px;
-          line-height: 1.25;
-          padding: 6px 8px;
-          max-width: 132px;
+          font-size: 10px;
+          line-height: 1.12;
+          padding: 5px 7px;
+          max-width: 126px;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: normal;
-          border-radius: 5px;
+          border-radius: 6px;
           text-align: left;
+        }
+
+        #quota-badge .quota-daily {
+          font-size: 11px;
+          line-height: 1.12;
+        }
+
+        #quota-badge .quota-copy {
+          font-size: 10px;
+        }
+
+        #quota-badge .quota-support-links {
+          display: flex;
+          gap: 7px;
+          margin-top: 3px;
+          font-size: 10px;
+          line-height: 1;
+          white-space: nowrap;
+        }
+
+        #quota-badge .quota-support-links a {
+          white-space: nowrap;
+          word-break: keep-all;
+          overflow-wrap: normal;
         }
 
         .lang-menu {
@@ -1693,6 +1759,20 @@
           max-width: min(230px, calc(100vw - 32px));
         }
 
+        .symbol-label[data-inspection-label='true'] {
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-size: 12px;
+          line-height: 1.15;
+        }
+
+        #craftCanvas {
+          width: calc(180vw + var(--craft-extra-x, 0px));
+          height: calc(150dvh + var(--craft-extra-y, 0px));
+          min-width: calc(180vw + var(--craft-extra-x, 0px));
+          min-height: calc(150dvh + var(--craft-extra-y, 0px));
+        }
+
         .submit-button,
         .cancel-button {
           transform: scale(0.9);
@@ -1732,7 +1812,7 @@
         }
 
         #quota-badge {
-          max-width: 118px;
+          max-width: 126px;
         }
       }
     </style>
@@ -3820,6 +3900,37 @@
         });
       }
 
+      function normalizeLLMFeedbackText(feedback) {
+        const raw = formatSymbolOrientationTerms(String(feedback || ''))
+          .replace(/\r\n?/g, '\n')
+          .trim();
+        const verdict = raw.match(/^(Yes|No)([.!?。！？]?)[^\S\n]*(?:\n+)?([\s\S]*)$/i);
+        if (!verdict) return normalizeLLMFeedbackBody(raw);
+
+        const label = verdict[1].toLowerCase() === 'yes' ? 'Yes' : 'No';
+        const punctuation = verdict[2] || '';
+        const body = normalizeLLMFeedbackBody(verdict[3]);
+        if (!body) return `${label}${punctuation}`;
+        if (/^[.!?。！？]/.test(body)) return `${label}${body}`;
+        return body ? `${label}\n${body}` : label;
+      }
+
+      function normalizeLLMFeedbackBody(body) {
+        const text = String(body || '');
+        if (getLang() === 'zh') {
+          return text
+            .replace(/\n+/g, '')
+            .replace(/[ \t]+/g, ' ')
+            .replace(/\s+([，。！？；：、）】》”])/g, '$1')
+            .replace(/([（【《“])\s+/g, '$1')
+            .trim();
+        }
+        return text
+          .replace(/[ \t]*\n+[ \t]*/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+      }
+
       function tSymbolLabels(elemIdTrue, isDynamic) {
         const lang = getLang();
         return (SYMBOL_LABELS[lang]?.[elemIdTrue]?.[Number(isDynamic)] || []).slice();
@@ -4163,6 +4274,7 @@
         if (tabIndex === 1) {
           requestAnimationFrame(() => {
             applyCraftCanvasPadding(getCanvasZoom(craftCanvas()) || 1);
+            centerMobileCraftInitialView();
             updateCraftGridAlignment();
           });
         }
@@ -4259,6 +4371,7 @@
       let libraryContentZoom = 1;
       let worldContentZoom = 1;
       let mobileWorldInitialZoomApplied = false;
+      let mobileCraftInitialViewApplied = false;
       let canvasZoomGestureUntil = 0;
       let canvasPinchActive = false;
 
@@ -4376,10 +4489,22 @@
       function applyCraftCanvasPadding(zoom) {
         const container = tab1 || document.getElementById('tab1');
         if (!container) return;
-        const extraX = Math.max(0, (zoom - 1) * container.clientWidth);
-        const extraY = Math.max(0, (zoom - 1) * container.clientHeight);
+        const baseExtraX = isCoarseMobile ? container.clientWidth * 0.8 : 0;
+        const baseExtraY = isCoarseMobile ? container.clientHeight * 0.5 : 0;
+        const extraX = baseExtraX + Math.max(0, (zoom - 1) * container.clientWidth);
+        const extraY = baseExtraY + Math.max(0, (zoom - 1) * container.clientHeight);
         container.style.setProperty('--craft-extra-x', `${extraX}px`);
         container.style.setProperty('--craft-extra-y', `${extraY}px`);
+      }
+
+      function centerMobileCraftInitialView() {
+        if (!isCoarseMobile || mobileCraftInitialViewApplied || !tab1) return;
+        mobileCraftInitialViewApplied = true;
+        requestAnimationFrame(() => {
+          tab1.scrollLeft = Math.max(0, (tab1.scrollWidth - tab1.clientWidth) * 0.28);
+          tab1.scrollTop = Math.max(0, (tab1.scrollHeight - tab1.clientHeight) * 0.18);
+          updateCraftGridAlignment();
+        });
       }
 
       function updateCraftGridAlignment() {
@@ -6246,10 +6371,17 @@
         const viewWidth = libraryTreeView.clientWidth || window.innerWidth;
         const viewHeight = libraryTreeView.clientHeight || Math.max(240, window.innerHeight - 146);
         const surfaceWidth =
-          parseFloat(libraryTreeSurface.style.width) || libraryTreeSurface.scrollWidth || viewWidth;
+          parseFloat(libraryTreeSurface.style.width) ||
+          libraryTreeSurface.scrollWidth ||
+          viewWidth;
         const surfaceHeight =
-          parseFloat(libraryTreeSurface.style.height) || libraryTreeSurface.scrollHeight || viewHeight;
-        const fit = Math.min(viewWidth / Math.max(surfaceWidth, 1), viewHeight / Math.max(surfaceHeight, 1));
+          parseFloat(libraryTreeSurface.style.height) ||
+          libraryTreeSurface.scrollHeight ||
+          viewHeight;
+        const fit = Math.min(
+          viewWidth / Math.max(surfaceWidth, 1),
+          viewHeight / Math.max(surfaceHeight, 1),
+        );
         return clampLibraryContentZoom(Math.min(1, fit * 0.94));
       }
 
@@ -7112,7 +7244,7 @@
             ['go', 'push', 'advance'],
           ],
           [
-            ['gap', 'contain', 'enclosure', 'shell', 'surround'],
+            ['gap', 'contain', 'enclosure', 'shell', 'surround', 'outer'],
             ['join', 'combine', 'close', 'squeeze', 'attach'],
           ],
           [
@@ -7160,7 +7292,7 @@
             ['来', '牵', '退', '向后'],
           ],
           [
-            ['中', '心', '内', '占', '点', '阻', '障'],
+            ['中', '内', '占', '点', '阻', '障'],
             ['分', '源', '散', '爆', '辐射'],
           ],
           [
@@ -7278,16 +7410,17 @@
 
       function qianHasFrontBackConnections(symbol) {
         const conns = currentGraph?.getSymbolConnections?.(symbol);
-        return !!((conns?.[0]?.length || 0) || (conns?.[1]?.length || 0));
+        return !!(conns?.[0]?.length || 0 || conns?.[1]?.length || 0);
       }
 
       function updateQianSymbolAppearance(symbol, { dragging = false } = {}) {
         if (!isQianSymbol(symbol)) return;
-        const nextMode = dragging || symbol._qianPressed || symbol._qianSnapPreview
-          ? 'pressed'
-          : qianHasFrontBackConnections(symbol)
-            ? 'full'
-            : 'center';
+        const nextMode =
+          dragging || symbol._qianPressed || symbol._qianSnapPreview
+            ? 'pressed'
+            : qianHasFrontBackConnections(symbol)
+              ? 'full'
+              : 'center';
         const needsSvg = !symbol.querySelector('svg .qian-center-circle');
         if (needsSvg) {
           symbol.innerHTML = symbolData[QIAN_ELEM_ID];
@@ -7615,7 +7748,7 @@
       function mapSideAfterRotationFromAngle(oldAngle, side, addAngle) {
         let mapped = side;
         let angle = oldAngle;
-        const turns = (((Math.round(addAngle / 90) % 4) + 4) % 4);
+        const turns = ((Math.round(addAngle / 90) % 4) + 4) % 4;
         for (let i = 0; i < turns; i++) {
           mapped = mapSideAfterQuarterTurnFromAngle(angle, mapped);
           angle = (angle + 90) % 360;
@@ -7623,7 +7756,12 @@
         return mapped;
       }
 
-      function remapRotatedGroupInternalLinks(group, oldInternalLinks, oldAngleBySymbol, addAngle = 90) {
+      function remapRotatedGroupInternalLinks(
+        group,
+        oldInternalLinks,
+        oldAngleBySymbol,
+        addAngle = 90,
+      ) {
         const nextConns = new Map(group.map((symbol) => [symbol, [[], [], [], [], [], []]]));
         for (const link of oldInternalLinks) {
           const aSide = mapSideAfterRotationFromAngle(
@@ -10693,8 +10831,16 @@
               el.pElement.style.top = `${tTop - 10 + tScroll}px`;
             }
             if (el.doneButton) {
-              el.doneButton.style.left = `${x + el.doneButton.offsetX}px`;
-              el.doneButton.style.top = `${y + el.doneButton.offsetY}px`;
+              const pLeft = parseFloat(el.pElement?.style?.left || '');
+              const pTop = parseFloat(el.pElement?.style?.top || '');
+              const fallbackLeft = x + el.doneButton.offsetX;
+              const fallbackTop = y + el.doneButton.offsetY;
+              el.doneButton.style.left = `${Number.isFinite(pLeft) ? pLeft : fallbackLeft}px`;
+              el.doneButton.style.top = `${
+                (Number.isFinite(pTop) ? pTop : fallbackTop) +
+                (el.pElement?.scrollHeight || 0) +
+                22
+              }px`;
             }
           }
 
@@ -10739,8 +10885,16 @@
               activeSymbol.pElement.style.top = `${tTop - 10 + activeSymbol.textarea.scrollHeight}px`;
             }
             if (activeSymbol.doneButton) {
-              activeSymbol.doneButton.style.left = `${x + activeSymbol.doneButton.offsetX}px`;
-              activeSymbol.doneButton.style.top = `${y + activeSymbol.doneButton.offsetY}px`;
+              const pLeft = parseFloat(activeSymbol.pElement?.style?.left || '');
+              const pTop = parseFloat(activeSymbol.pElement?.style?.top || '');
+              const fallbackLeft = x + activeSymbol.doneButton.offsetX;
+              const fallbackTop = y + activeSymbol.doneButton.offsetY;
+              activeSymbol.doneButton.style.left = `${Number.isFinite(pLeft) ? pLeft : fallbackLeft}px`;
+              activeSymbol.doneButton.style.top = `${
+                (Number.isFinite(pTop) ? pTop : fallbackTop) +
+                (activeSymbol.pElement?.scrollHeight || 0) +
+                22
+              }px`;
             }
 
             if (activeSymbol?._dragged) {
@@ -10865,8 +11019,16 @@
             activeSymbol.pElement.style.top = `${parseFloat(activeSymbol.textarea.style.top) - 10 + activeSymbol.textarea.scrollHeight}px`;
           }
           if (activeSymbol.doneButton) {
-            activeSymbol.doneButton.style.left = `${x + activeSymbol.doneButton.offsetX}px`;
-            activeSymbol.doneButton.style.top = `${y + activeSymbol.doneButton.offsetY}px`;
+            const pLeft = parseFloat(activeSymbol.pElement?.style?.left || '');
+            const pTop = parseFloat(activeSymbol.pElement?.style?.top || '');
+            const fallbackLeft = x + activeSymbol.doneButton.offsetX;
+            const fallbackTop = y + activeSymbol.doneButton.offsetY;
+            activeSymbol.doneButton.style.left = `${Number.isFinite(pLeft) ? pLeft : fallbackLeft}px`;
+            activeSymbol.doneButton.style.top = `${
+              (Number.isFinite(pTop) ? pTop : fallbackTop) +
+              (activeSymbol.pElement?.scrollHeight || 0) +
+              22
+            }px`;
           }
 
           const snapped =
@@ -11045,7 +11207,8 @@
 
       function previewQianSnapLink(link) {
         if (!link) return;
-        const touchesTargetFrontBack = link.targetSide === Side.START || link.targetSide === Side.END;
+        const touchesTargetFrontBack =
+          link.targetSide === Side.START || link.targetSide === Side.END;
         if (touchesTargetFrontBack && isQianSymbol(link.target)) {
           addQianPreviewSymbol(link.target);
         }
@@ -12489,10 +12652,13 @@
         const saved = Number.isFinite(Number(paidBalance))
           ? Math.max(0, Math.floor(Number(paidBalance)))
           : 0;
+        const isMobileQuota = window.matchMedia?.(
+          '(max-width: 820px), (pointer: coarse)',
+        )?.matches;
         const dailyLine =
           currentLang === 'zh'
             ? `今日额度&nbsp; ${remaining} / ${limit}`
-            : `Credits today&nbsp; ${remaining} / ${limit}`;
+            : `${isMobileQuota ? 'Credits' : 'Credits today'}&nbsp; ${remaining} / ${limit}`;
         const savedLine =
           saved > 0
             ? `<div style="margin-top:3px;font-size:12px;opacity:.82;">${currentLang === 'zh' ? '永久额度' : 'In reserve'}&nbsp; ${saved.toLocaleString()}</div>`
@@ -12505,15 +12671,12 @@
 
         const t = I18N[currentLang];
         const copyLabel = currentLang === 'zh' ? '复制 UID' : 'copy UID';
-        const isMobileQuota = window.matchMedia?.(
-          '(max-width: 820px), (pointer: coarse)',
-        )?.matches;
         if (isMobileQuota) {
           el.innerHTML = `
             <div class="quota-daily"><strong>${dailyLine}</strong></div>
             ${savedLine}
             <button type="button" id="support-code" class="quota-copy" style="display:block;margin:4px 0 0;padding:0;border:0;background:transparent;text-decoration:underline;cursor:pointer;font-family:inherit;color:inherit;">${copyLabel}</button>
-            <div style="display:flex;gap:9px;margin-top:4px;font-size:12px;">
+            <div class="quota-support-links">
               <a id="kofi-link" href="${kofiUrl}" target="_blank" rel="noopener noreferrer" title="${currentLang === 'zh' ? '作为感谢，每支持 $5 可获得 10,000 点 Ítí 永久额度' : 'As a thank-you, every $5 adds 10,000 permanent Ítí credits'}" style="text-decoration:underline;color:inherit;">${t.supportOnKofi}</a>
               <a id="afdian-link" href="${afdianUrl}" target="_blank" rel="noopener noreferrer" title="${currentLang === 'zh' ? '作为感谢，每发电 ¥35 可获得 10,000 点 Ítí 永久额度' : 'As a thank-you, every ¥35 adds 10,000 permanent Ítí credits'}" style="text-decoration:underline;color:inherit;">${t.supportOnAfdian}</a>
             </div>
@@ -12648,6 +12811,7 @@
 
         function clampDefinitionControlsToViewport() {
           if (!isCoarseMobile) return;
+          if (canvas === craftCanvas()) return;
           const canvasRect = canvas.getBoundingClientRect();
           const zoom = getCanvasZoom(canvas) || 1;
           const viewportLeft = Math.max(0, -canvasRect.left / zoom);
@@ -12917,7 +13081,12 @@
           const approxCharPx = currentLang === 'zh' ? 18 : 9.2;
           const desiredWidth = (currentLang === 'zh' ? 16 : 100) * approxCharPx;
           const availableWidth = Math.max(180, (canvas?.clientWidth || 0) - pElement.x - 24);
-          pElement.style.width = `${Math.max(180, Math.min(desiredWidth, availableWidth))}px`;
+          const textareaWidth = textarea.offsetWidth || input.offsetWidth || 212;
+          const feedbackWidth =
+            currentLang === 'zh'
+              ? textareaWidth
+              : Math.max(180, Math.min(desiredWidth, availableWidth));
+          pElement.style.width = `${feedbackWidth}px`;
           pElement.style.whiteSpace = 'pre-wrap';
           pElement.style.wordBreak = 'normal';
           pElement.style.overflowWrap = 'normal';
@@ -12942,15 +13111,15 @@
           if (tabHeadersActivated[1]) appendToCraftCanvas(outputBox);
           if (tabHeadersActivated[4]) appendToChatCanvas(outputBox);
 
-          const text = formatSymbolOrientationTerms(feedback);
+          const text = normalizeLLMFeedbackText(feedback);
           let index = 0;
           const speed = 10; // Speed of typing in milliseconds
 
-          const maxLineLen = currentLang === 'zh' ? 14 : 24;
+          const maxLineLen = 24;
           let lineIndex = 0;
           let passed;
           function type(onComplete) {
-            const span = document.getElementById('typingText');
+            const span = textSpan;
             if (!span) return;
 
             if (index < text.length) {
@@ -12958,12 +13127,7 @@
               const lastLine = currentText.split('\n').pop() || '';
               const nextChar = text.charAt(index);
 
-              if (currentLang === 'zh') {
-                if (lastLine.length >= maxLineLen) {
-                  span.textContent += '\n';
-                  lineIndex++;
-                }
-              } else {
+              if (currentLang !== 'zh') {
                 const trimmedLine = lastLine.replace(/\s+$/, '');
                 const lineLen = trimmedLine.length;
                 const atWordStart = index === 0 || /\s/.test(text.charAt(index - 1));
@@ -14594,7 +14758,40 @@
         return components;
       }
 
-      function orderLibraryV2Branch(component) {
+      function getLibraryV2NodePosition(node) {
+        const left = Number(node?.left ?? node?.relLeft);
+        const top = Number(node?.top ?? node?.relTop);
+        return {
+          left: Number.isFinite(left) ? left : 0,
+          top: Number.isFinite(top) ? top : 0,
+        };
+      }
+
+      function compareLibraryV2SpatialNodes(leftIndex, rightIndex, symbolNodes) {
+        const left = getLibraryV2NodePosition(symbolNodes[leftIndex]);
+        const right = getLibraryV2NodePosition(symbolNodes[rightIndex]);
+        const horizontal = left.left - right.left;
+        if (Math.abs(horizontal) > 4) return horizontal;
+        return left.top - right.top || leftIndex - rightIndex;
+      }
+
+      function getLibraryV2ComponentPosition(component, symbolNodes) {
+        const positions = component.nodes.map((index) =>
+          getLibraryV2NodePosition(symbolNodes[index]),
+        );
+        return {
+          left:
+            (Math.min(...positions.map((position) => position.left)) +
+              Math.max(...positions.map((position) => position.left))) /
+            2,
+          top:
+            (Math.min(...positions.map((position) => position.top)) +
+              Math.max(...positions.map((position) => position.top))) /
+            2,
+        };
+      }
+
+      function orderLibraryV2Branch(component, symbolNodes) {
         const members = new Set(component.nodes);
         const endpoints = component.nodes.filter(
           (index) =>
@@ -14610,20 +14807,62 @@
           ordered.push(index);
           component.adjacency[index]
             .filter((neighbor) => members.has(neighbor))
-            .sort((a, b) => a - b)
+            .sort((a, b) => compareLibraryV2SpatialNodes(a, b, symbolNodes))
             .forEach(visit);
         }
 
-        visit(Math.min(...pending));
-        component.nodes.forEach(visit);
+        visit([...pending].sort((a, b) => compareLibraryV2SpatialNodes(a, b, symbolNodes))[0]);
+        [...component.nodes]
+          .sort((a, b) => compareLibraryV2SpatialNodes(a, b, symbolNodes))
+          .forEach(visit);
         return ordered;
+      }
+
+      function orderLibraryV2FuseauComponents(componentIndices, serialComponents, symbolNodes) {
+        const entries = componentIndices.map((componentIndex) => {
+          const component = serialComponents[componentIndex];
+          const position = getLibraryV2ComponentPosition(component, symbolNodes);
+          const horizontalCount = component.nodes.filter((nodeIndex) => {
+            const angle = (((Number(symbolNodes[nodeIndex]?.angle) || 0) % 180) + 180) % 180;
+            return Math.abs(angle - 90) >= 0.001;
+          }).length;
+          return {
+            componentIndex,
+            position,
+            horizontalCount,
+            verticalCount: component.nodes.length - horizontalCount,
+          };
+        });
+        const horizontalFuseau =
+          entries.reduce((sum, entry) => sum + entry.horizontalCount, 0) >=
+          entries.reduce((sum, entry) => sum + entry.verticalCount, 0);
+        entries.sort((left, right) => {
+          const stackDelta = horizontalFuseau
+            ? left.position.top - right.position.top
+            : left.position.left - right.position.left;
+          if (Math.abs(stackDelta) > 4) return stackDelta;
+          const runDelta = horizontalFuseau
+            ? left.position.left - right.position.left
+            : left.position.top - right.position.top;
+          return runDelta || left.componentIndex - right.componentIndex;
+        });
+
+        // Read a fuseau from its visible stem outward: center, first below
+        // (or right), first above (or left), second below, second above, …
+        const center = Math.floor((entries.length - 1) / 2);
+        const ordered = [entries[center]];
+        for (let distance = 1; ordered.length < entries.length; distance++) {
+          if (center + distance < entries.length) ordered.push(entries[center + distance]);
+          if (center - distance >= 0) ordered.push(entries[center - distance]);
+        }
+        return ordered.map((entry) => entry.componentIndex);
       }
 
       function libraryV2Element(symbol, index) {
         const pair = LIBRARY_V2_SYMBOL_SPEECH[Number(symbol?.elemIdTrue)];
         const speech = pair?.[Number(!!symbol?.isDynamic)];
         if (!speech) throw new Error(`Unknown V2 symbol at index ${index}`);
-        const angle = ((Number(symbol?.angle) || 0) % 180 + 180) % 180;
+        const angle = (((Number(symbol?.angle) || 0) % 180) + 180) % 180;
         return {
           type: 'element',
           id: `library-${index}`,
@@ -14666,23 +14905,29 @@
             toSide: Side.PAR_BOT,
           })),
           () => true,
-        ).sort(
-          (left, right) =>
-            Math.min(...left.nodes.flatMap((index) => serialComponents[index].nodes)) -
-            Math.min(...right.nodes.flatMap((index) => serialComponents[index].nodes)),
-        );
+        ).sort((left, right) => {
+          const leftNodes = left.nodes.flatMap((index) => serialComponents[index].nodes);
+          const rightNodes = right.nodes.flatMap((index) => serialComponents[index].nodes);
+          const leftFirst = [...leftNodes].sort((a, b) =>
+            compareLibraryV2SpatialNodes(a, b, graph.nodes),
+          )[0];
+          const rightFirst = [...rightNodes].sort((a, b) =>
+            compareLibraryV2SpatialNodes(a, b, graph.nodes),
+          )[0];
+          return compareLibraryV2SpatialNodes(leftFirst, rightFirst, graph.nodes);
+        });
 
         const children = [];
         for (const group of groups) {
-          const orderedComponents = [...group.nodes].sort(
-            (left, right) =>
-              Math.min(...serialComponents[left].nodes) -
-              Math.min(...serialComponents[right].nodes),
+          const orderedComponents = orderLibraryV2FuseauComponents(
+            group.nodes,
+            serialComponents,
+            graph.nodes,
           );
           const branches = orderedComponents.map((componentIndex) => ({
             type: 'series',
-            children: orderLibraryV2Branch(serialComponents[componentIndex]).map((index) =>
-              libraryV2Element(graph.nodes[index], index),
+            children: orderLibraryV2Branch(serialComponents[componentIndex], graph.nodes).map(
+              (index) => libraryV2Element(graph.nodes[index], index),
             ),
           }));
           if (branches.length > 1) {
@@ -14740,11 +14985,7 @@
         );
       }
 
-      function serializeLibraryV2Series(
-        series,
-        insideBranch = false,
-        separatePlainPairs = false,
-      ) {
+      function serializeLibraryV2Series(series, insideBranch = false, separatePlainPairs = false) {
         const rendered = series.children.map((child, index) => {
           if (child.type !== 'parallel') return serializeLibraryV2Node(child);
           const previous = index ? series.children[index - 1] : null;
@@ -14775,8 +15016,7 @@
           }
           const previousIsPlain = index > 0 && series.children[index - 1].type !== 'parallel';
           const followingIsPlain =
-            index + 1 < series.children.length &&
-            series.children[index + 1].type !== 'parallel';
+            index + 1 < series.children.length && series.children[index + 1].type !== 'parallel';
           if (previousIsPlain) {
             if (!text.startsWith('e')) throw new Error('Missing V2 fuseau opening');
             current += 'e';
@@ -15142,15 +15382,20 @@
         const { word, definition, primitiveSpeech } = getLibraryTreeCardContent(node);
         const serialization = getLibraryTreeSerialization(node);
         const serializationText = getLibraryTreeSerializationPlainText(serialization);
+        const isBasicCard = basicNodeIds?.has?.(node.id);
         const longest = Math.max(
           word.length,
           definition.length || 0,
           primitiveSpeech.length || 0,
           serializationText.length || 0,
         );
-        const width = clamp(200 + Math.max(0, longest - 14) * 5.5, 200, 420);
+        const maxWidth = isBasicCard ? (isCoarseMobile ? 340 : 320) : 420;
+        const width = clamp(200 + Math.max(0, longest - 14) * 5.5, 200, maxWidth);
         const usableTextWidth = Math.max(120, width - 86);
-        const charsPerLine = Math.max(10, Math.floor(usableTextWidth / (isCoarseMobile ? 10.5 : 7.2)));
+        const charsPerLine = Math.max(
+          10,
+          Math.floor(usableTextWidth / (isCoarseMobile ? 10.5 : 7.2)),
+        );
         const definitionLines = definition
           ? Math.max(1, Math.ceil(definition.length / charsPerLine))
           : 0;
@@ -15295,7 +15540,14 @@
         }
       }
 
-      function repackLibraryTreeCardsFromDom(sortedLevels, columns, positions, sizes, rowGap, startY) {
+      function repackLibraryTreeCardsFromDom(
+        sortedLevels,
+        columns,
+        positions,
+        sizes,
+        rowGap,
+        startY,
+      ) {
         let maxBottom = 0;
         for (const level of sortedLevels) {
           let currentY = startY;
@@ -15307,7 +15559,9 @@
             const pos = positions.get(node.id);
             if (!card || !size || !pos) continue;
 
-            const measuredHeight = Math.ceil(card.scrollHeight || card.offsetHeight || size.height);
+            const measuredHeight = Math.ceil(
+              card.scrollHeight || card.offsetHeight || size.height,
+            );
             const height = Math.max(size.height, measuredHeight + (isCoarseMobile ? 12 : 0));
             size.height = height;
             pos.y = currentY;
@@ -16973,6 +17227,7 @@
         let minIslandTop = Infinity;
         let maxIslandRight = -Infinity;
         let maxIslandBottom = -Infinity;
+        const islandRects = [];
 
         worldData.islands.forEach((islandData) => {
           const islandSVG = createIslandSVG(islandData);
@@ -16990,6 +17245,24 @@
           minIslandTop = Math.min(minIslandTop, islandTop);
           maxIslandRight = Math.max(maxIslandRight, islandLeft + islandWidth);
           maxIslandBottom = Math.max(maxIslandBottom, islandTop + islandHeight);
+          islandRects.push({
+            left: islandLeft,
+            top: islandTop,
+            right: islandLeft + islandWidth,
+            bottom: islandTop + islandHeight,
+          });
+        });
+
+        renderDecorativeReefs(content, oceanWidth, oceanHeight, {
+          left: minIslandLeft,
+          top: minIslandTop,
+          right: maxIslandRight,
+          bottom: maxIslandBottom,
+          rects: islandRects,
+          layoutW,
+          layoutH,
+          oceanPadX,
+          oceanPadY,
         });
 
         initFoam(world, content, 110);
@@ -17008,6 +17281,27 @@
 
         worldRendered = true;
         renderWorldPresence(currentWorldPresenceEntries);
+      }
+
+      function renderDecorativeReefs(content, oceanWidth, oceanHeight, islandBounds) {
+        if (!content) return;
+        content.querySelectorAll('.decorative-reef').forEach((el) => el.remove());
+
+        const reefsFromData = Array.isArray(worldData?.reefs) ? worldData.reefs : [];
+        reefsFromData.forEach((reefData) => {
+          const reef = createIslandSVG(reefData);
+          if (!reef) return;
+
+          reef.classList.remove('island');
+          reef.classList.add('decorative-reef');
+          reef.removeAttribute('data-island-id');
+          const reefScale = Number.isFinite(reefData.scale) ? reefData.scale : 0.62;
+          reef.style.transform = `scale(${reefScale})`;
+          reef.style.transformOrigin = 'top left';
+          reef.style.left = `${islandBounds.oceanPadX + reefData.x * islandBounds.layoutW}px`;
+          reef.style.top = `${islandBounds.oceanPadY + reefData.y * islandBounds.layoutH}px`;
+          content.appendChild(reef);
+        });
       }
 
       function createIslandSVG(islandData) {
@@ -17274,6 +17568,34 @@
         svg.setAttribute('width', width * blockSize + maxStroke);
         svg.setAttribute('height', height * blockSize + maxStroke);
 
+        const shadow = document.createElementNS(svgNS, 'path');
+        shadow.setAttribute('d', d);
+        shadow.setAttribute('transform', `translate(${pad + 7},${pad + 8})`);
+        shadow.classList.add('island-shadow');
+
+        const waterline = document.createElementNS(svgNS, 'path');
+        waterline.setAttribute('d', d);
+        waterline.setAttribute('transform', `translate(${pad},${pad + 1})`);
+        waterline.classList.add('island-waterline');
+
+        const waterDash = document.createElementNS(svgNS, 'animate');
+        waterDash.setAttribute('attributeName', 'stroke-dashoffset');
+        waterDash.setAttribute('values', '0;21;0');
+        waterDash.setAttribute('dur', `${3.4 + Math.random() * 1.2}s`);
+        waterDash.setAttribute('repeatCount', 'indefinite');
+        waterline.appendChild(waterDash);
+
+        const waterRise = document.createElementNS(svgNS, 'animateTransform');
+        waterRise.setAttribute('attributeName', 'transform');
+        waterRise.setAttribute('type', 'translate');
+        waterRise.setAttribute(
+          'values',
+          `${pad},${pad + 1.8}; ${pad},${pad - 1.2}; ${pad},${pad + 1.8}`,
+        );
+        waterRise.setAttribute('dur', `${4.2 + Math.random() * 1.4}s`);
+        waterRise.setAttribute('repeatCount', 'indefinite');
+        waterline.appendChild(waterRise);
+
         // 选中描边（更粗、不同颜色），默认隐藏
         const highlight = document.createElementNS(svgNS, 'path');
         highlight.setAttribute('d', d);
@@ -17297,6 +17619,8 @@
         base.setAttribute('transform', `translate(${pad},${pad})`);
         base.classList.add('island-base');
 
+        svg.appendChild(shadow);
+        svg.appendChild(waterline);
         svg.appendChild(highlight);
         svg.appendChild(base);
 
@@ -17483,7 +17807,7 @@
 
       const ISLAND_INFO = {
         Kimmoke: {
-          zh: '极北之地，中央沉着一座墨池，池底深处，零星几座孤山冒着冷冽的火星。静谧之中，暗藏生机。',
+          zh: '正北之地，中央沉着一座墨池，池底深处，零星几座孤山冒着冷冽的火星。静谧之中，暗藏生机。',
           en: 'The Far North. At its center lies a pool of ink; deep within the pit, a few lonely peaks spit frigid sparks. Amidst the silence, a hidden start breathes.',
         },
         Uzel: {
