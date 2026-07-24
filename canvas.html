@@ -1893,13 +1893,18 @@
           position: fixed !important;
           left: 10px !important;
           right: 10px !important;
-          bottom: 10px !important;
+          bottom: var(--mobile-keyboard-bottom, 10px) !important;
           width: calc(100vw - 20px) !important;
           max-width: calc(100vw - 20px) !important;
           z-index: 100001;
           background: rgba(255, 255, 255, 0.94);
           border: 2px solid rgba(0, 0, 0, 0.22);
           border-radius: 10px;
+        }
+
+        .typing-effect p {
+          font-size: 13px !important;
+          line-height: 1.35 !important;
         }
       }
 
@@ -4281,9 +4286,22 @@
         }, 900);
       }
 
+      function updateMobileKeyboardBottomInset() {
+        if (!isCoarseMobile) return;
+        const vv = window.visualViewport;
+        const keyboardInset = vv
+          ? Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
+          : 0;
+        document.documentElement.style.setProperty(
+          '--mobile-keyboard-bottom',
+          `${Math.round(keyboardInset + 10)}px`,
+        );
+      }
+
       function setMobileKeyboardMode(on) {
         if (!isCoarseMobile) return;
         if (on) {
+          updateMobileKeyboardBottomInset();
           mobileKeyboardBaselineHeight = Math.max(
             mobileKeyboardBaselineHeight || 0,
             window.visualViewport?.height || window.innerHeight,
@@ -4292,6 +4310,7 @@
         }
         document.body.classList.toggle('mobile-keyboard-open', !!on);
         if (!on) {
+          document.documentElement.style.removeProperty('--mobile-keyboard-bottom');
           if (isMobileKeyboardTextTarget(document.activeElement)) {
             document.activeElement.blur();
           }
@@ -4352,6 +4371,7 @@
           ) {
             markMobileKeyboardPending(e.target);
             setMobileKeyboardMode(true);
+            updateMobileKeyboardBottomInset();
             keepFocusedCanvasInputVisible();
             window.setTimeout(keepFocusedCanvasInputVisible, 260);
             window.setTimeout(keepFocusedCanvasInputVisible, 520);
@@ -4400,6 +4420,7 @@
 
       function handleMobileViewportMaybeRestored() {
         if (!document.body.classList.contains('mobile-keyboard-open')) return;
+        updateMobileKeyboardBottomInset();
         const viewportHeight = window.visualViewport?.height || window.innerHeight;
         const baseline = Math.max(mobileKeyboardBaselineHeight || 0, window.innerHeight || 0);
         if (viewportHeight > baseline * 0.88) {
@@ -5914,31 +5935,17 @@
         const maxTop = Math.max(0, tab.scrollHeight - tab.clientHeight);
         const miniWorldW = worldW * scale;
         const miniWorldH = worldH * scale;
-        const miniViewW = (tab.clientWidth / zoom) * scale;
-        const miniViewH = (tab.clientHeight / zoom) * scale;
-        const miniTravelW = Math.max(0, miniWorldW - miniViewW);
-        const miniTravelH = Math.max(0, miniWorldH - miniViewH);
-        const miniCenterMinX = offsetX + miniViewW / 2;
-        const miniCenterMinY = offsetY + miniViewH / 2;
-        const miniCenterMaxX = offsetX + miniWorldW - miniViewW / 2;
-        const miniCenterMaxY = offsetY + miniWorldH - miniViewH / 2;
-        const clampedX = Math.max(miniCenterMinX, Math.min(miniCenterMaxX, localX));
-        const clampedY = Math.max(miniCenterMinY, Math.min(miniCenterMaxY, localY));
-        const ratioX = miniTravelW > 0 ? (clampedX - miniCenterMinX) / miniTravelW : 0;
-        const ratioY = miniTravelH > 0 ? (clampedY - miniCenterMinY) / miniTravelH : 0;
-        let nextLeft = ratioX * maxLeft;
-        let nextTop = ratioY * maxTop;
+        const edgeSnap = Math.max(10, Math.min(24, miniWorldW * 0.08));
+        const worldX = minX + (localX - offsetX) / scale;
+        const worldY = minY + (localY - offsetY) / scale;
+        let nextLeft = worldX * zoom - tab.clientWidth / 2;
+        let nextTop = worldY * zoom - tab.clientHeight / 2;
 
-        // If the minimap world is larger than the actual scrollable extent because of
-        // symbol padding, fall back to canvas coordinates so empty padded regions remain reachable.
-        if (maxLeft && miniTravelW === 0) {
-          const worldX = minX + (localX - offsetX) / scale;
-          nextLeft = worldX * zoom - tab.clientWidth / 2;
-        }
-        if (maxTop && miniTravelH === 0) {
-          const worldY = minY + (localY - offsetY) / scale;
-          nextTop = worldY * zoom - tab.clientHeight / 2;
-        }
+        if (localX <= offsetX + edgeSnap) nextLeft = 0;
+        if (localX >= offsetX + miniWorldW - edgeSnap) nextLeft = maxLeft;
+        if (localY <= offsetY + edgeSnap) nextTop = 0;
+        if (localY >= offsetY + miniWorldH - edgeSnap) nextTop = maxTop;
+
         nextLeft = Math.max(0, Math.min(maxLeft, nextLeft));
         nextTop = Math.max(0, Math.min(maxTop, nextTop));
 
