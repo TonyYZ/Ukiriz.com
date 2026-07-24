@@ -1513,7 +1513,7 @@
           height: 76px;
           padding: 0;
           flex-direction: row;
-          justify-content: space-around;
+          justify-content: stretch;
           align-items: center;
           z-index: 99999;
         }
@@ -1523,7 +1523,9 @@
         }
 
         .tab {
-          width: 20vw;
+          flex: 1 1 0;
+          width: auto;
+          min-width: 0;
           height: 76px;
           line-height: 76px;
           margin: 0;
