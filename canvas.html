@@ -1848,6 +1848,19 @@
           display: none !important;
         }
 
+        body:has(.label-input:focus) .vertical-bar,
+        body:has(.label-textarea:focus) .vertical-bar,
+        body:has(.label-input:focus) #craftMinimap,
+        body:has(.label-textarea:focus) #craftMinimap,
+        body:has(.label-input:focus) #chatMinimap,
+        body:has(.label-textarea:focus) #chatMinimap,
+        body:has(.label-input:focus) #tutorialOverlay,
+        body:has(.label-textarea:focus) #tutorialOverlay,
+        body:has(.label-input:focus) .wheel,
+        body:has(.label-textarea:focus) .wheel {
+          display: none !important;
+        }
+
         body.mobile-keyboard-open .content {
           height: 100dvh;
           padding-bottom: 0;
@@ -1990,7 +2003,9 @@
           abstract symbols to probe the meaning of life.<br />
           I am not going to hand you a complete symbolic language. Instead, I want to help you
           build one for yourself from scratch, step by step, almost like building with blocks.
-          At the same time, you will also train and strengthen your own intuition.
+          At the same time, you will also train and strengthen your own intuition. <br />
+          After crafting out words, you can try to respond to the questions posted in <b>World</b>.
+          You can see others' answers there as well!
           </p>
 
           <p>
@@ -2105,7 +2120,8 @@
 
                   <p>
                   我想借这个网站探索占卜的原理。它是个符号实验游戏，让你成为“占卜师”……也就是用抽象符号去窥探生活意义的人。<br>
-                  我不会直接教你一整套符号语言；相反，我会帮你从零开始把它一步步自己造出来，就像堆积木。与此同时，你也会训练和强化自己的直觉。
+                  我不会直接教你一整套符号语言；相反，我会帮你从零开始把它一步步自己造出来，就像堆积木。与此同时，你也会训练和强化自己的直觉。<br>
+                  当你造出词语以后，你可以试着用它回答<b>世界</b>里贴的问题。在那儿你还能看到别人的回答噢！
                   </p>
 
                   <p>
@@ -3753,11 +3769,14 @@
           : isCompleted
             ? window.innerWidth - bubbleRect.width - 24
             : left;
-        const bubbleTop = clamp(
-          top + height + 12,
-          12,
-          window.innerHeight - bubbleRect.height - 12,
-        );
+        const mobileBottomReserve = isCoarseMobile ? 92 : 12;
+        const maxBubbleTop = Math.max(12, window.innerHeight - mobileBottomReserve - bubbleRect.height);
+        const belowTop = top + height + 12;
+        const aboveTop = top - bubbleRect.height - 12;
+        const bubbleTop =
+          belowTop <= maxBubbleTop
+            ? clamp(belowTop, 12, maxBubbleTop)
+            : clamp(aboveTop, 12, maxBubbleTop);
         els.bubble.style.left = `${clamp(bubbleLeft, 12, window.innerWidth - bubbleRect.width - 12)}px`;
         els.bubble.style.top = `${bubbleTop}px`;
 
@@ -4217,7 +4236,9 @@
       function isEditingDefinitionText() {
         const active = document.activeElement;
         return (
-          active?.matches?.('.label-input, .label-textarea') && !active.readOnly && !active.disabled
+          active?.matches?.('.label-input, .label-textarea') &&
+          !active.readOnly &&
+          !active.disabled
         );
       }
 
@@ -4254,6 +4275,14 @@
       document.addEventListener(
         'pointerdown',
         (e) => {
+          if (
+            e.target?.matches?.('.label-input, .label-textarea') &&
+            !e.target.readOnly &&
+            !e.target.disabled
+          ) {
+            setMobileKeyboardMode(true);
+            return;
+          }
           if (!document.body.classList.contains('mobile-keyboard-open')) return;
           if (e.target?.closest?.('.label-input, .label-textarea')) return;
           if (isEditingDefinitionText()) document.activeElement.blur();
@@ -5167,7 +5196,10 @@
             '.symbol, .symbol-label, .label-input, .label-textarea, .submit-button, .typing-effect p',
           ),
         ).filter((el) => {
-          if (el.classList?.contains('annotation-bubble') && !el.classList?.contains('annotation-visible')) {
+          if (
+            el.classList?.contains('annotation-bubble') &&
+            !el.classList?.contains('annotation-visible')
+          ) {
             return false;
           }
           const rect = el.getBoundingClientRect();
@@ -5277,8 +5309,14 @@
 
         const worldX = minX + (localX - offsetX) / scale;
         const worldY = minY + (localY - offsetY) / scale;
-        tab.scrollLeft = Math.max(0, Math.min(tab.scrollWidth - tab.clientWidth, worldX * zoom - tab.clientWidth / 2));
-        tab.scrollTop = Math.max(0, Math.min(tab.scrollHeight - tab.clientHeight, worldY * zoom - tab.clientHeight / 2));
+        tab.scrollLeft = Math.max(
+          0,
+          Math.min(tab.scrollWidth - tab.clientWidth, worldX * zoom - tab.clientWidth / 2),
+        );
+        tab.scrollTop = Math.max(
+          0,
+          Math.min(tab.scrollHeight - tab.clientHeight, worldY * zoom - tab.clientHeight / 2),
+        );
         scheduleCraftMiniMapUpdate();
       }
 
@@ -15919,7 +15957,13 @@
         const word = card.querySelector('.library-tree-card-word')?.textContent?.trim() || '';
         const definition =
           card.querySelector('.library-tree-card-definition')?.textContent?.trim() || '';
-        const text = definition ? `${word}: ${definition}` : word;
+        const serializationLines = Array.from(
+          card.querySelectorAll('.library-tree-card-serialization'),
+        )
+          .map((el) => el.textContent?.replace(/\s+/g, ' ').trim())
+          .filter(Boolean);
+        const mainText = definition ? `${word}: ${definition}` : word;
+        const text = [mainText, ...serializationLines].filter(Boolean).join('\n');
         if (!text) return false;
         try {
           await navigator.clipboard.writeText(text);
