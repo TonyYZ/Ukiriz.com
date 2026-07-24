@@ -1839,6 +1839,18 @@
         body:not(.home-tab-active) #top-right-ui {
           display: none;
         }
+
+        body.mobile-keyboard-open .vertical-bar,
+        body.mobile-keyboard-open #craftMinimap,
+        body.mobile-keyboard-open #chatMinimap,
+        body.mobile-keyboard-open #tutorialOverlay {
+          display: none !important;
+        }
+
+        body.mobile-keyboard-open .content {
+          height: 100dvh;
+          padding-bottom: 0;
+        }
       }
 
       @media (max-width: 480px) {
@@ -4188,6 +4200,48 @@
       var craftMiniMapFrame = 0;
       var craftMiniMapTransform = null;
       var craftMiniMapDragging = false;
+
+      function setMobileKeyboardMode(on) {
+        if (!isCoarseMobile) return;
+        document.body.classList.toggle('mobile-keyboard-open', !!on);
+        if (!on) {
+          requestAnimationFrame(() => {
+            updateTutorialUi?.();
+            scheduleCraftMiniMapUpdate?.();
+            scheduleChatMiniMapUpdate?.();
+          });
+        }
+      }
+
+      document.addEventListener(
+        'focusin',
+        (e) => {
+          if (
+            e.target?.matches?.('.label-input, .label-textarea') &&
+            !e.target.readOnly &&
+            !e.target.disabled
+          ) {
+            setMobileKeyboardMode(true);
+          }
+        },
+        true,
+      );
+
+      document.addEventListener(
+        'focusout',
+        (e) => {
+          if (!e.target?.matches?.('.label-input, .label-textarea')) return;
+          setTimeout(() => {
+            const active = document.activeElement;
+            const stillEditing =
+              active?.matches?.('.label-input, .label-textarea') &&
+              !active.readOnly &&
+              !active.disabled;
+            if (!stillEditing) setMobileKeyboardMode(false);
+          }, 120);
+        },
+        true,
+      );
 
       document.addEventListener('keydown', async (e) => {
         if (!(e.ctrlKey || e.metaKey)) return;
