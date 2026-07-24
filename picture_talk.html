@@ -643,6 +643,9 @@
           connecting: 'connecting…',
           unavailable: 'Turns: unavailable',
           offline: 'Turns: offline',
+          regionBadge: 'AI unavailable here',
+          regionUnavailable:
+            'Picture Talk is currently unavailable in your region because of restrictions imposed by its underlying AI service.',
           listening: 'Listening to your picture…',
           sending: 'Sending your picture…',
           received: 'Reply received. Add something and continue.',
@@ -701,12 +704,14 @@
           connecting: '连接中…',
           unavailable: '次数暂不可用',
           offline: '次数状态离线',
+          regionBadge: '所在地区暂不可用',
+          regionUnavailable: '由于底层 AI 服务的地区限制，涂鸦笔谈目前无法在你所在的地区使用。',
           listening: '正在聆听你的图画…',
           sending: '正在发送你的图画…',
-          received: '回应已到达。再添上一笔，继续对谈吧。',
+          received: '回复已送达。再添上一笔，继续对谈吧。',
           yourTurn: '你的这一轮',
           aiReply: 'AI 回应',
-          imageError: '无法显示这次图画回应。',
+          imageError: '无法显示这次回复。',
           requestFailed: '这张图暂时没能发送出去。',
           identityUnavailable: '身份连接不可用',
           identityError: '无法连接到你的 Ukiriz 身份',
@@ -719,6 +724,7 @@
       let currentLang = localStorage.getItem('lang') === 'zh' ? 'zh' : 'en';
       let lastQuotaData = null;
       let currentStatusKey = 'intro';
+      let regionUnavailable = false;
       const sketchNameKey = 'picture-talk.sketch-name';
       const savedSketchName = localStorage.getItem(sketchNameKey);
       if (savedSketchName) $('#sketch-name').value = savedSketchName;
@@ -801,7 +807,8 @@
         if (currentStatusKey) $('#status').textContent = t[currentStatusKey];
         $('#lang-en').classList.toggle('active', currentLang === 'en');
         $('#lang-zh').classList.toggle('active', currentLang === 'zh');
-        if (lastQuotaData) updateQuotaBadge(lastQuotaData);
+        if (regionUnavailable) showRegionUnavailable();
+        else if (lastQuotaData) updateQuotaBadge(lastQuotaData);
       }
 
       $('#lang-en').onclick = () => setLang('en');
@@ -847,6 +854,7 @@
 
       function updateQuotaBadge(data) {
         if (!Number.isFinite(data?.remaining) || !Number.isFinite(data?.limit)) return;
+        regionUnavailable = false;
         lastQuotaData = data;
         const t = I18N[currentLang];
         const paidBalance = Number.isFinite(Number(data.paidBalance))
@@ -866,6 +874,17 @@
             : `${data.used} free turn${data.used === 1 ? '' : 's'} used today · ${paidBalance} permanent turn${paidBalance === 1 ? '' : 's'} saved`;
       }
 
+      function showRegionUnavailable() {
+        regionUnavailable = true;
+        remainingTurns = 0;
+        currentStatusKey = 'regionUnavailable';
+        const t = I18N[currentLang];
+        $('#quota-badge').textContent = t.regionBadge;
+        $('#quota-badge').title = t.regionUnavailable;
+        $('#status').textContent = t.regionUnavailable;
+        $('#submit').disabled = true;
+      }
+
       async function refreshQuota() {
         try {
           const response = await fetch(API, {
@@ -875,6 +894,7 @@
           });
           const data = await response.json();
           if (response.ok && data.ok) updateQuotaBadge(data);
+          else if (data.code === 'REGION_UNAVAILABLE') showRegionUnavailable();
           else $('#quota-badge').textContent = I18N[currentLang].unavailable;
         } catch {
           $('#quota-badge').textContent = I18N[currentLang].offline;
@@ -1160,6 +1180,10 @@
             body: JSON.stringify({ type: 'pictureTalk', uid, image: inputImage, mode }),
           });
           const data = await response.json();
+          if (data.code === 'REGION_UNAVAILABLE') {
+            showRegionUnavailable();
+            return;
+          }
           updateQuotaBadge(data);
           if (!response.ok || !data.ok)
             throw new Error(data.error || data.message || I18N[currentLang].requestFailed);
@@ -1169,7 +1193,7 @@
           currentStatusKey = null;
           status.textContent = currentLang === 'zh' ? I18N.zh.requestFailed : error.message;
         } finally {
-          button.disabled = remainingTurns < 1;
+          button.disabled = regionUnavailable || remainingTurns < 1;
           $('#busy').classList.remove('show');
         }
       };
