@@ -672,11 +672,11 @@
       }
 
       .symbol-label[data-inspection-label='true'] {
-        z-index: 20;
+        z-index: 44;
       }
 
       .symbol-label[data-inspection-label='true'].active {
-        z-index: 21;
+        z-index: 45;
       }
 
       .symbol-label.user-created-label {
@@ -694,7 +694,7 @@
         font-size: 16px;
         font-family: inherit; /* Set font to match labels */
         border-radius: 5px;
-        z-index: 18;
+        z-index: 42;
         pointer-events: auto;
       }
 
@@ -711,7 +711,7 @@
         border-radius: 5px;
         resize: none;
         overflow: hidden;
-        z-index: 18;
+        z-index: 42;
         pointer-events: auto;
       }
 
@@ -736,7 +736,7 @@
         height: 27px;
         line-height: 27px;
         text-align: center;
-        z-index: 19;
+        z-index: 43;
         pointer-events: auto;
       }
 
@@ -753,6 +753,7 @@
         white-space: pre-line;
         line-height: 1.5; /* Adjusts spacing for smooth movement */
         overflow: hidden;
+        z-index: 42;
       }
 
       @keyframes blink {
@@ -3115,6 +3116,7 @@
               : 'Now you know what these buttons do: they change the symbol state and refresh its meanings.',
             advanceWhen: () => tutorialLevel1ToolClicks.rotate && tutorialLevel1ToolClicks.dot,
             resetLevel1Tools: true,
+            mobileBubblePlacement: 'bottom',
             lockCraftSelection: true,
             lockCraftInsightOn: true,
             lockCraftRemove: true,
@@ -3769,12 +3771,16 @@
           : isCompleted
             ? window.innerWidth - bubbleRect.width - 24
             : left;
-        const mobileBottomReserve = isCoarseMobile ? 92 : 12;
+        const mobileBottomReserve = isCoarseMobile ? 128 : 12;
         const maxBubbleTop = Math.max(12, window.innerHeight - mobileBottomReserve - bubbleRect.height);
         const belowTop = top + height + 12;
         const aboveTop = top - bubbleRect.height - 12;
-        const bubbleTop =
-          belowTop <= maxBubbleTop
+        const preferMobileBottom =
+          isCoarseMobile &&
+          (step.mobileBubblePlacement === 'bottom' || height > window.innerHeight * 0.58);
+        const bubbleTop = preferMobileBottom
+          ? maxBubbleTop
+          : belowTop <= maxBubbleTop
             ? clamp(belowTop, 12, maxBubbleTop)
             : clamp(aboveTop, 12, maxBubbleTop);
         els.bubble.style.left = `${clamp(bubbleLeft, 12, window.innerWidth - bubbleRect.width - 12)}px`;
