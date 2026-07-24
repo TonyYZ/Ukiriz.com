@@ -4142,6 +4142,8 @@
         updateTutorialUi?.();
       });
 
+      var isCoarseMobile = window.matchMedia?.('(max-width: 820px), (pointer: coarse)')?.matches;
+
       document.addEventListener('keydown', async (e) => {
         if (!(e.ctrlKey || e.metaKey)) return;
         if (e.altKey) return;
@@ -5006,9 +5008,9 @@
         };
       }
 
-      let chatMiniMapFrame = 0;
-      let chatMiniMapTransform = null;
-      let chatMiniMapDragging = false;
+      var chatMiniMapFrame = 0;
+      var chatMiniMapTransform = null;
+      var chatMiniMapDragging = false;
 
       function getChatMiniMapItems() {
         const canvas = chatCanvas();
@@ -7185,7 +7187,7 @@
       const centerX = 450; // Center of the canvas (half of canvas width)
       const centerY = 200; // Center of the canvas (half of canvas height)
 
-      const isCoarseMobile = window.matchMedia?.('(max-width: 820px), (pointer: coarse)')?.matches;
+      isCoarseMobile = window.matchMedia?.('(max-width: 820px), (pointer: coarse)')?.matches;
       const symbolScale = isCoarseMobile ? 0.6 : 0.75;
       const symbolWidth = 156;
       const symbolHeight = 67;
