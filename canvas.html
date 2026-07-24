@@ -1888,7 +1888,7 @@
         }
 
         body.mobile-keyboard-open #chatControls input:not(:focus):not(.mobile-keyboard-pending) {
-          display: none !important;
+          visibility: hidden !important;
         }
 
         body.mobile-keyboard-open #symbol-message-input:focus,
@@ -1896,11 +1896,14 @@
           position: fixed !important;
           left: 10px !important;
           right: 10px !important;
-          top: var(--mobile-keyboard-input-top, 52vh) !important;
+          top: var(--mobile-keyboard-input-top, 44vh) !important;
           bottom: auto !important;
           width: calc(100vw - 20px) !important;
           max-width: calc(100vw - 20px) !important;
           z-index: 100001;
+          opacity: 1 !important;
+          visibility: visible !important;
+          display: block !important;
           background: rgba(255, 255, 255, 0.94);
           border: 2px solid rgba(0, 0, 0, 0.22);
           border-radius: 10px;
@@ -4295,7 +4298,7 @@
         const vv = window.visualViewport;
         const visibleBottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
         const inputHeight = 44;
-        const safeTop = window.innerHeight * 0.52;
+        const safeTop = window.innerHeight * 0.44;
         const requestedTop = visibleBottom - inputHeight - 10;
         document.documentElement.style.setProperty(
           '--mobile-keyboard-input-top',
@@ -4343,6 +4346,10 @@
 
       function settleMobileKeyboardUi() {
         updateMobileKeyboardInputTop();
+        const active = document.activeElement;
+        if (active?.matches?.('#symbol-message-input, #message-input')) {
+          active.scrollIntoView?.({ block: 'center', inline: 'nearest' });
+        }
         keepFocusedCanvasInputVisible();
       }
 
@@ -5568,6 +5575,28 @@
         });
       }
 
+      function getChatVisibleCanvasBounds() {
+        const tab = tab4 || document.getElementById('tab4');
+        const surface = chatCanvas();
+        if (!tab || !surface) return null;
+        const zoom = getCanvasZoom(surface) || 1;
+        const tabRect = tab.getBoundingClientRect();
+        const surfaceRect = surface.getBoundingClientRect();
+        const left = (tabRect.left - surfaceRect.left) / zoom;
+        const top = (tabRect.top - surfaceRect.top) / zoom;
+        const right = (tabRect.right - surfaceRect.left) / zoom;
+        const bottom = (tabRect.bottom - surfaceRect.top) / zoom;
+        return {
+          left,
+          top,
+          right,
+          bottom,
+          width: right - left,
+          height: bottom - top,
+          zoom,
+        };
+      }
+
       let annotationLinkFrame = 0;
       function scheduleAnnotationLinksUpdate() {
         if (annotationLinkFrame) return;
@@ -5868,10 +5897,12 @@
         const height = canvas.height;
         const inset = 8;
         const items = getChatMiniMapItems();
-        const contentLeft = tab.scrollLeft / zoom;
-        const contentTop = tab.scrollTop / zoom;
-        const contentRight = contentLeft + tab.clientWidth / zoom;
-        const contentBottom = contentTop + tab.clientHeight / zoom;
+        const visibleBounds = getChatVisibleCanvasBounds();
+        if (!visibleBounds) return;
+        const contentLeft = visibleBounds.left;
+        const contentTop = visibleBounds.top;
+        const contentRight = visibleBounds.right;
+        const contentBottom = visibleBounds.bottom;
 
         let minX = contentLeft;
         let minY = contentTop;
@@ -5898,8 +5929,8 @@
         maxX = Math.min(worldMaxX, maxX + pad);
         maxY = Math.min(worldMaxY, maxY + pad);
 
-        const worldW = Math.max(tab.clientWidth / zoom, maxX - minX, 1);
-        const worldH = Math.max(tab.clientHeight / zoom, maxY - minY, 1);
+        const worldW = Math.max(visibleBounds.width, maxX - minX, 1);
+        const worldH = Math.max(visibleBounds.height, maxY - minY, 1);
         const scale = Math.min((width - inset * 2) / worldW, (height - inset * 2) / worldH);
         const offsetX = (width - worldW * scale) / 2;
         const offsetY = (height - worldH * scale) / 2;
@@ -5935,8 +5966,8 @@
 
         const viewX = offsetX + (contentLeft - minX) * scale;
         const viewY = offsetY + (contentTop - minY) * scale;
-        const viewW = (tab.clientWidth / zoom) * scale;
-        const viewH = (tab.clientHeight / zoom) * scale;
+        const viewW = visibleBounds.width * scale;
+        const viewH = visibleBounds.height * scale;
         viewport.style.left = `${viewX}px`;
         viewport.style.top = `${viewY}px`;
         viewport.style.width = `${Math.max(10, viewW)}px`;
@@ -5949,6 +5980,8 @@
         const surface = chatCanvas();
         if (!canvas || !tab || !surface || !chatMiniMapTransform) return;
         const zoom = getCanvasZoom(surface) || 1;
+        const visibleBounds = getChatVisibleCanvasBounds();
+        if (!visibleBounds) return;
 
         const rect = canvas.getBoundingClientRect();
         const localX = clientX - rect.left;
@@ -5960,8 +5993,8 @@
         const maxTop = Math.max(0, tab.scrollHeight - tab.clientHeight);
         const miniWorldW = worldW * scale;
         const miniWorldH = worldH * scale;
-        const miniViewW = (tab.clientWidth / zoom) * scale;
-        const miniViewH = (tab.clientHeight / zoom) * scale;
+        const miniViewW = visibleBounds.width * scale;
+        const miniViewH = visibleBounds.height * scale;
         const centerX = localX - (chatMiniMapDragOffset?.x || 0);
         const centerY = localY - (chatMiniMapDragOffset?.y || 0);
         const centerMinX = offsetX + miniViewW / 2;
@@ -5972,8 +6005,10 @@
         const clampedCenterY = Math.max(centerMinY, Math.min(centerMaxY, centerY));
         const worldX = minX + (clampedCenterX - offsetX) / scale;
         const worldY = minY + (clampedCenterY - offsetY) / scale;
-        let nextLeft = worldX * zoom - tab.clientWidth / 2;
-        let nextTop = worldY * zoom - tab.clientHeight / 2;
+        const desiredLeft = worldX - visibleBounds.width / 2;
+        const desiredTop = worldY - visibleBounds.height / 2;
+        let nextLeft = tab.scrollLeft + (desiredLeft - visibleBounds.left) * zoom;
+        let nextTop = tab.scrollTop + (desiredTop - visibleBounds.top) * zoom;
         const edgeSnap = 16;
 
         if (clampedCenterX <= centerMinX + 0.5) nextLeft = 0;
