@@ -1843,7 +1843,8 @@
         body.mobile-keyboard-open .vertical-bar,
         body.mobile-keyboard-open #craftMinimap,
         body.mobile-keyboard-open #chatMinimap,
-        body.mobile-keyboard-open #tutorialOverlay {
+        body.mobile-keyboard-open #tutorialOverlay,
+        body.mobile-keyboard-open .wheel {
           display: none !important;
         }
 
@@ -4213,6 +4214,18 @@
         }
       }
 
+      function isEditingDefinitionText() {
+        const active = document.activeElement;
+        return (
+          active?.matches?.('.label-input, .label-textarea') && !active.readOnly && !active.disabled
+        );
+      }
+
+      function clearMobileKeyboardModeIfDone() {
+        if (!document.body.classList.contains('mobile-keyboard-open')) return;
+        if (!isEditingDefinitionText()) setMobileKeyboardMode(false);
+      }
+
       document.addEventListener(
         'focusin',
         (e) => {
@@ -4232,16 +4245,30 @@
         (e) => {
           if (!e.target?.matches?.('.label-input, .label-textarea')) return;
           setTimeout(() => {
-            const active = document.activeElement;
-            const stillEditing =
-              active?.matches?.('.label-input, .label-textarea') &&
-              !active.readOnly &&
-              !active.disabled;
-            if (!stillEditing) setMobileKeyboardMode(false);
+            clearMobileKeyboardModeIfDone();
           }, 120);
         },
         true,
       );
+
+      document.addEventListener(
+        'pointerdown',
+        (e) => {
+          if (!document.body.classList.contains('mobile-keyboard-open')) return;
+          if (e.target?.closest?.('.label-input, .label-textarea')) return;
+          if (isEditingDefinitionText()) document.activeElement.blur();
+          setTimeout(clearMobileKeyboardModeIfDone, 160);
+        },
+        true,
+      );
+
+      window.visualViewport?.addEventListener('resize', () => {
+        if (!document.body.classList.contains('mobile-keyboard-open')) return;
+        const viewportHeight = window.visualViewport?.height || window.innerHeight;
+        if (viewportHeight > window.innerHeight * 0.82) {
+          setTimeout(() => setMobileKeyboardMode(false), 80);
+        }
+      });
 
       document.addEventListener('keydown', async (e) => {
         if (!(e.ctrlKey || e.metaKey)) return;
