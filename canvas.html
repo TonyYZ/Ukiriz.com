@@ -180,6 +180,10 @@
         opacity: 1; /* Fully visible */
       }
 
+      .tab-current {
+        opacity: 1;
+      }
+
       :root {
         --sidebar-w: 280px;
       }
@@ -1520,6 +1524,13 @@
           line-height: 76px;
           margin: 0;
           font-size: clamp(17px, 5vw, 30px);
+          transition:
+            background-color 0.25s ease,
+            opacity 0.75s ease;
+        }
+
+        .tab:hover {
+          background-color: transparent;
         }
 
         #tab2,
@@ -4635,13 +4646,10 @@
         }
 
         for (let i = 0; i < 5; i++) {
-          if (i === tabIndex) {
-            tabHeaders[i].style.opacity = 1;
-            tabHeadersActivated[i] = true;
-          } else {
-            tabHeaders[i].style.opacity = 0.5;
-            tabHeadersActivated[i] = false;
-          }
+          const isActive = i === tabIndex;
+          tabHeaders[i].classList.toggle('tab-current', isActive);
+          tabHeaders[i].style.opacity = '';
+          tabHeadersActivated[i] = isActive;
         }
         document.body.classList.toggle('home-tab-active', tabIndex === 0);
         document.body.classList.toggle('craft-tab-active', tabIndex === 1);
