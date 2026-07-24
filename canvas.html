@@ -1754,9 +1754,11 @@
         }
 
         #chatMinimap {
-          right: 10px !important;
+          right: 30px !important;
           bottom: 88px !important;
-          transform: scale(0.78);
+          width: 164px;
+          height: 115px;
+          transform: none;
           transform-origin: bottom right;
         }
 
@@ -1894,7 +1896,7 @@
           position: fixed !important;
           left: 10px !important;
           right: 10px !important;
-          top: var(--mobile-keyboard-input-top, calc(100vh - 56px)) !important;
+          top: var(--mobile-keyboard-input-top, 52vh) !important;
           bottom: auto !important;
           width: calc(100vw - 20px) !important;
           max-width: calc(100vw - 20px) !important;
@@ -4293,9 +4295,11 @@
         const vv = window.visualViewport;
         const visibleBottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
         const inputHeight = 44;
+        const safeTop = window.innerHeight * 0.52;
+        const requestedTop = visibleBottom - inputHeight - 10;
         document.documentElement.style.setProperty(
           '--mobile-keyboard-input-top',
-          `${Math.max(8, Math.round(visibleBottom - inputHeight - 10))}px`,
+          `${Math.max(8, Math.round(Math.min(requestedTop, safeTop)))}px`,
         );
       }
 
@@ -5970,11 +5974,16 @@
         const worldY = minY + (clampedCenterY - offsetY) / scale;
         let nextLeft = worldX * zoom - tab.clientWidth / 2;
         let nextTop = worldY * zoom - tab.clientHeight / 2;
+        const edgeSnap = 16;
 
         if (clampedCenterX <= centerMinX + 0.5) nextLeft = 0;
         if (clampedCenterX >= centerMaxX - 0.5) nextLeft = maxLeft;
         if (clampedCenterY <= centerMinY + 0.5) nextTop = 0;
         if (clampedCenterY >= centerMaxY - 0.5) nextTop = maxTop;
+        if (localX <= offsetX + edgeSnap) nextLeft = 0;
+        if (localX >= offsetX + miniWorldW - edgeSnap) nextLeft = maxLeft;
+        if (localY <= offsetY + edgeSnap) nextTop = 0;
+        if (localY >= offsetY + miniWorldH - edgeSnap) nextTop = maxTop;
 
         nextLeft = Math.max(0, Math.min(maxLeft, nextLeft));
         nextTop = Math.max(0, Math.min(maxTop, nextTop));
