@@ -539,7 +539,8 @@
         background: transparent;
         pointer-events: none;
         z-index: 4; /* above symbols, below inspection frames/cards */
-        outline: 10px dashed #00b0f0;
+        border: 8px dashed #00b0f0;
+        box-sizing: border-box;
       }
 
       #top-right-ui {
@@ -1805,6 +1806,26 @@
           min-height: 34px;
         }
 
+        .spawned-expression-meta {
+          max-width: min(220px, calc(100vw - 32px));
+          padding: 8px 10px;
+        }
+
+        .spawned-expression-meta .library-tree-card-word {
+          font-size: 14px;
+          line-height: 1.15;
+        }
+
+        .spawned-expression-meta .library-tree-card-definition {
+          font-size: 11px;
+          line-height: 1.22;
+        }
+
+        .spawned-expression-meta .library-tree-card-serialization,
+        .spawned-expression-meta .spawned-expression-translate {
+          font-size: 10px;
+        }
+
         .symbol-label[data-inspection-label='true'] {
           padding: 2px 6px;
           border-radius: 4px;
@@ -1853,26 +1874,32 @@
         body.mobile-keyboard-open #craftMinimap,
         body.mobile-keyboard-open #chatMinimap,
         body.mobile-keyboard-open #tutorialOverlay,
-        body.mobile-keyboard-open .wheel {
-          display: none !important;
-        }
-
-        body:has(.label-input:focus) .vertical-bar,
-        body:has(.label-textarea:focus) .vertical-bar,
-        body:has(.label-input:focus) #craftMinimap,
-        body:has(.label-textarea:focus) #craftMinimap,
-        body:has(.label-input:focus) #chatMinimap,
-        body:has(.label-textarea:focus) #chatMinimap,
-        body:has(.label-input:focus) #tutorialOverlay,
-        body:has(.label-textarea:focus) #tutorialOverlay,
-        body:has(.label-input:focus) .wheel,
-        body:has(.label-textarea:focus) .wheel {
+        body.mobile-keyboard-open .wheel,
+        body.mobile-keyboard-open #chat-question {
           display: none !important;
         }
 
         body.mobile-keyboard-open .content {
           height: 100dvh;
           padding-bottom: 0;
+        }
+
+        body.mobile-keyboard-open #chatControls input:not(:focus) {
+          display: none !important;
+        }
+
+        body.mobile-keyboard-open #symbol-message-input:focus,
+        body.mobile-keyboard-open #message-input:focus {
+          position: fixed !important;
+          left: 10px !important;
+          right: 10px !important;
+          bottom: 10px !important;
+          width: calc(100vw - 20px) !important;
+          max-width: calc(100vw - 20px) !important;
+          z-index: 100001;
+          background: rgba(255, 255, 255, 0.94);
+          border: 2px solid rgba(0, 0, 0, 0.22);
+          border-radius: 10px;
         }
       }
 
@@ -4234,11 +4261,28 @@
       var craftMiniMapFrame = 0;
       var craftMiniMapTransform = null;
       var craftMiniMapDragging = false;
+      var mobileKeyboardBaselineHeight = window.visualViewport?.height || window.innerHeight;
+
+      function isMobileKeyboardTextTarget(target) {
+        return !!target?.matches?.(
+          '.label-input, .label-textarea, #symbol-message-input, #message-input',
+        );
+      }
 
       function setMobileKeyboardMode(on) {
         if (!isCoarseMobile) return;
+        if (on) {
+          mobileKeyboardBaselineHeight = Math.max(
+            mobileKeyboardBaselineHeight || 0,
+            window.visualViewport?.height || window.innerHeight,
+            window.innerHeight || 0,
+          );
+        }
         document.body.classList.toggle('mobile-keyboard-open', !!on);
         if (!on) {
+          if (isMobileKeyboardTextTarget(document.activeElement)) {
+            document.activeElement.blur();
+          }
           requestAnimationFrame(() => {
             updateTutorialUi?.();
             scheduleCraftMiniMapUpdate?.();
@@ -4250,7 +4294,7 @@
       function isEditingDefinitionText() {
         const active = document.activeElement;
         return (
-          active?.matches?.('.label-input, .label-textarea') &&
+          isMobileKeyboardTextTarget(active) &&
           !active.readOnly &&
           !active.disabled
         );
@@ -4265,7 +4309,7 @@
         'focusin',
         (e) => {
           if (
-            e.target?.matches?.('.label-input, .label-textarea') &&
+            isMobileKeyboardTextTarget(e.target) &&
             !e.target.readOnly &&
             !e.target.disabled
           ) {
@@ -4278,7 +4322,7 @@
       document.addEventListener(
         'focusout',
         (e) => {
-          if (!e.target?.matches?.('.label-input, .label-textarea')) return;
+          if (!isMobileKeyboardTextTarget(e.target)) return;
           setTimeout(() => {
             clearMobileKeyboardModeIfDone();
           }, 120);
@@ -4290,7 +4334,7 @@
         'pointerdown',
         (e) => {
           if (
-            e.target?.matches?.('.label-input, .label-textarea') &&
+            isMobileKeyboardTextTarget(e.target) &&
             !e.target.readOnly &&
             !e.target.disabled
           ) {
@@ -4298,20 +4342,24 @@
             return;
           }
           if (!document.body.classList.contains('mobile-keyboard-open')) return;
-          if (e.target?.closest?.('.label-input, .label-textarea')) return;
+          if (e.target?.closest?.('.label-input, .label-textarea, #symbol-message-input, #message-input')) return;
           if (isEditingDefinitionText()) document.activeElement.blur();
           setTimeout(clearMobileKeyboardModeIfDone, 160);
         },
         true,
       );
 
-      window.visualViewport?.addEventListener('resize', () => {
+      function handleMobileViewportMaybeRestored() {
         if (!document.body.classList.contains('mobile-keyboard-open')) return;
         const viewportHeight = window.visualViewport?.height || window.innerHeight;
-        if (viewportHeight > window.innerHeight * 0.82) {
+        const baseline = Math.max(mobileKeyboardBaselineHeight || 0, window.innerHeight || 0);
+        if (viewportHeight > baseline * 0.88) {
           setTimeout(() => setMobileKeyboardMode(false), 80);
         }
-      });
+      }
+
+      window.visualViewport?.addEventListener('resize', handleMobileViewportMaybeRestored);
+      window.visualViewport?.addEventListener('scroll', handleMobileViewportMaybeRestored);
 
       document.addEventListener('keydown', async (e) => {
         if (!(e.ctrlKey || e.metaKey)) return;
