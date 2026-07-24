@@ -498,6 +498,39 @@
         pointer-events: none;
       }
 
+      #craftMinimap {
+        position: fixed;
+        right: 10px;
+        bottom: 88px;
+        width: 126px;
+        height: 88px;
+        display: none;
+        margin: 0;
+        border: 1.5px solid rgba(0, 0, 0, 0.38);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.82);
+        box-shadow: 0 6px 14px rgba(0, 0, 0, 0.1);
+        z-index: 24;
+        overflow: hidden;
+        backdrop-filter: blur(3px);
+        -webkit-backdrop-filter: blur(3px);
+      }
+
+      #craftMinimapCanvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      #craftMinimapViewport {
+        position: absolute;
+        border: 1.5px solid #00b0f0;
+        background: rgba(0, 176, 240, 0.12);
+        border-radius: 5px;
+        box-sizing: border-box;
+        pointer-events: none;
+      }
+
       .marquee-box {
         position: absolute;
         background: transparent;
@@ -1721,6 +1754,10 @@
           transform-origin: bottom right;
         }
 
+        body.craft-tab-active #craftMinimap {
+          display: block;
+        }
+
         #chat-question {
           left: 8px !important;
           right: auto !important;
@@ -1864,6 +1901,10 @@
       </div>
 
       <div class="tab-content" id="tab1">
+        <div id="craftMinimap">
+          <canvas id="craftMinimapCanvas" width="126" height="88"></canvas>
+          <div id="craftMinimapViewport"></div>
+        </div>
         <div id="craftCanvas"></div>
 
         <div id="craftControls">
@@ -4138,11 +4179,15 @@
       window.addEventListener('resize', () => {
         updateChatQuestionPrompt?.();
         scheduleChatMiniMapUpdate?.();
+        scheduleCraftMiniMapUpdate?.();
         updateIslandInfoCardPosition?.();
         updateTutorialUi?.();
       });
 
       var isCoarseMobile = window.matchMedia?.('(max-width: 820px), (pointer: coarse)')?.matches;
+      var craftMiniMapFrame = 0;
+      var craftMiniMapTransform = null;
+      var craftMiniMapDragging = false;
 
       document.addEventListener('keydown', async (e) => {
         if (!(e.ctrlKey || e.metaKey)) return;
@@ -4278,6 +4323,7 @@
             applyCraftCanvasPadding(getCanvasZoom(craftCanvas()) || 1);
             centerMobileCraftInitialView();
             updateCraftGridAlignment();
+            scheduleCraftMiniMapUpdate();
           });
         }
 
@@ -4337,6 +4383,8 @@
           }
         }
         document.body.classList.toggle('home-tab-active', tabIndex === 0);
+        document.body.classList.toggle('craft-tab-active', tabIndex === 1);
+        if (tabIndex === 1) scheduleCraftMiniMapUpdate?.();
         updateTutorialUi?.();
         tutorialMaybeAdvance?.();
       };
@@ -4350,6 +4398,7 @@
       const tab4 = document.getElementById('tab4');
       const chatMiniMap = document.getElementById('chatMinimap');
       const chatMiniMapCanvas = document.getElementById('chatMinimapCanvas');
+      const craftMiniMapCanvas = document.getElementById('craftMinimapCanvas');
 
       const chatCanvas = () => document.getElementById('chatCanvas');
       const chatControls = () => document.getElementById('chatControls');
@@ -4357,6 +4406,11 @@
       const craftControls = () => document.getElementById('craftControls');
       bindCanvasContextMenu(chatCanvas());
       bindCanvasContextMenu(craftCanvas());
+      tab1?.addEventListener('scroll', () => {
+        if (!tabHeadersActivated?.[1]) return;
+        updateCraftGridAlignment();
+        scheduleCraftMiniMapUpdate();
+      });
       const CRAFT_GRID_MINOR = 80;
       const CRAFT_GRID_MAJOR = 400;
 
@@ -4572,6 +4626,7 @@
             saveChatViewportState?.();
           } else {
             updateCraftGridAlignment();
+            scheduleCraftMiniMapUpdate?.();
           }
         };
         // Craft starts with no overflow at 100%, so apply after layout to avoid clamping-to-zero.
@@ -4700,12 +4755,26 @@
         chatMiniMapDragging = true;
         jumpChatViewportFromMiniMap(e.clientX, e.clientY);
       });
+      craftMiniMapCanvas?.addEventListener('pointerdown', (e) => {
+        craftMiniMapDragging = true;
+        jumpCraftViewportFromMiniMap(e.clientX, e.clientY);
+      });
       window.addEventListener('pointermove', (e) => {
         if (!chatMiniMapDragging) return;
         jumpChatViewportFromMiniMap(e.clientX, e.clientY);
       });
+      window.addEventListener('pointermove', (e) => {
+        if (!craftMiniMapDragging) return;
+        jumpCraftViewportFromMiniMap(e.clientX, e.clientY);
+      });
+      window.addEventListener('pointermove', (e) => {
+        if (!tabHeadersActivated?.[1] || !e.buttons) return;
+        scheduleCraftMiniMapUpdate();
+      });
       window.addEventListener('pointerup', () => {
         chatMiniMapDragging = false;
+        craftMiniMapDragging = false;
+        scheduleCraftMiniMapUpdate?.();
       });
 
       window.addEventListener(
@@ -4957,6 +5026,7 @@
       function appendToCraftCanvas(el) {
         craftCanvas()?.appendChild(el);
         updateWhiteSymbolOutline(el);
+        scheduleCraftMiniMapUpdate?.();
       }
 
       function appendToCraftControls(el) {
@@ -5006,6 +5076,129 @@
           w: rect.width / zoom,
           h: rect.height / zoom,
         };
+      }
+
+      function getCraftMiniMapItems() {
+        const canvas = craftCanvas();
+        if (!canvas) return [];
+        return Array.from(
+          canvas.querySelectorAll(
+            '.symbol, .symbol-label, .label-input, .label-textarea, .submit-button, .typing-effect p',
+          ),
+        ).filter((el) => {
+          if (el.classList?.contains('annotation-bubble') && !el.classList?.contains('annotation-visible')) {
+            return false;
+          }
+          const rect = el.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        });
+      }
+
+      function scheduleCraftMiniMapUpdate() {
+        if (craftMiniMapFrame) return;
+        craftMiniMapFrame = requestAnimationFrame(() => {
+          craftMiniMapFrame = 0;
+          updateCraftMiniMap();
+        });
+      }
+
+      function updateCraftMiniMap() {
+        const box = document.getElementById('craftMinimap');
+        const canvas = document.getElementById('craftMinimapCanvas');
+        const viewport = document.getElementById('craftMinimapViewport');
+        const tab = tab1 || document.getElementById('tab1');
+        const surface = craftCanvas();
+        if (!box || !canvas || !viewport || !tab || !surface) return;
+        if (!isCoarseMobile || !tabHeadersActivated?.[1]) return;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const zoom = getCanvasZoom(surface) || 1;
+        const width = canvas.width;
+        const height = canvas.height;
+        const inset = 6;
+        const items = getCraftMiniMapItems();
+        const contentLeft = tab.scrollLeft / zoom;
+        const contentTop = tab.scrollTop / zoom;
+        const contentRight = contentLeft + tab.clientWidth / zoom;
+        const contentBottom = contentTop + tab.clientHeight / zoom;
+
+        let minX = contentLeft;
+        let minY = contentTop;
+        let maxX = contentRight;
+        let maxY = contentBottom;
+        const surfaceRect = surface.getBoundingClientRect();
+        for (const el of items) {
+          const rect = el.getBoundingClientRect();
+          const x = (rect.left - surfaceRect.left) / zoom;
+          const y = (rect.top - surfaceRect.top) / zoom;
+          const w = rect.width / zoom;
+          const h = rect.height / zoom;
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x + w);
+          maxY = Math.max(maxY, y + h);
+        }
+
+        const pad = 80;
+        minX = Math.max(0, minX - pad);
+        minY = Math.max(0, minY - pad);
+        maxX = Math.min(surface.scrollWidth / zoom, maxX + pad);
+        maxY = Math.min(surface.scrollHeight / zoom, maxY + pad);
+
+        const worldW = Math.max(tab.clientWidth / zoom, maxX - minX, 1);
+        const worldH = Math.max(tab.clientHeight / zoom, maxY - minY, 1);
+        const scale = Math.min((width - inset * 2) / worldW, (height - inset * 2) / worldH);
+        const offsetX = (width - worldW * scale) / 2;
+        const offsetY = (height - worldH * scale) / 2;
+        craftMiniMapTransform = { minX, minY, scale, offsetX, offsetY };
+
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = '#f4f4f9';
+        ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = 'rgba(0, 176, 240, 0.07)';
+        ctx.fillRect(offsetX, offsetY, worldW * scale, worldH * scale);
+
+        for (const el of items) {
+          const rect = el.getBoundingClientRect();
+          const x = offsetX + ((rect.left - surfaceRect.left) / zoom - minX) * scale;
+          const y = offsetY + ((rect.top - surfaceRect.top) / zoom - minY) * scale;
+          const w = Math.max(2, (rect.width / zoom) * scale);
+          const h = Math.max(2, (rect.height / zoom) * scale);
+          if (el.classList?.contains('symbol')) ctx.fillStyle = '#111';
+          else if (el.classList?.contains('symbol-label')) ctx.fillStyle = '#c78a00';
+          else ctx.fillStyle = '#00b0f0';
+          ctx.fillRect(x, y, w, h);
+        }
+
+        const viewX = offsetX + (contentLeft - minX) * scale;
+        const viewY = offsetY + (contentTop - minY) * scale;
+        const viewW = (tab.clientWidth / zoom) * scale;
+        const viewH = (tab.clientHeight / zoom) * scale;
+        viewport.style.left = `${viewX}px`;
+        viewport.style.top = `${viewY}px`;
+        viewport.style.width = `${Math.max(8, viewW)}px`;
+        viewport.style.height = `${Math.max(8, viewH)}px`;
+      }
+
+      function jumpCraftViewportFromMiniMap(clientX, clientY) {
+        const canvas = document.getElementById('craftMinimapCanvas');
+        const tab = tab1 || document.getElementById('tab1');
+        const surface = craftCanvas();
+        if (!canvas || !tab || !surface || !craftMiniMapTransform) return;
+        const zoom = getCanvasZoom(surface) || 1;
+        const rect = canvas.getBoundingClientRect();
+        const localX = clientX - rect.left;
+        const localY = clientY - rect.top;
+        const { minX, minY, scale, offsetX, offsetY } = craftMiniMapTransform;
+        if (!scale) return;
+
+        const worldX = minX + (localX - offsetX) / scale;
+        const worldY = minY + (localY - offsetY) / scale;
+        tab.scrollLeft = Math.max(0, Math.min(tab.scrollWidth - tab.clientWidth, worldX * zoom - tab.clientWidth / 2));
+        tab.scrollTop = Math.max(0, Math.min(tab.scrollHeight - tab.clientHeight, worldY * zoom - tab.clientHeight / 2));
+        scheduleCraftMiniMapUpdate();
       }
 
       var chatMiniMapFrame = 0;
