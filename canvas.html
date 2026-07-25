@@ -155,11 +155,11 @@
       .tab {
         color: rgba(255, 255, 255, 0.56);
         text-align: center;
-        line-height: 100px;
-        font-size: 40px;
+        line-height: var(--tab-h);
+        font-size: var(--tab-font-size);
         font-family: inherit; /* Set font to match labels */
         width: 280px;
-        height: 100px; /* Make taller for rectangular shape */
+        height: var(--tab-h); /* Make taller for rectangular shape */
         padding: 0; /* No extra padding */
         cursor: pointer;
         margin: 0px 0; /* Spacing between buttons */
@@ -190,6 +190,9 @@
 
       :root {
         --sidebar-w: 280px;
+        --tab-top-gap: clamp(200px, 26vh, 260px);
+        --tab-h: min(100px, calc((100vh - var(--tab-top-gap)) / 5));
+        --tab-font-size: clamp(22px, calc(var(--tab-h) * 0.4), 40px);
       }
 
       /* Vertical bar styles */
@@ -199,11 +202,12 @@
         right: 0;
         width: var(--sidebar-w);
         height: 100%;
+        box-sizing: border-box;
         background-color: #00b0f0; /* Blue background */
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding-top: 200px;
+        padding-top: var(--tab-top-gap);
         z-index: 99999;
       }
 
@@ -2380,6 +2384,7 @@
       let tutorialLevel = 1;
       let tutorialLevel2SeenConnections = { serial: false, parallel: false };
       let tutorialLevel1ToolClicks = { rotate: false, dot: false };
+      let tutorialLevel3DefinedGroups = { cold: null, food: null, icecream: null };
       let tutorialCompletedStep = null;
       let tutorialPendingDefinitionButton = null;
       let tutorialRestartingStep = false;
@@ -2417,6 +2422,7 @@
             tutorialCompleteStep(step);
             return;
           }
+          consumeTutorialEvent(step.advanceOnEvent);
         }
         if (typeof step.advanceWhen === 'function') {
           try {
@@ -2448,8 +2454,8 @@
           tutorialCompleteStep(step, {
             body: () =>
               currentLang === 'zh'
-                ? '很好！系统接受了你的定义。请按下 ✔，把这个词保存进词库。'
-                : 'Great! The system accepts your definition. Press ✔ to save this word into Library.',
+                ? '很好！系统接受了你的定义。请按下 ✔ 或继续，把这个词保存进词库。'
+                : 'Great! The system accepts your definition. Press ✔ or Continue to save this word into Library.',
             definitionState: 'accepted',
           });
         } else {
@@ -2479,6 +2485,26 @@
         if (!step) return true;
         if (step.requireCraftSelection) {
           if (getCraftSelectedSymbols().length === 0) return false;
+        }
+        if (step.requireConnectedCraftSelectionMin) {
+          const selected = getCraftSelectedSymbols();
+          if (selected.length < step.requireConnectedCraftSelectionMin) return false;
+          const selectedSet = new Set(selected);
+          let hasInternalConnection = false;
+          try {
+            for (const sym of selectedSet) {
+              const conns = currentGraph?.getSymbolConnections?.(sym) || [];
+              if (
+                conns.some((bucket) =>
+                  (bucket || []).some(([neighbor]) => selectedSet.has(neighbor)),
+                )
+              ) {
+                hasInternalConnection = true;
+                break;
+              }
+            }
+          } catch {}
+          if (!hasInternalConnection) return false;
         }
         if (step.requireCraftInsightOn) {
           if (!eyeButton?.isActivated) return false;
@@ -3023,6 +3049,60 @@
         return kinds;
       }
 
+      function normalizeTutorialWord(value) {
+        return String(value || '')
+          .trim()
+          .toLowerCase()
+          .replace(/\s+/g, '')
+          .replace(/[“”"'‘’.,，。！？!?;；:：-]/g, '');
+      }
+
+      function tutorialWordMatchesRequired(value, step) {
+        const required = step?.requiredWords;
+        if (!Array.isArray(required) || required.length === 0) return true;
+        const normalized = normalizeTutorialWord(value);
+        return required.some((word) => normalizeTutorialWord(word) === normalized);
+      }
+
+      function getTutorialRequiredWordText(step) {
+        const zh = currentLang === 'zh';
+        if (step?.requiredWordKey === 'cold') return zh ? '冷' : 'cold';
+        if (step?.requiredWordKey === 'food') return zh ? '食物' : 'food';
+        if (step?.requiredWordKey === 'icecream') return zh ? '冰淇淋' : 'ice cream';
+        return step?.requiredWords?.[0] || '';
+      }
+
+      function tutorialRecordDefinedWordGroup(key, symbols) {
+        if (tutorialLevel !== 3 || !key || !symbols?.size) return;
+        tutorialLevel3DefinedGroups = {
+          ...tutorialLevel3DefinedGroups,
+          [key]: new Set(symbols),
+        };
+      }
+
+      function tutorialHasParallelBetweenGroups(a, b) {
+        if (!a?.size || !b?.size) return false;
+        try {
+          for (const sym of a) {
+            const conns = currentGraph?.getSymbolConnections?.(sym) || [];
+            for (let side = 0; side < conns.length; side++) {
+              for (const [nbr, nbrSide] of conns[side] || []) {
+                if (!b.has(nbr)) continue;
+                if (
+                  side === Side.PAR_TOP ||
+                  side === Side.PAR_BOT ||
+                  nbrSide === Side.PAR_TOP ||
+                  nbrSide === Side.PAR_BOT
+                ) {
+                  return true;
+                }
+              }
+            }
+          }
+        } catch {}
+        return false;
+      }
+
       function getTutorialConnectionKind(aSide, bSide) {
         const isSerial =
           (aSide === Side.START && bSide === Side.END) ||
@@ -3236,7 +3316,7 @@
             target: () => document.getElementById('tab2'),
             title: zh ? '第 1 关 · 9/9 完成' : 'Level 1 · 9/9 Complete',
             body: zh
-              ? '你的第一个符号词已经进入了词库。点击词库标签页结束这一关。'
+              ? '你的第一个符号词已经进入了词库。点击词库空间结束这一关。'
               : 'Your first symbol-word is now in the library. Click inside Library to finish this level.',
             completedBody: zh
               ? '第 1 关 完成。你已经经历了从符号、意义泡泡到自定义词的完整流程。'
@@ -3304,6 +3384,7 @@
               ? '你已经完成了第一种组合方式。'
               : 'You have completed the first kind of combination.',
             allowedTabs: [1],
+            bubblePlacement: 'bottom',
             advanceWhen: () =>
               tutorialLevel2SeenConnections.serial || tutorialLevel2SeenConnections.parallel,
           },
@@ -3330,6 +3411,7 @@
               ? '很好，你已经体验过串联和并联两种组合方式。'
               : 'Great, you have tried both serial and parallel combinations.',
             allowedTabs: [1],
+            bubblePlacement: 'bottom',
             advanceWhen: () => {
               return (
                 tutorialLevel2SeenConnections.serial && tutorialLevel2SeenConnections.parallel
@@ -3347,7 +3429,9 @@
               ? '整个连通符号组已经被选中了。'
               : 'The connected symbol group is selected.',
             allowedTabs: [1],
+            bubblePlacement: 'bottom',
             advanceOnEvent: 'craft_longpress',
+            requireConnectedCraftSelectionMin: 2,
           },
           {
             tab: 1,
@@ -3360,6 +3444,7 @@
               ? '很好，你也可以用框选来选择符号组。'
               : 'Nice, you can also use marquee selection to select a symbol group.',
             allowedTabs: [1],
+            bubblePlacement: 'bottom',
             advanceOnEvent: 'craft_marquee_select',
           },
           {
@@ -3476,8 +3561,8 @@
             target: () => document.getElementById('craftCanvas'),
             title: zh ? '第 3 关 · 2/12 造“冷”' : 'Level 3 · 2/12 Make “Cold”',
             body: zh
-              ? '自由选择符号，查看意义，然后定义一个接近“冷”的词。'
-              : 'Choose symbols freely, inspect their meanings, then define a word close to “cold.”',
+              ? '自由选择符号，查看意义，然后定义“冷”这个词。'
+              : 'Choose symbols freely, inspect their meanings, then define the word “cold.”',
             hint: zh
               ? '先拖一个符号，试试旋转或加点，再用洞察找到你觉得“冷”的意义。'
               : 'Start with one symbol. Try rotate/dot, then use Insight to find a meaning that feels cold.',
@@ -3487,14 +3572,19 @@
             advanceOnEvent: 'word_defined',
             definitionFeedback: true,
             allowDefinitionInputs: true,
+            bubblePlacement: 'right-of-wheel',
+            requiredWordKey: 'cold',
+            requiredWords: ['冷', 'cold'],
+            lockCompletedCraftInteraction: true,
+            restart: () => resetTutorialDefinitionAttempt?.(),
           },
           {
             tab: 1,
             target: () => document.getElementById('craftCanvas'),
             title: zh ? '第 3 关 · 3/12 造“食物”' : 'Level 3 · 3/12 Make “Food”',
             body: zh
-              ? '再创造一个接近“食物”的词。你可以用单符号，也可以用组合。'
-              : 'Create another word close to “food.” It can be a single symbol or a compound.',
+              ? '再创造“食物”这个词。你可以用单符号，也可以用组合。'
+              : 'Create the word “food.” It can be a single symbol or a compound.',
             hint: zh
               ? '寻找与身体、吸收、生命、滋养有关的意义泡泡。'
               : 'Look for bubbles related to body, intake, life, nourishment, or holding.',
@@ -3504,6 +3594,11 @@
             advanceOnEvent: 'word_defined',
             definitionFeedback: true,
             allowDefinitionInputs: true,
+            bubblePlacement: 'right-of-wheel',
+            requiredWordKey: 'food',
+            requiredWords: ['食物', 'food'],
+            lockCompletedCraftInteraction: true,
+            restart: () => resetTutorialDefinitionAttempt?.(),
           },
           {
             tab: 1,
@@ -3518,8 +3613,13 @@
             completedBody: zh
               ? '很好，你已经把两个意义并置到同一个组合里。'
               : 'Great, you have placed two meanings together inside one compound.',
+            bubblePlacement: 'right-of-wheel',
             lockCompletedCraftInteraction: true,
-            advanceWhen: () => craftHasParallelConnection(),
+            advanceWhen: () =>
+              tutorialHasParallelBetweenGroups(
+                tutorialLevel3DefinedGroups.cold,
+                tutorialLevel3DefinedGroups.food,
+              ),
           },
           {
             tab: 1,
@@ -3537,6 +3637,11 @@
             advanceOnEvent: 'word_defined',
             definitionFeedback: true,
             allowDefinitionInputs: true,
+            bubblePlacement: 'right-of-wheel',
+            requiredWordKey: 'icecream',
+            requiredWords: ['冰淇淋', 'icecream', 'ice cream'],
+            lockCompletedCraftInteraction: true,
+            restart: () => resetTutorialDefinitionAttempt?.(),
           },
           {
             tab: 1,
@@ -3653,6 +3758,7 @@
         tutorialLevel = Number(level) === 2 ? 2 : Number(level) === 3 ? 3 : 1;
         tutorialLevel2SeenConnections = { serial: false, parallel: false };
         tutorialLevel1ToolClicks = { rotate: false, dot: false };
+        tutorialLevel3DefinedGroups = { cold: null, food: null, icecream: null };
         tutorialCompletedStep = null;
         tutorialPendingDefinitionButton = null;
         tutorialStepIndex = -1;
@@ -3831,7 +3937,7 @@
         // Place bubble near spotlight
         const bubbleRect = els.bubble.getBoundingClientRect();
         const preferRight = left + width + 14 + bubbleRect.width <= window.innerWidth - 12;
-        const bubbleLeft = preferRight
+        let bubbleLeft = preferRight
           ? left + width + 14
           : isCompleted
             ? window.innerWidth - bubbleRect.width - 24
@@ -3847,13 +3953,22 @@
           isCoarseMobile &&
           (step.mobileBubblePlacement === 'bottom' || height > window.innerHeight * 0.58);
         const preferBottom = step.bubblePlacement === 'bottom' || preferMobileBottom;
-        const bubbleTop = preferBottom
+        let bubbleTop = preferBottom
           ? maxBubbleTop
           : belowTop <= maxBubbleTop
             ? clamp(belowTop, 12, maxBubbleTop)
             : clamp(aboveTop, 12, maxBubbleTop);
+        if (!isCoarseMobile && step.bubblePlacement === 'right-of-wheel') {
+          const wheelRect = (document.getElementById('tab1') || document.body)
+            .querySelector('.wheel')
+            ?.getBoundingClientRect?.();
+          if (wheelRect) {
+            bubbleLeft = wheelRect.right + 18;
+            bubbleTop = wheelRect.top + Math.max(0, (wheelRect.height - bubbleRect.height) / 2);
+          }
+        }
         els.bubble.style.left = `${clamp(bubbleLeft, 12, window.innerWidth - bubbleRect.width - 12)}px`;
-        els.bubble.style.top = `${bubbleTop}px`;
+        els.bubble.style.top = `${clamp(bubbleTop, 12, maxBubbleTop)}px`;
 
         if (els.back) els.back.disabled = tutorialStepIndex <= 0;
         if (els.hint) {
@@ -13695,6 +13810,19 @@
             showFeedback(t.fillAllFields, true);
             return;
           }
+          const tutorialStep = getTutorialStepsSafe?.()?.[tutorialStepIndex];
+          if (
+            tutorialStep?.definitionFeedback &&
+            !tutorialWordMatchesRequired(word, tutorialStep)
+          ) {
+            const requiredWord = getTutorialRequiredWordText(tutorialStep);
+            const message =
+              currentLang === 'zh'
+                ? `No\n这一关需要把词名写成“${requiredWord}”。请按 × 后再试一次。`
+                : `No\nThis step needs the word to be “${requiredWord}.” Press × and try again.`;
+            showFeedback(message, true);
+            return;
+          }
           console.warn('[submit] library size =', library?.size);
           console.warn('[submit] library has word?', word, library?.has(word));
           console.warn('[submit] library keys =', [...(library?.keys?.() || [])]);
@@ -13918,6 +14046,9 @@
                 return;
               }
               if (passed && !manualFailed) {
+                if (doneButton.dataset.finalizing === 'true') return;
+                doneButton.dataset.finalizing = 'true';
+                doneButton.disabled = true;
                 clearInterval(activeTabInterval);
 
                 tabHeaders[2].classList.add('tab-active');
@@ -13937,6 +14068,10 @@
                   pattern,
                 );
                 library.set(word, [id, pattern, layout]);
+                tutorialRecordDefinedWordGroup?.(
+                  getTutorialStepsSafe?.()?.[tutorialStepIndex]?.requiredWordKey,
+                  componentSymbols,
+                );
                 console.log('library');
                 console.log(library);
                 emitTutorialEvent?.('word_defined');
