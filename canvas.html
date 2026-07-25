@@ -2053,6 +2053,8 @@
       // Annotation tether bookkeeping (initialized early to avoid TDZ during boot)
       var annoChildToParent = new Map(); // fromEmojiId -> toEmojiId
       var lastInspectionRootSymbolId = null;
+      const ICON_VERSION = '20260725';
+      const iconBg = (name) => `url('./icons/${name}.png?v=${ICON_VERSION}')`;
       const I18N = {
         en: {
           homeHTML: `
@@ -3242,7 +3244,7 @@
             restart: () => {
               if (eyeButton?.isActivated) {
                 eyeButton.isActivated = false;
-                eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
+                eyeButton.style.backgroundImage = iconBg('eye_black');
                 removeLabelInputs?.();
               }
             },
@@ -8893,7 +8895,7 @@
       eyeButton.classList.add('button');
       eyeButton.style.width = `150px`;
       eyeButton.style.height = `106px`;
-      eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
+      eyeButton.style.backgroundImage = iconBg('eye_black');
       eyeButton.style.left = `510px`;
       eyeButton.style.top = `40px`;
 
@@ -8905,7 +8907,7 @@
         }
         eyeButton.isActivated = !eyeButton.isActivated;
         if (eyeButton.isActivated) {
-          eyeButton.style.backgroundImage = "url('./icons/eye_blue.png')";
+          eyeButton.style.backgroundImage = iconBg('eye_blue');
           emitTutorialEvent?.('craft_insight_on');
           // Only inspect the craft-canvas selection (avoid cross-tab selection leakage).
           const craftSel = Array.from(selectedSymbols).filter(
@@ -8924,7 +8926,7 @@
           // Tutorial spotlight should move to the selection/labels after Insight is enabled.
           requestAnimationFrame(() => updateTutorialUi?.());
         } else {
-          eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
+          eyeButton.style.backgroundImage = iconBg('eye_black');
           removeLabelInputs();
         }
       });
@@ -8939,8 +8941,8 @@
       function setChatInspectionMode(on) {
         eyeButton2.isActivated = !!on;
         eyeButton2.style.backgroundImage = on
-          ? "url('./icons/eye_blue.png')"
-          : "url('./icons/eye_black.png')";
+          ? iconBg('eye_blue')
+          : iconBg('eye_black');
 
         const annotationInput = document.getElementById('message-input');
         if (annotationInput) annotationInput.style.display = on ? 'block' : 'none';
@@ -9495,7 +9497,7 @@
       removeButton.classList.add('button');
       removeButton.style.width = `168.75px`;
       removeButton.style.height = `119.25px`;
-      removeButton.style.backgroundImage = "url('./icons/astray.png')";
+      removeButton.style.backgroundImage = iconBg('astray');
       removeButton.style.left = `340px`;
       removeButton.style.top = `40px`;
 
@@ -9518,7 +9520,7 @@
         }
         if (eyeButton.isActivated) {
           eyeButton.isActivated = false;
-          eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
+          eyeButton.style.backgroundImage = iconBg('eye_black');
           removeLabelInputs();
         }
       });
@@ -9609,7 +9611,7 @@
       removeNodeButton.id = 'library-remove-button';
       removeNodeButton.style.width = `168.75px`;
       removeNodeButton.style.height = `119.25px`;
-      removeNodeButton.style.backgroundImage = "url('./icons/astray.png')";
+      removeNodeButton.style.backgroundImage = iconBg('astray');
       removeNodeButton.style.left = `40px`;
       removeNodeButton.style.top = `30px`;
       tab2.appendChild(removeNodeButton);
@@ -11045,7 +11047,7 @@
           if (surface === craftCanvas()) {
             if (eyeButton.isActivated) {
               eyeButton.isActivated = false;
-              eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
+              eyeButton.style.backgroundImage = iconBg('eye_black');
               removeLabelInputs();
             }
           }
@@ -12670,7 +12672,7 @@
         if (!existingInput && isBlankCanvasClick(e)) {
           if (eyeButton.isActivated) {
             eyeButton.isActivated = false;
-            eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
+            eyeButton.style.backgroundImage = iconBg('eye_black');
             removeLabelInputs();
           }
 
@@ -13881,7 +13883,7 @@
         cancelButton.onclick = function () {
           if (eyeButton.isActivated) {
             eyeButton.isActivated = false;
-            eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
+            eyeButton.style.backgroundImage = iconBg('eye_black');
             removeLabelInputs();
           }
         };
@@ -14078,7 +14080,7 @@
               }
               if (eyeButton.isActivated) {
                 eyeButton.isActivated = false;
-                eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
+                eyeButton.style.backgroundImage = iconBg('eye_black');
                 removeLabelInputs();
               }
             };
@@ -14494,7 +14496,7 @@
           });
           if (eyeButton.isActivated) {
             eyeButton.isActivated = false;
-            eyeButton.style.backgroundImage = "url('./icons/eye_black.png')";
+            eyeButton.style.backgroundImage = iconBg('eye_black');
             removeLabelInputs();
           }
           if (eyeButton2.isActivated) {
