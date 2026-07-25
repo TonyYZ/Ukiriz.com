@@ -1972,7 +1972,7 @@
           <button type="button" id="tutorialHint">Hint</button>
           <button type="button" id="tutorialRestartStep">Restart</button>
           <button type="button" class="primary" id="tutorialContinue">Continue</button>
-          <button type="button" id="tutorialExit">Exit</button>
+          <button type="button" id="tutorialExit">Exit tutorial</button>
         </div>
       </div>
     </div>
@@ -2793,7 +2793,7 @@
           restartStep: zh ? '重试本步' : 'Restart step',
           continueStep: zh ? '继续' : 'Continue',
           finish: zh ? '完成' : 'Finish',
-          exit: zh ? '退出' : 'Exit',
+          exit: zh ? '退出教程' : 'Exit tutorial',
         };
       }
 
@@ -3180,6 +3180,7 @@
               : 'Now you know what these buttons do: they change the symbol state and refresh its meanings.',
             advanceWhen: () => tutorialLevel1ToolClicks.rotate && tutorialLevel1ToolClicks.dot,
             resetLevel1Tools: true,
+            bubblePlacement: 'bottom',
             mobileBubblePlacement: 'bottom',
             lockCraftSelection: true,
             lockCraftInsightOn: true,
@@ -3845,7 +3846,8 @@
         const preferMobileBottom =
           isCoarseMobile &&
           (step.mobileBubblePlacement === 'bottom' || height > window.innerHeight * 0.58);
-        const bubbleTop = preferMobileBottom
+        const preferBottom = step.bubblePlacement === 'bottom' || preferMobileBottom;
+        const bubbleTop = preferBottom
           ? maxBubbleTop
           : belowTop <= maxBubbleTop
             ? clamp(belowTop, 12, maxBubbleTop)
@@ -4050,10 +4052,13 @@
         const raw = formatSymbolOrientationTerms(String(feedback || ''))
           .replace(/\r\n?/g, '\n')
           .trim();
-        const verdict = raw.match(/^(Yes|No)([.!?。！？]?)[^\S\n]*(?:\n+)?([\s\S]*)$/i);
+        const verdict = raw.match(
+          /^(Yes|No|是的?|对|可以|否|不是|不对|不可以)([.!?。！？,，]?)[^\S\n]*(?:\n+)?([\s\S]*)$/i,
+        );
         if (!verdict) return normalizeLLMFeedbackBody(raw);
 
-        const label = verdict[1].toLowerCase() === 'yes' ? 'Yes' : 'No';
+        const positiveVerdict = /^(yes|是|是的|对|可以)$/i.test(verdict[1]);
+        const label = positiveVerdict ? 'Yes' : 'No';
         const punctuation = verdict[2] || '';
         const body = normalizeLLMFeedbackBody(verdict[3]);
         if (!body) return `${label}${punctuation}`;
@@ -16356,6 +16361,148 @@
         }
       }
 
+      function getLibraryTreeCardShareFilename(card) {
+        const word =
+          card?.querySelector?.('.library-tree-card-word')?.textContent?.trim() || 'word';
+        const safeWord = word
+          .replace(/[\\/:*?"<>|]+/g, '-')
+          .replace(/\s+/g, '-')
+          .slice(0, 48);
+        return `${safeWord || 'word'}-card.png`;
+      }
+
+      async function renderLibraryTreeCardToPngBlob(card) {
+        if (!card) return null;
+        const rect = card.getBoundingClientRect();
+        const width = Math.max(1, Math.ceil(rect.width));
+        const height = Math.max(1, Math.ceil(rect.height));
+        await document.fonts?.ready?.catch?.(() => {});
+
+        const exportScale = 4;
+        const out = document.createElement('canvas');
+        out.width = Math.round(width * exportScale);
+        out.height = Math.round(height * exportScale);
+        const ctx = out.getContext('2d');
+        ctx.scale(exportScale, exportScale);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.clearRect(0, 0, width, height);
+
+        function roundRectPath(x, y, w, h, r) {
+          ctx.beginPath();
+          if (ctx.roundRect) {
+            ctx.roundRect(x, y, w, h, r);
+            return;
+          }
+          ctx.moveTo(x + r, y);
+          ctx.lineTo(x + w - r, y);
+          ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+          ctx.lineTo(x + w, y + h - r);
+          ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+          ctx.lineTo(x + r, y + h);
+          ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+          ctx.lineTo(x, y + r);
+          ctx.quadraticCurveTo(x, y, x + r, y);
+        }
+
+        roundRectPath(1.5, 1.5, width - 3, height - 3, 10);
+        ctx.fillStyle = card.classList.contains('basic')
+          ? 'rgba(255,255,255,0.84)'
+          : 'rgba(255,255,255,0.96)';
+        ctx.fill();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#000';
+        ctx.stroke();
+
+        const imageEl = card.querySelector('.library-tree-card-image');
+        const imageBox = { x: 14, y: Math.max(12, (height - 42) / 2), size: 42 };
+        if (imageEl?.src) {
+          try {
+            const img = new Image();
+            img.decoding = 'async';
+            await new Promise((resolve, reject) => {
+              img.onload = resolve;
+              img.onerror = reject;
+              img.src = imageEl.src;
+            });
+            ctx.drawImage(img, imageBox.x, imageBox.y, imageBox.size, imageBox.size);
+          } catch (error) {
+            console.warn('Unable to draw library card symbol image', error);
+          }
+        }
+
+        const fontFamily =
+          "'LXGW WenKai', 'Sarasa UI SC', 'Source Han Serif SC', Consolas, monospace";
+        const textX = 68;
+        const textWidth = Math.max(40, width - textX - 14);
+        let y = 20;
+
+        function wrapCanvasText(text, maxWidth, font) {
+          ctx.font = font;
+          const tokens = String(text || '').match(/[\u4e00-\u9fff]|[^\s]+|\s+/gu) || [];
+          const lines = [];
+          let line = '';
+          for (const token of tokens) {
+            if (/^\s+$/u.test(token)) {
+              if (line) line += ' ';
+              continue;
+            }
+            const next = line ? line + token : token;
+            if (ctx.measureText(next).width <= maxWidth || !line) {
+              line = next;
+            } else {
+              lines.push(line.trimEnd());
+              line = token;
+            }
+          }
+          if (line) lines.push(line.trimEnd());
+          return lines;
+        }
+
+        function drawWrappedText(text, font, color, lineHeight, marginTop = 0) {
+          y += marginTop;
+          ctx.font = font;
+          ctx.fillStyle = color;
+          ctx.textBaseline = 'top';
+          for (const line of wrapCanvasText(text, textWidth, font)) {
+            ctx.fillText(line, textX, y);
+            y += lineHeight;
+          }
+        }
+
+        const word = card.querySelector('.library-tree-card-word')?.textContent?.trim() || '';
+        const definition =
+          card.querySelector('.library-tree-card-definition')?.textContent?.trim() || '';
+        const serializationLines = Array.from(
+          card.querySelectorAll('.library-tree-card-serialization'),
+        )
+          .map((el) => el.textContent?.replace(/\s+/g, ' ').trim())
+          .filter(Boolean);
+
+        drawWrappedText(word, `700 16px ${fontFamily}`, '#000', 19);
+        if (definition) drawWrappedText(definition, `400 13px ${fontFamily}`, '#000', 16.25, 4);
+        serializationLines.forEach((line) =>
+          drawWrappedText(line, `400 12px ${fontFamily}`, 'rgba(0,0,0,0.82)', 15.5, 5),
+        );
+
+        return await new Promise((resolve) => out.toBlob(resolve, 'image/png'));
+      }
+
+      async function downloadLibraryTreeCardImage(card) {
+        const blob = await renderLibraryTreeCardToPngBlob(card);
+        if (!blob) return false;
+        const filename = getLibraryTreeCardShareFilename(card);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        return true;
+      }
+
       function ensureLibraryTreeContextMenu() {
         if (libraryTreeContextMenu) return libraryTreeContextMenu;
         const menu = document.createElement('div');
@@ -16372,7 +16519,19 @@
           await copyLibraryTreeCardText(target?.card || null);
         });
 
+        const shareButton = document.createElement('button');
+        shareButton.type = 'button';
+        shareButton.textContent = currentLang === 'zh' ? '下载图片' : 'Download image';
+        shareButton.addEventListener('click', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const target = libraryTreeContextMenuTarget;
+          hideLibraryTreeContextMenu();
+          await downloadLibraryTreeCardImage(target?.card || null);
+        });
+
         menu.appendChild(copyButton);
+        menu.appendChild(shareButton);
         document.body.appendChild(menu);
         libraryTreeContextMenu = menu;
         return menu;
@@ -16388,6 +16547,10 @@
 
       function showLibraryTreeContextMenu(clientX, clientY, card, nodeId) {
         const menu = ensureLibraryTreeContextMenu();
+        const buttons = menu.querySelectorAll('button');
+        if (buttons[0]) buttons[0].textContent = currentLang === 'zh' ? '复制' : 'Copy';
+        if (buttons[1])
+          buttons[1].textContent = currentLang === 'zh' ? '下载图片' : 'Download image';
         libraryTreeContextMenuTarget = { card, nodeId };
         menu.classList.add('open');
         menu.style.left = '0px';
