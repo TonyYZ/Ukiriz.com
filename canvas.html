@@ -15326,8 +15326,7 @@
 
           const activeJunctions = getAbsJunctions(active);
           const targetJunctions = getAbsJunctions(target);
-          const activeOffsetScale = getRenderedSymbolScale(active) / Math.max(symbolScale, 0.0001);
-          const calYRendered = calY * activeOffsetScale;
+          const calYRendered = calY;
 
           targetJunctions.forEach((targetCoord, index) => {
             switch (index) {
@@ -15664,116 +15663,59 @@
 
       function getAbsJunctions(symbol) {
         const relJunctions = getRelJunctions(symbol);
-        const renderScale = getRenderedSymbolScale(symbol);
-        const baseScale = renderScale / Math.max(symbolScale, 0.0001);
-        const calInvYScaled = calInvY * baseScale;
-        const calCan1Scaled = calCan1 * baseScale;
-        const calCan2Scaled = calCan2 * baseScale;
-
-        // Use canvas-space coordinates from style.left/top so junctions are correct at any CSS zoom.
         const left = parseFloat(symbol.style.left) || 0;
         const top = parseFloat(symbol.style.top) || 0;
-        const right = left + symbol.offsetWidth;
-        const bottom = top + symbol.offsetHeight;
+        const ss = symbolScale;
 
+        // Junctions are expressed in canvas-space (same units as style.left/top).
+        // For angle=0/180 the CSS box edges equal the visual edges, so symbolScale is the
+        // correct scale factor. For angle=90/270, CSS rotation shifts the visual bounding
+        // box edges — we compute visual_right/visual_top (90°) and visual_left/visual_bottom
+        // (270°) explicitly so that the same relJ→junction mapping works without BCR.
         let absJunctions;
         if (symbol.angle === 0) {
           absJunctions = [
-            {
-              x: left + relJunctions[0].x * renderScale,
-              y: top + relJunctions[0].y * renderScale,
-            },
-            {
-              x: left + relJunctions[1].x * renderScale,
-              y: top + relJunctions[1].y * renderScale,
-            },
-            {
-              x: left + relJunctions[2].x * renderScale,
-              y: top + relJunctions[2].y * renderScale,
-            },
-            {
-              x: left + relJunctions[3].x * renderScale,
-              y: top + relJunctions[3].y * renderScale,
-            },
+            { x: left + relJunctions[0].x * ss, y: top + relJunctions[0].y * ss },
+            { x: left + relJunctions[1].x * ss, y: top + relJunctions[1].y * ss },
+            { x: left + relJunctions[2].x * ss, y: top + relJunctions[2].y * ss },
+            { x: left + relJunctions[3].x * ss, y: top + relJunctions[3].y * ss },
           ];
-        }
-        if (symbol.angle === 180) {
+        } else if (symbol.angle === 180) {
+          const right = left + symbolWidth * ss;
+          const bottom = top + symbolHeight * ss;
           absJunctions = [
-            {
-              x: right - relJunctions[1].x * renderScale,
-              y: bottom - relJunctions[1].y * renderScale - calInvYScaled,
-            },
-            {
-              x: right - relJunctions[0].x * renderScale,
-              y: bottom - relJunctions[0].y * renderScale - calInvYScaled,
-            },
-            {
-              x: right - relJunctions[3].x * renderScale,
-              y: bottom - relJunctions[3].y * renderScale,
-            },
-            {
-              x: right - relJunctions[2].x * renderScale,
-              y: bottom - relJunctions[2].y * renderScale,
-            },
+            { x: right - relJunctions[1].x * ss, y: bottom - relJunctions[1].y * ss - calInvY },
+            { x: right - relJunctions[0].x * ss, y: bottom - relJunctions[0].y * ss - calInvY },
+            { x: right - relJunctions[3].x * ss, y: bottom - relJunctions[3].y * ss },
+            { x: right - relJunctions[2].x * ss, y: bottom - relJunctions[2].y * ss },
           ];
-        }
-        if (symbol.angle === 90) {
+        } else if (symbol.angle === 90) {
+          // At 90° CW: visual_right = CSS_cx + CSS_height/2, visual_top = CSS_cy - CSS_width/2.
+          const vR = left + (symbolWidth + symbolHeight) * ss / 2;
+          const vT = top  + (symbolHeight - symbolWidth) * ss / 2;
           absJunctions = [
-            {
-              x: right - relJunctions[0].y * renderScale,
-              y: top + relJunctions[0].x * renderScale,
-            },
-            {
-              x: right - relJunctions[1].y * renderScale,
-              y: top + relJunctions[1].x * renderScale,
-            },
-            {
-              x: right - relJunctions[3].y * renderScale,
-              y: top + relJunctions[3].x * renderScale,
-            },
-            {
-              x: right - relJunctions[2].y * renderScale,
-              y: top + relJunctions[2].x * renderScale,
-            },
+            { x: vR - relJunctions[0].y * ss, y: vT + relJunctions[0].x * ss },
+            { x: vR - relJunctions[1].y * ss, y: vT + relJunctions[1].x * ss },
+            { x: vR - relJunctions[3].y * ss, y: vT + relJunctions[3].x * ss },
+            { x: vR - relJunctions[2].y * ss, y: vT + relJunctions[2].x * ss },
           ];
-        }
-        if (symbol.angle === 270) {
+        } else { // angle === 270
+          // At 270° CW: visual_left = CSS_cx - CSS_height/2, visual_bottom = CSS_cy + CSS_width/2.
+          const vL = left + (symbolWidth - symbolHeight) * ss / 2;
+          const vB = top  + (symbolWidth + symbolHeight) * ss / 2;
           absJunctions = [
-            {
-              x: left + relJunctions[1].y * renderScale + calInvYScaled,
-              y: bottom - relJunctions[1].x * renderScale,
-            },
-            {
-              x: left + relJunctions[0].y * renderScale + calInvYScaled,
-              y: bottom - relJunctions[0].x * renderScale,
-            },
-            {
-              x: left + relJunctions[2].y * renderScale,
-              y: bottom - relJunctions[2].x * renderScale,
-            },
-            {
-              x: left + relJunctions[3].y * renderScale,
-              y: bottom - relJunctions[3].x * renderScale,
-            },
+            { x: vL + relJunctions[1].y * ss + calInvY, y: vB - relJunctions[1].x * ss },
+            { x: vL + relJunctions[0].y * ss + calInvY, y: vB - relJunctions[0].x * ss },
+            { x: vL + relJunctions[2].y * ss,            y: vB - relJunctions[2].x * ss },
+            { x: vL + relJunctions[3].y * ss,            y: vB - relJunctions[3].x * ss },
           ];
         }
+
         if (symbol.elemId === 2) {
-          if (symbol.angle === 0) {
-            absJunctions[2].x += calCan1Scaled;
-            absJunctions[3].x += calCan1Scaled;
-          }
-          if (symbol.angle === 270) {
-            absJunctions[2].y -= calCan1Scaled;
-            absJunctions[3].y -= calCan1Scaled;
-          }
-          if (symbol.angle === 90) {
-            absJunctions[2].y -= calCan2Scaled;
-            absJunctions[3].y -= calCan2Scaled;
-          }
-          if (symbol.angle === 180) {
-            absJunctions[2].x += calCan2Scaled;
-            absJunctions[3].x += calCan2Scaled;
-          }
+          if (symbol.angle === 0)   { absJunctions[2].x += calCan1; absJunctions[3].x += calCan1; }
+          if (symbol.angle === 270) { absJunctions[2].y -= calCan1; absJunctions[3].y -= calCan1; }
+          if (symbol.angle === 90)  { absJunctions[2].y -= calCan2; absJunctions[3].y -= calCan2; }
+          if (symbol.angle === 180) { absJunctions[2].x += calCan2; absJunctions[3].x += calCan2; }
         }
 
         return absJunctions;
