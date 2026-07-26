@@ -5043,8 +5043,13 @@
         // World point that was under the previous anchor — keep it under the new anchor.
         const worldX = (baseScrollLeft + prevLocalX) / oldZoom;
         const worldY = (baseScrollTop + prevLocalY) / oldZoom;
-        const newScrollLeft = Math.max(0, worldX * nextZoom - newLocalX);
-        const newScrollTop = Math.max(0, worldY * nextZoom - newLocalY);
+        // Estimate max scroll at the new zoom (container.scrollWidth still reflects old zoom;
+        // scaling by nextZoom/oldZoom gives the new scrollable extent).
+        const zoomRatio = oldZoom > 0 ? nextZoom / oldZoom : 1;
+        const maxScrollLeft = Math.max(0, container.scrollWidth * zoomRatio - container.clientWidth);
+        const maxScrollTop = Math.max(0, container.scrollHeight * zoomRatio - container.clientHeight);
+        const newScrollLeft = Math.min(maxScrollLeft, Math.max(0, worldX * nextZoom - newLocalX));
+        const newScrollTop = Math.min(maxScrollTop, Math.max(0, worldY * nextZoom - newLocalY));
 
         if (pinchState) {
           pinchState.scrollLeft = newScrollLeft;
@@ -6211,11 +6216,12 @@
             scheduleChatMiniMapUpdate();
           });
         }
-        // Merge eased item bounds with live viewport bounds (no easing on viewport).
-        const minX = Math.min(eased.minX, contentLeft);
-        const minY = Math.min(eased.minY, contentTop);
-        const maxX = Math.max(eased.maxX, contentRight);
-        const maxY = Math.max(eased.maxY, contentBottom);
+        // Merge eased item bounds with live viewport bounds (no easing on viewport),
+        // then apply pad so the world is always larger than the viewport (keeps drag usable).
+        const minX = Math.max(0, Math.min(eased.minX, contentLeft) - pad);
+        const minY = Math.max(0, Math.min(eased.minY, contentTop) - pad);
+        const maxX = Math.max(eased.maxX, contentRight) + pad;
+        const maxY = Math.max(eased.maxY, contentBottom) + pad;
 
         const worldW = Math.max(visibleBounds.width, maxX - minX, 1);
         const worldH = Math.max(visibleBounds.height, maxY - minY, 1);
@@ -9197,16 +9203,25 @@
 
         const canvas = getCanvasForElem(symbol);
         if (!canvas) return;
-        const zoom = getCanvasZoom(canvas) || 1;
 
-        const canvasRect = canvas.getBoundingClientRect();
-        const rect = symbol.getBoundingClientRect();
-
-        // 把视口坐标 -> canvas 局部坐标
-        const symLeft = (rect.left - canvasRect.left) / zoom;
-        const symTop = (rect.top - canvasRect.top) / zoom;
-        const symRight = (rect.right - canvasRect.left) / zoom;
-        const symBottom = (rect.bottom - canvasRect.top) / zoom;
+        // Compute the rotated bounding box in canvas space.
+        // style.left/top is the element origin (pre-rotation); transform-origin is center.
+        // At 90°/270° the visual width/height swap; at 0°/180° they don't.
+        const ox = parseFloat(symbol.style.left) || 0;
+        const oy = parseFloat(symbol.style.top) || 0;
+        const w = symbol.offsetWidth;
+        const h = symbol.offsetHeight;
+        let symLeft, symTop, symRight, symBottom;
+        if (symbol.angle === 90 || symbol.angle === 270) {
+          const cx = ox + w / 2;
+          const cy = oy + h / 2;
+          symLeft = cx - h / 2;
+          symTop = cy - w / 2;
+          symRight = cx + h / 2;
+          symBottom = cy + w / 2;
+        } else {
+          symLeft = ox; symTop = oy; symRight = ox + w; symBottom = oy + h;
+        }
 
         let x, y;
 
@@ -13931,14 +13946,8 @@
               subset = preservedBase;
             }
 
-            // ✅ 视口坐标 -> canvas 局部坐标
-            const rect = selectedSymbol.getBoundingClientRect();
-            const canvas = getCanvasForElem(selectedSymbol);
-            const canvasRect = canvas ? canvas.getBoundingClientRect() : { left: 0, top: 0 };
-            const zoom = canvas ? getCanvasZoom(canvas) || 1 : 1;
-
-            const cx = (rect.left - canvasRect.left) / zoom + rect.width / (2 * zoom);
-            const cy = (rect.top - canvasRect.top) / zoom + rect.height / (2 * zoom);
+            const cx = (parseFloat(selectedSymbol.style.left) || 0) + selectedSymbol.offsetWidth / 2;
+            const cy = (parseFloat(selectedSymbol.style.top) || 0) + selectedSymbol.offsetHeight / 2;
 
             for (const word of subset) {
               labelData.push([word, cx, cy, selectedSymbol, false]);
@@ -13966,15 +13975,9 @@
             const canvas = getCanvasForElem(first);
             if (!canvas) continue;
 
-            const canvasRect = canvas.getBoundingClientRect();
-            const zoom = getCanvasZoom(canvas) || 1;
-
             for (const symbol of foundMatching) {
-              const rect = symbol.getBoundingClientRect();
-
-              // viewport -> canvas-local
-              const cx = (rect.left - canvasRect.left) / zoom + rect.width / (2 * zoom);
-              const cy = (rect.top - canvasRect.top) / zoom + rect.height / (2 * zoom);
+              const cx = (parseFloat(symbol.style.left) || 0) + symbol.offsetWidth / 2;
+              const cy = (parseFloat(symbol.style.top) || 0) + symbol.offsetHeight / 2;
 
               avgX += cx;
               avgY += cy;
@@ -14196,16 +14199,12 @@
           const canvas = first.closest('#craftCanvas, #chatCanvas');
           if (!canvas) return null;
 
-          const canvasRect = canvas.getBoundingClientRect();
-          const zoom = getCanvasZoom(canvas) || 1;
-
           let rightMost = -Infinity;
           let topMost = Infinity;
 
           for (const s of componentSymbols) {
-            const r = s.getBoundingClientRect();
-            const right = (r.right - canvasRect.left) / zoom; // canvas-local
-            const top = (r.top - canvasRect.top) / zoom; // canvas-local
+            const right = (parseFloat(s.style.left) || 0) + s.offsetWidth;
+            const top = parseFloat(s.style.top) || 0;
             if (right > rightMost) rightMost = right;
             if (top < topMost) topMost = top;
           }
@@ -15430,34 +15429,34 @@
           });
 
           if (getDir(active) === getDir(target)) {
-            // parallel
-            const activeRect = active.getBoundingClientRect();
-            const targetRect = target.getBoundingClientRect();
-            const canvas = getCanvasForElem(active);
-            const zoom = getCanvasZoom(canvas) || 1;
+            // parallel — use canvas-space coords to match snapToSymbol's expectation
+            const activeLeft = parseFloat(active.style.left) || 0;
+            const activeTop = parseFloat(active.style.top) || 0;
+            const targetLeft = parseFloat(target.style.left) || 0;
+            const targetTop = parseFloat(target.style.top) || 0;
             const targetRenderScale = getRenderedSymbolScale(target);
             if (getDir(active) === 0) {
-              targetX = targetRect.left;
-              targetY = targetRect.top - (symbolHeight - 7) * targetRenderScale;
+              targetX = targetLeft;
+              targetY = targetTop - (symbolHeight - 7) * targetRenderScale;
               if (currentGraph.getSymbolConnections(target)[Side.PAR_TOP].length === 0) {
                 snapToSymbol(
                   active,
                   target,
-                  activeRect.left,
-                  activeRect.top,
+                  activeLeft,
+                  activeTop,
                   targetX,
                   targetY,
                   Side.PAR_BOT,
                   Side.PAR_TOP,
                 );
               }
-              targetY = targetRect.top + (symbolHeight - 4) * targetRenderScale;
+              targetY = targetTop + (symbolHeight - 4) * targetRenderScale;
               if (currentGraph.getSymbolConnections(target)[Side.PAR_BOT].length === 0) {
                 snapToSymbol(
                   active,
                   target,
-                  activeRect.left,
-                  activeRect.top,
+                  activeLeft,
+                  activeTop,
                   targetX,
                   targetY,
                   Side.PAR_TOP,
@@ -15466,27 +15465,27 @@
               }
             }
             if (getDir(active) === 1) {
-              targetX = targetRect.left - (symbolHeight - 7) * targetRenderScale;
-              targetY = targetRect.top;
+              targetX = targetLeft - (symbolHeight - 7) * targetRenderScale;
+              targetY = targetTop;
               if (currentGraph.getSymbolConnections(target)[Side.PAR_TOP].length === 0) {
                 snapToSymbol(
                   active,
                   target,
-                  activeRect.left,
-                  activeRect.top,
+                  activeLeft,
+                  activeTop,
                   targetX,
                   targetY,
                   Side.PAR_BOT,
                   Side.PAR_TOP,
                 );
               }
-              targetX = targetRect.left + (symbolHeight - 4) * targetRenderScale;
+              targetX = targetLeft + (symbolHeight - 4) * targetRenderScale;
               if (currentGraph.getSymbolConnections(target)[Side.PAR_BOT].length === 0) {
                 snapToSymbol(
                   active,
                   target,
-                  activeRect.left,
-                  activeRect.top,
+                  activeLeft,
+                  activeTop,
                   targetX,
                   targetY,
                   Side.PAR_TOP,
