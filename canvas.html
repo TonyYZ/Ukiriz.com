@@ -5001,6 +5001,7 @@
 
       let _pendingCanvasZoom = null;
       let _canvasZoomFrame = 0;
+      let _chatViewportSaveTimer = 0;
 
       // deltaY: negative = zoom in, positive = zoom out, null = pure pan (keep current zoom).
       // prevClientX/Y: previous anchor point for combined zoom+pan (null = same as clientX/Y).
@@ -5069,8 +5070,12 @@
             if (isCraft) applyCraftCanvasPadding(zoom);
             container.scrollLeft = scrollLeft;
             container.scrollTop = scrollTop;
-            if (isChat) { scheduleChatMiniMapUpdate?.(); saveChatViewportState?.(); }
-            else { updateCraftGridAlignment(); scheduleCraftMiniMapUpdate?.(); }
+            if (isChat) {
+              scheduleChatMiniMapUpdate?.();
+              // Debounce localStorage write — skip during rapid zoom, flush 400ms after zoom stops.
+              clearTimeout(_chatViewportSaveTimer);
+              _chatViewportSaveTimer = setTimeout(() => { saveChatViewportState?.(); }, 400);
+            } else { updateCraftGridAlignment(); scheduleCraftMiniMapUpdate?.(); }
           });
         }
       }
@@ -5641,13 +5646,12 @@
         let minY = contentTop;
         let maxX = contentRight;
         let maxY = contentBottom;
-        const surfaceRect = surface.getBoundingClientRect();
+        // Use canvas-space positions (style.left/top) to avoid CSS-zoom getBoundingClientRect bugs on iOS.
         for (const el of items) {
-          const rect = el.getBoundingClientRect();
-          const x = (rect.left - surfaceRect.left) / zoom;
-          const y = (rect.top - surfaceRect.top) / zoom;
-          const w = rect.width / zoom;
-          const h = rect.height / zoom;
+          const x = parseFloat(el.style.left) || 0;
+          const y = parseFloat(el.style.top) || 0;
+          const w = el.offsetWidth;
+          const h = el.offsetHeight;
           minX = Math.min(minX, x);
           minY = Math.min(minY, y);
           maxX = Math.max(maxX, x + w);
@@ -5674,11 +5678,10 @@
         ctx.fillRect(offsetX, offsetY, worldW * scale, worldH * scale);
 
         for (const el of items) {
-          const rect = el.getBoundingClientRect();
-          const x = offsetX + ((rect.left - surfaceRect.left) / zoom - minX) * scale;
-          const y = offsetY + ((rect.top - surfaceRect.top) / zoom - minY) * scale;
-          const w = Math.max(2, (rect.width / zoom) * scale);
-          const h = Math.max(2, (rect.height / zoom) * scale);
+          const x = offsetX + ((parseFloat(el.style.left) || 0) - minX) * scale;
+          const y = offsetY + ((parseFloat(el.style.top) || 0) - minY) * scale;
+          const w = Math.max(2, el.offsetWidth * scale);
+          const h = Math.max(2, el.offsetHeight * scale);
           if (el.classList?.contains('symbol')) ctx.fillStyle = '#111';
           else if (el.classList?.contains('symbol-label')) ctx.fillStyle = '#c78a00';
           else ctx.fillStyle = '#00b0f0';
@@ -6161,53 +6164,46 @@
         const contentRight = visibleBounds.right;
         const contentBottom = visibleBounds.bottom;
 
-        let minX = Infinity;
-        let minY = Infinity;
-        let maxX = -Infinity;
-        let maxY = -Infinity;
-
+        // Compute item bounds (canvas-space, no getBoundingClientRect).
+        let iMinX = Infinity, iMinY = Infinity, iMaxX = -Infinity, iMaxY = -Infinity;
         for (const el of items) {
           const left = parseFloat(el.style.left) || 0;
           const top = parseFloat(el.style.top) || 0;
-          const rect = el.getBoundingClientRect();
-          const itemW = (rect.width || el.offsetWidth || 18) / zoom;
-          const itemH = (rect.height || el.offsetHeight || 18) / zoom;
-          minX = Math.min(minX, left);
-          minY = Math.min(minY, top);
-          maxX = Math.max(maxX, left + itemW);
-          maxY = Math.max(maxY, top + itemH);
+          const w = el.offsetWidth || 18;
+          const h = el.offsetHeight || 18;
+          iMinX = Math.min(iMinX, left);
+          iMinY = Math.min(iMinY, top);
+          iMaxX = Math.max(iMaxX, left + w);
+          iMaxY = Math.max(iMaxY, top + h);
         }
-
         const pad = 180;
-        if (!Number.isFinite(minX)) {
-          minX = contentLeft;
-          minY = contentTop;
-          maxX = contentRight;
-          maxY = contentBottom;
+        if (!Number.isFinite(iMinX)) {
+          iMinX = contentLeft; iMinY = contentTop; iMaxX = contentRight; iMaxY = contentBottom;
         }
-        minX = Math.max(0, Math.min(minX, contentLeft) - pad);
-        minY = Math.max(0, Math.min(minY, contentTop) - pad);
-        maxX = Math.max(maxX, contentRight) + pad;
-        maxY = Math.max(maxY, contentBottom) + pad;
-
-        const targetBounds = { minX, minY, maxX, maxY };
+        // Ease only item bounds — keeps the canvas background stable while items are added/moved.
+        // Content (viewport) bounds are merged fresh below so zoom never triggers easing jumps.
+        const targetItemBounds = {
+          minX: Math.max(0, iMinX - pad),
+          minY: Math.max(0, iMinY - pad),
+          maxX: iMaxX + pad,
+          maxY: iMaxY + pad,
+        };
+        let eased = targetItemBounds;
         if (chatMiniMapBoundsCache) {
           const ease = chatMiniMapDragging ? 0.35 : 0.18;
-          minX =
-            chatMiniMapBoundsCache.minX + (targetBounds.minX - chatMiniMapBoundsCache.minX) * ease;
-          minY =
-            chatMiniMapBoundsCache.minY + (targetBounds.minY - chatMiniMapBoundsCache.minY) * ease;
-          maxX =
-            chatMiniMapBoundsCache.maxX + (targetBounds.maxX - chatMiniMapBoundsCache.maxX) * ease;
-          maxY =
-            chatMiniMapBoundsCache.maxY + (targetBounds.maxY - chatMiniMapBoundsCache.maxY) * ease;
+          eased = {
+            minX: chatMiniMapBoundsCache.minX + (targetItemBounds.minX - chatMiniMapBoundsCache.minX) * ease,
+            minY: chatMiniMapBoundsCache.minY + (targetItemBounds.minY - chatMiniMapBoundsCache.minY) * ease,
+            maxX: chatMiniMapBoundsCache.maxX + (targetItemBounds.maxX - chatMiniMapBoundsCache.maxX) * ease,
+            maxY: chatMiniMapBoundsCache.maxY + (targetItemBounds.maxY - chatMiniMapBoundsCache.maxY) * ease,
+          };
         }
-        chatMiniMapBoundsCache = { minX, minY, maxX, maxY };
+        chatMiniMapBoundsCache = eased;
         const boundsDelta = Math.max(
-          Math.abs(minX - targetBounds.minX),
-          Math.abs(minY - targetBounds.minY),
-          Math.abs(maxX - targetBounds.maxX),
-          Math.abs(maxY - targetBounds.maxY),
+          Math.abs(eased.minX - targetItemBounds.minX),
+          Math.abs(eased.minY - targetItemBounds.minY),
+          Math.abs(eased.maxX - targetItemBounds.maxX),
+          Math.abs(eased.maxY - targetItemBounds.maxY),
         );
         if (boundsDelta > 1 && !chatMiniMapBoundsSettleFrame) {
           chatMiniMapBoundsSettleFrame = requestAnimationFrame(() => {
@@ -6215,6 +6211,11 @@
             scheduleChatMiniMapUpdate();
           });
         }
+        // Merge eased item bounds with live viewport bounds (no easing on viewport).
+        const minX = Math.min(eased.minX, contentLeft);
+        const minY = Math.min(eased.minY, contentTop);
+        const maxX = Math.max(eased.maxX, contentRight);
+        const maxY = Math.max(eased.maxY, contentBottom);
 
         const worldW = Math.max(visibleBounds.width, maxX - minX, 1);
         const worldH = Math.max(visibleBounds.height, maxY - minY, 1);
@@ -6233,9 +6234,8 @@
         for (const el of items) {
           const left = parseFloat(el.style.left) || 0;
           const top = parseFloat(el.style.top) || 0;
-          const rect = el.getBoundingClientRect();
-          const itemW = Math.max(4, ((rect.width || el.offsetWidth || 18) / zoom) * scale);
-          const itemH = Math.max(4, ((rect.height || el.offsetHeight || 18) / zoom) * scale);
+          const itemW = Math.max(4, (el.offsetWidth || 18) * scale);
+          const itemH = Math.max(4, (el.offsetHeight || 18) * scale);
           const x = offsetX + (left - minX) * scale;
           const y = offsetY + (top - minY) * scale;
 
@@ -9116,7 +9116,7 @@
       dotButton.style.left = `200px`;
       dotButton.style.top = `55px`;
 
-      dotButton.addEventListener('mouseup', async (e) => {
+      dotButton.addEventListener('pointerup', async (e) => {
         if (isTutorialCraftInteractionLocked?.()) {
           e.preventDefault();
           e.stopPropagation();
@@ -9153,7 +9153,7 @@
 
       const dotButton2 = dotButton.cloneNode(true);
       dotButton2.id = 'chat-dot-button';
-      dotButton2.addEventListener('mouseup', async (e) => {
+      dotButton2.addEventListener('pointerup', async (e) => {
         if (selectedSymbols.size !== 0) {
           for (const selectedSymbol of selectedSymbols) {
             if (!canEditElement(selectedSymbol)) continue; // skip others
@@ -15585,91 +15585,96 @@
 
       function getAbsJunctions(symbol) {
         const relJunctions = getRelJunctions(symbol);
-        const rect = symbol.getBoundingClientRect();
         const renderScale = getRenderedSymbolScale(symbol);
         const baseScale = renderScale / Math.max(symbolScale, 0.0001);
         const calInvYScaled = calInvY * baseScale;
         const calCan1Scaled = calCan1 * baseScale;
         const calCan2Scaled = calCan2 * baseScale;
 
+        // Use canvas-space coordinates from style.left/top so junctions are correct at any CSS zoom.
+        const left = parseFloat(symbol.style.left) || 0;
+        const top = parseFloat(symbol.style.top) || 0;
+        const right = left + symbol.offsetWidth;
+        const bottom = top + symbol.offsetHeight;
+
         let absJunctions;
         if (symbol.angle === 0) {
           absJunctions = [
             {
-              x: rect.left + relJunctions[0].x * renderScale,
-              y: rect.top + relJunctions[0].y * renderScale,
+              x: left + relJunctions[0].x * renderScale,
+              y: top + relJunctions[0].y * renderScale,
             },
             {
-              x: rect.left + relJunctions[1].x * renderScale,
-              y: rect.top + relJunctions[1].y * renderScale,
+              x: left + relJunctions[1].x * renderScale,
+              y: top + relJunctions[1].y * renderScale,
             },
             {
-              x: rect.left + relJunctions[2].x * renderScale,
-              y: rect.top + relJunctions[2].y * renderScale,
+              x: left + relJunctions[2].x * renderScale,
+              y: top + relJunctions[2].y * renderScale,
             },
             {
-              x: rect.left + relJunctions[3].x * renderScale,
-              y: rect.top + relJunctions[3].y * renderScale,
+              x: left + relJunctions[3].x * renderScale,
+              y: top + relJunctions[3].y * renderScale,
             },
           ];
         }
         if (symbol.angle === 180) {
           absJunctions = [
             {
-              x: rect.right - relJunctions[1].x * renderScale,
-              y: rect.bottom - relJunctions[1].y * renderScale - calInvYScaled,
+              x: right - relJunctions[1].x * renderScale,
+              y: bottom - relJunctions[1].y * renderScale - calInvYScaled,
             },
             {
-              x: rect.right - relJunctions[0].x * renderScale,
-              y: rect.bottom - relJunctions[0].y * renderScale - calInvYScaled,
+              x: right - relJunctions[0].x * renderScale,
+              y: bottom - relJunctions[0].y * renderScale - calInvYScaled,
             },
             {
-              x: rect.right - relJunctions[3].x * renderScale,
-              y: rect.bottom - relJunctions[3].y * renderScale,
+              x: right - relJunctions[3].x * renderScale,
+              y: bottom - relJunctions[3].y * renderScale,
             },
             {
-              x: rect.right - relJunctions[2].x * renderScale,
-              y: rect.bottom - relJunctions[2].y * renderScale,
+              x: right - relJunctions[2].x * renderScale,
+              y: bottom - relJunctions[2].y * renderScale,
             },
           ];
         }
         if (symbol.angle === 90) {
           absJunctions = [
             {
-              x: rect.right - relJunctions[0].y * renderScale,
-              y: rect.top + relJunctions[0].x * renderScale,
+              x: right - relJunctions[0].y * renderScale,
+              y: top + relJunctions[0].x * renderScale,
             },
             {
-              x: rect.right - relJunctions[1].y * renderScale,
-              y: rect.top + relJunctions[1].x * renderScale,
+              x: right - relJunctions[1].y * renderScale,
+              y: top + relJunctions[1].x * renderScale,
             },
             {
-              x: rect.right - relJunctions[3].y * renderScale,
-              y: rect.top + relJunctions[3].x * renderScale,
+              x: right - relJunctions[3].y * renderScale,
+              y: top + relJunctions[3].x * renderScale,
             },
             {
-              x: rect.right - relJunctions[2].y * renderScale,
-              y: rect.top + relJunctions[2].x * renderScale,
+              x: right - relJunctions[2].y * renderScale,
+              y: top + relJunctions[2].x * renderScale,
             },
           ];
         }
         if (symbol.angle === 270) {
           absJunctions = [
             {
-              x: rect.left + relJunctions[1].y * renderScale + calInvYScaled,
-              y: rect.bottom - relJunctions[1].x * renderScale,
+              x: left + relJunctions[1].y * renderScale + calInvYScaled,
+              y: bottom - relJunctions[1].x * renderScale,
             },
             {
-              x: rect.left + relJunctions[0].y * renderScale + calInvYScaled,
-              y: rect.bottom - relJunctions[0].x * renderScale,
+              x: left + relJunctions[0].y * renderScale + calInvYScaled,
+              y: bottom - relJunctions[0].x * renderScale,
             },
             {
-              x: rect.left + relJunctions[2].y * renderScale,
-              y: rect.bottom - relJunctions[2].x * renderScale,
+              x: left + relJunctions[2].y * renderScale,
+              y: bottom - relJunctions[2].x * renderScale,
             },
             {
-              x: rect.left + relJunctions[3].y * renderScale,
-              y: rect.bottom - relJunctions[3].x * renderScale,
+              x: left + relJunctions[3].y * renderScale,
+              y: bottom - relJunctions[3].x * renderScale,
             },
           ];
         }
@@ -15756,15 +15761,13 @@
         if (violatesConflicts(active, activeSide)) return;
 
         // ---- 2) Distance check ----
-        const canvas = getCanvasForElem(active);
-        const zoom = getCanvasZoom(canvas) || 1;
-        // Measure in canvas-space units so snap threshold is stable regardless of zoom.
-        const canvasDist = getDist(activeX, activeY, targetX, targetY) / zoom;
+        // Junctions are in canvas space, so distance is already in canvas-space units.
+        const canvasDist = getDist(activeX, activeY, targetX, targetY);
         const snapDistance = isCoarseMobile ? SNAP_DISTANCE * 0.42 : SNAP_DISTANCE;
         if (canvasDist >= snapDistance) return;
 
-        const dx = (targetX - activeX) / zoom;
-        const dy = (targetY - activeY) / zoom;
+        const dx = targetX - activeX;
+        const dy = targetY - activeY;
 
         // ---- 3) Group drag: request a delta for the whole group ----
         if (groupDragActive) {
