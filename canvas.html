@@ -135,6 +135,15 @@
         opacity: 0.5;
       }
 
+      /* Non-owned selection: force default cursor on chat action buttons. Use !important
+         so it beats .button { cursor: pointer } and triggers an immediate cursor re-evaluation
+         even when the mouse is already over the button (inline style changes don't do this). */
+      body.chat-buttons-forbidden #chat-turn-button,
+      body.chat-buttons-forbidden #chat-dot-button,
+      body.chat-buttons-forbidden #chat-remove-button {
+        cursor: default !important;
+      }
+
       body.symbol-drag-ui-pass-through .button,
       body.symbol-drag-ui-pass-through .submit-button,
       body.symbol-drag-ui-pass-through .wheel,
@@ -5005,7 +5014,14 @@
 
       // deltaY: negative = zoom in, positive = zoom out, null = pure pan (keep current zoom).
       // prevClientX/Y: previous anchor point for combined zoom+pan (null = same as clientX/Y).
-      function zoomActiveCanvas(deltaY, clientX, clientY, pinchState = null, prevClientX = null, prevClientY = null) {
+      function zoomActiveCanvas(
+        deltaY,
+        clientX,
+        clientY,
+        pinchState = null,
+        prevClientX = null,
+        prevClientY = null,
+      ) {
         const active = document.querySelector('.tab-content.active');
         if (!active) return;
 
@@ -5018,9 +5034,13 @@
         canvasZoomGestureUntil = performance.now() + 120;
 
         const oldZoom = getCanvasZoom(canvas);
-        const nextZoom = deltaY === null
-          ? oldZoom
-          : clampCanvasZoom(canvas, deltaY < 0 ? oldZoom * CANVAS_ZOOM_STEP : oldZoom / CANVAS_ZOOM_STEP);
+        const nextZoom =
+          deltaY === null
+            ? oldZoom
+            : clampCanvasZoom(
+                canvas,
+                deltaY < 0 ? oldZoom * CANVAS_ZOOM_STEP : oldZoom / CANVAS_ZOOM_STEP,
+              );
         if (deltaY !== null && Math.abs(nextZoom - oldZoom) < 0.0001) return;
 
         const container = isChat
@@ -5046,8 +5066,14 @@
         // Estimate max scroll at the new zoom (container.scrollWidth still reflects old zoom;
         // scaling by nextZoom/oldZoom gives the new scrollable extent).
         const zoomRatio = oldZoom > 0 ? nextZoom / oldZoom : 1;
-        const maxScrollLeft = Math.max(0, container.scrollWidth * zoomRatio - container.clientWidth);
-        const maxScrollTop = Math.max(0, container.scrollHeight * zoomRatio - container.clientHeight);
+        const maxScrollLeft = Math.max(
+          0,
+          container.scrollWidth * zoomRatio - container.clientWidth,
+        );
+        const maxScrollTop = Math.max(
+          0,
+          container.scrollHeight * zoomRatio - container.clientHeight,
+        );
         const newScrollLeft = Math.min(maxScrollLeft, Math.max(0, worldX * nextZoom - newLocalX));
         const newScrollTop = Math.min(maxScrollTop, Math.max(0, worldY * nextZoom - newLocalY));
 
@@ -5064,12 +5090,21 @@
           else craftCanvasZoom = nextZoom;
         }
 
-        _pendingCanvasZoom = { canvas, container, zoom: nextZoom, scrollLeft: newScrollLeft, scrollTop: newScrollTop, isChat, isCraft };
+        _pendingCanvasZoom = {
+          canvas,
+          container,
+          zoom: nextZoom,
+          scrollLeft: newScrollLeft,
+          scrollTop: newScrollTop,
+          isChat,
+          isCraft,
+        };
         if (!_canvasZoomFrame) {
           _canvasZoomFrame = requestAnimationFrame(() => {
             _canvasZoomFrame = 0;
             if (!_pendingCanvasZoom) return;
-            const { canvas, container, zoom, scrollLeft, scrollTop, isChat, isCraft } = _pendingCanvasZoom;
+            const { canvas, container, zoom, scrollLeft, scrollTop, isChat, isCraft } =
+              _pendingCanvasZoom;
             _pendingCanvasZoom = null;
             canvas.style.zoom = `${zoom}`;
             if (isCraft) applyCraftCanvasPadding(zoom);
@@ -5079,8 +5114,13 @@
               scheduleChatMiniMapUpdate?.();
               // Debounce localStorage write — skip during rapid zoom, flush 400ms after zoom stops.
               clearTimeout(_chatViewportSaveTimer);
-              _chatViewportSaveTimer = setTimeout(() => { saveChatViewportState?.(); }, 400);
-            } else { updateCraftGridAlignment(); scheduleCraftMiniMapUpdate?.(); }
+              _chatViewportSaveTimer = setTimeout(() => {
+                saveChatViewportState?.();
+              }, 400);
+            } else {
+              updateCraftGridAlignment();
+              scheduleCraftMiniMapUpdate?.();
+            }
           });
         }
       }
@@ -5286,7 +5326,9 @@
               };
             }
             clearTimeout(_wheelZoomResetTimer);
-            _wheelZoomResetTimer = setTimeout(() => { _wheelZoomState = null; }, 300);
+            _wheelZoomResetTimer = setTimeout(() => {
+              _wheelZoomState = null;
+            }, 300);
             zoomActiveCanvas(e.deltaY, e.clientX, e.clientY, _wheelZoomState);
             return;
           }
@@ -5405,12 +5447,17 @@
               const prevCx = pinch.prevCenterX ?? center.x;
               const prevCy = pinch.prevCenterY ?? center.y;
               const distanceChanged = Math.abs(nextDistance - pinch.distance) > 3;
-              const centerMoved = Math.abs(center.x - prevCx) > 0.5 || Math.abs(center.y - prevCy) > 0.5;
+              const centerMoved =
+                Math.abs(center.x - prevCx) > 0.5 || Math.abs(center.y - prevCy) > 0.5;
               pinch.prevCenterX = center.x;
               pinch.prevCenterY = center.y;
               if (distanceChanged || centerMoved) {
                 const ratio = nextDistance / Math.max(1, pinch.distance);
-                const deltaY = distanceChanged ? (nextDistance > pinch.distance ? -120 : 120) : null;
+                const deltaY = distanceChanged
+                  ? nextDistance > pinch.distance
+                    ? -120
+                    : 120
+                  : null;
                 if (pinch.tabId === 'tab1' || pinch.tabId === 'tab4') {
                   zoomActiveCanvas(deltaY, center.x, center.y, pinch, prevCx, prevCy);
                 } else if (distanceChanged) {
@@ -6170,7 +6217,10 @@
         const contentBottom = visibleBounds.bottom;
 
         // Compute item bounds (canvas-space, no getBoundingClientRect).
-        let iMinX = Infinity, iMinY = Infinity, iMaxX = -Infinity, iMaxY = -Infinity;
+        let iMinX = Infinity,
+          iMinY = Infinity,
+          iMaxX = -Infinity,
+          iMaxY = -Infinity;
         for (const el of items) {
           const left = parseFloat(el.style.left) || 0;
           const top = parseFloat(el.style.top) || 0;
@@ -6183,7 +6233,10 @@
         }
         const pad = 180;
         if (!Number.isFinite(iMinX)) {
-          iMinX = contentLeft; iMinY = contentTop; iMaxX = contentRight; iMaxY = contentBottom;
+          iMinX = contentLeft;
+          iMinY = contentTop;
+          iMaxX = contentRight;
+          iMaxY = contentBottom;
         }
         // Ease only item bounds — keeps the canvas background stable while items are added/moved.
         // Content (viewport) bounds are merged fresh below so zoom never triggers easing jumps.
@@ -6197,10 +6250,18 @@
         if (chatMiniMapBoundsCache) {
           const ease = chatMiniMapDragging ? 0.35 : 0.18;
           eased = {
-            minX: chatMiniMapBoundsCache.minX + (targetItemBounds.minX - chatMiniMapBoundsCache.minX) * ease,
-            minY: chatMiniMapBoundsCache.minY + (targetItemBounds.minY - chatMiniMapBoundsCache.minY) * ease,
-            maxX: chatMiniMapBoundsCache.maxX + (targetItemBounds.maxX - chatMiniMapBoundsCache.maxX) * ease,
-            maxY: chatMiniMapBoundsCache.maxY + (targetItemBounds.maxY - chatMiniMapBoundsCache.maxY) * ease,
+            minX:
+              chatMiniMapBoundsCache.minX +
+              (targetItemBounds.minX - chatMiniMapBoundsCache.minX) * ease,
+            minY:
+              chatMiniMapBoundsCache.minY +
+              (targetItemBounds.minY - chatMiniMapBoundsCache.minY) * ease,
+            maxX:
+              chatMiniMapBoundsCache.maxX +
+              (targetItemBounds.maxX - chatMiniMapBoundsCache.maxX) * ease,
+            maxY:
+              chatMiniMapBoundsCache.maxY +
+              (targetItemBounds.maxY - chatMiniMapBoundsCache.maxY) * ease,
           };
         }
         chatMiniMapBoundsCache = eased;
@@ -6864,7 +6925,6 @@
 
           // Store user ID in local storage
           if (currentUser?.uid) localStorage.setItem('anonymousUID', currentUser.uid);
-
         } catch (error) {
           console.error('Error with anonymous Supabase sign-in:', error);
         }
@@ -7562,6 +7622,8 @@
 
         symbol.dataset.ownerUid = data.ownerUid || '';
         symbol.dataset.id = docId;
+        // Unowned symbols are click-selectable but not draggable — show pointer, not grab.
+        symbol.style.cursor = canEditElement(symbol) ? '' : 'pointer';
 
         // Persisted spawned-expression grouping + metadata (for global group selection after refresh)
         const exprGroupId = data.exprGroupId || data.expr_group_id || null;
@@ -7602,8 +7664,10 @@
             appendToChatCanvas(dot);
           }
           symbol.isDynamic = true;
-          symbol.dot.style.left = `${dotX}px`;
-          symbol.dot.style.top = `${dotY}px`;
+          // Always recompute from the symbol's current canvas position rather than trusting
+          // the stored dotX/dotY, which can be stale if the symbol was moved by another user
+          // after the dot position was last persisted.
+          updateDotPositionLocal(symbol.dot);
         } else if (!suppressVisual && symbol.dot) {
           symbol.dot.remove();
           symbol.dot = null;
@@ -9220,7 +9284,10 @@
           symRight = cx + h / 2;
           symBottom = cy + w / 2;
         } else {
-          symLeft = ox; symTop = oy; symRight = ox + w; symBottom = oy + h;
+          symLeft = ox;
+          symTop = oy;
+          symRight = ox + w;
+          symBottom = oy + h;
         }
 
         let x, y;
@@ -10254,6 +10321,9 @@
         [palette, chatPalette].forEach((p) =>
           p.querySelectorAll('.color').forEach((swatch) => (swatch.style.cursor = cur)),
         );
+        // Toggle a body class so the CSS rule immediately re-evaluates the cursor
+        // on chat action buttons, even when the mouse is already over them.
+        document.body.classList.toggle('chat-buttons-forbidden', forbidden);
       }
 
       function handlePaletteClick(e) {
@@ -10277,6 +10347,9 @@
       chatPalette.addEventListener('click', handlePaletteClick);
       palette.addEventListener('mouseenter', refreshPaletteForbiddenState);
       chatPalette.addEventListener('mouseenter', refreshPaletteForbiddenState);
+      // Re-evaluate after every pointer release so the cursor updates as soon as
+      // selection changes, without waiting for the mouse to enter the palette.
+      document.addEventListener('pointerup', refreshPaletteForbiddenState);
 
       const wheel = document.createElement('div'); // Your wheel sprite
       wheel.classList.add('wheel');
@@ -11776,17 +11849,10 @@
       }
 
       function getRenderedSymbolScale(symbol) {
-        const rect = symbol.getBoundingClientRect();
-        const angle = Number(symbol.angle || 0);
-        if (angle === 90 || angle === 270) {
-          return (
-            rect.height / symbolWidth ||
-            symbolScale * (getCanvasZoom(getCanvasForElem(symbol)) || 1)
-          );
-        }
-        return (
-          rect.width / symbolWidth || symbolScale * (getCanvasZoom(getCanvasForElem(symbol)) || 1)
-        );
+        // Use offsetWidth (canvas-space, unaffected by parent CSS zoom) so the
+        // render scale is correct at any canvas zoom level. getBoundingClientRect()
+        // would include the CSS zoom factor and double-inflate junction positions.
+        return symbol.offsetWidth / symbolWidth || symbolScale;
       }
 
       function getCanvasForElem(el) {
@@ -12739,7 +12805,7 @@
           if (getCanvasForElem(released) === chatCanvas()) {
             markLocalRoomObjMutation(released, 1500);
           }
-          released.style.cursor = 'grab';
+          released.style.cursor = canEditElement(released) ? 'grab' : 'pointer';
           released._qianPressed = false;
           updateQianSymbolAppearance(released);
 
@@ -13363,13 +13429,13 @@
               elBottom = elTop + el.offsetHeight * zoom;
             } else {
               const rect = el.getBoundingClientRect();
-              elLeft = rect.left; elTop = rect.top; elRight = rect.right; elBottom = rect.bottom;
+              elLeft = rect.left;
+              elTop = rect.top;
+              elRight = rect.right;
+              elBottom = rect.bottom;
             }
             const intersects =
-              elRight >= selLeft &&
-              elLeft <= selRight &&
-              elBottom >= selTop &&
-              elTop <= selBottom;
+              elRight >= selLeft && elLeft <= selRight && elBottom >= selTop && elTop <= selBottom;
             if (intersects) hitEls.push(el);
           });
 
@@ -13946,8 +14012,10 @@
               subset = preservedBase;
             }
 
-            const cx = (parseFloat(selectedSymbol.style.left) || 0) + selectedSymbol.offsetWidth / 2;
-            const cy = (parseFloat(selectedSymbol.style.top) || 0) + selectedSymbol.offsetHeight / 2;
+            const cx =
+              (parseFloat(selectedSymbol.style.left) || 0) + selectedSymbol.offsetWidth / 2;
+            const cy =
+              (parseFloat(selectedSymbol.style.top) || 0) + selectedSymbol.offsetHeight / 2;
 
             for (const word of subset) {
               labelData.push([word, cx, cy, selectedSymbol, false]);
@@ -14137,7 +14205,6 @@
 
               const ok = document.execCommand('copy');
               document.body.removeChild(ta);
-
 
               if (!ok) {
                 // last resort: prompt user
@@ -14583,7 +14650,6 @@
           }
 
           function showDoneButton(passed) {
-
             const doneButton = document.createElement('button');
             doneButton.classList.add('submit-button', 'removable');
             doneButton.dataset.definitionComponentId = definitionComponentId;
@@ -14819,7 +14885,6 @@
         symbol.elemIdTrue = elemIdTrue;
         symbol.innerHTML = symbol.elemId != null ? symbolData[symbol.elemId] : '';
 
-
         if (symbolX !== null) {
           symbol.style.left = `${symbolX}px`;
           symbol.style.top = `${symbolY}px`;
@@ -14956,7 +15021,7 @@
 
           // owner-only drag
           if (!canEditElement(symbol)) {
-            symbol.style.cursor = NO_EDIT_CURSOR;
+            symbol.style.cursor = 'pointer'; // clickable but not draggable
             // allow click-to-toggle selection for others
             clickOnlySymbol = symbol;
             return; // no dragging
