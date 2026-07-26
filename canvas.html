@@ -4999,7 +4999,12 @@
         container.style.backgroundPosition = `${minorX}px ${minorY}px, ${minorX}px ${minorY}px, ${majorX}px ${majorY}px, ${majorX}px ${majorY}px`;
       }
 
-      function zoomActiveCanvas(deltaY, clientX, clientY, pinchState = null) {
+      let _pendingCanvasZoom = null;
+      let _canvasZoomFrame = 0;
+
+      // deltaY: negative = zoom in, positive = zoom out, null = pure pan (keep current zoom).
+      // prevClientX/Y: previous anchor point for combined zoom+pan (null = same as clientX/Y).
+      function zoomActiveCanvas(deltaY, clientX, clientY, pinchState = null, prevClientX = null, prevClientY = null) {
         const active = document.querySelector('.tab-content.active');
         if (!active) return;
 
@@ -5012,48 +5017,62 @@
         canvasZoomGestureUntil = performance.now() + 120;
 
         const oldZoom = getCanvasZoom(canvas);
-        const nextZoom = clampCanvasZoom(
-          canvas,
-          deltaY < 0 ? oldZoom * CANVAS_ZOOM_STEP : oldZoom / CANVAS_ZOOM_STEP,
-        );
-        if (Math.abs(nextZoom - oldZoom) < 0.0001) return;
+        const nextZoom = deltaY === null
+          ? oldZoom
+          : clampCanvasZoom(canvas, deltaY < 0 ? oldZoom * CANVAS_ZOOM_STEP : oldZoom / CANVAS_ZOOM_STEP);
+        if (deltaY !== null && Math.abs(nextZoom - oldZoom) < 0.0001) return;
 
         const container = isChat
           ? tab4 || document.getElementById('tab4')
           : tab1 || document.getElementById('tab1');
         if (!container) {
-          setCanvasZoom(canvas, nextZoom);
+          if (deltaY !== null) setCanvasZoom(canvas, nextZoom);
           return;
         }
 
         const rect = container.getBoundingClientRect();
-        const localX = clientX - rect.left;
-        const localY = clientY - rect.top;
+        // newLocalX/Y: where the finger is now (the anchor target after zoom/pan).
+        // prevLocalX/Y: where the finger was (used to compute the world point to preserve).
+        const newLocalX = clientX - rect.left;
+        const newLocalY = clientY - rect.top;
+        const prevLocalX = prevClientX !== null ? prevClientX - rect.left : newLocalX;
+        const prevLocalY = prevClientY !== null ? prevClientY - rect.top : newLocalY;
         const baseScrollLeft = pinchState ? pinchState.scrollLeft : container.scrollLeft;
         const baseScrollTop = pinchState ? pinchState.scrollTop : container.scrollTop;
-        const worldX = (baseScrollLeft + localX) / oldZoom;
-        const worldY = (baseScrollTop + localY) / oldZoom;
-        const newScrollLeft = Math.max(0, worldX * nextZoom - localX);
-        const newScrollTop = Math.max(0, worldY * nextZoom - localY);
+        // World point that was under the previous anchor — keep it under the new anchor.
+        const worldX = (baseScrollLeft + prevLocalX) / oldZoom;
+        const worldY = (baseScrollTop + prevLocalY) / oldZoom;
+        const newScrollLeft = Math.max(0, worldX * nextZoom - newLocalX);
+        const newScrollTop = Math.max(0, worldY * nextZoom - newLocalY);
+
         if (pinchState) {
           pinchState.scrollLeft = newScrollLeft;
           pinchState.scrollTop = newScrollTop;
         }
 
-        setCanvasZoom(canvas, nextZoom);
-        const applyScroll = () => {
-          container.scrollLeft = newScrollLeft;
-          container.scrollTop = newScrollTop;
-          if (isChat) {
-            scheduleChatMiniMapUpdate?.();
-            saveChatViewportState?.();
-          } else {
-            updateCraftGridAlignment();
-            scheduleCraftMiniMapUpdate?.();
-          }
-        };
-        // Craft starts with no overflow at 100%, so apply after layout to avoid clamping-to-zero.
-        requestAnimationFrame(applyScroll);
+        // Update JS zoom var synchronously so the next call reads the correct oldZoom.
+        // Defer all CSS writes (zoom + scroll + padding) to a single rAF per frame to avoid
+        // layout thrashing from applyCraftCanvasPadding reading clientWidth on every event.
+        if (deltaY !== null) {
+          if (isChat) chatCanvasZoom = nextZoom;
+          else craftCanvasZoom = nextZoom;
+        }
+
+        _pendingCanvasZoom = { canvas, container, zoom: nextZoom, scrollLeft: newScrollLeft, scrollTop: newScrollTop, isChat, isCraft };
+        if (!_canvasZoomFrame) {
+          _canvasZoomFrame = requestAnimationFrame(() => {
+            _canvasZoomFrame = 0;
+            if (!_pendingCanvasZoom) return;
+            const { canvas, container, zoom, scrollLeft, scrollTop, isChat, isCraft } = _pendingCanvasZoom;
+            _pendingCanvasZoom = null;
+            canvas.style.zoom = `${zoom}`;
+            if (isCraft) applyCraftCanvasPadding(zoom);
+            container.scrollLeft = scrollLeft;
+            container.scrollTop = scrollTop;
+            if (isChat) { scheduleChatMiniMapUpdate?.(); saveChatViewportState?.(); }
+            else { updateCraftGridAlignment(); scheduleCraftMiniMapUpdate?.(); }
+          });
+        }
       }
 
       function zoomScrollableContent(containerEl, oldZoom, nextZoom, clientX, clientY, applyZoom) {
@@ -5372,20 +5391,28 @@
               canvasPinchActive = true;
               canvasZoomGestureUntil = performance.now() + 120;
               const nextDistance = pinchDistance(e.touches[0], e.touches[1]);
-              if (Math.abs(nextDistance - pinch.distance) > 3) {
-                const center = pinchCenter(e.touches[0], e.touches[1]);
+              const center = pinchCenter(e.touches[0], e.touches[1]);
+              const prevCx = pinch.prevCenterX ?? center.x;
+              const prevCy = pinch.prevCenterY ?? center.y;
+              const distanceChanged = Math.abs(nextDistance - pinch.distance) > 3;
+              const centerMoved = Math.abs(center.x - prevCx) > 0.5 || Math.abs(center.y - prevCy) > 0.5;
+              pinch.prevCenterX = center.x;
+              pinch.prevCenterY = center.y;
+              if (distanceChanged || centerMoved) {
                 const ratio = nextDistance / Math.max(1, pinch.distance);
-                const deltaY = nextDistance > pinch.distance ? -120 : 120;
+                const deltaY = distanceChanged ? (nextDistance > pinch.distance ? -120 : 120) : null;
                 if (pinch.tabId === 'tab1' || pinch.tabId === 'tab4') {
-                  zoomActiveCanvas(deltaY, center.x, center.y, pinch);
-                } else if (pinch.tabId === 'tab0') {
-                  zoomHomeContent(deltaY, center.x, center.y);
-                } else if (pinch.tabId === 'tab2') {
-                  zoomLibraryTo(libraryContentZoom * ratio, center.x, center.y);
-                } else if (pinch.tabId === 'tab3') {
-                  zoomWorldTo(worldContentZoom * ratio, center.x, center.y);
+                  zoomActiveCanvas(deltaY, center.x, center.y, pinch, prevCx, prevCy);
+                } else if (distanceChanged) {
+                  if (pinch.tabId === 'tab0') {
+                    zoomHomeContent(deltaY, center.x, center.y);
+                  } else if (pinch.tabId === 'tab2') {
+                    zoomLibraryTo(libraryContentZoom * ratio, center.x, center.y);
+                  } else if (pinch.tabId === 'tab3') {
+                    zoomWorldTo(worldContentZoom * ratio, center.x, center.y);
+                  }
                 }
-                pinch.distance = nextDistance;
+                if (distanceChanged) pinch.distance = nextDistance;
               }
               e.preventDefault();
               return;
@@ -5782,21 +5809,11 @@
         const surface = chatCanvas();
         if (!tab || !surface) return null;
         const zoom = getCanvasZoom(surface) || 1;
-        const tabRect = tab.getBoundingClientRect();
-        const surfaceRect = surface.getBoundingClientRect();
-        const left = (tabRect.left - surfaceRect.left) / zoom;
-        const top = (tabRect.top - surfaceRect.top) / zoom;
-        const right = (tabRect.right - surfaceRect.left) / zoom;
-        const bottom = (tabRect.bottom - surfaceRect.top) / zoom;
-        return {
-          left,
-          top,
-          right,
-          bottom,
-          width: right - left,
-          height: bottom - top,
-          zoom,
-        };
+        const left = tab.scrollLeft / zoom;
+        const top = tab.scrollTop / zoom;
+        const right = left + tab.clientWidth / zoom;
+        const bottom = top + tab.clientHeight / zoom;
+        return { left, top, right, bottom, width: right - left, height: bottom - top, zoom };
       }
 
       let annotationLinkFrame = 0;
@@ -11728,8 +11745,18 @@
       }
 
       function clientToLocal(container, clientX, clientY) {
-        const r = container.getBoundingClientRect();
         const zoom = getCanvasZoom(container);
+        // Use the scroll container's rect + scrollLeft/scrollTop rather than the CSS-zoomed
+        // canvas's own getBoundingClientRect, which is unreliable on iOS when zoom != 1.
+        const scrollParent = container.parentElement;
+        if (zoom !== 1 && scrollParent) {
+          const r = scrollParent.getBoundingClientRect();
+          return {
+            x: (clientX - r.left + scrollParent.scrollLeft) / zoom,
+            y: (clientY - r.top + scrollParent.scrollTop) / zoom,
+          };
+        }
+        const r = container.getBoundingClientRect();
         return { x: (clientX - r.left) / zoom, y: (clientY - r.top) / zoom };
       }
 
