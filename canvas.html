@@ -12038,13 +12038,13 @@
             }
           }
 
-          // Unlock by mouse travel (client distance)
+          // Unlock by mouse travel (canvas-space distance)
           if (dragSnapLock) {
             const mdx = e.clientX - dragSnapLock.clientX0;
             const mdy = e.clientY - dragSnapLock.clientY0;
-            const mouseDist = Math.hypot(mdx, mdy);
+            const canvasMoveDist = Math.hypot(mdx, mdy) / (getCanvasZoom(canvas) || 1);
 
-            if (mouseDist > UNSNAP_DISTANCE) {
+            if (canvasMoveDist > UNSNAP_DISTANCE) {
               // Jump the whole group under the current cursor BEFORE unlocking.
               // This prevents the "cursor far away from objects after unlock" problem.
               const jumpDx = pt.x - dragSnapLock.localX0;
@@ -12306,6 +12306,7 @@
           }
 
           const canvas = getCanvasForElem(activeSymbol);
+          const canvasZoom = getCanvasZoom(canvas) || 1;
           const { x: localX, y: localY } = clientToLocal(canvas, e.clientX, e.clientY);
 
           let x = localX - activeSymbol.offsetX;
@@ -12313,7 +12314,7 @@
           if (dragSnapLock?.activeEl === activeSymbol && !groupDragActive) {
             const mdx = e.clientX - dragSnapLock.clientX0;
             const mdy = e.clientY - dragSnapLock.clientY0;
-            if (Math.hypot(mdx, mdy) <= UNSNAP_DISTANCE) {
+            if (Math.hypot(mdx, mdy) / canvasZoom <= UNSNAP_DISTANCE) {
               x = dragSnapLock.left;
               y = dragSnapLock.top;
             } else {
@@ -13324,16 +13325,36 @@
           // 只在 canvas 内找 items（避免扫到别的 tab）
           const items = canvasEl.querySelectorAll(itemSelector);
 
+          // When the canvas has CSS zoom, getBoundingClientRect() on its children can return
+          // stale/incorrect viewport coords on iOS. Compute from canvas-space style.left/top instead.
+          const zoom = getCanvasZoom(canvasEl);
+          const scrollParent = canvasEl.parentElement;
+          const useCanvasCoords = zoom !== 1 && scrollParent;
+          const tabRect = useCanvasCoords ? scrollParent.getBoundingClientRect() : null;
+          const scrollLeft = useCanvasCoords ? scrollParent.scrollLeft : 0;
+          const scrollTop = useCanvasCoords ? scrollParent.scrollTop : 0;
+
           // Collect hits first so we can swap selection "atomically" (prevents flicker where
           // frames/cards disappear between clearSelection and reselect).
           const hitEls = [];
           items.forEach((el) => {
-            const rect = el.getBoundingClientRect();
+            let elLeft, elTop, elRight, elBottom;
+            if (useCanvasCoords) {
+              const cx = parseFloat(el.style.left) || 0;
+              const cy = parseFloat(el.style.top) || 0;
+              elLeft = tabRect.left + cx * zoom - scrollLeft;
+              elTop = tabRect.top + cy * zoom - scrollTop;
+              elRight = elLeft + el.offsetWidth * zoom;
+              elBottom = elTop + el.offsetHeight * zoom;
+            } else {
+              const rect = el.getBoundingClientRect();
+              elLeft = rect.left; elTop = rect.top; elRight = rect.right; elBottom = rect.bottom;
+            }
             const intersects =
-              rect.right >= selLeft &&
-              rect.left <= selRight &&
-              rect.bottom >= selTop &&
-              rect.top <= selBottom;
+              elRight >= selLeft &&
+              elLeft <= selRight &&
+              elBottom >= selTop &&
+              elTop <= selBottom;
             if (intersects) hitEls.push(el);
           });
 
@@ -15737,14 +15758,10 @@
         // ---- 2) Distance check ----
         const canvas = getCanvasForElem(active);
         const zoom = getCanvasZoom(canvas) || 1;
-        const clientDist = getDist(activeX, activeY, targetX, targetY);
-        const mobileZoomTightening = isCoarseMobile ? Math.max(0.32, 1 / Math.sqrt(zoom)) : 1;
-        const snapDistance = isCoarseMobile
-          ? SNAP_DISTANCE * 0.42 * mobileZoomTightening
-          : SNAP_DISTANCE;
-        // Keep magnet sensitivity visually stable under zoom. If this were measured in
-        // canvas-local units, zooming in would make the snap radius feel much larger.
-        if (clientDist >= snapDistance) return;
+        // Measure in canvas-space units so snap threshold is stable regardless of zoom.
+        const canvasDist = getDist(activeX, activeY, targetX, targetY) / zoom;
+        const snapDistance = isCoarseMobile ? SNAP_DISTANCE * 0.42 : SNAP_DISTANCE;
+        if (canvasDist >= snapDistance) return;
 
         const dx = (targetX - activeX) / zoom;
         const dy = (targetY - activeY) / zoom;
