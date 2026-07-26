@@ -5089,7 +5089,6 @@
           if (isChat) chatCanvasZoom = nextZoom;
           else craftCanvasZoom = nextZoom;
         }
-
         _pendingCanvasZoom = {
           canvas,
           container,
@@ -5108,6 +5107,10 @@
             _pendingCanvasZoom = null;
             canvas.style.zoom = `${zoom}`;
             if (isCraft) applyCraftCanvasPadding(zoom);
+            // Force a synchronous layout reflow so the scrollable area reflects the new zoom
+            // before we assign scrollLeft/Top — otherwise the browser clamps the assignment
+            // to the old (pre-zoom) maximum and the minimap frame jumps to a wrong position.
+            void container.scrollWidth;
             container.scrollLeft = scrollLeft;
             container.scrollTop = scrollTop;
             if (isChat) {
@@ -9102,6 +9105,7 @@
         detachSymbolLocal(symbol);
         resetPendingSnapState();
         applySymbolRotationLocal(symbol, addAngle);
+        if (symbol.isDynamic && symbol.dot) updateDotPositionLocal(symbol.dot);
         await reconcileSymbolConnectivityAfterTurn(symbol, inChat);
         await new Promise((resolve) => requestAnimationFrame(resolve));
         await reconcileSymbolConnectivityAfterTurn(symbol, inChat);
@@ -9134,10 +9138,6 @@
           } else {
             for (const selectedSymbol of group) {
               await rotateSymbol(selectedSymbol, 90);
-
-              if (selectedSymbol.isDynamic && selectedSymbol.dot) {
-                updateDotPositionLocal(selectedSymbol.dot);
-              }
             }
           }
         }
@@ -9162,10 +9162,6 @@
           } else {
             for (const selectedSymbol of group) {
               await rotateSymbol(selectedSymbol, 90, true);
-
-              if (selectedSymbol.isDynamic && selectedSymbol.dot) {
-                updateDotPositionLocal(selectedSymbol.dot);
-              }
             }
           }
         }
@@ -9273,8 +9269,10 @@
         // At 90°/270° the visual width/height swap; at 0°/180° they don't.
         const ox = parseFloat(symbol.style.left) || 0;
         const oy = parseFloat(symbol.style.top) || 0;
-        const w = symbol.offsetWidth;
-        const h = symbol.offsetHeight;
+        // offsetWidth/Height are 0 when the element is inside a hidden tab (display:none).
+        // Fall back to the known CSS dimensions so the dot is placed correctly on load.
+        const w = symbol.offsetWidth || symbolWidth * symbolScale;
+        const h = symbol.offsetHeight || symbolHeight * symbolScale;
         let symLeft, symTop, symRight, symBottom;
         if (symbol.angle === 90 || symbol.angle === 270) {
           const cx = ox + w / 2;
@@ -10350,6 +10348,9 @@
       // Re-evaluate after every pointer release so the cursor updates as soon as
       // selection changes, without waiting for the mouse to enter the palette.
       document.addEventListener('pointerup', refreshPaletteForbiddenState);
+      // Clean up any long-press ring when the browser cancels the pointer (e.g. when the
+      // OS gesture recognizer or scroll detection absorbs the touch before mouseup fires).
+      document.addEventListener('pointercancel', () => endLongPress(true));
 
       const wheel = document.createElement('div'); // Your wheel sprite
       wheel.classList.add('wheel');
@@ -11849,10 +11850,13 @@
       }
 
       function getRenderedSymbolScale(symbol) {
-        // Use offsetWidth (canvas-space, unaffected by parent CSS zoom) so the
-        // render scale is correct at any canvas zoom level. getBoundingClientRect()
-        // would include the CSS zoom factor and double-inflate junction positions.
-        return symbol.offsetWidth / symbolWidth || symbolScale;
+        // getBoundingClientRect().width gives the VISUAL width after CSS rotation, which is
+        // what the getAbsJunctions formulas are calibrated against (BCR width changes at 90°/270°
+        // whereas offsetWidth stays constant). We divide by canvasZoom to remove the CSS zoom
+        // factor that BCR includes, so the result is correct at any zoom level.
+        const canvas = getCanvasForElem(symbol);
+        const canvasZoom = (canvas ? getCanvasZoom(canvas) : 1) || 1;
+        return symbol.getBoundingClientRect().width / symbolWidth / canvasZoom || symbolScale;
       }
 
       function getCanvasForElem(el) {
@@ -14735,13 +14739,26 @@
       function startLongPress(left, top, width, height, symbol = null, node = null) {
         longPressStartedAt = performance.now();
         longPressFired = false;
+        // Forcefully remove any leftover ring from a previous press before creating a new one.
+        endLongPress(true);
 
         ring = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         // Append the circle to the SVG
         ring.appendChild(circle);
-        if (tabHeadersActivated[1]) appendToCraftCanvas(ring);
-        if (tabHeadersActivated[4]) appendToChatCanvas(ring);
+        // Append the ring only to the canvas that owns the symbol/node — appending to both
+        // (when both tabs have been visited) would move the DOM element to the second canvas,
+        // leaving a stale invisible ring there that becomes visible if the user later switches tabs.
+        const _ringTarget = symbol || node;
+        if (_ringTarget && getCanvasForElem(_ringTarget) === chatCanvas()) {
+          appendToChatCanvas(ring);
+        } else if (_ringTarget && getCanvasForElem(_ringTarget) === craftCanvas()) {
+          appendToCraftCanvas(ring);
+        } else if (tabHeadersActivated[4]) {
+          appendToChatCanvas(ring);
+        } else {
+          appendToCraftCanvas(ring);
+        }
 
         const symbolCenterX = left + width / 2;
         const symbolCenterY = top + height / 2;
@@ -14794,9 +14811,7 @@
 
         if (ring !== null && circle !== null) {
           clearInterval(interval);
-          ring.style.visibility = 'hidden';
-          circle.style.strokeDashoffset = 157;
-          circle.style.stroke = 'transparent';
+          ring.remove();
           ring = null;
           circle = null;
         }
