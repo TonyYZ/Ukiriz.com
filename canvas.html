@@ -397,7 +397,8 @@
         width: calc(100% + 40px);
         height: calc(100% + 40px);
         margin: -20px -20px 0 -20px;
-        overflow: scroll;
+        overflow: auto;
+        overscroll-behavior: none;
         background: #f4f4f9;
         min-width: 0;
         box-sizing: border-box;
@@ -5389,6 +5390,12 @@
           x: (a.clientX + b.clientX) / 2,
           y: (a.clientY + b.clientY) / 2,
         });
+
+        // Prevent iOS Safari from applying its own visual-viewport pinch-to-zoom, which
+        // can shift clientX/getBoundingClientRect coordinate spaces mid-gesture.
+        document.addEventListener('gesturestart', (e) => e.preventDefault(), { passive: false });
+        document.addEventListener('gesturechange', (e) => e.preventDefault(), { passive: false });
+        document.addEventListener('gestureend', (e) => e.preventDefault(), { passive: false });
 
         document.addEventListener(
           'touchstart',
