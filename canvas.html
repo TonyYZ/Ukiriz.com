@@ -5063,19 +5063,13 @@
         // World point that was under the previous anchor — keep it under the new anchor.
         const worldX = (baseScrollLeft + prevLocalX) / oldZoom;
         const worldY = (baseScrollTop + prevLocalY) / oldZoom;
-        // Estimate max scroll at the new zoom (container.scrollWidth still reflects old zoom;
-        // scaling by nextZoom/oldZoom gives the new scrollable extent).
-        const zoomRatio = oldZoom > 0 ? nextZoom / oldZoom : 1;
-        const maxScrollLeft = Math.max(
-          0,
-          container.scrollWidth * zoomRatio - container.clientWidth,
-        );
-        const maxScrollTop = Math.max(
-          0,
-          container.scrollHeight * zoomRatio - container.clientHeight,
-        );
-        const newScrollLeft = Math.min(maxScrollLeft, Math.max(0, worldX * nextZoom - newLocalX));
-        const newScrollTop = Math.min(maxScrollTop, Math.max(0, worldY * nextZoom - newLocalY));
+        // Don't pre-clamp to an estimated max: the stale container.scrollWidth (from the last
+        // rAF-applied zoom, not the accumulated JS zoom) makes the estimate wrong when multiple
+        // touchmove events fire per frame, causing top-left or bottom-right teleports.
+        // The rAF applies `void container.scrollWidth` reflow before setting scroll, so the
+        // browser clamps correctly on its own.
+        const newScrollLeft = Math.max(0, worldX * nextZoom - newLocalX);
+        const newScrollTop = Math.max(0, worldY * nextZoom - newLocalY);
 
         if (pinchState) {
           pinchState.scrollLeft = newScrollLeft;
@@ -11850,13 +11844,18 @@
       }
 
       function getRenderedSymbolScale(symbol) {
-        // getBoundingClientRect().width gives the VISUAL width after CSS rotation, which is
-        // what the getAbsJunctions formulas are calibrated against (BCR width changes at 90°/270°
-        // whereas offsetWidth stays constant). We divide by canvasZoom to remove the CSS zoom
-        // factor that BCR includes, so the result is correct at any zoom level.
+        // For parallel-snap spacing we need a scale that equals symbolScale at every angle.
+        // At 90°/270° BCR.width flips to the short visual dimension (symbolHeight*scale), so
+        // we use BCR.height instead — it equals symbolWidth*scale*zoom, giving symbolScale
+        // after dividing by symbolWidth and canvasZoom. At 0°/180° BCR.width is fine.
+        const rect = symbol.getBoundingClientRect();
+        const angle = Number(symbol.angle || 0);
         const canvas = getCanvasForElem(symbol);
         const canvasZoom = (canvas ? getCanvasZoom(canvas) : 1) || 1;
-        return symbol.getBoundingClientRect().width / symbolWidth / canvasZoom || symbolScale;
+        if (angle === 90 || angle === 270) {
+          return rect.height / symbolWidth / canvasZoom || symbolScale;
+        }
+        return rect.width / symbolWidth / canvasZoom || symbolScale;
       }
 
       function getCanvasForElem(el) {
@@ -15782,9 +15781,12 @@
         if (violatesConflicts(active, activeSide)) return;
 
         // ---- 2) Distance check ----
-        // Junctions are in canvas space, so distance is already in canvas-space units.
+        // Junctions are in canvas space. Divide threshold by canvasZoom so the snap zone
+        // stays a fixed number of viewport pixels regardless of zoom level.
+        const canvas = getCanvasForElem(active);
+        const canvasZoom = getCanvasZoom(canvas) || 1;
         const canvasDist = getDist(activeX, activeY, targetX, targetY);
-        const snapDistance = isCoarseMobile ? SNAP_DISTANCE * 0.42 : SNAP_DISTANCE;
+        const snapDistance = (isCoarseMobile ? SNAP_DISTANCE * 0.42 : SNAP_DISTANCE) / canvasZoom;
         if (canvasDist >= snapDistance) return;
 
         const dx = targetX - activeX;
