@@ -56,9 +56,6 @@
         margin: 0;
         overflow: hidden;
         background-color: #f4f4f9;
-        /* background-color: #262626; */
-        /* background-color: #eef7f2; */
-        /* background-color: #f9f1db; */
         font-family: var(--mono-en);
         display: flex;
         height: 100vh; /* Full viewport height */
@@ -662,7 +659,6 @@
         border: 2px solid black;
       }
 
-
       .progress-ring {
         position: absolute;
         width: 50px; /* Ensure this matches the SVG width */
@@ -864,7 +860,6 @@
         margin-left: 1px;
         animation: blink 0.8s infinite;
         font-weight: bold;
-        animation: blink 0.8s infinite;
       }
 
       .image-container {
@@ -1238,14 +1233,6 @@
         stroke-linecap: round;
         stroke-dasharray: 9 12;
         pointer-events: none;
-      }
-
-      .island-block {
-        position: absolute;
-        width: 20px;
-        height: 20px;
-        background: white;
-        border-radius: 6px;
       }
 
       .island-highlight {
@@ -3158,18 +3145,6 @@
         tutorialMaybeAdvance?.();
       }
 
-      function craftHasSerialConnection() {
-        return getCraftConnectionKinds().serial;
-      }
-
-      function craftHasParallelConnection() {
-        return getCraftConnectionKinds().parallel;
-      }
-
-      function craftHasAnyConnection() {
-        return getCraftConnectionKinds().any;
-      }
-
       function getTutorialStepsSafe() {
         if (tutorialLevel === 2) return getTutorialLevel2Steps();
         if (tutorialLevel === 3) return getTutorialLevel3Steps();
@@ -4855,7 +4830,7 @@
       const CRAFT_GRID_MAJOR = 400;
 
       const MIN_CHAT_CANVAS_ZOOM = 0.6;
-      const MIN_CRAFT_CANVAS_ZOOM = 1;
+      const MIN_CRAFT_CANVAS_ZOOM = isCoarseMobile ? 0.4 : 1;
       const MAX_CANVAS_ZOOM = 2.4;
       const MIN_VIEW_CONTENT_ZOOM = 0.6;
       const MIN_MOBILE_LIBRARY_ZOOM = 0.44;
@@ -5024,7 +4999,7 @@
         container.style.backgroundPosition = `${minorX}px ${minorY}px, ${minorX}px ${minorY}px, ${majorX}px ${majorY}px, ${majorX}px ${majorY}px`;
       }
 
-      function zoomActiveCanvas(deltaY, clientX, clientY) {
+      function zoomActiveCanvas(deltaY, clientX, clientY, pinchState = null) {
         const active = document.querySelector('.tab-content.active');
         if (!active) return;
 
@@ -5054,13 +5029,21 @@
         const rect = container.getBoundingClientRect();
         const localX = clientX - rect.left;
         const localY = clientY - rect.top;
-        const worldX = (container.scrollLeft + localX) / oldZoom;
-        const worldY = (container.scrollTop + localY) / oldZoom;
+        const baseScrollLeft = pinchState ? pinchState.scrollLeft : container.scrollLeft;
+        const baseScrollTop = pinchState ? pinchState.scrollTop : container.scrollTop;
+        const worldX = (baseScrollLeft + localX) / oldZoom;
+        const worldY = (baseScrollTop + localY) / oldZoom;
+        const newScrollLeft = Math.max(0, worldX * nextZoom - localX);
+        const newScrollTop = Math.max(0, worldY * nextZoom - localY);
+        if (pinchState) {
+          pinchState.scrollLeft = newScrollLeft;
+          pinchState.scrollTop = newScrollTop;
+        }
 
         setCanvasZoom(canvas, nextZoom);
         const applyScroll = () => {
-          container.scrollLeft = Math.max(0, worldX * nextZoom - localX);
-          container.scrollTop = Math.max(0, worldY * nextZoom - localY);
+          container.scrollLeft = newScrollLeft;
+          container.scrollTop = newScrollTop;
           if (isChat) {
             scheduleChatMiniMapUpdate?.();
             saveChatViewportState?.();
@@ -5249,6 +5232,9 @@
         scheduleCraftMiniMapUpdate?.();
       });
 
+      let _wheelZoomState = null;
+      let _wheelZoomResetTimer = 0;
+
       window.addEventListener(
         'wheel',
         (e) => {
@@ -5258,7 +5244,21 @@
           if (!['tab0', 'tab1', 'tab2', 'tab3', 'tab4'].includes(active.id)) return;
           e.preventDefault();
           if (active.id === 'tab1' || active.id === 'tab4') {
-            zoomActiveCanvas(e.deltaY, e.clientX, e.clientY);
+            // Maintain shadow scroll state so rapid wheel events don't read stale DOM scroll.
+            if (!_wheelZoomState || _wheelZoomState.tabId !== active.id) {
+              const c =
+                active.id === 'tab4'
+                  ? tab4 || document.getElementById('tab4')
+                  : tab1 || document.getElementById('tab1');
+              _wheelZoomState = {
+                tabId: active.id,
+                scrollLeft: c?.scrollLeft ?? 0,
+                scrollTop: c?.scrollTop ?? 0,
+              };
+            }
+            clearTimeout(_wheelZoomResetTimer);
+            _wheelZoomResetTimer = setTimeout(() => { _wheelZoomState = null; }, 300);
+            zoomActiveCanvas(e.deltaY, e.clientX, e.clientY, _wheelZoomState);
             return;
           }
           if (active.id === 'tab0') {
@@ -5332,9 +5332,17 @@
               cancelDraggingState();
               canvasPinchActive = true;
               canvasZoomGestureUntil = performance.now() + 120;
+              const pinchContainer =
+                active.id === 'tab4'
+                  ? tab4 || document.getElementById('tab4')
+                  : active.id === 'tab1'
+                    ? tab1 || document.getElementById('tab1')
+                    : null;
               pinch = {
                 tabId: active.id,
                 distance: pinchDistance(e.touches[0], e.touches[1]),
+                scrollLeft: pinchContainer?.scrollLeft ?? 0,
+                scrollTop: pinchContainer?.scrollTop ?? 0,
               };
               activeTouchId = null;
               activeTouchTarget = null;
@@ -5369,7 +5377,7 @@
                 const ratio = nextDistance / Math.max(1, pinch.distance);
                 const deltaY = nextDistance > pinch.distance ? -120 : 120;
                 if (pinch.tabId === 'tab1' || pinch.tabId === 'tab4') {
-                  zoomActiveCanvas(deltaY, center.x, center.y);
+                  zoomActiveCanvas(deltaY, center.x, center.y, pinch);
                 } else if (pinch.tabId === 'tab0') {
                   zoomHomeContent(deltaY, center.x, center.y);
                 } else if (pinch.tabId === 'tab2') {
@@ -6096,29 +6104,6 @@
         // In chat inspection mode, keep expression vocab cards in sync with selection.
         if (cv === chatCanvas()) {
           showSpawnedExpressionMetaForSelection();
-        }
-      }
-
-      function expandSelectionToExpressionGroups() {
-        // If any symbol from a spawned expression group is selected (e.g. by marquee),
-        // promote the selection to include the entire expression group.
-        const toExpand = new Set();
-        for (const s of selectedSymbols) {
-          const gid = s?._expressionGroupId;
-          if (!gid) continue;
-          const grp = expressionGroups.get(gid);
-          if (grp && grp.size > 1) toExpand.add(gid);
-        }
-        if (!toExpand.size) return;
-
-        for (const gid of toExpand) {
-          const grp = expressionGroups.get(gid);
-          if (!grp) continue;
-          for (const sym of grp) {
-            sym.selected = true;
-            selectedSymbols.add(sym);
-            sym.classList.add('framed');
-          }
         }
       }
 
@@ -6857,7 +6842,6 @@
           // Store user ID in local storage
           if (currentUser?.uid) localStorage.setItem('anonymousUID', currentUser.uid);
 
-          console.log('Signed in as a guest:', currentUser?.uid);
         } catch (error) {
           console.error('Error with anonymous Supabase sign-in:', error);
         }
@@ -6869,7 +6853,6 @@
         const existing = await supabase.auth.getUser();
         if (existing.data?.user) {
           currentUser = { ...existing.data.user, uid: existing.data.user.id };
-          console.log('User is signed in:', currentUser.uid);
           await refreshQuotaBadge();
           return currentUser;
         }
@@ -6888,7 +6871,6 @@
         if (error) throw error;
         currentUser = data.user ? { ...data.user, uid: data.user.id } : null;
         if (currentUser?.uid) localStorage.setItem('anonymousUID', currentUser.uid);
-        console.log('Signed in anonymously:', currentUser?.uid);
         await refreshQuotaBadge();
         return currentUser;
       }
@@ -8050,7 +8032,6 @@
             if (matchedSymbols.has(storedSymbol)) continue; // Already matched
 
             if (this.isSymbolMatch(currSymbol, storedSymbol)) {
-              console.log(`Matching: ${currSymbol.elemIdTrue} ↔ ${storedSymbol.elemIdTrue}`);
               matchedSymbols.set(storedSymbol, currSymbol);
 
               let isValid = true;
@@ -8061,10 +8042,6 @@
                 let currNeighbors = this.map.get(currSymbol)?.[i] || [];
 
                 if (storedNeighbors.length > currNeighbors.length) {
-                  console.log(
-                    'Stored neighbor:' + storedNeighbors + ' Current neighbor:' + currNeighbors,
-                  );
-                  console.log(`Mismatch at side ${i}: Not enough neighbors`);
                   isValid = false;
                   break;
                 }
@@ -8089,7 +8066,6 @@
                   }
 
                   if (!foundMatch) {
-                    console.log(`Neighbor mismatch: ${storedNeighbor.elemIdTrue} not found`);
                     foundAll = false;
                     break;
                   }
@@ -8337,18 +8313,12 @@
       let longPressStartedAt = 0;
       let longPressFired = false;
 
-      let acc = 0;
       let moleculeString = '';
       let selectedColor = null;
       // Cursor shown on elements and palette swatches the user cannot edit.
       // Change this one value to restyle all "not yours" affordances at once.
       // Options: 'not-allowed', 'default', 'help', 'no-drop'
       const NO_EDIT_CURSOR = 'default';
-      const positions = [2, 1, 0, 7, 3, 4, 5, 6]; // Angle 0 = to the right
-      // Circle layout parameters
-      const radius = 150; // Radius of the circle
-      const centerX = 450; // Center of the canvas (half of canvas width)
-      const centerY = 200; // Center of the canvas (half of canvas height)
 
       isCoarseMobile = window.matchMedia?.('(max-width: 820px), (pointer: coarse)')?.matches;
       isTouchKeyboardDevice =
@@ -8370,9 +8340,6 @@
       let circle = null;
       const pressDuration = 1000; // 1 second to complete the bar
       const totalSteps = pressDuration / 10;
-
-      // Set the x and y coordinates dynamically using JavaScript
-      const logo = document.getElementById('logo');
 
       const palette = document.getElementById('palette');
       palette.style.left = `685px`;
@@ -8561,18 +8528,8 @@
       const dotOffsetXData = [0, 45, 0, 46, -45, 0, -46, 0, 0];
       const dotOffsetYData = [0, 0, 0, -8, 0, 0, -8, -8, 0];
       const QIAN_ELEM_ID = 7;
-      const qianCenterPath =
-        'M24.96.48a10.24 10.24 0 1 1 0 20.48 10.24 10.24 0 0 1 0-20.48Zm0 2.56a7.68 7.68 0 1 0 0 15.36 7.68 7.68 0 0 0 0-15.36Z';
       let latestPointerClientX = null;
       let latestPointerClientY = null;
-
-      function buildQianSvg(lineOpacity = 0) {
-        const line =
-          lineOpacity > 0
-            ? `<g class="qian-outer-lines" opacity="${lineOpacity}"><rect x="0" y="10.184" width="16.8" height="2.56" fill="#000"></rect><rect x="33.12" y="10.184" width="16.8" height="2.56" fill="#000"></rect></g>`
-            : '';
-        return `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path class="qian-center-circle" style="fill:#000" d="${qianCenterPath}"></path>${line}</svg>`;
-      }
 
       function isQianSymbol(symbol) {
         return Number(symbol?.elemIdTrue) === QIAN_ELEM_ID;
@@ -10028,11 +9985,6 @@
         }
       }
 
-      function exitChatInspectionMode() {
-        if (!eyeButton2?.isActivated) return;
-        setChatInspectionMode(false);
-      }
-
       eyeButton2.addEventListener('pointerup', (e) => {
         e.stopPropagation();
         e.preventDefault();
@@ -10285,7 +10237,6 @@
               }
             });
           }
-          console.log(`Selected color: ${selectedColor}`);
         }
       }
 
@@ -10305,9 +10256,6 @@
       let wheelCenterX = parseFloat(wheel.style.left) + parseFloat(wheel.style.width) / 2; // right x
       let wheelCenterY =
         window.innerHeight - parseFloat(wheel.style.bottom) - parseFloat(wheel.style.height) / 2;
-      console.log(
-        `wheel center x: ${wheelCenterX}, wheel center y: ${wheelCenterY} ${window.innerHeight} ${parseFloat(wheel.style.bottom)}`,
-      );
       const centerRadius = 36; // Define center circle radius
 
       function getWheelCenter(el) {
@@ -10384,7 +10332,6 @@
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         if (distance < wheelHit.radius) {
-          console.log('Clicked center!');
           wheel2.style.backgroundImage = `url(./icons/wheel/wheel8.png)`;
           const symbol = createSymbolCopy(mouseX, mouseY, 8);
           beginWheelSpawnDrag(symbol, mouseX, mouseY);
@@ -10489,7 +10436,7 @@
         );
 
         if (selectedAnnotation) {
-          await createAnnotationLink2(annotation, selectedAnnotation);
+          await createAnnotationLink(annotation, selectedAnnotation);
         }
 
         // Only reveal annotations for the current inspected component
@@ -10498,26 +10445,7 @@
         emitTutorialEvent?.('annotation_created');
       }
 
-      function getAnnotationAnchorTarget() {
-        // Return a representative symbol from the selected group (prefer one with a saved ID)
-        for (const sym of selectedSymbols) {
-          if (sym.dataset?.id) return sym;
-        }
-        return selectedSymbols.values().next().value ?? null;
-      }
-
       async function createAnnotationLink(fromAnnotation, toAnnotation) {
-        // Store emoji-to-emoji annotation chain link in the room backend.
-        const fromId =
-          fromAnnotation.dataset?.id ||
-          (await fromAnnotation._pendingIdPromise?.catch(() => null));
-        const toId =
-          toAnnotation.dataset?.id || (await toAnnotation._pendingIdPromise?.catch(() => null));
-        if (!fromId || !toId) return;
-        await saveObj('annoLink', { fromEmojiId: fromId, toEmojiId: toId }, 0, 0);
-      }
-
-      async function createAnnotationLink2(fromAnnotation, toAnnotation) {
         const fromId =
           fromAnnotation.dataset?.id ||
           (await fromAnnotation._pendingIdPromise?.catch(() => null));
@@ -10565,37 +10493,6 @@
         });
         lastInspectionRootSymbolId = null;
         scheduleAnnotationLinksUpdate?.();
-      }
-
-      function isSymbolInInspectedComponent(symbol) {
-        try {
-          if (!symbol) return false;
-          if (!eyeButton2?.isActivated) return false;
-          const rootId = lastInspectionRootSymbolId;
-          if (!rootId) return false;
-          const root = symbolById.get(rootId);
-          if (!root) return false;
-          if (root === symbol) return true;
-
-          const visited = new Set([root]);
-          const q = [root];
-          while (q.length) {
-            const cur = q.shift();
-            const conns = currentGraph.getSymbolConnections(cur) || [];
-            for (const sideList of conns) {
-              for (const [nbr] of sideList || []) {
-                if (!nbr || visited.has(nbr)) continue;
-                if (nbr === symbol) return true;
-                visited.add(nbr);
-                q.push(nbr);
-              }
-            }
-          }
-          return false;
-        } catch (e) {
-          console.warn('isSymbolInInspectedComponent failed', e);
-          return false;
-        }
       }
 
       // Returns a Map<annotationEl, {dx,dy}> of all annotation bubbles whose
@@ -11778,7 +11675,6 @@
         wheelCenterX = parseFloat(wheel.style.left) + parseFloat(wheel.style.width) / 2; // right x
         wheelCenterY =
           window.innerHeight - parseFloat(wheel.style.bottom) - parseFloat(wheel.style.height) / 2;
-        console.log(`wheel center x: ${wheelCenterX}, wheel center y: ${wheelCenterY}`);
       });
 
       function removeLabelInputs() {
@@ -14175,7 +14071,6 @@
             try {
               // modern clipboard API
               await navigator.clipboard.writeText(text);
-              console.log('[copy] clipboard API success:', text);
             } catch (err) {
               console.warn('[copy] clipboard API failed, fallback:', err);
 
@@ -14192,7 +14087,6 @@
               const ok = document.execCommand('copy');
               document.body.removeChild(ta);
 
-              console.log('[copy] execCommand result:', ok, text);
 
               if (!ok) {
                 // last resort: prompt user
@@ -14238,9 +14132,6 @@
           console.warn('refreshQuotaBadge failed', e);
         }
       }
-
-      let rightMost;
-      let topMost;
 
       // Function to create a text input near the symbol
       function showInput(
@@ -14443,7 +14334,6 @@
           definition = moleculeString;
           justification = textarea.value;
 
-          console.log(`word ${word} definition ${definition} justification ${justification}`); // Handle submission logic here
           //input.remove();
           //textarea.remove();
 
@@ -14535,7 +14425,6 @@
         };
 
         function showFeedback(feedback, manualFailed = false) {
-          console.log(`foundIds init ${foundIds}`);
           // Create the div element
           const outputBox = document.createElement('div');
           outputBox.classList.add('typing-effect', 'removable');
@@ -14550,7 +14439,6 @@
           const pElement = document.createElement('p');
           pElement.x = rightMost + 5;
           pElement.y = parseFloat(textarea.style.top) - 10 + textarea.scrollHeight;
-          console.log(`scroll ${textarea.scrollHeight}`);
 
           pElement.offsetX = pElement.x - parentLeft;
           pElement.offsetY = pElement.y - parentTop;
@@ -14648,7 +14536,6 @@
           }
 
           function showDoneButton(passed) {
-            console.log(`foundIds ${foundIds}`);
 
             const doneButton = document.createElement('button');
             doneButton.classList.add('submit-button', 'removable');
@@ -14677,8 +14564,6 @@
             doneButton.style.top = `${doneButton.y}px`;
 
             inputParent.doneButton = doneButton;
-            console.log(doneButton.style.left);
-            console.log(doneButton.style.top);
 
             if (tabHeadersActivated[1]) appendToCraftCanvas(doneButton);
             if (tabHeadersActivated[4]) appendToChatCanvas(doneButton);
@@ -14720,8 +14605,6 @@
                   getTutorialStepsSafe?.()?.[tutorialStepIndex]?.requiredWordKey,
                   componentSymbols,
                 );
-                console.log('library');
-                console.log(library);
                 emitTutorialEvent?.('word_defined');
               }
               if (eyeButton.isActivated) {
@@ -14824,15 +14707,11 @@
         if (results.leftStr !== '') moleculeString += results.leftStr + ' - ';
         moleculeString += results.centerStrs.join(' & ');
         if (results.rightStr !== '') moleculeString += ' - ' + results.rightStr;
-        console.log(
-          `resultssss left ${results.leftStr} center ${results.centerStrs} right ${results.rightStr}`,
-        );
 
         selectedSymbols.forEach((selectedSymbol) => {
           selectedSymbol.selected = true;
           selectedSymbol.classList.add('framed');
         });
-        console.log(`molecule ${moleculeString}`);
 
         // Tutorial: advance after the user successfully long-pressed a connected component in craft.
         try {
@@ -14893,7 +14772,6 @@
         symbol.elemIdTrue = elemIdTrue;
         symbol.innerHTML = symbol.elemId != null ? symbolData[symbol.elemId] : '';
 
-        if (symbolX === null) symbol.accId = acc; // newly created
 
         if (symbolX !== null) {
           symbol.style.left = `${symbolX}px`;
@@ -15221,13 +15099,8 @@
       function getMolecule(currentSymbol, visited, representatives = null, graph = currentGraph) {
         visited.add(currentSymbol);
 
-        console.log(`visit`);
-        console.log(visited);
-        console.log(currentSymbol);
         let leftStr = '';
         let centerStrs = [getMoleculeChar(currentSymbol)];
-        console.log(`representatives`);
-        console.log(representatives);
         if (representatives != null && representatives.has(currentSymbol)) {
           centerStrs.push(representatives.get(currentSymbol));
         }
@@ -15245,7 +15118,6 @@
                 graph,
               );
               visited = results.visited;
-              console.log(`entry[0] ${entry[0].elemId} entry[1] ${entry[1]}`);
               if (entry[1] > 1 || i > 1) {
                 if (leftStr !== '' && results.leftStr !== '') {
                   leftStr = '(' + leftStr + ') & (' + results.leftStr + ')';
@@ -15258,32 +15130,20 @@
                 } else if (rightStr == '') {
                   rightStr = results.rightStr;
                 }
-                console.log(
-                  `me ${currentSymbol.elemId} entry[0] ${entry[0].elemId} centerStrs ${centerStrs.join(' & ')}`,
-                );
               } else {
                 if (i === 0) {
                   if (results.leftStr !== '') leftStr += results.leftStr + ' - ';
                   leftStr += results.centerStrs.join(' & ');
                   if (results.rightStr !== '') leftStr += ' - ' + results.rightStr;
-                  console.log(
-                    `me ${currentSymbol.elemId} left entry[0] ${leftStr} centerStrs ${centerStrs.join(' & ')}`,
-                  );
                 } else if (i === 1) {
                   if (results.leftStr !== '') rightStr += results.leftStr + ' - ';
                   rightStr += results.centerStrs.join(' & ');
                   if (results.rightStr !== '') rightStr += ' - ' + results.rightStr;
-                  console.log(
-                    `me ${currentSymbol.elemId} right entry[0] ${rightStr} centerStrs ${centerStrs.join(' & ')}`,
-                  );
                 }
               }
             }
           }
         }
-        console.log(`me ${currentSymbol.elemId}`);
-        console.log(`left ${leftStr} center ${centerStrs.join(' & ')} right ${rightStr}`);
-        console.log(`visited ${visited.size}`);
         return { visited: visited, leftStr: leftStr, centerStrs: centerStrs, rightStr: rightStr };
       }
 
@@ -15891,15 +15751,12 @@
         const y = event.clientY; // Y-coordinate relative to the viewport
 
         // Print the coordinates to the console
-        console.log(`Mouse clicked at: X = ${x}, Y = ${y}`);
-        console.log(currentGraph);
       });
 
       /* Library */
       let nodes = new vis.DataSet([]);
       let edges = new vis.DataSet([]);
       let network;
-      let nodeTextBoxes = {};
       let container = document.getElementById('network');
       let data = { nodes: nodes, edges: edges };
       let basicNodeIds = new Set();
@@ -18416,7 +18273,6 @@
           let containerWidth = container.offsetWidth;
           let containerHeight = container.offsetHeight;
           let scale = 1.5;
-          console.log(containerWidth, containerHeight);
           network.moveTo({
             offset: {
               x: 0.5 * containerWidth * scale,
@@ -18676,7 +18532,6 @@
             if (rect.bottom > bottomMost) bottomMost = rect.bottom;
           }
         });
-        console.log(`left ${leftMost} right ${rightMost} top ${topMost} bottom ${bottomMost}`);
         const ratio = 49.92 / (symbolWidth * symbolScale);
 
         components.forEach((symbol) => {
@@ -18713,7 +18568,6 @@
             `</g>\n`;
 
           if (symbol.dot != null) {
-            console.log('added dot!');
             rect = symbol.dot.getBoundingClientRect();
             svgString +=
               `<g transform="translate(` +
@@ -18808,7 +18662,6 @@
             arrows: { to: { enabled: true } },
             color: { color: 'black' },
           });
-          console.log(`link ${sourceId} ${targetId}`);
         }
       }
 
@@ -18885,7 +18738,6 @@
         .then((r) => r.json())
         .then((data) => {
           worldData = data.world;
-          console.log('World data loaded');
         });
 
       function renderWorld() {
@@ -19424,10 +19276,6 @@
           // 右键不拖
           if (e.button === 2) return;
 
-          // 如果你希望“点到岛屿也能拖”，就不做下面这个判断
-          // 如果你希望“点岛屿是选择，不拖”，就保留这个判断：
-          // if (e.target.closest("svg")) return;
-
           dragging = true;
           world.classList.add('dragging');
 
@@ -19498,7 +19346,7 @@
       const ISLAND_INFO = {
         Kimmoke: {
           zh: '正北之地，中央沉着一座墨池，池底深处，零星几座孤山冒着冷冽的火星。静谧之中，暗藏生机。',
-          en: 'The Far North. At its center lies a pool of ink; deep within the pit, a few lonely peaks spit frigid sparks. Amidst the silence, a hidden start breathes.',
+          en: 'The land of True North. At its center lies a pool of ink; deep within the pit, a few lonely peaks spit frigid sparks. Amidst the silence, a hidden start breathes.',
         },
         Uzel: {
           zh: '东北方的岩屿，沿岸柳树丛生。树根在冻土中彼此纠缠打结，像一道坚固的栅栏，挡住了四面八方的海风。',
