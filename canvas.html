@@ -105,6 +105,20 @@
         outline: 2px solid #00b0f0;
       }
 
+      .framed.owner-marked::after,
+      .expression-group-frame.owner-marked::after {
+        content: '';
+        position: absolute;
+        right: -7px;
+        top: -7px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--owner-color, #000);
+        pointer-events: none;
+        z-index: 8;
+      }
+
       /* Basic styles for the button */
       .button {
         position: fixed; /* Enables top and left positioning */
@@ -440,6 +454,7 @@
       .spawned-expression-meta {
         z-index: 8; /* above symbols/bubbles, below UI controls */
         max-width: 520px;
+        cursor: grab;
       }
       .spawned-expression-meta .library-tree-card-word {
         font-size: 20px;
@@ -646,6 +661,7 @@
       .color:hover {
         border: 2px solid black;
       }
+
 
       .progress-ring {
         position: absolute;
@@ -1682,14 +1698,16 @@
           z-index: 20;
         }
 
-        #palette {
+        #palette,
+        #chatPalette {
           left: 8px !important;
           top: 88px !important;
           gap: 7px;
           padding: 5px 7px;
         }
 
-        #palette .color {
+        #palette .color,
+        #chatPalette .color {
           width: 24px;
           height: 24px;
           border-width: 1px;
@@ -2029,6 +2047,13 @@
         </div>
         <div id="chatCanvas"></div>
         <div id="chatControls">
+          <div class="palette" id="chatPalette">
+            <div class="color" style="background-color: #5cb3cc"></div>
+            <div class="color" style="background-color: #d00000"></div>
+            <div class="color" style="background-color: #d6a01d"></div>
+            <div class="color" style="background-color: white"></div>
+            <div class="color" style="background-color: black"></div>
+          </div>
           <!-- Input box at the bottom of the page -->
           <input
             type="text"
@@ -2069,14 +2094,14 @@
           </p>
 
           <p>
-          I want to use this website to explore the logic behind divination. It is a symbolic
-          experiment-game that lets you become a "fortune teller" - really, someone who uses
+          I want to use this website to explore the logic behind divination and how people represent concepts.<br />
+          It is a symbolic experiment-game that lets you become a "fortune teller" - really, someone who uses
           abstract symbols to probe the meaning of life.<br />
           I am not going to hand you a complete symbolic language. Instead, I want to help you
           build one for yourself from scratch, step by step, almost like building with blocks.
           At the same time, you will also train and strengthen your own intuition. <br />
           After crafting your words, you can try responding to the questions posted in <b>World</b>.
-          Others' words are posted there as well!
+          Others' responses are posted there as well!
           </p>
 
           <p>
@@ -2190,7 +2215,8 @@
                   </p>
 
                   <p>
-                  我想借这个网站探索占卜的原理。它是个符号实验游戏，让你成为“占卜师”……也就是用抽象符号去窥探生活意义的人。<br>
+                  我想借这个网站探索占卜的原理以及人们表示概念的方式。<br>
+                  它是个符号实验游戏，让你成为“占卜师”……也就是用抽象符号去窥探生活意义的人。<br>
                   我不会直接教你一整套符号语言；相反，我会帮你从零开始把它一步步自己造出来，就像堆积木。与此同时，你也会训练和强化自己的直觉。<br>
                   当你造出词语以后，你可以试着用它回答<b>世界</b>里贴的问题。在那儿你还能看到别人的回答噢！
                   </p>
@@ -4084,7 +4110,7 @@
                 !!e.target?.closest?.('.dot') ||
                 !!e.target?.closest?.('.symbol-label') ||
                 !!e.target?.closest?.('.wheel') ||
-                !!e.target?.closest?.('#palette') ||
+                !!e.target?.closest?.('#palette, #chatPalette') ||
                 !!e.target?.closest?.('#craftControls');
               if (inCraftTab && onCraftSurface) {
                 e.preventDefault();
@@ -4107,7 +4133,7 @@
               !!e.target?.closest?.('.dot') ||
               !!e.target?.closest?.('.symbol-label') ||
               !!e.target?.closest?.('.wheel') ||
-              !!e.target?.closest?.('#palette') ||
+              !!e.target?.closest?.('#palette, #chatPalette') ||
               !!e.target?.closest?.('#craftControls');
             if (inCraftTab && onCraftCanvas) {
               e.preventDefault();
@@ -4654,6 +4680,7 @@
       let worldSelectionEnabled = false;
       let worldPanController = null;
       let chatViewportBound = false;
+      let suppressChatViewportSave = false;
       let mobileLibraryInitialZoomApplied = false;
 
       // Switching between tabs
@@ -4663,6 +4690,7 @@
         }
 
         if (tabHeadersActivated[4] && tabIndex !== 4) {
+          rememberChatViewportState();
           saveChatViewportState();
         }
 
@@ -4707,7 +4735,7 @@
             canvasEl: document.getElementById('craftCanvas'),
             itemSelector: '.symbol',
             ignoreSelector:
-              '#palette, .wheel, .button, .label-input, .label-textarea, .submit-button',
+              '#palette, #chatPalette, .wheel, .button, .label-input, .label-textarea, .submit-button',
             clearSelection: () => {
               clearAllSymbolSelection();
             },
@@ -4759,6 +4787,7 @@
         if (!chatViewportBound) {
           document.getElementById('tab4')?.addEventListener('scroll', () => {
             if (!tabHeadersActivated[4]) return;
+            rememberChatViewportState();
             saveChatViewportState();
             scheduleChatMiniMapUpdate();
           });
@@ -4767,7 +4796,15 @@
 
         if (tabIndex === 4) {
           requestAnimationFrame(() => {
-            restoreChatViewportState();
+            if (pendingChatViewportRestoreRoomId === currentRoomId) {
+              pendingChatViewportRestoreRoomId = null;
+              restoreChatViewportState();
+              requestAnimationFrame(() => {
+                suppressChatViewportSave = false;
+              });
+            } else if (!suppressChatViewportSave) {
+              restoreChatViewportState();
+            }
             scheduleChatMiniMapUpdate();
           });
         }
@@ -5500,16 +5537,19 @@
       }
 
       function getElementCenterInChatCanvas(el) {
-        const surface = chatCanvas();
-        if (!surface || !el) return null;
-        const zoom = getCanvasZoom(surface) || 1;
-        const canvasRect = surface.getBoundingClientRect();
-        const rect = el.getBoundingClientRect();
+        if (!el) return null;
+        // Use style.left/top directly — they are in canvas CSS-pixel coordinates, which is the
+        // same coordinate space as the chatAnchorLayer SVG (position:absolute left:0 top:0
+        // inside chatCanvas). getBoundingClientRect() would include floatLabel's style.transform
+        // drift and require zoom un-scaling, both of which introduce the "top-left flash" artifact.
+        const x = parseFloat(el.style.left);
+        const y = parseFloat(el.style.top);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
         return {
-          x: (rect.left - canvasRect.left) / zoom + rect.width / (2 * zoom),
-          y: (rect.top - canvasRect.top) / zoom + rect.height / (2 * zoom),
-          w: rect.width / zoom,
-          h: rect.height / zoom,
+          x: x + el.offsetWidth / 2,
+          y: y + el.offsetHeight / 2,
+          w: el.offsetWidth,
+          h: el.offsetHeight,
         };
       }
 
@@ -5718,7 +5758,14 @@
           if (window.eyeButton2?.isActivated) {
             showAnnotationsForSelection();
           }
-          scheduleAnnotationLinksUpdate();
+          // Cancel any pending second-rAF render scheduled by showAnnotationsForSelection
+          // and render immediately in this same frame — eliminates the one-frame gap where
+          // SVG lines show stale positions while elements have already moved.
+          if (annotationLinkFrame) {
+            cancelAnimationFrame(annotationLinkFrame);
+            annotationLinkFrame = 0;
+          }
+          renderAnnotationLinks();
         });
       }
 
@@ -5756,10 +5803,40 @@
       function renderAnnotationLinks() {
         const layer = document.getElementById('chatAnchorLayer');
         if (!layer) return;
-        // Remove old annotation link SVG elements
-        layer
-          .querySelectorAll('.anno-link-line, .anno-anchor-line, .anno-link-dot, .anno-anchor-dot')
-          .forEach((el) => el.remove());
+        const liveKeys = new Set();
+
+        function upsertSvgLine(key, className, a, b) {
+          liveKeys.add(`line:${key}`);
+          let line = layer.querySelector(`[data-anno-line="${key}"]`);
+          if (!line) {
+            line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.classList.add(className);
+            line.dataset.annoLine = key;
+            line.setAttribute('stroke', '#000');
+            line.setAttribute('stroke-width', '2');
+            line.setAttribute('stroke-dasharray', '6 4');
+            layer.appendChild(line);
+          }
+          line.setAttribute('x1', a.x);
+          line.setAttribute('y1', a.y);
+          line.setAttribute('x2', b.x);
+          line.setAttribute('y2', b.y);
+        }
+
+        function upsertSvgDot(key, className, p) {
+          liveKeys.add(`dot:${key}`);
+          let dot = layer.querySelector(`[data-anno-dot="${key}"]`);
+          if (!dot) {
+            dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            dot.classList.add(className);
+            dot.dataset.annoDot = key;
+            dot.setAttribute('r', '4');
+            dot.setAttribute('fill', '#000');
+            layer.appendChild(dot);
+          }
+          dot.setAttribute('cx', p.x);
+          dot.setAttribute('cy', p.y);
+        }
 
         function getComponentCenterFromRootSymbolId(rootSymbolId) {
           const root = symbolById.get(rootSymbolId);
@@ -5831,24 +5908,9 @@
           const b = getElementCenterInChatCanvas(toEmoji);
           if (!a || !b) continue;
 
-          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-          line.classList.add('anno-link-line');
-          line.setAttribute('x1', a.x);
-          line.setAttribute('y1', a.y);
-          line.setAttribute('x2', b.x);
-          line.setAttribute('y2', b.y);
-          line.setAttribute('stroke', '#000');
-          line.setAttribute('stroke-width', '2');
-          line.setAttribute('stroke-dasharray', '6 4');
-          layer.appendChild(line);
-
-          const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-          dot.classList.add('anno-link-dot');
-          dot.setAttribute('cx', b.x);
-          dot.setAttribute('cy', b.y);
-          dot.setAttribute('r', '4');
-          dot.setAttribute('fill', '#000');
-          layer.appendChild(dot);
+          const key = `link-${link.id || `${link.fromEmojiId}-${link.toEmojiId}`}`;
+          upsertSvgLine(key, 'anno-link-line', a, b);
+          upsertSvgDot(key, 'anno-link-dot', b);
         }
 
         // Render anchors from root annotations -> inspected symbol component center
@@ -5867,25 +5929,19 @@
           const to = getAnnotationAnchorCenter(emoji);
           if (!from || !to) continue;
 
-          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-          line.classList.add('anno-anchor-line');
-          line.setAttribute('x1', from.x);
-          line.setAttribute('y1', from.y);
-          line.setAttribute('x2', to.x);
-          line.setAttribute('y2', to.y);
-          line.setAttribute('stroke', '#000');
-          line.setAttribute('stroke-width', '2');
-          line.setAttribute('stroke-dasharray', '6 4');
-          layer.appendChild(line);
-
-          const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-          dot.classList.add('anno-anchor-dot');
-          dot.setAttribute('cx', to.x);
-          dot.setAttribute('cy', to.y);
-          dot.setAttribute('r', '4');
-          dot.setAttribute('fill', '#000');
-          layer.appendChild(dot);
+          const key = `anchor-${emojiId}`;
+          upsertSvgLine(key, 'anno-anchor-line', from, to);
+          upsertSvgDot(key, 'anno-anchor-dot', to);
         }
+
+        layer
+          .querySelectorAll('.anno-link-line, .anno-anchor-line, .anno-link-dot, .anno-anchor-dot')
+          .forEach((el) => {
+            const lineKey = el.dataset?.annoLine;
+            const dotKey = el.dataset?.annoDot;
+            if (lineKey && !liveKeys.has(`line:${lineKey}`)) el.remove();
+            if (dotKey && !liveKeys.has(`dot:${dotKey}`)) el.remove();
+          });
       }
 
       function upsertAnnotationLinkLocal(docId, content) {
@@ -5947,6 +6003,44 @@
             continue;
           }
           el.style.display = 'none';
+          el.classList.remove('owner-marked');
+          el.style.removeProperty('--owner-color');
+        }
+      }
+
+      function setOwnerIndicator(el, ownerUid) {
+        if (!el) return;
+        const ownerColor = ownerUid
+          ? getPresenceColor(ownerUid, {
+              color: ownerUid === currentUser?.uid ? cachedUserColor : '',
+            })
+          : '';
+        if (ownerColor) {
+          el.style.setProperty('--owner-color', ownerColor);
+          el.classList.add('owner-marked');
+        } else {
+          el.classList.remove('owner-marked');
+          el.style.removeProperty('--owner-color');
+        }
+      }
+
+      function updateOwnerColorIndicators(canvas) {
+        const cv = canvas || chatCanvas() || craftCanvas();
+        cv?.querySelectorAll?.('.owner-marked').forEach((el) => {
+          el.classList.remove('owner-marked');
+          el.style.removeProperty('--owner-color');
+        });
+
+        for (const [gid, frameEl] of expressionGroupFrameEls.entries()) {
+          if (!frameEl?.isConnected || frameEl.style.display === 'none') continue;
+          const members = getExpressionGroupMembers(gid);
+          const ownerUid = members.find((sym) => sym?.dataset?.ownerUid)?.dataset?.ownerUid || '';
+          setOwnerIndicator(frameEl, ownerUid);
+        }
+
+        for (const symbol of selectedSymbols) {
+          if (!symbol?.isConnected || !symbol.classList.contains('framed')) continue;
+          setOwnerIndicator(symbol, symbol.dataset?.ownerUid || '');
         }
       }
 
@@ -5997,6 +6091,7 @@
           if (gid && fullySelectedGroupIds.has(gid)) continue;
           if (!s.classList.contains('framed')) s.classList.add('framed');
         }
+        updateOwnerColorIndicators(cv);
 
         // In chat inspection mode, keep expression vocab cards in sync with selection.
         if (cv === chatCanvas()) {
@@ -6213,18 +6308,35 @@
         return `chatViewport:${roomId || 'default'}`;
       }
 
-      function saveChatViewportState(touched = true) {
-        const tab = tab4 || document.getElementById('tab4');
-        if (!tab || !currentRoomId) return;
+      const chatViewportMemory = new Map();
 
-        localStorage.setItem(
-          getChatViewportStorageKey(),
-          JSON.stringify({
-            scrollLeft: tab.scrollLeft,
-            scrollTop: tab.scrollTop,
-            touched: !!touched,
-          }),
-        );
+      function rememberChatViewportState(roomId = currentRoomId, touched = true) {
+        const tab = tab4 || document.getElementById('tab4');
+        if (!tab || !roomId) return null;
+        const state = {
+          scrollLeft: tab.scrollLeft,
+          scrollTop: tab.scrollTop,
+          touched: !!touched,
+        };
+        chatViewportMemory.set(roomId, state);
+        return state;
+      }
+
+      function saveChatViewportState(touched = true, roomId = currentRoomId) {
+        const tab = tab4 || document.getElementById('tab4');
+        if (!tab || !roomId) return;
+        if (suppressChatViewportSave) return;
+        const state = rememberChatViewportState(roomId, touched);
+        if (!state) return;
+
+        localStorage.setItem(getChatViewportStorageKey(roomId), JSON.stringify(state));
+      }
+
+      function persistRememberedChatViewportState(roomId) {
+        const state = chatViewportMemory.get(roomId);
+        if (!roomId || !state) return false;
+        localStorage.setItem(getChatViewportStorageKey(roomId), JSON.stringify(state));
+        return true;
       }
 
       function getChatCanvasItemsForViewport() {
@@ -6288,7 +6400,10 @@
         const canvas = chatCanvas();
         if (!tab || !canvas) return;
 
-        const savedRaw = localStorage.getItem(getChatViewportStorageKey());
+        const memorySaved = chatViewportMemory.get(currentRoomId);
+        const savedRaw = memorySaved
+          ? JSON.stringify(memorySaved)
+          : localStorage.getItem(getChatViewportStorageKey());
         if (savedRaw) {
           try {
             const saved = JSON.parse(savedRaw);
@@ -6316,7 +6431,10 @@
           tab.scrollTop = Math.max(0, (canvas.scrollHeight - tab.clientHeight) / 2);
         }
         scheduleChatMiniMapUpdate();
+        const wasSuppressed = suppressChatViewportSave;
+        suppressChatViewportSave = false;
         saveChatViewportState(false);
+        suppressChatViewportSave = wasSuppressed;
       }
 
       let pendingDeleteCommits = 0;
@@ -6340,6 +6458,8 @@
       let forceFreshInspectionLabels = false;
       let dragGroup = null; // Map<elem, {dx, dy}>
       let dragLeader = null; // activeSymbol or activeEmoji
+      const _draggedFollowers = new Set(); // annotation bubbles currently following a dragged parent
+      const _pendingWrites = new Set(); // element IDs with an in-flight position write to Supabase
       let isGenerating = false;
       let readyActive = null;
       let readyActiveSide = null;
@@ -6352,45 +6472,176 @@
       let clickOnlyEmoji = null;
       let selectionClickHandled = false;
 
-      // Import Firebase modules
-      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-      import {
-        getAuth,
-        setPersistence,
-        browserLocalPersistence,
-        signInAnonymously,
-        onAuthStateChanged,
-      } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
-      import {
-        getFirestore,
-        collection,
-        addDoc,
-        getDocs,
-        onSnapshot,
-        setDoc,
-        getDoc,
-        updateDoc,
-        doc,
-        deleteDoc,
-        writeBatch,
-        arrayRemove,
-        serverTimestamp,
-        arrayUnion,
-      } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+      // Supabase handles auth, persistence, and realtime room sync.
+      import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-      const firebaseConfig = {
-        apiKey: 'AIzaSyDcnYVyHx8ZgE_kKquLctcA3Q5LuSagZUE',
-        authDomain: 'divinatoryconlang.firebaseapp.com',
-        projectId: 'divinatoryconlang',
-        storageBucket: 'divinatoryconlang.firebasestorage.app',
-        messagingSenderId: '939674998709',
-        appId: '1:939674998709:web:bbf228a108e046c8006bfc',
-        measurementId: 'G-GLFVN6M297',
-      };
+      const SUPABASE_URL = 'https://gaeohwxktoknajikddai.supabase.co';
+      const SUPABASE_ANON_KEY =
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhZW9od3hrdG9rbmFqaWtkZGFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5Njc0NTQsImV4cCI6MjEwMDU0MzQ1NH0.JYiefoxXFc9ANNELL-Ig5CZeKIfre8suZ-KV5r8uNgI';
+      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: false,
+        },
+      });
 
-      // Initialize Firebase
-      const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
+      function normalizeJsonObject(value) {
+        if (!value) return {};
+        if (typeof value === 'string') {
+          try {
+            return JSON.parse(value) || {};
+          } catch {
+            return {};
+          }
+        }
+        return typeof value === 'object' ? value : {};
+      }
+
+      function normalizeRoomObjContent(row = {}) {
+        const raw = normalizeJsonObject(row.content);
+        const content = normalizeJsonObject(raw.content || raw.symbolPacket || raw.symbol || raw);
+        if (content.elemId == null && content.elem_id != null) content.elemId = content.elem_id;
+        if (content.elemIdTrue == null && content.elem_id_true != null) {
+          content.elemIdTrue = content.elem_id_true;
+        }
+        if (content.dotX == null && content.dot_x != null) content.dotX = content.dot_x;
+        if (content.dotY == null && content.dot_y != null) content.dotY = content.dot_y;
+        if (content.elemId == null && row.elem_id != null) content.elemId = row.elem_id;
+        if (content.elemIdTrue == null && row.elem_id_true != null)
+          content.elemIdTrue = row.elem_id_true;
+        if (content.angle == null && row.angle != null) content.angle = row.angle;
+        if (content.color == null && row.color != null) content.color = row.color;
+        return content;
+      }
+
+      function getRoomObjBubbleText(content) {
+        if (content == null) return '';
+        if (typeof content === 'string') return content;
+        if (typeof content === 'number' || typeof content === 'boolean') return String(content);
+        if (typeof content !== 'object') return '';
+
+        const direct =
+          content.text ??
+          content.message ??
+          content.label ??
+          content.value ??
+          content.rawContent ??
+          content.emojiResponse ??
+          content.annotation ??
+          content.annotationText;
+        if (direct != null) return getRoomObjBubbleText(direct);
+        if (content.content != null && content.content !== content) {
+          return getRoomObjBubbleText(content.content);
+        }
+
+        try {
+          return JSON.stringify(content);
+        } catch {
+          return '';
+        }
+      }
+
+      function normalizeRoomObjPayload(row = {}) {
+        if (row.type === 'symbol') return normalizeRoomObjContent(row);
+        if (row.type === 'emoji') return getRoomObjBubbleText(row.content);
+        return normalizeJsonObject(row.content);
+      }
+
+      function normalizeRoomObjFromDb(row = {}) {
+        return {
+          id: row.id,
+          type: row.type,
+          content: normalizeRoomObjPayload(row),
+          x: row.x,
+          y: row.y,
+          links: row.links || [],
+          ownerUid: row.owner_uid || '',
+          clientNonce: row.client_nonce || '',
+          createdAt: row.created_at || null,
+          exprGroupId: row.expr_group_id || row.exprGroupId || '',
+          exprWord: row.expr_word || row.exprWord || '',
+          exprWhy: row.expr_why || row.exprWhy || '',
+          exprLang: row.expr_lang || row.exprLang || '',
+          exprNodeId: row.expr_node_id || row.exprNodeId || '',
+          exprAuthorUid: row.expr_author_uid || row.exprAuthorUid || '',
+          isAnnotation: row.is_annotation ?? row.isAnnotation ?? false,
+          annoRootSymbolId: row.anno_root_symbol_id || row.annoRootSymbolId || '',
+          annoSymbolIds: row.anno_symbol_ids || row.annoSymbolIds || '',
+        };
+      }
+
+      function roomObjPatchToDb(patch = {}) {
+        const out = {};
+        for (const [key, value] of Object.entries(patch || {})) {
+          if (key === 'ownerUid') out.owner_uid = value;
+          else if (key === 'clientNonce') out.client_nonce = value;
+          else if (key === 'createdAt') out.created_at = value;
+          else if (key === 'exprGroupId') out.expr_group_id = value;
+          else if (key === 'exprWord') out.expr_word = value;
+          else if (key === 'exprWhy') out.expr_why = value;
+          else if (key === 'exprLang') out.expr_lang = value;
+          else if (key === 'exprNodeId') out.expr_node_id = value;
+          else if (key === 'exprAuthorUid') out.expr_author_uid = value;
+          else if (key === 'isAnnotation') out.is_annotation = value;
+          else if (key === 'annoRootSymbolId') out.anno_root_symbol_id = value;
+          else if (key === 'annoSymbolIds') out.anno_symbol_ids = value;
+          else if (key === 'content') out.content = value;
+          else if (key.startsWith('content.')) {
+            out.content = { ...(out.content || {}), [key.slice('content.'.length)]: value };
+          } else out[key] = value;
+        }
+        return out;
+      }
+
+      function mergeRoomObjPatch(baseData = {}, patch = {}) {
+        const merged = { ...baseData };
+        for (const [key, value] of Object.entries(patch || {})) {
+          if (key.startsWith('content.')) {
+            merged.content = {
+              ...(merged.content || {}),
+              [key.slice('content.'.length)]: value,
+            };
+          } else {
+            merged[key] = value;
+          }
+        }
+        return merged;
+      }
+
+      async function updateRoomObj(id, patch, roomId = currentRoomId) {
+        if (!id) return;
+        const local = roomObjDataById?.get?.(id) || {};
+        const needsExistingContent =
+          Object.keys(patch || {}).some((key) => key.startsWith('content.')) &&
+          (!local.content || Object.keys(local.content).length === 0);
+        const base = needsExistingContent
+          ? (await fetchRoomObj(id, roomId).catch(() => null)) || local
+          : local;
+        const merged = mergeRoomObjPatch(base, patch);
+        roomObjDataById?.set?.(id, merged);
+        const dbPatch = roomObjPatchToDb(patch);
+        if (dbPatch.content) {
+          dbPatch.content = merged.content || dbPatch.content;
+        }
+        const { error } = await supabase
+          .from('room_objs')
+          .update(dbPatch)
+          .eq('id', id)
+          .eq('room_id', roomId);
+        if (error && error.code !== 'PGRST116') throw error;
+      }
+
+      async function fetchRoomObj(id, roomId = currentRoomId) {
+        const { data, error } = await supabase
+          .from('room_objs')
+          .select('*')
+          .eq('id', id)
+          .eq('room_id', roomId)
+          .maybeSingle();
+        if (error) throw error;
+        return data ? normalizeRoomObjFromDb(data) : null;
+      }
 
       let currentRoomId = 'default'; // default room (or null)
       let currentPresenceIslandId = null;
@@ -6399,73 +6650,82 @@
       let currentWorldPresenceEntries = [];
       const WORLD_PRESENCE_STALE_MS = 90 * 1000;
 
-      const objsColRef = (roomId = currentRoomId) => collection(db, 'rooms', roomId, 'objs');
-
-      const objDocRef = (id, roomId = currentRoomId) => doc(db, 'rooms', roomId, 'objs', id);
-      const worldPresenceColRef = () => collection(db, 'worldPresence');
-      const worldPresenceDocRef = (uid = currentUser?.uid) => doc(db, 'worldPresence', uid);
-
       // Function to Save Emoji
       async function saveObj(type, content, x, y, extraData = {}) {
         const ownerUid = currentUser?.uid || null; // must have signed in already
-        const docRef = await addDoc(objsColRef(), {
+        const insertPayload = roomObjPatchToDb({
           type,
           content,
           x,
           y,
-          ownerUid, // ✅ NEW
-          createdAt: serverTimestamp?.(), // optional, if you already import it
+          ownerUid,
+          createdAt: new Date().toISOString(),
           ...extraData,
         });
-        return docRef.id;
+        insertPayload.room_id = currentRoomId;
+        const { data, error } = await supabase
+          .from('room_objs')
+          .insert(insertPayload)
+          .select('id')
+          .single();
+        if (error) throw error;
+        return data.id;
       }
 
       async function updateObjPosition(id, x, y) {
         if (!id || !currentRoomId) {
           return;
         }
-        markLocalSymbolMutation(id, 900);
+        markLocalRoomObjMutation(id, 900);
+        _pendingWrites.add(id);
         try {
-          await updateDoc(objDocRef(id), { x, y });
+          await updateRoomObj(id, { x, y });
         } catch (e) {
-          if (e.code === 'not-found') return; // doc 已被删/切房间导致，忽略
+          if (e.code === 'PGRST116') return;
           throw e;
+        } finally {
+          _pendingWrites.delete(id);
         }
       }
 
       async function updateSymbolAngle(id, angle) {
         try {
-          await updateDoc(objDocRef(id), { 'content.angle': angle });
+          await updateRoomObj(id, { 'content.angle': angle });
         } catch (e) {
-          if (e.code === 'not-found') return;
+          if (e.code === 'PGRST116') return;
           throw e;
         }
       }
 
       async function updateSymbolElemId(id, elemId) {
         try {
-          await updateDoc(objDocRef(id), { 'content.elemId': elemId });
+          await updateRoomObj(id, { 'content.elemId': elemId });
         } catch (e) {
-          if (e.code === 'not-found') return;
+          if (e.code === 'PGRST116') return;
           throw e;
         }
       }
 
       async function updateSymbolColor(id, color) {
+        if (!id || !currentRoomId) return;
+        markLocalRoomObjMutation(id, 1500);
+        _pendingWrites.add(id);
         try {
-          await updateDoc(objDocRef(id), { 'content.color': color });
+          await updateRoomObj(id, { 'content.color': color });
         } catch (e) {
-          if (e.code === 'not-found') return;
+          if (e.code === 'PGRST116') return;
           throw e;
+        } finally {
+          _pendingWrites.delete(id);
         }
       }
 
       async function updateSymbolState(id, patch) {
         markLocalSymbolMutation(id, 900);
         try {
-          await updateDoc(objDocRef(id), patch);
+          await updateRoomObj(id, patch);
         } catch (e) {
-          if (e.code === 'not-found') return;
+          if (e.code === 'PGRST116') return;
           throw e;
         }
       }
@@ -6522,18 +6782,14 @@
         markLocalSymbolMutation(bId, 1600);
         addLocalRoomLink(aId, aSide, bId, bSide);
 
-        // store on both documents
-        const aRef = objDocRef(aId);
-        const bRef = objDocRef(bId);
-
         return trackSymbolOp(
           [aId, bId],
           (async () => {
-            await updateDoc(aRef, {
-              links: arrayUnion({ otherId: bId, mySide: aSide, otherSide: bSide }),
+            await updateRoomObj(aId, {
+              links: roomObjDataById.get(aId)?.links || [],
             });
-            await updateDoc(bRef, {
-              links: arrayUnion({ otherId: aId, mySide: bSide, otherSide: aSide }),
+            await updateRoomObj(bId, {
+              links: roomObjDataById.get(bId)?.links || [],
             });
           })(),
         );
@@ -6547,12 +6803,12 @@
         return trackSymbolOp(
           [aId, bId],
           (async () => {
-            await updateDoc(objDocRef(aId), {
-              links: arrayRemove({ otherId: bId, mySide: aSide, otherSide: bSide }),
+            await updateRoomObj(aId, {
+              links: roomObjDataById.get(aId)?.links || [],
             }).catch(() => {});
 
-            await updateDoc(objDocRef(bId), {
-              links: arrayRemove({ otherId: aId, mySide: bSide, otherSide: aSide }),
+            await updateRoomObj(bId, {
+              links: roomObjDataById.get(bId)?.links || [],
             }).catch(() => {});
           })(),
         );
@@ -6588,66 +6844,53 @@
         return `hsl(${hue.toFixed(0)}, ${sat}%, ${light}%)`;
       }
 
-      // Initialize Firebase Authentication
-      const auth = getAuth();
       let currentUser = null;
       let cachedUserColor = null;
-
-      await setPersistence(auth, browserLocalPersistence);
 
       // Function to sign in anonymously & store user ID
       async function signInAnonymouslyPersistent() {
         try {
-          const userCredential = await signInAnonymously(auth);
-          currentUser = userCredential.user;
+          const { data, error } = await supabase.auth.signInAnonymously();
+          if (error) throw error;
+          currentUser = data.user ? { ...data.user, uid: data.user.id } : null;
 
           // Store user ID in local storage
-          localStorage.setItem('anonymousUID', currentUser.uid);
+          if (currentUser?.uid) localStorage.setItem('anonymousUID', currentUser.uid);
 
-          console.log('Signed in as a guest:', currentUser.uid);
+          console.log('Signed in as a guest:', currentUser?.uid);
         } catch (error) {
-          console.error('Error with anonymous sign-in:', error);
+          console.error('Error with anonymous Supabase sign-in:', error);
         }
       }
 
       let signingIn = false;
 
-      function waitForAuth() {
-        return new Promise((resolve, reject) => {
-          const unsub = onAuthStateChanged(
-            auth,
-            async (user) => {
-              if (user) {
-                currentUser = user;
-                console.log('User is signed in:', user.uid);
-                await refreshQuotaBadge();
-                unsub();
-                resolve(user);
-                return;
-              }
+      async function waitForAuth() {
+        const existing = await supabase.auth.getUser();
+        if (existing.data?.user) {
+          currentUser = { ...existing.data.user, uid: existing.data.user.id };
+          console.log('User is signed in:', currentUser.uid);
+          await refreshQuotaBadge();
+          return currentUser;
+        }
 
-              // user 为 null：尝试匿名登录（只做一次，避免循环）
-              if (signingIn) return;
-              signingIn = true;
-
-              try {
-                const cred = await signInAnonymously(auth); // ✅ 直接用官方方法
-                currentUser = cred.user;
-                console.log('Signed in anonymously:', currentUser.uid);
-
-                // ✅ 这里直接 resolve，不必等下一次 onAuthStateChanged
-                unsub();
-                resolve(currentUser);
-              } catch (e) {
-                unsub();
-                reject(e);
-              }
-            },
-            (err) => {
-              reject(err);
-            },
-          );
-        });
+        if (signingIn) {
+          const session = await supabase.auth.getSession();
+          const user = session.data?.session?.user;
+          if (user) {
+            currentUser = { ...user, uid: user.id };
+            return currentUser;
+          }
+        }
+        signingIn = true;
+        const { data, error } = await supabase.auth.signInAnonymously();
+        signingIn = false;
+        if (error) throw error;
+        currentUser = data.user ? { ...data.user, uid: data.user.id } : null;
+        if (currentUser?.uid) localStorage.setItem('anonymousUID', currentUser.uid);
+        console.log('Signed in anonymously:', currentUser?.uid);
+        await refreshQuotaBadge();
+        return currentUser;
       }
 
       // Function to restore previous session or sign in a new user
@@ -6683,40 +6926,70 @@
       async function assignUserColor() {
         if (cachedUserColor) return cachedUserColor;
 
-        const userRef = doc(db, 'users', currentUser.uid); // Reference to user's Firestore document
-        const userSnap = await getDoc(userRef);
-
-        if (userSnap.exists()) {
-          cachedUserColor = userSnap.data().color;
-          return cachedUserColor; // Return existing color
-        } else {
-          const newColor = generateColor(currentUser.uid);
-          await setDoc(userRef, { color: newColor });
-          cachedUserColor = newColor;
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('color')
+          .eq('uid', currentUser.uid)
+          .maybeSingle();
+        if (error) throw error;
+        if (data?.color) {
+          cachedUserColor = data.color;
           return cachedUserColor;
         }
+
+        const newColor = generateColor(currentUser.uid);
+        const { error: upsertError } = await supabase
+          .from('profiles')
+          .upsert({ uid: currentUser.uid, color: newColor, updated_at: new Date().toISOString() });
+        if (upsertError) throw upsertError;
+        cachedUserColor = newColor;
+        return cachedUserColor;
       }
 
       function getPresenceColor(uid, data = {}) {
         return data.color || generateColor(uid || 'guest');
       }
 
-      function getFreshWorldPresenceEntries(snapshot) {
+      function getFreshWorldPresenceEntries(rowsOrSnapshot) {
         const now = Date.now();
         const entries = [];
-        snapshot.forEach((docSnap) => {
-          const data = docSnap.data() || {};
-          const islandId = String(data.islandId || '').trim();
+        const rows = Array.isArray(rowsOrSnapshot) ? rowsOrSnapshot : [];
+        rows.forEach((row) => {
+          const data = row || {};
+          const uid = data.uid || data.id || '';
+          const islandId = String(data.island_id || data.islandId || '').trim();
           if (!islandId) return;
-          const lastSeenMs = data.lastSeen?.toMillis?.() || data.lastSeenMs || now;
+          const lastSeenMs = data.last_seen
+            ? new Date(data.last_seen).getTime()
+            : data.lastSeenMs || now;
           if (now - lastSeenMs > WORLD_PRESENCE_STALE_MS) return;
           entries.push({
-            uid: docSnap.id,
+            uid,
             islandId,
-            color: getPresenceColor(docSnap.id, data),
+            color: getPresenceColor(uid, data),
           });
         });
         return entries;
+      }
+
+      function createIslandPresencePerson(color, title = '') {
+        const person = document.createElement('span');
+        person.className = 'island-presence-person';
+        person.style.setProperty('--person-color', color);
+        if (title) person.title = title;
+
+        const head = document.createElement('span');
+        head.className = 'island-presence-head';
+        const body = document.createElement('span');
+        body.className = 'island-presence-body';
+        const arms = document.createElement('span');
+        arms.className = 'island-presence-arms';
+        const legs = document.createElement('span');
+        legs.className = 'island-presence-legs';
+        const shadow = document.createElement('span');
+        shadow.className = 'island-presence-shadow';
+        person.append(head, body, arms, legs, shadow);
+        return person;
       }
 
       function renderWorldPresence(entries = []) {
@@ -6773,40 +7046,44 @@
                 ? (block.y - minBlockY + 0.72) * blockSize + pad + jitterY
                 : islandHeight / 2 + jitterY;
 
-              const person = document.createElement('span');
-              person.className = 'island-presence-person';
+              const person = createIslandPresencePerson(
+                user.color,
+                `${islandId}: ${users.length}`,
+              );
               person.style.left = `${clamp(x, 8, Math.max(8, islandWidth - 8))}px`;
               person.style.top = `${clamp(y, 18, Math.max(18, islandHeight - 4))}px`;
-              person.style.setProperty('--person-color', user.color);
-              person.title = `${islandId}: ${users.length}`;
-
-              const head = document.createElement('span');
-              head.className = 'island-presence-head';
-              const body = document.createElement('span');
-              body.className = 'island-presence-body';
-              const arms = document.createElement('span');
-              arms.className = 'island-presence-arms';
-              const legs = document.createElement('span');
-              legs.className = 'island-presence-legs';
-              const shadow = document.createElement('span');
-              shadow.className = 'island-presence-shadow';
-              person.append(head, body, arms, legs, shadow);
               marker.appendChild(person);
             });
           content.appendChild(marker);
         });
       }
 
+      async function refreshWorldPresence() {
+        const { data, error } = await supabase.from('world_presence').select('*');
+        if (error) {
+          console.warn('World presence refresh failed:', error);
+          return;
+        }
+        currentWorldPresenceEntries = getFreshWorldPresenceEntries(data || []);
+        renderWorldPresence(currentWorldPresenceEntries);
+      }
+
       function subscribeToWorldPresence() {
         if (worldPresenceUnsubscribe) return;
-        worldPresenceUnsubscribe = onSnapshot(
-          worldPresenceColRef(),
-          (snapshot) => {
-            currentWorldPresenceEntries = getFreshWorldPresenceEntries(snapshot);
-            renderWorldPresence(currentWorldPresenceEntries);
-          },
-          (error) => console.warn('World presence subscription failed:', error),
-        );
+        refreshWorldPresence();
+        const channel = supabase
+          .channel('world_presence_changes')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'world_presence' }, () =>
+            refreshWorldPresence(),
+          )
+          .subscribe((status) => {
+            if (status === 'CHANNEL_ERROR') {
+              console.warn('World presence subscription failed');
+              supabase.removeChannel(channel);
+              worldPresenceUnsubscribe = null;
+            }
+          });
+        worldPresenceUnsubscribe = () => supabase.removeChannel(channel);
       }
 
       async function updateWorldPresence(islandId) {
@@ -6816,25 +7093,42 @@
           cachedUserColor ||
           (await assignUserColor().catch(() => null)) ||
           generateColor(currentUser.uid);
-        await setDoc(
-          worldPresenceDocRef(),
-          {
-            islandId: currentPresenceIslandId,
-            roomId: roomIdFromIslandId(currentPresenceIslandId),
+        currentWorldPresenceEntries = currentWorldPresenceEntries.filter(
+          (entry) => entry.uid !== currentUser.uid,
+        );
+        currentWorldPresenceEntries.push({
+          uid: currentUser.uid,
+          islandId: currentPresenceIslandId,
+          color,
+        });
+        renderWorldPresence(currentWorldPresenceEntries);
+        await supabase
+          .from('world_presence')
+          .upsert({
+            uid: currentUser.uid,
+            island_id: currentPresenceIslandId,
+            room_id: roomIdFromIslandId(currentPresenceIslandId),
             color,
-            lastSeen: serverTimestamp(),
-            lastSeenMs: Date.now(),
-          },
-          { merge: true },
-        ).catch((e) => console.warn('updateWorldPresence failed:', e));
+            last_seen: new Date().toISOString(),
+          })
+          .then(({ error }) => {
+            if (error) throw error;
+          })
+          .then(() => refreshWorldPresence())
+          .catch((e) => console.warn('updateWorldPresence failed:', e));
       }
 
       async function clearWorldPresence() {
         currentPresenceIslandId = null;
         if (!currentUser?.uid) return;
-        await deleteDoc(worldPresenceDocRef()).catch((e) =>
-          console.warn('clearWorldPresence failed:', e),
-        );
+        await supabase
+          .from('world_presence')
+          .delete()
+          .eq('uid', currentUser.uid)
+          .then(({ error }) => {
+            if (error) throw error;
+          })
+          .catch((e) => console.warn('clearWorldPresence failed:', e));
       }
 
       function startWorldPresenceHeartbeat() {
@@ -6934,10 +7228,31 @@
         symbol._suppressRemoteUntil = Date.now() + durationMs;
       }
 
-      function shouldSuppressRemoteVisualUpdate(symbol, ownerUid = '') {
-        if (!symbol) return false;
-        if (!ownerUid || ownerUid !== currentUser?.uid) return false;
-        return Date.now() < (symbol._suppressRemoteUntil || 0);
+      function markLocalRoomObjMutation(elemOrId, durationMs = 700) {
+        let elem = elemOrId;
+        if (typeof elemOrId === 'string') {
+          elem = symbolById.get(elemOrId) || emojiById.get(elemOrId);
+        }
+        if (!elem) return;
+        const newUntil = Date.now() + durationMs;
+        if (newUntil > (elem._suppressRemoteUntil || 0)) {
+          elem._suppressRemoteUntil = newUntil;
+        }
+      }
+
+      function shouldSuppressRemoteVisualUpdate(elem, ownerUid = '') {
+        if (!elem) return false;
+        // Always suppress while this client is actively dragging (works for anonymous users too).
+        if (elem === activeSymbol || elem === activeEmoji || dragGroup?.has?.(elem)) return true;
+        // Always suppress elements that are following a dragged parent (permanent, not time-gated).
+        if (_draggedFollowers.has(elem)) return true;
+        // Always suppress within the local-mutation window (_suppressRemoteUntil is only set by
+        // local write paths, so it's safe to honour regardless of ownerUid/auth state).
+        if (Date.now() < (elem._suppressRemoteUntil || 0)) return true;
+        // Suppress for as long as a position write for this element is still in-flight.
+        const id = elem.dataset?.id;
+        if (id && _pendingWrites.has(id)) return true;
+        return false;
       }
 
       function trackSymbolOp(ids, promise) {
@@ -7000,13 +7315,22 @@
 
         currentGraph.removeSymbol(symbol);
         symbol.remove();
+        // Remove from symbolById immediately so renderAnnotationLinks doesn't
+        // read getBoundingClientRect() on a disconnected element and draw a (0,0) line.
+        const _symId = symbol?.dataset?.id;
+        if (_symId) symbolById.delete(_symId);
         scheduleChatMiniMapUpdate?.();
       }
 
       function removeChatEmojiElement(emoji) {
         if (!emoji) return;
 
-        if (activeEmoji === emoji) activeEmoji = null;
+        if (activeEmoji === emoji) {
+          if (emoji._annoFollowers) {
+            for (const [annoEl] of emoji._annoFollowers) _draggedFollowers.delete(annoEl);
+          }
+          activeEmoji = null;
+        }
         if (clickOnlyEmoji === emoji) clickOnlyEmoji = null;
         selectedEmojis.delete(emoji);
         emoji.selected = false;
@@ -7151,24 +7475,34 @@
 
       async function upsertChatEmojiFromDoc(docId, data) {
         let emoji = emojiById.get(docId);
+        const bubbleText = getRoomObjBubbleText(data.content);
         if (!emoji) {
           const localNonce = data.clientNonce;
           if (localNonce && pendingLocalChatEmojisByNonce.has(localNonce)) {
             emoji = pendingLocalChatEmojisByNonce.get(localNonce);
             pendingLocalChatEmojisByNonce.delete(localNonce);
           } else {
-            emoji = await createEmoji(data.content, data.x, data.y, docId);
+            emoji = await createEmoji(
+              bubbleText,
+              data.x,
+              data.y,
+              docId,
+              data.isAnnotation ? { isAnnotation: true } : {},
+            );
           }
           emojiById.set(docId, emoji);
         }
 
         emoji.dataset.ownerUid = data.ownerUid || '';
-        emoji.textContent = data.content || '';
-        emoji.dataset.rawContent = data.content || '';
-        emoji.x = data.x ?? emoji.x ?? 0;
-        emoji.y = data.y ?? emoji.y ?? 0;
-        emoji.style.left = `${emoji.x}px`;
-        emoji.style.top = `${emoji.y}px`;
+        setAnnotationBubbleText(emoji, bubbleText);
+        emoji.dataset.rawContent = bubbleText;
+        const suppressVisual = shouldSuppressRemoteVisualUpdate(emoji, data.ownerUid || '');
+        if (!suppressVisual) {
+          emoji.x = data.x ?? emoji.x ?? 0;
+          emoji.y = data.y ?? emoji.y ?? 0;
+          emoji.style.left = `${emoji.x}px`;
+          emoji.style.top = `${emoji.y}px`;
+        }
         if (data.isAnnotation) {
           emoji.classList.add('annotation-bubble');
           emoji.dataset.isAnnotation = 'true';
@@ -7180,12 +7514,21 @@
             : data.annoSymbolIds
               ? String(data.annoSymbolIds)
               : '';
-          // Hide by default (shown only in inspection mode)
-          emoji.classList.remove('annotation-visible');
+          if (!suppressVisual && !window.eyeButton2?.isActivated) {
+            // Hide by default (shown only in inspection mode)
+            emoji.classList.remove('annotation-visible');
+          }
         }
       }
 
       async function upsertChatSymbolFromDoc(docId, data) {
+        const content = data.content || {};
+        const elemId = Number(content.elemId);
+        if (!Number.isInteger(elemId) || !symbolData[elemId]) {
+          console.warn(`Skipping malformed symbol row ${docId}: missing elemId`);
+          return;
+        }
+
         let symbol = symbolById.get(docId);
         if (!symbol) {
           const localNonce = data.clientNonce;
@@ -7196,12 +7539,12 @@
             symbol = createSymbolCopy(
               null,
               null,
-              data.content.elemId,
-              data.content.elemIdTrue,
+              elemId,
+              content.elemIdTrue ?? elemId,
               data.x,
               data.y,
-              data.content.color,
-              data.content.angle,
+              content.color,
+              content.angle,
               docId,
             );
           }
@@ -7232,18 +7575,18 @@
 
         const suppressVisual = shouldSuppressRemoteVisualUpdate(symbol, data.ownerUid || '');
         if (!suppressVisual) {
-          symbol.elemId = data.content.elemId;
-          symbol.elemIdTrue = data.content.elemIdTrue || data.content.elemId;
+          symbol.elemId = elemId;
+          symbol.elemIdTrue = content.elemIdTrue ?? elemId;
           symbol.innerHTML = symbolData[symbol.elemId];
           symbol.style.left = `${data.x}px`;
           symbol.style.top = `${data.y}px`;
-          symbol.angle = data.content.angle ?? 0;
+          symbol.angle = content.angle ?? 0;
           symbol.style.transform = `rotate(${symbol.angle}deg)`;
-          dyeColor(symbol, data.content.color ?? '');
+          dyeColor(symbol, content.color ?? '');
         }
 
-        const dotX = data.content.dotX;
-        const dotY = data.content.dotY;
+        const dotX = content.dotX;
+        const dotY = content.dotY;
         if (!suppressVisual && dotX !== null && dotY !== null) {
           if (!symbol.dot) {
             const dot = document.createElement('div');
@@ -7325,11 +7668,53 @@
         scheduleChatMiniMapUpdate();
 
         if (pendingChatViewportRestoreRoomId === roomId) {
-          pendingChatViewportRestoreRoomId = null;
           if (tabHeadersActivated[4]) {
-            requestAnimationFrame(() => restoreChatViewportState());
+            pendingChatViewportRestoreRoomId = null;
+            requestAnimationFrame(() => {
+              restoreChatViewportState();
+              requestAnimationFrame(() => {
+                suppressChatViewportSave = false;
+              });
+            });
           }
         }
+      }
+
+      function makeRoomSnapshotFromRows(rows = []) {
+        const next = new Map();
+        rows.forEach((row) => {
+          const normalized = normalizeRoomObjFromDb(row);
+          if (normalized.id) next.set(String(normalized.id), normalized);
+        });
+
+        const changes = [];
+        for (const [id, data] of next.entries()) {
+          changes.push({
+            type: roomObjDataById.has(id) ? 'modified' : 'added',
+            doc: {
+              id,
+              data: () => data,
+            },
+          });
+        }
+        for (const id of roomObjDataById.keys()) {
+          if (!next.has(id)) {
+            changes.push({
+              type: 'removed',
+              doc: {
+                id,
+                data: () => roomObjDataById.get(id) || {},
+              },
+            });
+          }
+        }
+        return { docChanges: () => changes };
+      }
+
+      async function refreshRoomSnapshot(roomId) {
+        const { data, error } = await supabase.from('room_objs').select('*').eq('room_id', roomId);
+        if (error) throw error;
+        await applyRoomSnapshot(makeRoomSnapshotFromRows(data || []), roomId);
       }
 
       function subscribeToRoom(roomId) {
@@ -7341,18 +7726,49 @@
         pendingChatViewportRestoreRoomId = roomId;
         roomSyncQueue = Promise.resolve();
 
-        roomObjsUnsubscribe = onSnapshot(
-          objsColRef(roomId),
-          (snapshot) => {
-            roomSyncQueue = roomSyncQueue
-              .then(() => applyRoomSnapshot(snapshot, roomId))
-              .catch(console.error);
-          },
-          (error) => {
-            console.error('Room subscription failed:', error);
-          },
-        );
+        roomSyncQueue = roomSyncQueue
+          .then(() => refreshRoomSnapshot(roomId))
+          .catch((error) => {
+            suppressChatViewportSave = false;
+            console.error(error);
+          });
+        const channel = supabase
+          .channel(`room_objs:${roomId}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'room_objs',
+              filter: `room_id=eq.${roomId}`,
+            },
+            () => {
+              roomSyncQueue = roomSyncQueue
+                .then(() => refreshRoomSnapshot(roomId))
+                .catch((error) => {
+                  suppressChatViewportSave = false;
+                  console.error(error);
+                });
+            },
+          )
+          .subscribe((status) => {
+            if (status === 'CHANNEL_ERROR') {
+              console.error('Room subscription failed');
+              supabase.removeChannel(channel);
+              roomObjsUnsubscribe = null;
+            }
+          });
+        roomObjsUnsubscribe = () => supabase.removeChannel(channel);
       }
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState !== 'visible') return;
+        if (!worldPresenceUnsubscribe) subscribeToWorldPresence();
+        if (currentRoomId) {
+          if (!roomObjsUnsubscribe) subscribeToRoom(currentRoomId);
+          else refreshRoomSnapshot(currentRoomId).catch(console.error);
+        }
+      });
 
       // Function to Load emojis and symbols
       async function loadObj() {
@@ -7366,9 +7782,7 @@
         }
 
         try {
-          const snap = await getDoc(objDocRef(symbolId, roomId));
-          if (!snap.exists()) return [];
-          const data = snap.data();
+          const data = await fetchRoomObj(symbolId, roomId);
           return Array.isArray(data?.links) ? data.links : [];
         } catch {
           return [];
@@ -7382,8 +7796,9 @@
 
         pendingDeleteCommits += 1;
         try {
-          const batch = writeBatch(db);
           const processedLinkRemovals = new Set();
+          const updateTasks = [];
+          const deleteIds = [...symbolSet, ...emojiSet];
 
           for (const symbolId of symbolSet) {
             const links = await getSymbolLinksForDelete(symbolId, roomId);
@@ -7395,22 +7810,26 @@
               if (processedLinkRemovals.has(key)) continue;
               processedLinkRemovals.add(key);
 
-              batch.update(objDocRef(otherId, roomId), {
-                links: arrayRemove({
-                  otherId: symbolId,
-                  mySide: lk.otherSide,
-                  otherSide: lk.mySide,
-                }),
-              });
+              const other = (await fetchRoomObj(otherId, roomId)) || {};
+              const linksAfter = (Array.isArray(other.links) ? other.links : []).filter(
+                (otherLink) =>
+                  !(
+                    otherLink.otherId === symbolId &&
+                    otherLink.mySide === lk.otherSide &&
+                    otherLink.otherSide === lk.mySide
+                  ),
+              );
+              updateTasks.push(updateRoomObj(otherId, { links: linksAfter }, roomId));
             }
-            batch.delete(objDocRef(symbolId, roomId));
           }
 
-          for (const emojiId of emojiSet) {
-            batch.delete(objDocRef(emojiId, roomId));
-          }
-
-          await batch.commit();
+          await Promise.allSettled(updateTasks);
+          const { error } = await supabase
+            .from('room_objs')
+            .delete()
+            .eq('room_id', roomId)
+            .in('id', deleteIds);
+          if (error) throw error;
         } finally {
           pendingDeleteCommits = Math.max(0, pendingDeleteCommits - 1);
         }
@@ -7921,6 +8340,10 @@
       let acc = 0;
       let moleculeString = '';
       let selectedColor = null;
+      // Cursor shown on elements and palette swatches the user cannot edit.
+      // Change this one value to restyle all "not yours" affordances at once.
+      // Options: 'not-allowed', 'default', 'help', 'no-drop'
+      const NO_EDIT_CURSOR = 'default';
       const positions = [2, 1, 0, 7, 3, 4, 5, 6]; // Angle 0 = to the right
       // Circle layout parameters
       const radius = 150; // Radius of the circle
@@ -7954,6 +8377,9 @@
       const palette = document.getElementById('palette');
       palette.style.left = `685px`;
       palette.style.top = `55px`;
+      const chatPalette = document.getElementById('chatPalette');
+      chatPalette.style.left = `685px`;
+      chatPalette.style.top = `55px`;
 
       const SYMBOL_LABELS = {
         en: [
@@ -8773,7 +9199,7 @@
               await persistDotPosition(dot);
             } else {
               if (tabHeadersActivated[4]) {
-                await updateDoc(objDocRef(selectedSymbol.dataset.id), {
+                await updateRoomObj(selectedSymbol.dataset.id, {
                   'content.dotX': null,
                   'content.dotY': null,
                 });
@@ -8844,7 +9270,7 @@
         const id = symbol.dataset?.id;
         if (!id) return;
 
-        await updateDoc(objDocRef(id), {
+        await updateRoomObj(id, {
           'content.dotX': x,
           'content.dotY': y,
         });
@@ -8940,9 +9366,7 @@
 
       function setChatInspectionMode(on) {
         eyeButton2.isActivated = !!on;
-        eyeButton2.style.backgroundImage = on
-          ? iconBg('eye_blue')
-          : iconBg('eye_black');
+        eyeButton2.style.backgroundImage = on ? iconBg('eye_blue') : iconBg('eye_black');
 
         const annotationInput = document.getElementById('message-input');
         if (annotationInput) annotationInput.style.display = on ? 'block' : 'none';
@@ -9181,7 +9605,10 @@
           });
           setAnnotationBubbleText(bubble, translated.explanation || original);
           bubble.dataset.translatedTo = currentLang;
-          button.textContent = currentLang === 'zh' ? '已翻译' : 'Translated';
+          button.textContent = currentLang === 'zh' ? '显示原文' : 'Show original';
+          button.disabled = false;
+          button.dataset.mode = 'revert';
+          scheduleAnnotationLinksUpdate?.();
         } catch (e) {
           console.warn('translateAnnotationBubble failed:', e);
           button.disabled = false;
@@ -9191,30 +9618,68 @@
 
       function ensureAnnotationTranslationButton(bubble) {
         if (!bubble || bubble.dataset?.isAnnotation !== 'true') return;
-        if (bubble.querySelector('.spawned-expression-translate')) return;
-
         const text = String(bubble.dataset.rawContent || '').trim();
         const sourceLang = getExpressionSourceLang('', text, text);
-        if (!shouldOfferExpressionTranslation(sourceLang)) return;
+        const cached = applyCachedAnnotationTranslation(bubble, sourceLang);
+        let button = bubble.querySelector('.spawned-expression-translate');
+        if (!shouldOfferExpressionTranslation(sourceLang)) {
+          button?.remove();
+          return;
+        }
 
-        const button = createLightTranslateButton();
+        if (!button) {
+          button = createLightTranslateButton();
+          button.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (button.dataset.mode === 'revert') {
+              setAnnotationBubbleText(bubble, String(bubble.dataset.rawContent || ''));
+              delete bubble.dataset.translatedTo;
+              bubble.dataset.userShowingOriginal = 'true';
+              button.textContent = currentLang === 'zh' ? '翻译' : 'Translate';
+              button.dataset.mode = 'translate';
+              scheduleAnnotationLinksUpdate?.();
+            } else {
+              delete bubble.dataset.userShowingOriginal;
+              translateAnnotationBubble(bubble, sourceLang);
+            }
+          });
+          bubble.appendChild(button);
+        }
+
+        button.disabled = false;
+        if (cached) {
+          button.textContent = currentLang === 'zh' ? '显示原文' : 'Show original';
+          button.dataset.mode = 'revert';
+        } else {
+          button.textContent = currentLang === 'zh' ? '翻译' : 'Translate';
+          button.dataset.mode = 'translate';
+        }
+      }
+
+      function applyCachedAnnotationTranslation(bubble, sourceLang = null) {
+        if (!bubble || bubble.dataset?.isAnnotation !== 'true') return null;
+        const text = String(bubble.dataset.rawContent || '').trim();
+        if (!text) return null;
+        // User explicitly chose to show the original — don't re-apply the cache.
+        if (bubble.dataset.userShowingOriginal === 'true') return null;
+        const resolvedSourceLang = sourceLang || getExpressionSourceLang('', text, text);
         const cached = getResolvedCachedTranslation({
           word: '',
           why: text,
-          sourceLang,
+          sourceLang: resolvedSourceLang,
           targetLang: currentLang,
         });
-        if (cached) {
-          setAnnotationBubbleText(bubble, cached.explanation || text);
-          button.disabled = true;
-          button.textContent = currentLang === 'zh' ? '已翻译' : 'Translated';
+        if (!cached) {
+          if (bubble.dataset?.translatedTo && bubble.dataset.translatedTo !== currentLang) {
+            setAnnotationBubbleText(bubble, text);
+            delete bubble.dataset.translatedTo;
+          }
+          return null;
         }
-        button.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          translateAnnotationBubble(bubble, sourceLang);
-        });
-        bubble.appendChild(button);
+        setAnnotationBubbleText(bubble, cached.explanation || text);
+        bubble.dataset.translatedTo = currentLang;
+        return cached;
       }
 
       function showSpawnedExpressionMetaForSelection() {
@@ -9391,6 +9856,7 @@
             }
 
             card.appendChild(textWrap);
+            makeSpawnedExpressionMetaCardDraggable(card);
             appendToChatCanvas(card);
             spawnedExpressionMetaCardEls.set(gid, card);
           }
@@ -9399,6 +9865,94 @@
         } catch (e) {
           console.warn('showSpawnedExpressionMetaForSelection failed:', e);
         }
+      }
+
+      function getSymbolGroupBounds(group) {
+        const symbols = Array.from(group || []).filter((s) => s?.isConnected);
+        if (!symbols.length) return null;
+        let left = Infinity;
+        let top = Infinity;
+        let right = -Infinity;
+        let bottom = -Infinity;
+        for (const symbol of symbols) {
+          const rect = getSymbolRectOnCanvas(symbol);
+          left = Math.min(left, rect.left);
+          top = Math.min(top, rect.top);
+          right = Math.max(right, rect.right);
+          bottom = Math.max(bottom, rect.bottom);
+        }
+        return {
+          left,
+          top,
+          right,
+          bottom,
+          centerX: (left + right) / 2,
+          centerY: (top + bottom) / 2,
+        };
+      }
+
+      function makeSpawnedExpressionMetaCardDraggable(card) {
+        if (!card || card.dataset.draggableBound === 'true') return;
+        card.dataset.draggableBound = 'true';
+
+        let dragging = false;
+        let pointerId = null;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        card.addEventListener('pointerdown', (e) => {
+          if (e.button != null && e.button !== 0) return;
+          if (e.target?.closest?.('.spawned-expression-translate')) return;
+          const canvas = chatCanvas();
+          if (!canvas) return;
+          const local = clientToLocal(canvas, e.clientX, e.clientY);
+          offsetX = local.x - (parseFloat(card.style.left) || 0);
+          offsetY = local.y - (parseFloat(card.style.top) || 0);
+          dragging = true;
+          pointerId = e.pointerId;
+          card.style.cursor = 'grabbing';
+          card.setPointerCapture?.(pointerId);
+          e.preventDefault();
+          e.stopPropagation();
+        });
+
+        card.addEventListener('pointermove', (e) => {
+          if (!dragging || e.pointerId !== pointerId) return;
+          const canvas = chatCanvas();
+          if (!canvas) return;
+          const local = clientToLocal(canvas, e.clientX, e.clientY);
+          const x = local.x - offsetX;
+          const y = local.y - offsetY;
+          card.style.left = `${x}px`;
+          card.style.top = `${y}px`;
+
+          const group =
+            spawnedExpressionMetaCardGroups.get(card.dataset.exprGroupId) ||
+            expressionGroups.get(card.dataset.exprGroupId);
+          const bounds = getSymbolGroupBounds(group);
+          if (bounds) {
+            card._manualOffset = {
+              x: x - bounds.centerX,
+              y: y - bounds.centerY,
+            };
+          }
+          scheduleChatMiniMapUpdate?.();
+          e.preventDefault();
+          e.stopPropagation();
+        });
+
+        function endDrag(e) {
+          if (!dragging || (e?.pointerId != null && e.pointerId !== pointerId)) return;
+          dragging = false;
+          card.style.cursor = 'grab';
+          if (pointerId != null) card.releasePointerCapture?.(pointerId);
+          pointerId = null;
+          e?.preventDefault?.();
+          e?.stopPropagation?.();
+        }
+
+        card.addEventListener('pointerup', endDrag);
+        card.addEventListener('pointercancel', endDrag);
       }
 
       function updateSpawnedExpressionMetaCardsPosition() {
@@ -9437,19 +9991,23 @@
           }
           card.style.display = 'block';
 
-          let rightMost = -Infinity;
-          let topMost = Infinity;
-          for (const s of grp) {
-            const r = getSymbolRectOnCanvas(s);
-            if (r.right > rightMost) rightMost = r.right;
-            if (r.top < topMost) topMost = r.top;
-          }
+          const bounds = getSymbolGroupBounds(grp);
+          if (!bounds) continue;
 
-          const gap = 14;
-          let x = rightMost + gap;
-          let y = topMost - 6;
+          let x;
+          let y;
+          if (card._manualOffset) {
+            x = bounds.centerX + card._manualOffset.x;
+            y = bounds.centerY + card._manualOffset.y;
+          } else {
+            const gap = 14;
+            x = bounds.right + gap;
+            y = bounds.top - 6;
+          }
           card.style.left = `${x}px`;
           card.style.top = `${y}px`;
+
+          if (card._manualOffset) continue;
 
           // Avoid card-on-card overlap in the right margin.
           for (let tries = 0; tries < 12; tries++) {
@@ -9549,18 +10107,31 @@
             em.remove();
             selectedEmojis.delete(em);
             em.selected = false;
+            // Remove from emojiById immediately so renderAnnotationLinks doesn't
+            // draw a (0,0)-anchored ghost line for the disconnected element.
+            if (id) emojiById.delete(id);
           }
 
           // Best-effort: also remove any annotation-link docs that touch these annotations.
+          // Also clean up the local annoLinkById / annoChildToParent maps immediately
+          // so the SVG lines disappear before the Supabase echo arrives.
+          const annoIdSet = new Set(annoIds);
           const linkDocIdsToDelete = [];
           for (const [docId, data] of roomObjDataById.entries()) {
             if (data?.type !== 'annoLink') continue;
             const from = data?.content?.fromEmojiId;
             const to = data?.content?.toEmojiId;
-            if (annoIds.includes(from) || annoIds.includes(to)) {
+            if (annoIdSet.has(from) || annoIdSet.has(to)) {
               linkDocIdsToDelete.push(docId);
             }
           }
+          for (const [linkDocId, lk] of annoLinkById) {
+            if (annoIdSet.has(lk.fromEmojiId) || annoIdSet.has(lk.toEmojiId)) {
+              if (lk.fromEmojiId) annoChildToParent.delete(lk.fromEmojiId);
+              annoLinkById.delete(linkDocId);
+            }
+          }
+          scheduleAnnotationLinksUpdate?.();
 
           await deleteChatSelectionBatch(currentRoomId, [], annoIds.concat(linkDocIdsToDelete));
           scheduleChatMiniMapUpdate?.();
@@ -9678,13 +10249,12 @@
       }
 
       function updateWhiteSymbolOutline(symbol) {
-        const shouldOutline =
-          isWhiteSymbolColor(symbol?.color) && getCanvasForElem(symbol) === craftCanvas();
-        symbol?.classList.toggle('white-fill-outline', shouldOutline);
+        symbol?.classList.toggle('white-fill-outline', isWhiteSymbolColor(symbol?.color));
       }
 
       function dyeColor(symbol, color) {
         const svgElement = symbol.querySelector('svg');
+        if (!svgElement) return;
         const shapes = svgElement.querySelectorAll('path, rect'); // Get the shapes inside the SVG
         shapes.forEach((shape) => {
           shape.style.fill = color; // Preserve per-shape opacity while changing color.
@@ -9693,18 +10263,37 @@
         updateWhiteSymbolOutline(symbol);
       }
 
-      // Handle color selection
-      palette.addEventListener('click', (e) => {
+      function refreshPaletteForbiddenState() {
+        const hasSelection = selectedSymbols.size > 0;
+        const forbidden = hasSelection && !Array.from(selectedSymbols).some(canEditElement);
+        const cur = forbidden ? NO_EDIT_CURSOR : '';
+        [palette, chatPalette].forEach((p) =>
+          p.querySelectorAll('.color').forEach((swatch) => (swatch.style.cursor = cur)),
+        );
+      }
+
+      function handlePaletteClick(e) {
         if (e.target.classList.contains('color')) {
           selectedColor = e.target.style.backgroundColor; // Set the selected color
           if (selectedSymbols.size != 0) {
             selectedSymbols.forEach((selectedSymbol) => {
+              if (!canEditElement(selectedSymbol)) return;
               dyeColor(selectedSymbol, selectedColor);
+              const id = selectedSymbol.dataset?.id;
+              if (id && getCanvasForElem(selectedSymbol) === chatCanvas()) {
+                updateSymbolColor(id, selectedColor).catch(console.error);
+              }
             });
           }
           console.log(`Selected color: ${selectedColor}`);
         }
-      });
+      }
+
+      // Handle color selection
+      palette.addEventListener('click', handlePaletteClick);
+      chatPalette.addEventListener('click', handlePaletteClick);
+      palette.addEventListener('mouseenter', refreshPaletteForbiddenState);
+      chatPalette.addEventListener('mouseenter', refreshPaletteForbiddenState);
 
       const wheel = document.createElement('div'); // Your wheel sprite
       wheel.classList.add('wheel');
@@ -9832,69 +10421,6 @@
       // Function to handle annotation creation when Enter is pressed
       async function handleAnnotation() {
         const messageBox = document.getElementById('message-input');
-        const userInput = messageBox.value.trim();
-        if (!userInput) return;
-
-        // Only works in inspection mode
-        const inspecting = eyeButton.isActivated || eyeButton2.isActivated;
-        if (!inspecting) return;
-
-        // Only works when a connected component is selected
-        if (selectedSymbols.size === 0) return;
-        if (!isSelectionConnected(selectedSymbols, currentGraph)) return;
-
-        messageBox.value = '';
-
-        const ids = (
-          await Promise.all(
-            Array.from(selectedSymbols).map(async (s) => {
-              return s?.dataset?.id || (await s?._pendingIdPromise?.catch(() => null));
-            }),
-          )
-        )
-          .filter(Boolean)
-          .sort();
-        const rootSymbolId = ids[0] || '';
-
-        // Create annotation bubble with plain text (no AI call)
-        const annotation = await createEmoji(userInput, null, null, null, {
-          isAnnotation: true,
-          annoRootSymbolId: rootSymbolId,
-          annoSymbolIds: ids,
-        });
-        annotation.classList.add('annotation-bubble');
-        annotation.classList.add('annotation-visible');
-        annotation.dataset.isAnnotation = 'true';
-
-        // Determine what to anchor to
-        const selectedAnnotation = Array.from(selectedEmojis).find(
-          (e) => e.dataset?.isAnnotation === 'true',
-        );
-
-        if (selectedAnnotation) {
-          // Chain: create annotation-to-annotation link (B → A)
-          await createAnnotationLink(annotation, selectedAnnotation);
-        } else {
-          // Place new annotation near the current selected group (no persistent tether)
-          const centers = Array.from(selectedSymbols)
-            .map((s) => getElementCenterInChatCanvas(s))
-            .filter(Boolean);
-          if (centers.length) {
-            const cx = centers.reduce((sum, p) => sum + p.x, 0) / centers.length;
-            const cy = centers.reduce((sum, p) => sum + p.y, 0) / centers.length;
-            annotation.x = cx + 40;
-            annotation.y = cy - 10;
-            annotation.style.left = `${annotation.x}px`;
-            annotation.style.top = `${annotation.y}px`;
-          }
-        }
-
-        scheduleChatMiniMapUpdate?.();
-      }
-
-      // v2: tethered annotations (inspection-mode only)
-      async function handleAnnotation2() {
-        const messageBox = document.getElementById('message-input');
         const userInput = messageBox?.value?.trim?.() || '';
         if (!userInput) return;
 
@@ -9926,11 +10452,32 @@
           (e) =>
             e?.dataset?.isAnnotation === 'true' && e?.dataset?.annoRootSymbolId === rootSymbolId,
         );
+        let annotationX = null;
+        let annotationY = null;
+
+        if (selectedAnnotation) {
+          const a = getElementCenterInChatCanvas(selectedAnnotation);
+          if (a) {
+            annotationX = a.x + 48;
+            annotationY = a.y - 12;
+          }
+        } else {
+          // Root annotation: place it near the selected component center
+          const centers = Array.from(selectedSymbols)
+            .map((s) => getElementCenterInChatCanvas(s))
+            .filter(Boolean);
+          if (centers.length) {
+            const cx = centers.reduce((sum, p) => sum + p.x, 0) / centers.length;
+            const cy = centers.reduce((sum, p) => sum + p.y, 0) / centers.length;
+            annotationX = cx + 120;
+            annotationY = cy + 60;
+          }
+        }
 
         const annotation = await createEmoji(
           userInput,
-          null,
-          null,
+          annotationX,
+          annotationY,
           null,
           { isAnnotation: true, annoRootSymbolId: rootSymbolId, annoSymbolIds: ids },
           {
@@ -9943,27 +10490,6 @@
 
         if (selectedAnnotation) {
           await createAnnotationLink2(annotation, selectedAnnotation);
-
-          const a = getElementCenterInChatCanvas(selectedAnnotation);
-          if (a) {
-            annotation.x = a.x + 48;
-            annotation.y = a.y - 12;
-            annotation.style.left = `${annotation.x}px`;
-            annotation.style.top = `${annotation.y}px`;
-          }
-        } else {
-          // Root annotation: place it near the selected component center
-          const centers = Array.from(selectedSymbols)
-            .map((s) => getElementCenterInChatCanvas(s))
-            .filter(Boolean);
-          if (centers.length) {
-            const cx = centers.reduce((sum, p) => sum + p.x, 0) / centers.length;
-            const cy = centers.reduce((sum, p) => sum + p.y, 0) / centers.length;
-            annotation.x = cx + 40;
-            annotation.y = cy - 10;
-            annotation.style.left = `${annotation.x}px`;
-            annotation.style.top = `${annotation.y}px`;
-          }
         }
 
         // Only reveal annotations for the current inspected component
@@ -9981,7 +10507,7 @@
       }
 
       async function createAnnotationLink(fromAnnotation, toAnnotation) {
-        // Store emoji-to-emoji annotation chain link in Firestore
+        // Store emoji-to-emoji annotation chain link in the room backend.
         const fromId =
           fromAnnotation.dataset?.id ||
           (await fromAnnotation._pendingIdPromise?.catch(() => null));
@@ -10070,6 +10596,31 @@
           console.warn('isSymbolInInspectedComponent failed', e);
           return false;
         }
+      }
+
+      // Returns a Map<annotationEl, {dx,dy}> of all annotation bubbles whose
+      // annoSymbolIds or annoRootSymbolId contains the given symbol's ID.
+      // Offsets are relative to the symbol's current style.left/top.
+      function collectSymbolAnnoFollowers(symbol) {
+        const symId = symbol?.dataset?.id;
+        if (!symId) return null;
+        const symLeft = parseFloat(symbol.style.left) || 0;
+        const symTop = parseFloat(symbol.style.top) || 0;
+        const followers = new Map();
+        for (const emoji of emojiById.values()) {
+          if (emoji.dataset?.isAnnotation !== 'true') continue;
+          if (!emoji.isConnected) continue;
+          const annoSymIds = String(emoji.dataset?.annoSymbolIds || '')
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
+          const rootId = emoji.dataset?.annoRootSymbolId || '';
+          if (!annoSymIds.includes(symId) && rootId !== symId) continue;
+          const el = parseFloat(emoji.style.left) || 0;
+          const et = parseFloat(emoji.style.top) || 0;
+          followers.set(emoji, { dx: el - symLeft, dy: et - symTop });
+        }
+        return followers.size ? followers : null;
       }
 
       function findLibraryEntry(word) {
@@ -10600,6 +11151,31 @@
           // No individual 'framed' class — group frame handles the outline
         }
 
+        const nodeId = found.entry?.[0] || null;
+        const libNode = nodeId && typeof nodes?.get === 'function' ? nodes.get(nodeId) : null;
+        const rawTitle = String(libNode?.title || '');
+        const why = rawTitle.includes('. ') ? rawTitle.split(/\. (.+)/)[1] || '' : rawTitle;
+        const exprLang = getExpressionSourceLang(
+          String(libNode?.lang || ''),
+          libNode?.word || found.word || '',
+          why,
+        );
+        const payload = {
+          exprGroupId: groupId,
+          exprWord: String(libNode?.word || found.word || ''),
+          exprWhy: String(why || ''),
+          exprLang,
+          exprNodeId: nodeId ? String(nodeId) : '',
+          exprAuthorUid: currentUser?.uid || '',
+        };
+        for (const sym of placedSymbols) {
+          sym.dataset.exprWord = payload.exprWord;
+          sym.dataset.exprWhy = payload.exprWhy;
+          sym.dataset.exprLang = payload.exprLang;
+          sym.dataset.exprNodeId = payload.exprNodeId;
+          sym.dataset.exprAuthorUid = payload.exprAuthorUid;
+        }
+
         // Render the group frame immediately (poka-yoke: prevents "half-spawned" dragging breaking the group).
         updateExpressionGroupFrame(
           placedSymbols,
@@ -10647,35 +11223,13 @@
 
             // Persist spawned-expression grouping + meta for all users (survives refresh).
             // We store the author word + why text on every symbol doc for simplicity.
-            const nodeId = found.entry?.[0] || null;
-            const libNode = nodeId && typeof nodes?.get === 'function' ? nodes.get(nodeId) : null;
-            const rawTitle = String(libNode?.title || '');
-            const why = rawTitle.includes('. ') ? rawTitle.split(/\. (.+)/)[1] || '' : rawTitle;
-            const exprLang = getExpressionSourceLang(
-              String(libNode?.lang || ''),
-              libNode?.word || found.word || '',
-              why,
-            );
-            const payload = {
-              exprGroupId: groupId,
-              exprWord: String(libNode?.word || found.word || ''),
-              exprWhy: String(why || ''),
-              exprLang,
-              exprNodeId: nodeId ? String(nodeId) : '',
-              exprAuthorUid: currentUser?.uid || '',
-            };
-
             await Promise.all(
               placedSymbols.map(async (sym) => {
                 const id = sym.dataset?.id;
                 if (!id) return;
-                await updateDoc(objDocRef(id), payload);
-                // keep local element datasets in sync immediately
-                sym.dataset.exprWord = payload.exprWord;
-                sym.dataset.exprWhy = payload.exprWhy;
-                sym.dataset.exprLang = payload.exprLang;
-                sym.dataset.exprNodeId = payload.exprNodeId;
-                sym.dataset.exprAuthorUid = payload.exprAuthorUid;
+                await updateRoomObj(id, payload).catch((error) => {
+                  console.warn('spawned expression meta persist failed:', error);
+                });
               }),
             );
           } catch (e) {
@@ -10761,7 +11315,7 @@
             return;
           }
 
-          handleAnnotation2();
+          handleAnnotation();
         }
       });
 
@@ -10990,6 +11544,7 @@
         extraSaveData = {},
         uiOptions = {},
       ) {
+        const emojiText = getRoomObjBubbleText(emojiResponse);
         const emoji = document.createElement('div');
         emoji.classList.add('symbol-label');
         const isAnnotation = !!extraSaveData?.isAnnotation;
@@ -11069,7 +11624,7 @@
 
           // dragging is owner-only (selection still allowed)
           if (!canEditElement(emoji)) {
-            emoji.style.cursor = 'not-allowed';
+            emoji.style.cursor = NO_EDIT_CURSOR;
             clickOnlyEmoji = emoji;
             return;
           }
@@ -11146,15 +11701,18 @@
                   }
                 }
 
-                if (followers.size) emoji._annoFollowers = followers;
+                if (followers.size) {
+                  emoji._annoFollowers = followers;
+                  for (const [annoEl] of followers) _draggedFollowers.add(annoEl);
+                }
               }
             }
           }
         });
 
         appendToChatCanvas(emoji);
-        emoji.textContent = emojiResponse; // Default text
-        emoji.dataset.rawContent = emojiResponse || '';
+        emoji.textContent = emojiText; // Default text
+        emoji.dataset.rawContent = emojiText;
         // Annotations should be stable (no floating) so tether offsets remain predictable.
         if (emoji.dataset?.isAnnotation !== 'true') {
           floatLabel(emoji);
@@ -11193,7 +11751,7 @@
           emoji._pendingIdPromise = (async () => {
             const docId = await saveObj(
               'emoji',
-              emojiResponse,
+              emojiText,
               emoji.x,
               emoji.y,
               clientNonce ? { clientNonce, ...extraSaveData } : { ...extraSaveData },
@@ -11324,7 +11882,7 @@
                 currentGraph.getSymbolConnections(nbr)[nbrSide] = back.filter(([x]) => x !== sym);
               }
 
-              // ✅ Cut external connection (Firestore) — IMPORTANT
+              // ✅ Cut external connection in the backend.
               const bId = nbr?.dataset?.id;
               if (aId && bId) {
                 removeLink(aId, side, bId, nbrSide).catch(console.error);
@@ -11354,7 +11912,7 @@
         updateQianSymbolAppearance(symbol);
       }
 
-      // Firestore removal (optional but recommended)
+      // Backend removal (optional but recommended)
       async function detachSymbolRemote(symbol) {
         const aId = symbol.dataset?.id;
         if (!aId) return;
@@ -11372,7 +11930,7 @@
         }
       }
 
-      /** Detach immediately in memory, then best-effort in Firestore */
+      /** Detach immediately in memory, then best-effort in the backend. */
       function detachSymbol(symbol) {
         // remember old connections first (because local detach will clear the list)
         const snapshot = (currentGraph.getSymbolConnections(symbol) || []).map((arr) =>
@@ -11399,6 +11957,21 @@
       function cancelDraggingState() {
         const qianToRestore = activeSymbol;
         const qianGroupToRestore = dragGroup ? Array.from(dragGroup.keys()) : [];
+        if (activeSymbol?._annoFollowers) {
+          for (const [annoEl] of activeSymbol._annoFollowers) _draggedFollowers.delete(annoEl);
+          activeSymbol._annoFollowers = null;
+        }
+        if (activeEmoji?._annoFollowers) {
+          for (const [annoEl] of activeEmoji._annoFollowers) _draggedFollowers.delete(annoEl);
+        }
+        if (dragGroup) {
+          for (const el of dragGroup.keys()) {
+            if (el._annoFollowers) {
+              for (const [annoEl] of el._annoFollowers) _draggedFollowers.delete(annoEl);
+              el._annoFollowers = null;
+            }
+          }
+        }
         activeSymbol = null;
         activeEmoji = null;
 
@@ -11431,7 +12004,7 @@
 
       function isCanvasUiTarget(target) {
         return !!target?.closest?.(
-          '.button, #palette, .color, #top-right-ui, #lang-toggle, .lang-menu, .lang-circle, .lang-item, .vertical-bar, .tab, .submit-button, .cancel-button, input, textarea',
+          '.button, #palette, #chatPalette, .color, #top-right-ui, #lang-toggle, .lang-menu, .lang-circle, .lang-item, .vertical-bar, .tab, .submit-button, .cancel-button, input, textarea',
         );
       }
 
@@ -11525,7 +12098,7 @@
             localY = dragSnapLock.localY0;
           }
 
-          // ✅ 第一次进入群拖：把组内所有 symbol 与“组外”断开（保留组内）
+          // ✅ 第一次进入群拖：把组内所有 symbol 与”组外”断开（保留组内）
           if (!dragGroupStarted) {
             dragGroupStarted = true;
             dragGroupSet = new Set(dragGroup.keys()); // 当前被拖动的所有元素（symbol+emoji）
@@ -11534,6 +12107,10 @@
               if (el.classList?.contains('symbol')) {
                 cutConnectionsOutside(el, dragGroupSet);
                 el.moving = true; // 表示这次拖拽已经处理过断链（避免你其它逻辑重复 cut）
+                el._annoFollowers = collectSymbolAnnoFollowers(el);
+                if (el._annoFollowers) {
+                  for (const [annoEl] of el._annoFollowers) _draggedFollowers.add(annoEl);
+                }
               }
             }
           }
@@ -11568,10 +12145,21 @@
 
             if (!canEditElement(el)) continue;
 
-            el.style.left = `${localX + off.dx}px`;
-            el.style.top = `${localY + off.dy}px`;
+            const elX = localX + off.dx;
+            const elY = localY + off.dy;
+            el.style.left = `${elX}px`;
+            el.style.top = `${elY}px`;
             if (getCanvasForElem(el) === chatCanvas()) {
-              markLocalSymbolMutation(el, 900);
+              markLocalRoomObjMutation(el, 900);
+            }
+
+            if (el._annoFollowers) {
+              for (const [annoEl, aOff] of el._annoFollowers) {
+                if (!annoEl?.isConnected) continue;
+                annoEl.style.left = `${elX + aOff.dx}px`;
+                annoEl.style.top = `${elY + aOff.dy}px`;
+                markLocalRoomObjMutation(annoEl, 900);
+              }
             }
           }
 
@@ -11753,6 +12341,9 @@
           activeEmoji.style.left = `${x}px`;
           activeEmoji.style.top = `${y}px`;
           activeEmoji.selected = true;
+          if (canvas === chatCanvas()) {
+            markLocalRoomObjMutation(activeEmoji, 900);
+          }
 
           if (activeEmoji.dataset?.inspectionLabel === 'true' && activeEmoji.anchorSymbol) {
             const anchorLeft = parseFloat(activeEmoji.anchorSymbol.style.left) || 0;
@@ -11771,6 +12362,7 @@
                 if (!canEditElement(childEl)) continue;
                 childEl.style.left = `${x + off.dx}px`;
                 childEl.style.top = `${y + off.dy}px`;
+                markLocalRoomObjMutation(childEl, 900);
               }
             }
           }
@@ -11809,6 +12401,15 @@
           activeSymbol.style.left = `${x}px`;
           activeSymbol.style.top = `${y}px`;
           activeSymbol.selected = true;
+
+          if (activeSymbol._annoFollowers) {
+            for (const [annoEl, off] of activeSymbol._annoFollowers) {
+              if (!annoEl?.isConnected) continue;
+              annoEl.style.left = `${x + off.dx}px`;
+              annoEl.style.top = `${y + off.dy}px`;
+              markLocalRoomObjMutation(annoEl, 900);
+            }
+          }
 
           // hideLabelInputs();
           if (activeSymbol.labels) {
@@ -11987,11 +12588,11 @@
         const el = document.elementFromPoint(e.clientX, e.clientY) || e.target;
 
         // 4) Clicked an item? then NOT blank
-        const hitItem = !!el?.closest?.('.symbol, .symbol-label');
+        const hitItem = !!el?.closest?.('.symbol, .symbol-label, .spawned-expression-meta');
 
         // 5) Clicked UI? then NOT blank
         const hitUI = !!el?.closest?.(
-          '#palette, .wheel, #chatControls, #top-right-ui, #lang-toggle, .lang-menu, .lang-circle, .lang-item, .vertical-bar, .tab, .button, .label-input, .label-textarea, .submit-button, .symbol-label, #chatAnchorLayer, #tutorialOverlay, #tutorialBubble',
+          '#palette, #chatPalette, .wheel, #chatControls, #top-right-ui, #lang-toggle, .lang-menu, .lang-circle, .lang-item, .vertical-bar, .tab, .button, .label-input, .label-textarea, .submit-button, .symbol-label, #chatAnchorLayer, #tutorialOverlay, #tutorialBubble',
         );
 
         return !hitItem && !hitUI;
@@ -12196,6 +12797,9 @@
         if (activeSymbol) {
           const released = activeSymbol;
           activeSymbol = null;
+          if (getCanvasForElem(released) === chatCanvas()) {
+            markLocalRoomObjMutation(released, 1500);
+          }
           released.style.cursor = 'grab';
           released._qianPressed = false;
           updateQianSymbolAppearance(released);
@@ -12348,6 +12952,23 @@
             }
           }
 
+          // --- 4b) Persist annotation followers ---
+          if (released._annoFollowers) {
+            for (const [annoEl] of released._annoFollowers) {
+              _draggedFollowers.delete(annoEl);
+              if (!annoEl?.isConnected) continue;
+              const ax = parseFloat(annoEl.style.left);
+              const ay = parseFloat(annoEl.style.top);
+              markLocalRoomObjMutation(annoEl, 1500);
+              (async () => {
+                let aid = annoEl.dataset?.id;
+                if (!aid && annoEl._pendingIdPromise) aid = await annoEl._pendingIdPromise;
+                if (aid) await updateObjPosition(aid, ax, ay);
+              })().catch(console.error);
+            }
+            released._annoFollowers = null;
+          }
+
           // --- 5) Reset per-drag flags ---
           released.moving = false;
           isGenerating = false;
@@ -12366,6 +12987,10 @@
         if (activeEmoji) {
           const released = activeEmoji;
           activeEmoji = null;
+          if (released._annoFollowers) {
+            for (const [annoEl] of released._annoFollowers) _draggedFollowers.delete(annoEl);
+          }
+          markLocalRoomObjMutation(released, 1500);
           released.style.cursor = 'grab';
 
           if (released.dataset?.inspectionLabel === 'true') {
@@ -12638,6 +13263,9 @@
             const y = parseFloat(el.style.top);
             if (id) groupPositionPayloads.push({ id, x, y, dot: el.isDynamic ? el.dot : null });
             if (el.isDynamic && el.dot) updateDotPositionLocal(el.dot);
+            if (getCanvasForElem(el) === chatCanvas()) {
+              markLocalRoomObjMutation(el, 1500);
+            }
           }
 
           const linkPayloads = collectLeaderSnapLinkPayloads(dragLeader);
@@ -12651,6 +13279,23 @@
                 el._qianPressed = false;
                 cleanupDetachedLinksFor(el, 10);
                 updateQianSymbolAppearance(el);
+
+                // Persist annotation followers that moved with this symbol
+                if (el._annoFollowers) {
+                  for (const [annoEl] of el._annoFollowers) {
+                    _draggedFollowers.delete(annoEl);
+                    if (!annoEl?.isConnected) continue;
+                    const ax = parseFloat(annoEl.style.left);
+                    const ay = parseFloat(annoEl.style.top);
+                    markLocalRoomObjMutation(annoEl, 1500);
+                    (async () => {
+                      let aid = annoEl.dataset?.id;
+                      if (!aid && annoEl._pendingIdPromise) aid = await annoEl._pendingIdPromise;
+                      if (aid) await updateObjPosition(aid, ax, ay);
+                    })().catch(console.error);
+                  }
+                  el._annoFollowers = null;
+                }
               }
             }
           }
@@ -12896,7 +13541,8 @@
         // Remove frames from ALL selected symbols (mine + others)
         for (const s of Array.from(selectedSymbols)) {
           s.selected = false;
-          s.classList.remove('framed');
+          s.classList.remove('framed', 'owner-marked');
+          s.style.removeProperty('--owner-color');
         }
         selectedSymbols.clear();
         clearExpressionGroupFrame();
@@ -13144,7 +13790,7 @@
               groupSymbols.map(async (sym) => {
                 const id = sym.dataset?.id || (await sym._pendingIdPromise?.catch(() => null));
                 if (!id) return;
-                await updateDoc(objDocRef(id), payload);
+                await updateRoomObj(id, payload);
               }),
             ).catch(() => {});
           }
@@ -14219,6 +14865,13 @@
         symbolAngle = null,
         symbolId = null,
       ) {
+        const requestedElemId = elemId;
+        elemId = Number(elemId);
+        if (!Number.isInteger(elemId) || !symbolData[elemId]) {
+          console.warn(`createSymbolCopy received invalid elemId: ${requestedElemId}`);
+          elemId = null;
+        }
+
         const spawnCanvas =
           symbolX !== null ? chatCanvas() : tabHeadersActivated[4] ? chatCanvas() : craftCanvas();
         const { x, y } = clientToLocal(spawnCanvas, mouseX, mouseY);
@@ -14235,9 +14888,10 @@
         symbol.classList.add('symbol');
         symbol.elemId = elemId;
 
-        elemIdTrue = elemIdTrue ? elemIdTrue : elemId;
+        elemIdTrue = elemIdTrue != null ? Number(elemIdTrue) : elemId;
+        if (!Number.isInteger(elemIdTrue) || !symbolData[elemIdTrue]) elemIdTrue = elemId;
         symbol.elemIdTrue = elemIdTrue;
-        symbol.innerHTML = symbolData[symbol.elemId];
+        symbol.innerHTML = symbol.elemId != null ? symbolData[symbol.elemId] : '';
 
         if (symbolX === null) symbol.accId = acc; // newly created
 
@@ -14252,25 +14906,9 @@
           // loaded in the chat interface
           dyeColor(symbol, symbolColor);
         } else if (tabHeadersActivated[4]) {
-          // newly created in the chat interface
-          symbolColor = cachedUserColor || generateColor(currentUser?.uid || 'guest');
+          // newly created in the chat interface: symbol color is expressive, not identity.
+          symbolColor = 'black';
           dyeColor(symbol, symbolColor);
-          assignUserColor()
-            .then(async (resolvedColor) => {
-              if (!symbol.isConnected) return;
-              if (symbol.dataset?.ownerUid && symbol.dataset.ownerUid !== currentUser?.uid) return;
-              if (resolvedColor && resolvedColor !== symbol.color) {
-                dyeColor(symbol, resolvedColor);
-              }
-              if (resolvedColor) {
-                const id =
-                  symbol.dataset?.id || (await symbol._pendingIdPromise?.catch(() => null));
-                if (id) {
-                  await updateSymbolColor(id, resolvedColor);
-                }
-              }
-            })
-            .catch(console.error);
         } // otherwise, newly created in the craft interface
 
         if (symbolAngle !== null) {
@@ -14393,7 +15031,7 @@
 
           // owner-only drag
           if (!canEditElement(symbol)) {
-            symbol.style.cursor = 'not-allowed';
+            symbol.style.cursor = NO_EDIT_CURSOR;
             // allow click-to-toggle selection for others
             clickOnlySymbol = symbol;
             return; // no dragging
@@ -14459,6 +15097,10 @@
             const top = parseFloat(symbol.style.top) || 0;
             symbol.offsetX = localX - left;
             symbol.offsetY = localY - top;
+            symbol._annoFollowers = collectSymbolAnnoFollowers(symbol);
+            if (symbol._annoFollowers) {
+              for (const [annoEl] of symbol._annoFollowers) _draggedFollowers.add(annoEl);
+            }
           }
         });
 
@@ -14510,10 +15152,18 @@
         symbol.offsetY = offsetY;
 
         if (tabHeadersActivated[4] || symbolX !== null) {
+          const packetElemId = Number(symbol.elemId);
+          if (!Number.isInteger(packetElemId) || !symbolData[packetElemId]) {
+            console.warn(`Not saving chat symbol with invalid elemId: ${symbol.elemId}`);
+            return symbol;
+          }
+
           // Get div attributes
           const symbolPacket = {
-            elemId: elemId,
-            elemIdTrue: elemIdTrue,
+            elemId: packetElemId,
+            elemIdTrue: Number.isInteger(Number(symbol.elemIdTrue))
+              ? Number(symbol.elemIdTrue)
+              : packetElemId,
             color: symbolColor,
             angle: symbol.angle,
             dotX: null,
@@ -14541,11 +15191,22 @@
                 parseFloat(symbol.style.top),
                 clientNonce ? { clientNonce } : {},
               );
+              roomObjDataById?.set?.(docId, {
+                id: docId,
+                type: 'symbol',
+                content: { ...symbolPacket },
+                x: parseFloat(symbol.style.left),
+                y: parseFloat(symbol.style.top),
+                links: [],
+                ownerUid: currentUser?.uid || '',
+                clientNonce: clientNonce || '',
+              });
               const existing = symbolById.get(docId);
               if (existing && existing !== symbol) {
                 adoptExistingChatSymbol(existing, symbol);
               }
               symbol.dataset.id = docId;
+              symbol.dataset.ownerUid = currentUser?.uid || '';
               symbolById.set(docId, symbol);
               if (clientNonce) pendingLocalChatSymbolsByNonce.delete(clientNonce);
               return docId;
@@ -17808,28 +18469,31 @@
       async function saveLibraryGraphForUser() {
         if (!currentUser) return;
 
-        const ref = doc(db, 'users', currentUser.uid, 'libraryGraph', 'state');
         const state = exportGraphState();
 
-        await setDoc(
-          ref,
-          {
+        const { error } = await supabase.from('library_graphs').upsert({
+          uid: currentUser.uid,
+          state: {
             nodes: state.nodes,
             edges: state.edges,
-            updatedAt: serverTimestamp(),
           },
-          { merge: true },
-        );
+          updated_at: new Date().toISOString(),
+        });
+        if (error) throw error;
       }
 
       async function loadLibraryGraphForUser() {
         if (!currentUser) return;
 
-        const ref = doc(db, 'users', currentUser.uid, 'libraryGraph', 'state');
-        const snap = await getDoc(ref);
-        if (!snap.exists()) return;
+        const { data: row, error } = await supabase
+          .from('library_graphs')
+          .select('state')
+          .eq('uid', currentUser.uid)
+          .maybeSingle();
+        if (error) throw error;
+        if (!row?.state) return;
 
-        const { nodes: savedNodes = [], edges: savedEdges = [], view = null } = snap.data();
+        const { nodes: savedNodes = [], edges: savedEdges = [], view = null } = row.state || {};
 
         // 1) add nodes if absent in dataset, otherwise update word/title/pos
         for (const sn of savedNodes) {
@@ -17908,13 +18572,36 @@
       }
 
       async function deleteLibraryNodeForUser(uid, nodeId) {
-        const ref = doc(db, 'users', uid, 'libraryNodes', nodeId);
-        await deleteDoc(ref);
+        const { data: row, error } = await supabase
+          .from('library_graphs')
+          .select('state')
+          .eq('uid', uid)
+          .maybeSingle();
+        if (error) throw error;
+        const state = row?.state || { nodes: [], edges: [] };
+        state.nodes = (state.nodes || []).filter((node) => String(node.id) !== String(nodeId));
+        state.edges = (state.edges || []).filter(
+          (edge) => String(edge.from) !== String(nodeId) && String(edge.to) !== String(nodeId),
+        );
+        const { error: upsertError } = await supabase
+          .from('library_graphs')
+          .upsert({ uid, state, updated_at: new Date().toISOString() });
+        if (upsertError) throw upsertError;
       }
 
       async function deleteLibraryEdgeForUser(uid, edgeId) {
-        const ref = doc(db, 'users', uid, 'libraryEdges', edgeId);
-        await deleteDoc(ref);
+        const { data: row, error } = await supabase
+          .from('library_graphs')
+          .select('state')
+          .eq('uid', uid)
+          .maybeSingle();
+        if (error) throw error;
+        const state = row?.state || { nodes: [], edges: [] };
+        state.edges = (state.edges || []).filter((edge) => String(edge.id) !== String(edgeId));
+        const { error: upsertError } = await supabase
+          .from('library_graphs')
+          .upsert({ uid, state, updated_at: new Date().toISOString() });
+        if (upsertError) throw upsertError;
       }
 
       function capitalizeFirstLetter(val) {
@@ -19064,6 +19751,7 @@
         if (!canvas) return;
 
         resetPendingSnapState();
+        _draggedFollowers.clear();
         activeSymbol = null;
         activeEmoji = null;
         clickOnlySymbol = null;
@@ -19089,7 +19777,13 @@
       }
 
       async function switchRoom(roomId) {
-        saveChatViewportState();
+        const previousRoomId = currentRoomId;
+        if (previousRoomId && previousRoomId !== roomId) {
+          if (!persistRememberedChatViewportState(previousRoomId)) {
+            saveChatViewportState(true, previousRoomId);
+          }
+        }
+        suppressChatViewportSave = true;
         currentRoomId = roomId;
         const presenceIslandId = selectedIsland?.dataset?.islandId || islandIdFromRoomId(roomId);
         if (presenceIslandId) updateWorldPresence(presenceIslandId);
@@ -19100,14 +19794,6 @@
         }
         clearChatUI();
         loadObj();
-        return;
-        saveChatViewportState();
-        currentRoomId = roomId;
-        clearChatUI(); // 你自己实现：把当前聊天室渲染出来的 emoji/symbol/dot 清掉
-        await loadObj(); // 从 rooms/{roomId}/objs 重新加载
-        if (tabHeadersActivated[4]) {
-          requestAnimationFrame(() => restoreChatViewportState());
-        }
       }
     </script>
   </body>
