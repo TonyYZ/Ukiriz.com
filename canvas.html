@@ -15543,6 +15543,8 @@
                   targetY,
                   Side.PAR_BOT,
                   Side.PAR_TOP,
+                  '',
+                  7 * targetRenderScale,
                 );
               }
               targetY = targetTop + (symbolHeight - 4) * targetRenderScale;
@@ -15556,6 +15558,8 @@
                   targetY,
                   Side.PAR_TOP,
                   Side.PAR_BOT,
+                  '',
+                  4 * targetRenderScale,
                 );
               }
             }
@@ -15572,6 +15576,8 @@
                   targetY,
                   Side.PAR_BOT,
                   Side.PAR_TOP,
+                  '',
+                  7 * targetRenderScale,
                 );
               }
               targetX = targetLeft + (symbolHeight - 4) * targetRenderScale;
@@ -15585,6 +15591,8 @@
                   targetY,
                   Side.PAR_TOP,
                   Side.PAR_BOT,
+                  '',
+                  4 * targetRenderScale,
                 );
               }
             }
@@ -15759,6 +15767,10 @@
       ]);
 
       // Snap active symbol to target
+      // extraTolerance (canvas px): adds a fixed canvas-pixel bonus to the snap
+      // threshold on top of the zoom-corrected SNAP_DISTANCE.  Used for parallel
+      // same-direction snaps where the active reference (top-left corner) is offset
+      // from the natural "visual touching" position by a fixed geometry-derived amount.
       function snapToSymbol(
         active,
         target,
@@ -15769,6 +15781,7 @@
         activeSide,
         targetSide,
         msg = '',
+        extraTolerance = 0,
       ) {
         if (groupDragActive && dragGroupSet && dragGroupSet.has(target)) return;
 
@@ -15803,7 +15816,7 @@
         const canvas = getCanvasForElem(active);
         const canvasZoom = getCanvasZoom(canvas) || 1;
         const canvasDist = getDist(activeX, activeY, targetX, targetY);
-        const snapDistance = (isCoarseMobile ? SNAP_DISTANCE * 0.42 : SNAP_DISTANCE) / canvasZoom;
+        const snapDistance = (isCoarseMobile ? SNAP_DISTANCE * 0.42 : SNAP_DISTANCE) / canvasZoom + extraTolerance;
         if (window._dbgSnap && canvasDist < 80) {
           console.log(`[snap] zoom=${canvasZoom.toFixed(2)} dist=${canvasDist.toFixed(1)} threshold=${snapDistance.toFixed(1)} active=(${activeX.toFixed(0)},${activeY.toFixed(0)}) target=(${targetX.toFixed(0)},${targetY.toFixed(0)})`);
         }
