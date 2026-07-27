@@ -4782,7 +4782,11 @@
             if (!tabHeadersActivated[4]) return;
             rememberChatViewportState();
             saveChatViewportState();
-            scheduleChatMiniMapUpdate();
+            // Skip minimap during zoom rAF scroll assignments — chatCanvasZoom is
+            // already ahead of the CSS zoom at this point, so the minimap would show
+            // a wrong position. The rAF itself calls scheduleChatMiniMapUpdate after
+            // applying both zoom and scroll atomically.
+            if (!_applyingZoom) scheduleChatMiniMapUpdate();
           });
           chatViewportBound = true;
         }
@@ -5020,6 +5024,7 @@
       let _zoomQueue = [];
       let _canvasZoomFrame = 0;
       let _zoomShadow = null;
+      let _applyingZoom = false;
       let _chatViewportSaveTimer = 0;
 
       // deltaY: negative = zoom in, positive = zoom out, null = pure pan (keep current zoom).
@@ -5117,8 +5122,10 @@
             canvas.style.zoom = `${zoom}`;
             if (isCraft) applyCraftCanvasPadding(zoom);
             void container.scrollWidth; // force layout so scroll limits reflect new zoom
+            _applyingZoom = true;
             container.scrollLeft = scrollLeft;
             container.scrollTop = scrollTop;
+            _applyingZoom = false;
             const afterSL = container.scrollLeft, afterST = container.scrollTop;
             if (Math.abs(afterSL - scrollLeft) > 2 || Math.abs(afterST - scrollTop) > 2) {
               console.warn(`[zoom-rAF] browser clamped: wanted (${scrollLeft.toFixed(0)},${scrollTop.toFixed(0)}) got (${afterSL.toFixed(0)},${afterST.toFixed(0)}) scrollWidth=${container.scrollWidth.toFixed(0)}`);
@@ -5867,7 +5874,10 @@
         const tab = tab4 || document.getElementById('tab4');
         const surface = chatCanvas();
         if (!tab || !surface) return null;
-        const zoom = getCanvasZoom(surface) || 1;
+        // Use CSS zoom (parseFloat) not chatCanvasZoom (JS var) — CSS zoom and DOM
+        // scroll are always updated atomically in the same rAF, so they form a
+        // consistent pair even when wheel events have already advanced chatCanvasZoom.
+        const zoom = parseFloat(surface.style.zoom) || getCanvasZoom(surface) || 1;
         const left = tab.scrollLeft / zoom;
         const top = tab.scrollTop / zoom;
         const right = left + tab.clientWidth / zoom;
@@ -6192,7 +6202,7 @@
         if (!box || !canvas || !viewport || !tab || !surface) return;
         ensureChatAnchorLayer();
 
-        const zoom = getCanvasZoom(surface) || 1;
+        const zoom = parseFloat(surface.style.zoom) || getCanvasZoom(surface) || 1;
         const width = Math.max(
           1,
           Math.round(canvas.clientWidth || box.clientWidth || canvas.width),
