@@ -15808,15 +15808,21 @@
         const canvasDist = getDist(activeX, activeY, targetX, targetY);
         const isMobilePar = isCoarseMobile &&
           (activeSide === Side.PAR_TOP || activeSide === Side.PAR_BOT);
+        // For mobile PAR snaps: fire when bodies are ~5 screen px from touching.
+        // geoOffset is the canvas-px distance from the top-left reference point to the
+        // snap target point at "visual touching" (body edges adjacent):
+        //   PAR_BOT (active above/left):  offset = 7 × symbolScale
+        //   PAR_TOP (active below/right): offset = 4 × symbolScale
+        // threshold = geoOffset + T/zoom  →  fires T screen px before touching at any zoom.
+        const parGeoOffset = activeSide === Side.PAR_BOT ? 7 * symbolScale : 4 * symbolScale;
         const snapDistance = isMobilePar
-          ? SNAP_DISTANCE * 0.42 * Math.max(0.32, 1 / Math.sqrt(canvasZoom)) / canvasZoom
+          ? parGeoOffset + 5 / canvasZoom
           : (isCoarseMobile ? SNAP_DISTANCE * 0.42 : SNAP_DISTANCE) / canvasZoom;
-        // Always log PAR snap attempts on mobile so snap distance can be tuned empirically.
-        // Enable general snap debug with window._dbgSnap = true.
         if (isMobilePar && canvasDist < 120) {
-          const screenDist = canvasDist * canvasZoom;
-          const screenThresh = snapDistance * canvasZoom;
-          console.log(`[par-snap] zoom=${canvasZoom.toFixed(2)} dist_canvas=${canvasDist.toFixed(1)} dist_screen=${screenDist.toFixed(1)} thresh_screen=${screenThresh.toFixed(1)} side=${activeSide} ${canvasDist < snapDistance ? 'SNAP!' : 'no snap'}`);
+          const screenDist = (canvasDist * canvasZoom).toFixed(0);
+          const screenThresh = (snapDistance * canvasZoom).toFixed(0);
+          const fired = canvasDist < snapDistance;
+          console.log(`[par-snap] z=${canvasZoom.toFixed(2)} dist=${screenDist}px thresh=${screenThresh}px ${fired ? 'SNAP!' : 'no-snap'}`);
         } else if (window._dbgSnap && canvasDist < 80) {
           console.log(`[snap] zoom=${canvasZoom.toFixed(2)} dist=${canvasDist.toFixed(1)} threshold=${snapDistance.toFixed(1)} active=(${activeX.toFixed(0)},${activeY.toFixed(0)}) target=(${targetX.toFixed(0)},${targetY.toFixed(0)})`);
         }
