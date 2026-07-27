@@ -4770,7 +4770,15 @@
         }
 
         if (!chatViewportBound) {
-          document.getElementById('tab4')?.addEventListener('scroll', () => {
+          let _prevScrollLeft = 0, _prevScrollTop = 0;
+          document.getElementById('tab4')?.addEventListener('scroll', (e) => {
+            const t = e.currentTarget;
+            const dL = t.scrollLeft - _prevScrollLeft, dT = t.scrollTop - _prevScrollTop;
+            if (Math.abs(dL) > 200 || Math.abs(dT) > 200) {
+              console.warn(`[tab4-scroll] LARGE JUMP: (${_prevScrollLeft},${_prevScrollTop}) → (${t.scrollLeft},${t.scrollTop}) delta=(${dL.toFixed(0)},${dT.toFixed(0)})`);
+            }
+            _prevScrollLeft = t.scrollLeft;
+            _prevScrollTop = t.scrollTop;
             if (!tabHeadersActivated[4]) return;
             rememberChatViewportState();
             saveChatViewportState();
@@ -5009,8 +5017,9 @@
         container.style.backgroundPosition = `${minorX}px ${minorY}px, ${minorX}px ${minorY}px, ${majorX}px ${majorY}px, ${majorX}px ${majorY}px`;
       }
 
-      let _pendingCanvasZoom = null;
+      let _zoomQueue = [];
       let _canvasZoomFrame = 0;
+      let _zoomShadow = null;
       let _chatViewportSaveTimer = 0;
 
       // deltaY: negative = zoom in, positive = zoom out, null = pure pan (keep current zoom).
@@ -5019,7 +5028,6 @@
         deltaY,
         clientX,
         clientY,
-        pinchState = null,
         prevClientX = null,
         prevClientY = null,
       ) {
@@ -5053,64 +5061,82 @@
         }
 
         const rect = container.getBoundingClientRect();
-        // newLocalX/Y: where the finger is now (the anchor target after zoom/pan).
-        // prevLocalX/Y: where the finger was (used to compute the world point to preserve).
         const newLocalX = clientX - rect.left;
         const newLocalY = clientY - rect.top;
         const prevLocalX = prevClientX !== null ? prevClientX - rect.left : newLocalX;
         const prevLocalY = prevClientY !== null ? prevClientY - rect.top : newLocalY;
-        const baseScrollLeft = pinchState ? pinchState.scrollLeft : container.scrollLeft;
-        const baseScrollTop = pinchState ? pinchState.scrollTop : container.scrollTop;
-        // World point that was under the previous anchor — keep it under the new anchor.
+
+        // Use shadow scroll so rapid events within a frame accumulate correctly.
+        // Clamp to expected canvas bounds — prevents the shadow from drifting beyond
+        // the canvas edge and cascading to the corner across events.
+        const baseScrollLeft = _zoomShadow ? _zoomShadow.scrollLeft : container.scrollLeft;
+        const baseScrollTop  = _zoomShadow ? _zoomShadow.scrollTop  : container.scrollTop;
         const worldX = (baseScrollLeft + prevLocalX) / oldZoom;
-        const worldY = (baseScrollTop + prevLocalY) / oldZoom;
-        // Don't pre-clamp to an estimated max: the stale container.scrollWidth (from the last
-        // rAF-applied zoom, not the accumulated JS zoom) makes the estimate wrong when multiple
-        // touchmove events fire per frame, causing top-left or bottom-right teleports.
-        // The rAF applies `void container.scrollWidth` reflow before setting scroll, so the
-        // browser clamps correctly on its own.
-        const newScrollLeft = Math.max(0, worldX * nextZoom - newLocalX);
-        const newScrollTop = Math.max(0, worldY * nextZoom - newLocalY);
+        const worldY = (baseScrollTop  + prevLocalY) / oldZoom;
 
-        if (pinchState) {
-          pinchState.scrollLeft = newScrollLeft;
-          pinchState.scrollTop = newScrollTop;
+        let maxScrollLeft, maxScrollTop;
+        if (isChat) {
+          maxScrollLeft = Math.max(0, 24000 * nextZoom - container.clientWidth);
+          maxScrollTop  = Math.max(0, 24000 * nextZoom - container.clientHeight);
+        } else {
+          const cw = container.clientWidth, ch = container.clientHeight;
+          const extraX = (isCoarseMobile ? cw * 0.8 : 0) + Math.max(0, (nextZoom - 1) * cw);
+          const extraY = (isCoarseMobile ? ch * 0.5 : 0) + Math.max(0, (nextZoom - 1) * ch);
+          maxScrollLeft = Math.max(0, (cw + extraX) * nextZoom - cw);
+          maxScrollTop  = Math.max(0, (ch + extraY) * nextZoom - ch);
         }
+        const rawLeft = worldX * nextZoom - newLocalX;
+        const rawTop  = worldY * nextZoom - newLocalY;
+        const newScrollLeft = Math.max(0, Math.min(maxScrollLeft, rawLeft));
+        const newScrollTop  = Math.max(0, Math.min(maxScrollTop,  rawTop));
 
-        // Update JS zoom var synchronously so the next call reads the correct oldZoom.
-        // Defer all CSS writes (zoom + scroll + padding) to a single rAF per frame to avoid
-        // layout thrashing from applyCraftCanvasPadding reading clientWidth on every event.
+        if (!_zoomShadow) _zoomShadow = {};
+        _zoomShadow.scrollLeft = newScrollLeft;
+        _zoomShadow.scrollTop  = newScrollTop;
+
+        console.log(`[zoom] oldZ=${oldZoom.toFixed(3)} nextZ=${nextZoom.toFixed(3)} base=(${baseScrollLeft.toFixed(0)},${baseScrollTop.toFixed(0)}) raw=(${rawLeft.toFixed(0)},${rawTop.toFixed(0)}) max=(${maxScrollLeft.toFixed(0)},${maxScrollTop.toFixed(0)}) new=(${newScrollLeft.toFixed(0)},${newScrollTop.toFixed(0)})`);
+
+        // Update JS zoom var synchronously (so the next call's oldZoom is correct) but
+        // defer CSS zoom + scroll to one rAF so they are applied atomically — this
+        // prevents the browser from auto-clamping the scroll when the canvas shrinks
+        // before the rAF corrects the scroll position.
         if (deltaY !== null) {
           if (isChat) chatCanvasZoom = nextZoom;
           else craftCanvasZoom = nextZoom;
         }
-        _pendingCanvasZoom = {
-          canvas,
-          container,
-          zoom: nextZoom,
-          scrollLeft: newScrollLeft,
-          scrollTop: newScrollTop,
-          isChat,
-          isCraft,
-        };
+        // Push to queue — one entry per input event. The rAF drains one entry per
+        // animation frame so each zoom step is visible individually, eliminating the
+        // "teleport" caused by batching multiple steps into a single frame.
+        _zoomQueue.push({ canvas, container, zoom: nextZoom, scrollLeft: newScrollLeft, scrollTop: newScrollTop, isChat, isCraft });
         if (!_canvasZoomFrame) {
-          _canvasZoomFrame = requestAnimationFrame(() => {
+          const applyNextZoom = () => {
             _canvasZoomFrame = 0;
-            if (!_pendingCanvasZoom) return;
-            const { canvas, container, zoom, scrollLeft, scrollTop, isChat, isCraft } =
-              _pendingCanvasZoom;
-            _pendingCanvasZoom = null;
+            _zoomShadow = null;
+            if (_zoomQueue.length === 0) return;
+            const { canvas, container, zoom, scrollLeft, scrollTop, isChat, isCraft } = _zoomQueue.shift();
             canvas.style.zoom = `${zoom}`;
             if (isCraft) applyCraftCanvasPadding(zoom);
-            // Force a synchronous layout reflow so the scrollable area reflects the new zoom
-            // before we assign scrollLeft/Top — otherwise the browser clamps the assignment
-            // to the old (pre-zoom) maximum and the minimap frame jumps to a wrong position.
-            void container.scrollWidth;
+            void container.scrollWidth; // force layout so scroll limits reflect new zoom
             container.scrollLeft = scrollLeft;
             container.scrollTop = scrollTop;
+            const afterSL = container.scrollLeft, afterST = container.scrollTop;
+            if (Math.abs(afterSL - scrollLeft) > 2 || Math.abs(afterST - scrollTop) > 2) {
+              console.warn(`[zoom-rAF] browser clamped: wanted (${scrollLeft.toFixed(0)},${scrollTop.toFixed(0)}) got (${afterSL.toFixed(0)},${afterST.toFixed(0)}) scrollWidth=${container.scrollWidth.toFixed(0)}`);
+            } else {
+              console.log(`[zoom-rAF] set (${afterSL.toFixed(0)},${afterST.toFixed(0)}) zoom=${zoom.toFixed(3)} pending=${_zoomQueue.length}`);
+            }
+            if (_zoomQueue.length > 0) {
+              // While items remain pending, keep the shadow pointing at the last queued
+              // item's scroll. Without this, new events that arrive before the next rAF
+              // would fall back to the DOM scroll (which is already at this item's zoom
+              // level), causing a stale-base / zoom-level mismatch that over-shoots the
+              // max scroll and gets clamped to the corner.
+              const last = _zoomQueue[_zoomQueue.length - 1];
+              _zoomShadow = { scrollLeft: last.scrollLeft, scrollTop: last.scrollTop };
+              _canvasZoomFrame = requestAnimationFrame(applyNextZoom);
+            }
             if (isChat) {
               scheduleChatMiniMapUpdate?.();
-              // Debounce localStorage write — skip during rapid zoom, flush 400ms after zoom stops.
               clearTimeout(_chatViewportSaveTimer);
               _chatViewportSaveTimer = setTimeout(() => {
                 saveChatViewportState?.();
@@ -5119,7 +5145,8 @@
               updateCraftGridAlignment();
               scheduleCraftMiniMapUpdate?.();
             }
-          });
+          };
+          _canvasZoomFrame = requestAnimationFrame(applyNextZoom);
         }
       }
 
@@ -5299,9 +5326,6 @@
         scheduleCraftMiniMapUpdate?.();
       });
 
-      let _wheelZoomState = null;
-      let _wheelZoomResetTimer = 0;
-
       window.addEventListener(
         'wheel',
         (e) => {
@@ -5311,23 +5335,7 @@
           if (!['tab0', 'tab1', 'tab2', 'tab3', 'tab4'].includes(active.id)) return;
           e.preventDefault();
           if (active.id === 'tab1' || active.id === 'tab4') {
-            // Maintain shadow scroll state so rapid wheel events don't read stale DOM scroll.
-            if (!_wheelZoomState || _wheelZoomState.tabId !== active.id) {
-              const c =
-                active.id === 'tab4'
-                  ? tab4 || document.getElementById('tab4')
-                  : tab1 || document.getElementById('tab1');
-              _wheelZoomState = {
-                tabId: active.id,
-                scrollLeft: c?.scrollLeft ?? 0,
-                scrollTop: c?.scrollTop ?? 0,
-              };
-            }
-            clearTimeout(_wheelZoomResetTimer);
-            _wheelZoomResetTimer = setTimeout(() => {
-              _wheelZoomState = null;
-            }, 300);
-            zoomActiveCanvas(e.deltaY, e.clientX, e.clientY, _wheelZoomState);
+            zoomActiveCanvas(e.deltaY, e.clientX, e.clientY);
             return;
           }
           if (active.id === 'tab0') {
@@ -5407,17 +5415,9 @@
               cancelDraggingState();
               canvasPinchActive = true;
               canvasZoomGestureUntil = performance.now() + 120;
-              const pinchContainer =
-                active.id === 'tab4'
-                  ? tab4 || document.getElementById('tab4')
-                  : active.id === 'tab1'
-                    ? tab1 || document.getElementById('tab1')
-                    : null;
               pinch = {
                 tabId: active.id,
                 distance: pinchDistance(e.touches[0], e.touches[1]),
-                scrollLeft: pinchContainer?.scrollLeft ?? 0,
-                scrollTop: pinchContainer?.scrollTop ?? 0,
               };
               activeTouchId = null;
               activeTouchTarget = null;
@@ -5463,7 +5463,7 @@
                     : 120
                   : null;
                 if (pinch.tabId === 'tab1' || pinch.tabId === 'tab4') {
-                  zoomActiveCanvas(deltaY, center.x, center.y, pinch, prevCx, prevCy);
+                  zoomActiveCanvas(deltaY, center.x, center.y, prevCx, prevCy);
                 } else if (distanceChanged) {
                   if (pinch.tabId === 'tab0') {
                     zoomHomeContent(deltaY, center.x, center.y);
@@ -15794,6 +15794,9 @@
         const canvasZoom = getCanvasZoom(canvas) || 1;
         const canvasDist = getDist(activeX, activeY, targetX, targetY);
         const snapDistance = (isCoarseMobile ? SNAP_DISTANCE * 0.42 : SNAP_DISTANCE) / canvasZoom;
+        if (window._dbgSnap && canvasDist < 80) {
+          console.log(`[snap] zoom=${canvasZoom.toFixed(2)} dist=${canvasDist.toFixed(1)} threshold=${snapDistance.toFixed(1)} active=(${activeX.toFixed(0)},${activeY.toFixed(0)}) target=(${targetX.toFixed(0)},${targetY.toFixed(0)})`);
+        }
         if (canvasDist >= snapDistance) return;
 
         const dx = targetX - activeX;
