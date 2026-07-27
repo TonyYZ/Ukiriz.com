@@ -15529,7 +15529,10 @@
             const activeTop = parseFloat(active.style.top) || 0;
             const targetLeft = parseFloat(target.style.left) || 0;
             const targetTop = parseFloat(target.style.top) || 0;
-            const targetRenderScale = getRenderedSymbolScale(target);
+            // On iOS Safari, getBoundingClientRect() excludes ancestor CSS zoom, making
+            // getRenderedSymbolScale() return symbolScale/canvasZoom instead of symbolScale.
+            // The uniform scale is always symbolScale — use it directly.
+            const targetRenderScale = symbolScale;
             if (getDir(active) === 0) {
               targetX = targetLeft;
               targetY = targetTop - (symbolHeight - 7) * targetRenderScale;
