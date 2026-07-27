@@ -4856,7 +4856,7 @@
 
       const MIN_CHAT_CANVAS_ZOOM = 0.6;
       const MIN_CRAFT_CANVAS_ZOOM = isCoarseMobile ? 0.4 : 1;
-      const MAX_CANVAS_ZOOM = 2.4;
+      const MAX_CANVAS_ZOOM = 2.0;
       const MIN_VIEW_CONTENT_ZOOM = 0.6;
       const MIN_MOBILE_LIBRARY_ZOOM = 0.44;
       const MAX_VIEW_CONTENT_ZOOM = 2.4;
@@ -5102,8 +5102,6 @@
         _zoomShadow.scrollLeft = newScrollLeft;
         _zoomShadow.scrollTop  = newScrollTop;
 
-        console.log(`[zoom] oldZ=${oldZoom.toFixed(3)} nextZ=${nextZoom.toFixed(3)} base=(${baseScrollLeft.toFixed(0)},${baseScrollTop.toFixed(0)}) raw=(${rawLeft.toFixed(0)},${rawTop.toFixed(0)}) max=(${maxScrollLeft.toFixed(0)},${maxScrollTop.toFixed(0)}) new=(${newScrollLeft.toFixed(0)},${newScrollTop.toFixed(0)})`);
-
         // Update JS zoom var synchronously (so the next call's oldZoom is correct) but
         // defer CSS zoom + scroll to one rAF so they are applied atomically — this
         // prevents the browser from auto-clamping the scroll when the canvas shrinks
@@ -5131,9 +5129,7 @@
             _applyingZoom = false;
             const afterSL = container.scrollLeft, afterST = container.scrollTop;
             if (Math.abs(afterSL - scrollLeft) > 2 || Math.abs(afterST - scrollTop) > 2) {
-              console.warn(`[zoom-rAF] browser clamped: wanted (${scrollLeft.toFixed(0)},${scrollTop.toFixed(0)}) got (${afterSL.toFixed(0)},${afterST.toFixed(0)}) scrollWidth=${container.scrollWidth.toFixed(0)}`);
-            } else {
-              console.log(`[zoom-rAF] set (${afterSL.toFixed(0)},${afterST.toFixed(0)}) zoom=${zoom.toFixed(3)} pending=${_zoomQueue.length}`);
+              // browser clamped the scroll — can happen near canvas edges
             }
             if (_zoomQueue.length > 0) {
               // While items remain pending, keep the shadow pointing at the last queued
@@ -6310,9 +6306,9 @@
         chatMiniMapTransform = { minX, minY, worldW, worldH, scale, offsetX, offsetY };
 
         ctx.clearRect(0, 0, width, height);
-        ctx.fillStyle = '#edf7fb';
+        ctx.fillStyle = '#f4f4f9';
         ctx.fillRect(0, 0, width, height);
-        ctx.fillStyle = 'rgba(0, 176, 240, 0.08)';
+        ctx.fillStyle = 'rgba(0, 176, 240, 0.07)';
         ctx.fillRect(offsetX, offsetY, worldW * scale, worldH * scale);
 
         for (const el of items) {
@@ -15828,12 +15824,7 @@
         const snapDistance = isMobilePar
           ? parGeoOffset + SNAP_DISTANCE * 0.42 / canvasZoom
           : (isCoarseMobile ? SNAP_DISTANCE * 0.42 : SNAP_DISTANCE) / canvasZoom;
-        if (isMobilePar && canvasDist < 120) {
-          const screenDist = (canvasDist * canvasZoom).toFixed(0);
-          const screenThresh = (snapDistance * canvasZoom).toFixed(0);
-          const fired = canvasDist < snapDistance;
-          console.log(`[par-snap] z=${canvasZoom.toFixed(2)} dist=${screenDist}px thresh=${screenThresh}px ${fired ? 'SNAP!' : 'no-snap'}`);
-        } else if (window._dbgSnap && canvasDist < 80) {
+        if (window._dbgSnap && canvasDist < 80) {
           console.log(`[snap] zoom=${canvasZoom.toFixed(2)} dist=${canvasDist.toFixed(1)} threshold=${snapDistance.toFixed(1)} active=(${activeX.toFixed(0)},${activeY.toFixed(0)}) target=(${targetX.toFixed(0)},${targetY.toFixed(0)})`);
         }
         if (canvasDist >= snapDistance) return;
