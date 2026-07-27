@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
     <title>Ítí Isles</title>
     <style>
       @font-face {
@@ -1451,6 +1454,30 @@
         color: #fff;
       }
 
+      .t-title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 6px;
+      }
+
+      .t-title-row .t-title {
+        margin-bottom: 0;
+      }
+
+      .t-collapse-btn {
+        display: none; /* shown only when .can-collapse is active, and only on mobile */
+      }
+
+      /* Override the generic #tutorialBubble button border/bg so the collapse button
+         blends into the title row rather than looking like an action button. */
+      #tutorialBubble .t-collapse-btn {
+        border: none;
+        background: transparent;
+        box-shadow: none;
+      }
+
       .home-tutorial-card {
         max-width: 720px;
         margin: 18px auto 26px auto;
@@ -1904,6 +1931,34 @@
           min-width: 72px;
         }
 
+        #tutorialBubble.can-collapse .t-collapse-btn {
+          display: inline-block;
+          flex-shrink: 0;
+          cursor: pointer;
+          font-size: 12px;
+          font-weight: 600;
+          padding: 3px 8px;
+          border-radius: 6px;
+          white-space: nowrap;
+          color: #555;
+          text-decoration: underline;
+          text-underline-offset: 2px;
+        }
+
+        #tutorialBubble.can-collapse.collapsed {
+          padding: 8px 12px;
+          top: 12px !important;
+        }
+
+        #tutorialBubble.can-collapse.collapsed .t-title-row {
+          margin-bottom: 0;
+        }
+
+        #tutorialBubble.can-collapse.collapsed .t-body,
+        #tutorialBubble.can-collapse.collapsed .t-actions {
+          display: none;
+        }
+
         .mobile-only {
           display: initial;
         }
@@ -1987,7 +2042,15 @@
       <div id="tutorialMask"></div>
       <div id="tutorialSpotlight"></div>
       <div id="tutorialBubble" role="dialog" aria-label="Tutorial">
-        <div class="t-title" id="tutorialTitle">Tutorial</div>
+        <div class="t-title-row">
+          <div class="t-title" id="tutorialTitle">Tutorial</div>
+          <button
+            type="button"
+            id="tutorialCollapseBtn"
+            class="t-collapse-btn"
+            aria-label="Hide tutorial"
+          ></button>
+        </div>
         <div class="t-body" id="tutorialBody"></div>
         <div class="t-actions">
           <button type="button" id="tutorialBack">Back</button>
@@ -2094,7 +2157,7 @@
           </p>
 
           <p>
-          I want to use this website to explore the logic behind divination and how people represent concepts.<br />
+          I want to use this website to explore the logic behind divination and how people represent concepts in a brand new language.<br />
           It is a symbolic experiment-game that lets you become a "fortune teller" - really, someone who uses
           abstract symbols to probe the meaning of life.<br />
           I am not going to hand you a complete symbolic language. Instead, I want to help you
@@ -2215,7 +2278,7 @@
                   </p>
 
                   <p>
-                  我想借这个网站探索占卜的原理以及人们表示概念的方式。<br>
+                  我想借这个网站探索占卜的原理以及人们怎么用一门全新的语言表示概念。<br>
                   它是个符号实验游戏，让你成为“占卜师”……也就是用抽象符号去窥探生活意义的人。<br>
                   我不会直接教你一整套符号语言；相反，我会帮你从零开始把它一步步自己造出来，就像堆积木。与此同时，你也会训练和强化自己的直觉。<br>
                   当你造出词语以后，你可以试着用它回答<b>世界</b>里贴的问题。在那儿你还能看到别人的回答噢！
@@ -2761,6 +2824,25 @@
         tutorialStepIndex = idx;
         tutorialCompletedStep = null;
         tutorialEvents.clear();
+        // Show the collapse button only for Level 3 steps 2 and 3 (index 1 and 2).
+        // Auto-expand the bubble whenever we leave those steps so other steps are unaffected.
+        const bubble = document.getElementById('tutorialBubble');
+        const collapseBtn = document.getElementById('tutorialCollapseBtn');
+        if (bubble) {
+          const isCollapsible = tutorialLevel === 3 && (idx === 1 || idx === 2);
+          bubble.classList.toggle('can-collapse', isCollapsible);
+          if (isCollapsible && collapseBtn && !bubble.classList.contains('collapsed')) {
+            const zh = currentLang === 'zh';
+            collapseBtn.textContent = zh ? '移至顶部 ↑' : 'Move to top ↑';
+            collapseBtn.setAttribute('aria-label', 'Hide tutorial');
+          }
+          if (!isCollapsible && bubble.classList.contains('collapsed')) {
+            bubble.classList.remove('collapsed');
+            if (collapseBtn) {
+              collapseBtn.textContent = '';
+            }
+          }
+        }
         if (!tutorialStepMetaSnapshots.has(idx)) {
           tutorialStepMetaSnapshots.set(idx, {
             level2SeenConnections: { ...tutorialLevel2SeenConnections },
@@ -4073,6 +4155,21 @@
           if (hintText) tutorialShowNudge(hintText, hintText);
         });
         els.exit?.addEventListener('click', () => stopTutorial());
+        document.getElementById('tutorialCollapseBtn')?.addEventListener('click', () => {
+          const bubble = els.bubble;
+          const btn = document.getElementById('tutorialCollapseBtn');
+          if (!bubble || !btn) return;
+          const collapsed = bubble.classList.toggle('collapsed');
+          const zh = currentLang === 'zh';
+          btn.textContent = collapsed
+            ? zh
+              ? '回到底部 ↓'
+              : 'Back to bottom ↓'
+            : zh
+              ? '移至顶部 ↑'
+              : 'Move to top ↑';
+          btn.setAttribute('aria-label', collapsed ? 'Show tutorial' : 'Hide tutorial');
+        });
         // During certain steps, prevent selection changes so the spotlight doesn't jump to empty space.
         document.addEventListener(
           'pointerdown',
@@ -4773,12 +4870,16 @@
         }
 
         if (!chatViewportBound) {
-          let _prevScrollLeft = 0, _prevScrollTop = 0;
+          let _prevScrollLeft = 0,
+            _prevScrollTop = 0;
           document.getElementById('tab4')?.addEventListener('scroll', (e) => {
             const t = e.currentTarget;
-            const dL = t.scrollLeft - _prevScrollLeft, dT = t.scrollTop - _prevScrollTop;
+            const dL = t.scrollLeft - _prevScrollLeft,
+              dT = t.scrollTop - _prevScrollTop;
             if (Math.abs(dL) > 200 || Math.abs(dT) > 200) {
-              console.warn(`[tab4-scroll] LARGE JUMP: (${_prevScrollLeft},${_prevScrollTop}) → (${t.scrollLeft},${t.scrollTop}) delta=(${dL.toFixed(0)},${dT.toFixed(0)})`);
+              console.warn(
+                `[tab4-scroll] LARGE JUMP: (${_prevScrollLeft},${_prevScrollTop}) → (${t.scrollLeft},${t.scrollTop}) delta=(${dL.toFixed(0)},${dT.toFixed(0)})`,
+              );
             }
             _prevScrollLeft = t.scrollLeft;
             _prevScrollTop = t.scrollTop;
@@ -5032,13 +5133,7 @@
 
       // deltaY: negative = zoom in, positive = zoom out, null = pure pan (keep current zoom).
       // prevClientX/Y: previous anchor point for combined zoom+pan (null = same as clientX/Y).
-      function zoomActiveCanvas(
-        deltaY,
-        clientX,
-        clientY,
-        prevClientX = null,
-        prevClientY = null,
-      ) {
+      function zoomActiveCanvas(deltaY, clientX, clientY, prevClientX = null, prevClientY = null) {
         const active = document.querySelector('.tab-content.active');
         if (!active) return;
 
@@ -5078,29 +5173,30 @@
         // Clamp to expected canvas bounds — prevents the shadow from drifting beyond
         // the canvas edge and cascading to the corner across events.
         const baseScrollLeft = _zoomShadow ? _zoomShadow.scrollLeft : container.scrollLeft;
-        const baseScrollTop  = _zoomShadow ? _zoomShadow.scrollTop  : container.scrollTop;
+        const baseScrollTop = _zoomShadow ? _zoomShadow.scrollTop : container.scrollTop;
         const worldX = (baseScrollLeft + prevLocalX) / oldZoom;
-        const worldY = (baseScrollTop  + prevLocalY) / oldZoom;
+        const worldY = (baseScrollTop + prevLocalY) / oldZoom;
 
         let maxScrollLeft, maxScrollTop;
         if (isChat) {
           maxScrollLeft = Math.max(0, 24000 * nextZoom - container.clientWidth);
-          maxScrollTop  = Math.max(0, 24000 * nextZoom - container.clientHeight);
+          maxScrollTop = Math.max(0, 24000 * nextZoom - container.clientHeight);
         } else {
-          const cw = container.clientWidth, ch = container.clientHeight;
+          const cw = container.clientWidth,
+            ch = container.clientHeight;
           const extraX = (isCoarseMobile ? cw * 0.8 : 0) + Math.max(0, (nextZoom - 1) * cw);
           const extraY = (isCoarseMobile ? ch * 0.5 : 0) + Math.max(0, (nextZoom - 1) * ch);
           maxScrollLeft = Math.max(0, (cw + extraX) * nextZoom - cw);
-          maxScrollTop  = Math.max(0, (ch + extraY) * nextZoom - ch);
+          maxScrollTop = Math.max(0, (ch + extraY) * nextZoom - ch);
         }
         const rawLeft = worldX * nextZoom - newLocalX;
-        const rawTop  = worldY * nextZoom - newLocalY;
+        const rawTop = worldY * nextZoom - newLocalY;
         const newScrollLeft = Math.max(0, Math.min(maxScrollLeft, rawLeft));
-        const newScrollTop  = Math.max(0, Math.min(maxScrollTop,  rawTop));
+        const newScrollTop = Math.max(0, Math.min(maxScrollTop, rawTop));
 
         if (!_zoomShadow) _zoomShadow = {};
         _zoomShadow.scrollLeft = newScrollLeft;
-        _zoomShadow.scrollTop  = newScrollTop;
+        _zoomShadow.scrollTop = newScrollTop;
 
         // Update JS zoom var synchronously (so the next call's oldZoom is correct) but
         // defer CSS zoom + scroll to one rAF so they are applied atomically — this
@@ -5113,13 +5209,22 @@
         // Push to queue — one entry per input event. The rAF drains one entry per
         // animation frame so each zoom step is visible individually, eliminating the
         // "teleport" caused by batching multiple steps into a single frame.
-        _zoomQueue.push({ canvas, container, zoom: nextZoom, scrollLeft: newScrollLeft, scrollTop: newScrollTop, isChat, isCraft });
+        _zoomQueue.push({
+          canvas,
+          container,
+          zoom: nextZoom,
+          scrollLeft: newScrollLeft,
+          scrollTop: newScrollTop,
+          isChat,
+          isCraft,
+        });
         if (!_canvasZoomFrame) {
           const applyNextZoom = () => {
             _canvasZoomFrame = 0;
             _zoomShadow = null;
             if (_zoomQueue.length === 0) return;
-            const { canvas, container, zoom, scrollLeft, scrollTop, isChat, isCraft } = _zoomQueue.shift();
+            const { canvas, container, zoom, scrollLeft, scrollTop, isChat, isCraft } =
+              _zoomQueue.shift();
             canvas.style.zoom = `${zoom}`;
             if (isCraft) applyCraftCanvasPadding(zoom);
             void container.scrollWidth; // force layout so scroll limits reflect new zoom
@@ -5127,7 +5232,8 @@
             container.scrollLeft = scrollLeft;
             container.scrollTop = scrollTop;
             _applyingZoom = false;
-            const afterSL = container.scrollLeft, afterST = container.scrollTop;
+            const afterSL = container.scrollLeft,
+              afterST = container.scrollTop;
             if (Math.abs(afterSL - scrollLeft) > 2 || Math.abs(afterST - scrollTop) > 2) {
               // browser clamped the scroll — can happen near canvas edges
             }
@@ -6227,16 +6333,28 @@
           const visibleBounds = getChatVisibleCanvasBounds();
           if (!visibleBounds) return;
           let { minX, minY, worldW, worldH, scale, offsetX, offsetY } = chatMiniMapTransform;
-          const viewW = Math.max(10, visibleBounds.width  * scale);
+          const viewW = Math.max(10, visibleBounds.width * scale);
           const viewH = Math.max(10, visibleBounds.height * scale);
           // Compute raw frame position with current (frozen) origin
           let rawX = offsetX + (visibleBounds.left - minX) * scale;
-          let rawY = offsetY + (visibleBounds.top  - minY) * scale;
+          let rawY = offsetY + (visibleBounds.top - minY) * scale;
           // Pan the world origin when the frame would leave the minimap boundary
-          if (rawX < 0)              { minX += rawX / scale;              rawX = 0; }
-          if (rawX + viewW > width)  { minX += (rawX + viewW - width)  / scale; rawX = width  - viewW; }
-          if (rawY < 0)              { minY += rawY / scale;              rawY = 0; }
-          if (rawY + viewH > height) { minY += (rawY + viewH - height) / scale; rawY = height - viewH; }
+          if (rawX < 0) {
+            minX += rawX / scale;
+            rawX = 0;
+          }
+          if (rawX + viewW > width) {
+            minX += (rawX + viewW - width) / scale;
+            rawX = width - viewW;
+          }
+          if (rawY < 0) {
+            minY += rawY / scale;
+            rawY = 0;
+          }
+          if (rawY + viewH > height) {
+            minY += (rawY + viewH - height) / scale;
+            rawY = height - viewH;
+          }
           // Persist updated origin for next frame
           chatMiniMapTransform = { ...chatMiniMapTransform, minX, minY };
           // Full canvas redraw with (possibly shifted) origin
@@ -6247,20 +6365,25 @@
           ctx.fillRect(offsetX, offsetY, worldW * scale, worldH * scale);
           for (const el of getChatMiniMapItems()) {
             const left = parseFloat(el.style.left) || 0;
-            const top  = parseFloat(el.style.top)  || 0;
-            const itemW = Math.max(4, (el.offsetWidth  || 18) * scale);
+            const top = parseFloat(el.style.top) || 0;
+            const itemW = Math.max(4, (el.offsetWidth || 18) * scale);
             const itemH = Math.max(4, (el.offsetHeight || 18) * scale);
             const x = offsetX + (left - minX) * scale;
-            const y = offsetY + (top  - minY) * scale;
-            const isSelected = el.classList.contains('framed') || el.classList.contains('active') || el.selected;
+            const y = offsetY + (top - minY) * scale;
+            const isSelected =
+              el.classList.contains('framed') || el.classList.contains('active') || el.selected;
             ctx.fillStyle = el.classList.contains('symbol')
-              ? isSelected ? '#00b0f0' : '#30343f'
-              : isSelected ? '#00b0f0' : '#8a8f9d';
+              ? isSelected
+                ? '#00b0f0'
+                : '#30343f'
+              : isSelected
+                ? '#00b0f0'
+                : '#8a8f9d';
             ctx.fillRect(x, y, itemW, itemH);
           }
-          viewport.style.left   = `${rawX}px`;
-          viewport.style.top    = `${rawY}px`;
-          viewport.style.width  = `${viewW}px`;
+          viewport.style.left = `${rawX}px`;
+          viewport.style.top = `${rawY}px`;
+          viewport.style.width = `${viewW}px`;
           viewport.style.height = `${viewH}px`;
           return;
         }
@@ -6350,7 +6473,8 @@
 
         let worldW = Math.max(visibleBounds.width, maxX - minX0, 1);
         let worldH = Math.max(visibleBounds.height, maxY - minY0, 1);
-        let minX = minX0, minY = minY0;
+        let minX = minX0,
+          minY = minY0;
 
         // Cap: world region cannot exceed 4× the viewport in canvas px. Beyond this
         // the viewport frame becomes too small on mobile to be useful for navigation.
@@ -6402,11 +6526,11 @@
 
         const viewW = Math.max(10, visibleBounds.width * scale);
         const viewH = Math.max(10, visibleBounds.height * scale);
-        const viewX = Math.max(0, Math.min(width  - viewW, offsetX + (contentLeft - minX) * scale));
-        const viewY = Math.max(0, Math.min(height - viewH, offsetY + (contentTop  - minY) * scale));
-        viewport.style.left   = `${viewX}px`;
-        viewport.style.top    = `${viewY}px`;
-        viewport.style.width  = `${viewW}px`;
+        const viewX = Math.max(0, Math.min(width - viewW, offsetX + (contentLeft - minX) * scale));
+        const viewY = Math.max(0, Math.min(height - viewH, offsetY + (contentTop - minY) * scale));
+        viewport.style.left = `${viewX}px`;
+        viewport.style.top = `${viewY}px`;
+        viewport.style.width = `${viewW}px`;
         viewport.style.height = `${viewH}px`;
       }
 
@@ -6431,9 +6555,9 @@
         chatMiniMapPrevClientX = clientX;
         chatMiniMapPrevClientY = clientY;
         const maxLeft = Math.max(0, tab.scrollWidth - tab.clientWidth);
-        const maxTop  = Math.max(0, tab.scrollHeight - tab.clientHeight);
+        const maxTop = Math.max(0, tab.scrollHeight - tab.clientHeight);
         tab.scrollLeft = Math.max(0, Math.min(maxLeft, tab.scrollLeft + dx * zoom));
-        tab.scrollTop  = Math.max(0, Math.min(maxTop,  tab.scrollTop  + dy * zoom));
+        tab.scrollTop = Math.max(0, Math.min(maxTop, tab.scrollTop + dy * zoom));
         saveChatViewportState();
         scheduleChatMiniMapUpdate();
       }
@@ -6462,8 +6586,14 @@
         // Clamp the frame-center position (after drag-offset) to the minimap bounds.
         // Clamping rawLocalX alone is insufficient: when dragOffset has the opposite sign,
         // centerX can still exceed the minimap width and map to extreme canvas coordinates.
-        const centerX = Math.max(0, Math.min(rect.width, rawLocalX - (chatMiniMapDragOffset?.x || 0)));
-        const centerY = Math.max(0, Math.min(rect.height, rawLocalY - (chatMiniMapDragOffset?.y || 0)));
+        const centerX = Math.max(
+          0,
+          Math.min(rect.width, rawLocalX - (chatMiniMapDragOffset?.x || 0)),
+        );
+        const centerY = Math.max(
+          0,
+          Math.min(rect.height, rawLocalY - (chatMiniMapDragOffset?.y || 0)),
+        );
         const worldX = minX + (centerX - offsetX) / scale;
         const worldY = minY + (centerY - offsetY) / scale;
         const desiredLeft = worldX - visibleBounds.width / 2;
@@ -8630,7 +8760,7 @@
           ],
           [
             ['中', '内', '占', '点', '阻', '障'],
-            ['分', '源', '散', '爆', '辐射'],
+            ['分', '源', '散'],
           ],
           [
             ['虚', '浮', '柔', '胀'],
@@ -12168,7 +12298,10 @@
         if (clickOnlySymbol && !clickOnlySymbol._dragged) {
           const dx = e.clientX - (clickOnlySymbol._downClientX ?? e.clientX);
           const dy = e.clientY - (clickOnlySymbol._downClientY ?? e.clientY);
-          if (dx * dx + dy * dy > 16) { clickOnlySymbol._dragged = true; endLongPress(true); }
+          if (dx * dx + dy * dy > 16) {
+            clickOnlySymbol._dragged = true;
+            endLongPress(true);
+          }
         }
         if (clickOnlyEmoji && !clickOnlyEmoji._dragged) {
           const dx = e.clientX - (clickOnlyEmoji._downClientX ?? e.clientX);
@@ -15809,31 +15942,44 @@
           ];
         } else if (symbol.angle === 90) {
           // At 90° CW: visual_right = CSS_cx + CSS_height/2, visual_top = CSS_cy - CSS_width/2.
-          const vR = left + (symbolWidth + symbolHeight) * ss / 2;
-          const vT = top  + (symbolHeight - symbolWidth) * ss / 2;
+          const vR = left + ((symbolWidth + symbolHeight) * ss) / 2;
+          const vT = top + ((symbolHeight - symbolWidth) * ss) / 2;
           absJunctions = [
             { x: vR - relJunctions[0].y * ss, y: vT + relJunctions[0].x * ss },
             { x: vR - relJunctions[1].y * ss, y: vT + relJunctions[1].x * ss },
             { x: vR - relJunctions[3].y * ss, y: vT + relJunctions[3].x * ss },
             { x: vR - relJunctions[2].y * ss, y: vT + relJunctions[2].x * ss },
           ];
-        } else { // angle === 270
+        } else {
+          // angle === 270
           // At 270° CW: visual_left = CSS_cx - CSS_height/2, visual_bottom = CSS_cy + CSS_width/2.
-          const vL = left + (symbolWidth - symbolHeight) * ss / 2;
-          const vB = top  + (symbolWidth + symbolHeight) * ss / 2;
+          const vL = left + ((symbolWidth - symbolHeight) * ss) / 2;
+          const vB = top + ((symbolWidth + symbolHeight) * ss) / 2;
           absJunctions = [
             { x: vL + relJunctions[1].y * ss + calInvY, y: vB - relJunctions[1].x * ss },
             { x: vL + relJunctions[0].y * ss + calInvY, y: vB - relJunctions[0].x * ss },
-            { x: vL + relJunctions[2].y * ss,            y: vB - relJunctions[2].x * ss },
-            { x: vL + relJunctions[3].y * ss,            y: vB - relJunctions[3].x * ss },
+            { x: vL + relJunctions[2].y * ss, y: vB - relJunctions[2].x * ss },
+            { x: vL + relJunctions[3].y * ss, y: vB - relJunctions[3].x * ss },
           ];
         }
 
         if (symbol.elemId === 2) {
-          if (symbol.angle === 0)   { absJunctions[2].x += calCan1; absJunctions[3].x += calCan1; }
-          if (symbol.angle === 270) { absJunctions[2].y -= calCan1; absJunctions[3].y -= calCan1; }
-          if (symbol.angle === 90)  { absJunctions[2].y -= calCan2; absJunctions[3].y -= calCan2; }
-          if (symbol.angle === 180) { absJunctions[2].x += calCan2; absJunctions[3].x += calCan2; }
+          if (symbol.angle === 0) {
+            absJunctions[2].x += calCan1;
+            absJunctions[3].x += calCan1;
+          }
+          if (symbol.angle === 270) {
+            absJunctions[2].y -= calCan1;
+            absJunctions[3].y -= calCan1;
+          }
+          if (symbol.angle === 90) {
+            absJunctions[2].y -= calCan2;
+            absJunctions[3].y -= calCan2;
+          }
+          if (symbol.angle === 180) {
+            absJunctions[2].x += calCan2;
+            absJunctions[3].x += calCan2;
+          }
         }
 
         return absJunctions;
@@ -15908,18 +16054,20 @@
         const canvas = getCanvasForElem(active);
         const canvasZoom = getCanvasZoom(canvas) || 1;
         const canvasDist = getDist(activeX, activeY, targetX, targetY);
-        const isMobilePar = isCoarseMobile &&
-          (activeSide === Side.PAR_TOP || activeSide === Side.PAR_BOT);
+        const isMobilePar =
+          isCoarseMobile && (activeSide === Side.PAR_TOP || activeSide === Side.PAR_BOT);
         // Mobile PAR snaps: geoOffset is the canvas-px dist from the top-left reference
         // to the snap target point at visual touching.  Add the standard mobile comfort
         // zone (SNAP_DISTANCE*0.42/zoom = 9.45 constant screen px) on top, giving the
         // same feel as regular mobile snaps but shifted by the geometric reference offset.
         const parGeoOffset = activeSide === Side.PAR_BOT ? 7 * symbolScale : 4 * symbolScale;
         const snapDistance = isMobilePar
-          ? parGeoOffset + SNAP_DISTANCE * 0.42 / canvasZoom
+          ? parGeoOffset + (SNAP_DISTANCE * 0.42) / canvasZoom
           : (isCoarseMobile ? SNAP_DISTANCE * 0.42 : SNAP_DISTANCE) / canvasZoom;
         if (window._dbgSnap && canvasDist < 80) {
-          console.log(`[snap] zoom=${canvasZoom.toFixed(2)} dist=${canvasDist.toFixed(1)} threshold=${snapDistance.toFixed(1)} active=(${activeX.toFixed(0)},${activeY.toFixed(0)}) target=(${targetX.toFixed(0)},${targetY.toFixed(0)})`);
+          console.log(
+            `[snap] zoom=${canvasZoom.toFixed(2)} dist=${canvasDist.toFixed(1)} threshold=${snapDistance.toFixed(1)} active=(${activeX.toFixed(0)},${activeY.toFixed(0)}) target=(${targetX.toFixed(0)},${targetY.toFixed(0)})`,
+          );
         }
         if (canvasDist >= snapDistance) return;
 
