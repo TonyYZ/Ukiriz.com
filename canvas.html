@@ -15808,15 +15808,13 @@
         const canvasDist = getDist(activeX, activeY, targetX, targetY);
         const isMobilePar = isCoarseMobile &&
           (activeSide === Side.PAR_TOP || activeSide === Side.PAR_BOT);
-        // For mobile PAR snaps: fire when bodies are ~5 screen px from touching.
-        // geoOffset is the canvas-px distance from the top-left reference point to the
-        // snap target point at "visual touching" (body edges adjacent):
-        //   PAR_BOT (active above/left):  offset = 7 × symbolScale
-        //   PAR_TOP (active below/right): offset = 4 × symbolScale
-        // threshold = geoOffset + T/zoom  →  fires T screen px before touching at any zoom.
+        // Mobile PAR snaps: geoOffset is the canvas-px dist from the top-left reference
+        // to the snap target point at visual touching.  Add the standard mobile comfort
+        // zone (SNAP_DISTANCE*0.42/zoom = 9.45 constant screen px) on top, giving the
+        // same feel as regular mobile snaps but shifted by the geometric reference offset.
         const parGeoOffset = activeSide === Side.PAR_BOT ? 7 * symbolScale : 4 * symbolScale;
         const snapDistance = isMobilePar
-          ? parGeoOffset + 5 / canvasZoom
+          ? parGeoOffset + SNAP_DISTANCE * 0.42 / canvasZoom
           : (isCoarseMobile ? SNAP_DISTANCE * 0.42 : SNAP_DISTANCE) / canvasZoom;
         if (isMobilePar && canvasDist < 120) {
           const screenDist = (canvasDist * canvasZoom).toFixed(0);
