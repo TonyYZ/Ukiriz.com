@@ -5278,18 +5278,18 @@
         e.preventDefault();
         chatMiniMapDragging = true;
         chatMiniMapDragOffset = null;
-        jumpChatViewportFromMiniMap(e.clientX, e.clientY);
+        chatMiniMapPrevClientX = e.clientX;
+        chatMiniMapPrevClientY = e.clientY;
+        jumpChatViewportFromMiniMap(e.clientX, e.clientY); // teleport on click
       });
       chatMiniMapViewport?.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        const frameRect = chatMiniMapViewport.getBoundingClientRect();
-        chatMiniMapDragOffset = {
-          x: e.clientX - (frameRect.left + frameRect.width / 2),
-          y: e.clientY - (frameRect.top + frameRect.height / 2),
-        };
         chatMiniMapDragging = true;
-        jumpChatViewportFromMiniMap(e.clientX, e.clientY);
+        chatMiniMapDragOffset = null;
+        chatMiniMapPrevClientX = e.clientX;
+        chatMiniMapPrevClientY = e.clientY;
+        // no teleport — delta drag from current position
       });
       craftMiniMapCanvas?.addEventListener('pointerdown', (e) => {
         e.preventDefault();
@@ -5315,7 +5315,7 @@
       });
       window.addEventListener('pointermove', (e) => {
         if (!chatMiniMapDragging) return;
-        jumpChatViewportFromMiniMap(e.clientX, e.clientY);
+        panChatViewportFromMiniMap(e.clientX, e.clientY);
       });
       window.addEventListener('pointermove', (e) => {
         if (!craftMiniMapDragging) return;
@@ -5328,6 +5328,8 @@
       window.addEventListener('pointerup', () => {
         chatMiniMapDragging = false;
         chatMiniMapDragOffset = null;
+        chatMiniMapPrevClientX = null;
+        chatMiniMapPrevClientY = null;
         craftMiniMapDragging = false;
         scheduleCraftMiniMapUpdate?.();
       });
@@ -5792,6 +5794,8 @@
       var chatMiniMapBoundsCache = null;
       var chatMiniMapBoundsRoomId = null;
       var chatMiniMapBoundsSettleFrame = 0;
+      var chatMiniMapPrevClientX = null;
+      var chatMiniMapPrevClientY = null;
       const spawnedExpressionMetaCardGroups = new Map();
 
       function getChatMiniMapItems() {
@@ -6214,6 +6218,53 @@
         if (canvas.height !== height) canvas.height = height;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
+
+        // During drag: freeze worldW/worldH/scale so the minimap region doesn't resize,
+        // but pan minX/minY when the viewport frame reaches a minimap edge — like a camera
+        // tracking the viewport. The updated minX/minY are written back to chatMiniMapTransform
+        // so successive frames continue from the new origin.
+        if (chatMiniMapDragging && chatMiniMapTransform) {
+          const visibleBounds = getChatVisibleCanvasBounds();
+          if (!visibleBounds) return;
+          let { minX, minY, worldW, worldH, scale, offsetX, offsetY } = chatMiniMapTransform;
+          const viewW = Math.max(10, visibleBounds.width  * scale);
+          const viewH = Math.max(10, visibleBounds.height * scale);
+          // Compute raw frame position with current (frozen) origin
+          let rawX = offsetX + (visibleBounds.left - minX) * scale;
+          let rawY = offsetY + (visibleBounds.top  - minY) * scale;
+          // Pan the world origin when the frame would leave the minimap boundary
+          if (rawX < 0)              { minX += rawX / scale;              rawX = 0; }
+          if (rawX + viewW > width)  { minX += (rawX + viewW - width)  / scale; rawX = width  - viewW; }
+          if (rawY < 0)              { minY += rawY / scale;              rawY = 0; }
+          if (rawY + viewH > height) { minY += (rawY + viewH - height) / scale; rawY = height - viewH; }
+          // Persist updated origin for next frame
+          chatMiniMapTransform = { ...chatMiniMapTransform, minX, minY };
+          // Full canvas redraw with (possibly shifted) origin
+          ctx.clearRect(0, 0, width, height);
+          ctx.fillStyle = '#f4f4f9';
+          ctx.fillRect(0, 0, width, height);
+          ctx.fillStyle = 'rgba(0, 176, 240, 0.07)';
+          ctx.fillRect(offsetX, offsetY, worldW * scale, worldH * scale);
+          for (const el of getChatMiniMapItems()) {
+            const left = parseFloat(el.style.left) || 0;
+            const top  = parseFloat(el.style.top)  || 0;
+            const itemW = Math.max(4, (el.offsetWidth  || 18) * scale);
+            const itemH = Math.max(4, (el.offsetHeight || 18) * scale);
+            const x = offsetX + (left - minX) * scale;
+            const y = offsetY + (top  - minY) * scale;
+            const isSelected = el.classList.contains('framed') || el.classList.contains('active') || el.selected;
+            ctx.fillStyle = el.classList.contains('symbol')
+              ? isSelected ? '#00b0f0' : '#30343f'
+              : isSelected ? '#00b0f0' : '#8a8f9d';
+            ctx.fillRect(x, y, itemW, itemH);
+          }
+          viewport.style.left   = `${rawX}px`;
+          viewport.style.top    = `${rawY}px`;
+          viewport.style.width  = `${viewW}px`;
+          viewport.style.height = `${viewH}px`;
+          return;
+        }
+
         if (chatMiniMapBoundsRoomId !== currentRoomId) {
           chatMiniMapBoundsRoomId = currentRoomId;
           chatMiniMapBoundsCache = null;
@@ -6292,14 +6343,32 @@
         }
         // Merge eased item bounds with live viewport bounds (no easing on viewport),
         // then apply pad so the world is always larger than the viewport (keeps drag usable).
-        const minX = Math.max(0, Math.min(eased.minX, contentLeft) - pad);
-        const minY = Math.max(0, Math.min(eased.minY, contentTop) - pad);
+        const minX0 = Math.max(0, Math.min(eased.minX, contentLeft) - pad);
+        const minY0 = Math.max(0, Math.min(eased.minY, contentTop) - pad);
         const maxX = Math.max(eased.maxX, contentRight) + pad;
         const maxY = Math.max(eased.maxY, contentBottom) + pad;
 
-        const worldW = Math.max(visibleBounds.width, maxX - minX, 1);
-        const worldH = Math.max(visibleBounds.height, maxY - minY, 1);
-        const scale = Math.min((width - inset * 2) / worldW, (height - inset * 2) / worldH);
+        let worldW = Math.max(visibleBounds.width, maxX - minX0, 1);
+        let worldH = Math.max(visibleBounds.height, maxY - minY0, 1);
+        let minX = minX0, minY = minY0;
+
+        // Cap: world region cannot exceed 4× the viewport in canvas px. Beyond this
+        // the viewport frame becomes too small on mobile to be useful for navigation.
+        // Center the capped world on the viewport center when the cap kicks in.
+        const MINIMAP_MAX_FACTOR = 4;
+        const maxWorldW = visibleBounds.width * MINIMAP_MAX_FACTOR;
+        const maxWorldH = visibleBounds.height * MINIMAP_MAX_FACTOR;
+        if (worldW > maxWorldW) {
+          worldW = maxWorldW;
+          minX = (contentLeft + contentRight) / 2 - worldW / 2;
+        }
+        if (worldH > maxWorldH) {
+          worldH = maxWorldH;
+          minY = (contentTop + contentBottom) / 2 - worldH / 2;
+        }
+        // Math.max fills the minimap in whichever dimension is limiting — no dead-margin strips.
+        // The other dimension crops at the canvas boundary but keeps constant panning speed everywhere.
+        const scale = Math.max((width - inset * 2) / worldW, (height - inset * 2) / worldH);
         const offsetX = (width - worldW * scale) / 2;
         const offsetY = (height - worldH * scale) / 2;
 
@@ -6331,14 +6400,42 @@
           ctx.fillRect(x, y, itemW, itemH);
         }
 
-        const viewX = offsetX + (contentLeft - minX) * scale;
-        const viewY = offsetY + (contentTop - minY) * scale;
-        const viewW = visibleBounds.width * scale;
-        const viewH = visibleBounds.height * scale;
-        viewport.style.left = `${viewX}px`;
-        viewport.style.top = `${viewY}px`;
-        viewport.style.width = `${Math.max(10, viewW)}px`;
-        viewport.style.height = `${Math.max(10, viewH)}px`;
+        const viewW = Math.max(10, visibleBounds.width * scale);
+        const viewH = Math.max(10, visibleBounds.height * scale);
+        const viewX = Math.max(0, Math.min(width  - viewW, offsetX + (contentLeft - minX) * scale));
+        const viewY = Math.max(0, Math.min(height - viewH, offsetY + (contentTop  - minY) * scale));
+        viewport.style.left   = `${viewX}px`;
+        viewport.style.top    = `${viewY}px`;
+        viewport.style.width  = `${viewW}px`;
+        viewport.style.height = `${viewH}px`;
+      }
+
+      // Delta-based drag: each pointermove translates the pointer displacement directly
+      // into a scroll delta (pointerDelta / scale = canvas px), so the speed is constant
+      // everywhere — inside the minimap, at its border, and beyond it.  No reference to
+      // minX/minY means no feedback loop and no racing when the world re-centers.
+      function panChatViewportFromMiniMap(clientX, clientY) {
+        if (chatMiniMapPrevClientX === null || chatMiniMapPrevClientY === null) {
+          chatMiniMapPrevClientX = clientX;
+          chatMiniMapPrevClientY = clientY;
+          return;
+        }
+        const tab = tab4 || document.getElementById('tab4');
+        const surface = chatCanvas();
+        if (!tab || !surface || !chatMiniMapTransform) return;
+        const { scale } = chatMiniMapTransform;
+        if (!scale) return;
+        const zoom = getCanvasZoom(surface) || 1;
+        const dx = (clientX - chatMiniMapPrevClientX) / scale;
+        const dy = (clientY - chatMiniMapPrevClientY) / scale;
+        chatMiniMapPrevClientX = clientX;
+        chatMiniMapPrevClientY = clientY;
+        const maxLeft = Math.max(0, tab.scrollWidth - tab.clientWidth);
+        const maxTop  = Math.max(0, tab.scrollHeight - tab.clientHeight);
+        tab.scrollLeft = Math.max(0, Math.min(maxLeft, tab.scrollLeft + dx * zoom));
+        tab.scrollTop  = Math.max(0, Math.min(maxTop,  tab.scrollTop  + dy * zoom));
+        saveChatViewportState();
+        scheduleChatMiniMapUpdate();
       }
 
       function jumpChatViewportFromMiniMap(clientX, clientY) {
@@ -6351,8 +6448,8 @@
         if (!visibleBounds) return;
 
         const rect = canvas.getBoundingClientRect();
-        const localX = clientX - rect.left;
-        const localY = clientY - rect.top;
+        const rawLocalX = clientX - rect.left;
+        const rawLocalY = clientY - rect.top;
         const { minX, minY, worldW, worldH, scale, offsetX, offsetY } = chatMiniMapTransform;
         if (!scale) return;
 
@@ -6362,16 +6459,13 @@
         const miniWorldH = worldH * scale;
         const miniViewW = visibleBounds.width * scale;
         const miniViewH = visibleBounds.height * scale;
-        const centerX = localX - (chatMiniMapDragOffset?.x || 0);
-        const centerY = localY - (chatMiniMapDragOffset?.y || 0);
-        const centerMinX = offsetX + miniViewW / 2;
-        const centerMinY = offsetY + miniViewH / 2;
-        const centerMaxX = offsetX + miniWorldW - miniViewW / 2;
-        const centerMaxY = offsetY + miniWorldH - miniViewH / 2;
-        const clampedCenterX = Math.max(centerMinX, Math.min(centerMaxX, centerX));
-        const clampedCenterY = Math.max(centerMinY, Math.min(centerMaxY, centerY));
-        const worldX = minX + (clampedCenterX - offsetX) / scale;
-        const worldY = minY + (clampedCenterY - offsetY) / scale;
+        // Clamp the frame-center position (after drag-offset) to the minimap bounds.
+        // Clamping rawLocalX alone is insufficient: when dragOffset has the opposite sign,
+        // centerX can still exceed the minimap width and map to extreme canvas coordinates.
+        const centerX = Math.max(0, Math.min(rect.width, rawLocalX - (chatMiniMapDragOffset?.x || 0)));
+        const centerY = Math.max(0, Math.min(rect.height, rawLocalY - (chatMiniMapDragOffset?.y || 0)));
+        const worldX = minX + (centerX - offsetX) / scale;
+        const worldY = minY + (centerY - offsetY) / scale;
         const desiredLeft = worldX - visibleBounds.width / 2;
         const desiredTop = worldY - visibleBounds.height / 2;
         let nextLeft = tab.scrollLeft + (desiredLeft - visibleBounds.left) * zoom;
