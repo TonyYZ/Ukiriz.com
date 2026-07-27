@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Ítí Isles</title>
     <style>
       @font-face {
@@ -12168,7 +12168,7 @@
         if (clickOnlySymbol && !clickOnlySymbol._dragged) {
           const dx = e.clientX - (clickOnlySymbol._downClientX ?? e.clientX);
           const dy = e.clientY - (clickOnlySymbol._downClientY ?? e.clientY);
-          if (dx * dx + dy * dy > 16) clickOnlySymbol._dragged = true;
+          if (dx * dx + dy * dy > 16) { clickOnlySymbol._dragged = true; endLongPress(true); }
         }
         if (clickOnlyEmoji && !clickOnlyEmoji._dragged) {
           const dx = e.clientX - (clickOnlyEmoji._downClientX ?? e.clientX);
