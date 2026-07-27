@@ -372,6 +372,9 @@
         height: 24000px;
         min-width: 24000px;
         min-height: 24000px;
+        /* Isolate layout and paint — prevents the large zoomed canvas from causing
+           full-page reflow and repaint on every drag/zoom event. */
+        contain: layout paint;
         background-color: #f4f4f9;
         /* Subtle world-space grid for orientation in large chat canvas */
         background-image:
@@ -6399,6 +6402,7 @@
         const state = {
           scrollLeft: tab.scrollLeft,
           scrollTop: tab.scrollTop,
+          zoom: chatCanvasZoom,
           touched: !!touched,
         };
         chatViewportMemory.set(roomId, state);
@@ -6494,6 +6498,11 @@
               const isLegacyTopLeft =
                 saved.touched !== true && saved.scrollLeft <= 2 && saved.scrollTop <= 2;
               if (!isLegacyTopLeft) {
+                // Restore zoom before scroll — scroll values were saved in zoomed screen
+                // pixels, so applying them at a different zoom lands on the wrong content.
+                if (Number.isFinite(saved.zoom) && saved.zoom !== chatCanvasZoom) {
+                  setCanvasZoom(canvas, saved.zoom);
+                }
                 tab.scrollLeft = saved.scrollLeft;
                 tab.scrollTop = saved.scrollTop;
                 scheduleChatMiniMapUpdate();
