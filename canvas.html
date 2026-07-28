@@ -133,9 +133,11 @@
         z-index: 1;
       }
 
-      /* Add hover effect */
-      .button:hover {
-        opacity: 0.5;
+      /* Hover effect — gated on hover:hover so it doesn't stick on touch devices. */
+      @media (hover: hover) {
+        .button:hover {
+          opacity: 0.5;
+        }
       }
 
       /* Non-owned selection: force default cursor on chat action buttons. Use !important
@@ -13041,6 +13043,7 @@
 
         if (marqueeActive || marqueeJustDidSelect) {
           marqueeJustDidSelect = false; // clear after using marquee box
+          endLongPress(true); // cancel any ring started by a tap inside the marquee selection
           return; // don't run isBlankCanvasClick and don't clear selection
         }
 
