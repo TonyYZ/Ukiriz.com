@@ -86,8 +86,11 @@
 
       .symbol.white-fill-outline svg {
         overflow: visible;
-        filter: drop-shadow(1px 0 0 #000) drop-shadow(-1px 0 0 #000) drop-shadow(0 1px 0 #000)
-          drop-shadow(0 -1px 0 #000);
+        filter:
+          drop-shadow(var(--white-outline, 1px) 0 0 #000)
+          drop-shadow(calc(0px - var(--white-outline, 1px)) 0 0 #000)
+          drop-shadow(0 var(--white-outline, 1px) 0 #000)
+          drop-shadow(0 calc(0px - var(--white-outline, 1px)) 0 #000);
       }
 
       .dot {
@@ -5074,6 +5077,7 @@
         if (!container) return;
         const z = clampCanvasZoom(container, zoom);
         container.style.zoom = `${z}`;
+        container.style.setProperty('--white-outline', `${Math.max(1, 1 / z)}px`);
         if (container === craftCanvas()) {
           craftCanvasZoom = z;
           applyCraftCanvasPadding(z);
