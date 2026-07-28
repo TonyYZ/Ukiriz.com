@@ -383,6 +383,20 @@
         padding: 7px;
         font-size: 12px;
       }
+      #svg-code-box {
+        margin-top: 12px;
+      }
+      #svg-code {
+        min-height: 190px;
+        background: #fffafc;
+        font-family: var(--mono);
+        line-height: 1.45;
+        white-space: pre;
+      }
+      #copy-svg {
+        margin-top: 6px;
+        font-size: 11px;
+      }
       @media (max-width: 820px) {
         header {
           height: auto;
@@ -484,6 +498,7 @@
             <div class="row" id="tools">
               <button data-tool="pen" aria-pressed="true">Pen</button>
               <button data-tool="circle" aria-pressed="false">Circle</button>
+              <button data-tool="fill" aria-pressed="false">Fill</button>
               <button data-tool="text" aria-pressed="false">Text</button>
             </div>
             <div class="row">
@@ -491,7 +506,7 @@
                 ><span id="color-label">Color</span>
                 <input id="color" type="color" value="#201c18"
               /></label>
-              <label
+              <label id="width-control"
                 ><span id="width-label">Width</span>
                 <input id="width" type="range" min="1" max="50" value="8"
               /></label>
@@ -545,17 +560,24 @@
                 <span id="replace-label">Replace</span></label
               >
             </div>
+            <div class="row">
+              <label for="reply-medium" id="medium-label">Reply medium</label>
+              <select id="reply-medium">
+                <option value="raster">Painted image</option>
+                <option value="svg">SVG code</option>
+              </select>
+            </div>
             <button id="submit" class="primary submit">Send picture</button>
             <p class="status" id="status" role="status">
               Draw, write, or upload an image. The reply arrives as a new visual layer.
             </p>
             <strong id="conversation-title">Conversation</strong>
             <div class="history" id="history"></div>
-            <details>
-              <summary id="latest-summary">Latest creation</summary>
+            <details id="latest-details">
+              <summary id="current-summary">Current creation</summary>
               <img
                 id="ai-layer"
-                alt="Latest creation"
+                alt="Current creation"
                 style="
                   display: none;
                   width: 100%;
@@ -564,6 +586,11 @@
                   background: white;
                 "
               />
+              <div id="svg-code-box" hidden>
+                <label id="svg-code-label" for="svg-code">SVG code added</label>
+                <textarea id="svg-code" readonly spellcheck="false"></textarea>
+                <button id="copy-svg" type="button">Copy SVG</button>
+              </div>
             </details>
           </div>
         </div>
@@ -607,6 +634,7 @@
           drawTitle: 'Draw your turn',
           pen: 'Pen',
           circle: 'Circle',
+          fill: 'Fill',
           text: 'Text',
           color: 'Color',
           width: 'Width',
@@ -629,10 +657,18 @@
           opacity: 'AI opacity',
           overlay: 'Overlay',
           replace: 'Replace',
+          medium: 'Reply medium',
+          mediumRaster: 'Painted image',
+          mediumSvg: 'SVG code',
+          svgCode: 'SVG code added',
+          copySvg: 'Copy SVG',
+          svgCopied: 'copied ✓',
+          svgWorkerMismatch:
+            'SVG code was requested, but the Worker returned a painted image. Update the Picture Talk Worker and try again.',
           submit: 'Send picture',
           intro: 'Draw, write, or upload an image. The reply arrives as a new visual layer.',
           conversation: 'Conversation',
-          latest: 'Latest creation',
+          currentCreation: 'Current creation',
           copyUid: 'copy UID',
           copied: 'copied ✓',
           supportKofi: '🍹 Ko-fi',
@@ -667,6 +703,7 @@
           drawTitle: '轮到你了',
           pen: '画笔',
           circle: '圆',
+          fill: '填色',
           text: '文字',
           color: '颜色',
           width: '粗细',
@@ -689,11 +726,19 @@
           opacity: 'AI 图层透明度',
           overlay: '叠加',
           replace: '替换',
+          medium: '回应媒介',
+          mediumRaster: '绘制图像',
+          mediumSvg: 'SVG 代码',
+          svgCode: '本轮添加的 SVG 代码',
+          copySvg: '复制 SVG',
+          svgCopied: '已复制 ✓',
+          svgWorkerMismatch:
+            '已请求 SVG 代码，但 Worker 返回了绘制图像。请更新涂鸦笔谈的 Worker 后重试。',
           submit: '发送图画',
           intro:
             '你可以在画布上自由涂鸦、写字、或是上传图片。AI 的回应会作为一个新图层覆写原有画布。',
           conversation: '对话',
-          latest: '最近的创作',
+          currentCreation: '当前创作',
           copyUid: '复制 UID',
           copied: '已复制 ✓',
           supportKofi: '🍹 Ko-fi',
@@ -723,6 +768,9 @@
       let uid = null;
       let currentLang = localStorage.getItem('lang') === 'zh' ? 'zh' : 'en';
       let lastQuotaData = null;
+      let creationHistory = [];
+      let selectedCreation = null;
+      let lastConversationStateUrl = null;
       let currentStatusKey = 'intro';
       let regionUnavailable = false;
       const sketchNameKey = 'picture-talk.sketch-name';
@@ -738,7 +786,8 @@
       let tool = 'pen',
         drawing = false,
         start = null,
-        snapshot = null;
+        snapshot = null,
+        activePointerId = null;
       let undoStack = [],
         redoStack = [];
       let remainingTurns = null;
@@ -762,6 +811,7 @@
         $('#color-label').textContent = t.color;
         $('[data-tool="pen"]').textContent = t.pen;
         $('[data-tool="circle"]').textContent = t.circle;
+        $('[data-tool="fill"]').textContent = t.fill;
         $('[data-tool="text"]').textContent = t.text;
         $('#stroke').options[0].textContent = t.solid;
         $('#stroke').options[1].textContent = t.dotted;
@@ -781,9 +831,14 @@
         $('#opacity-label').textContent = t.opacity;
         $('#overlay-label').textContent = t.overlay;
         $('#replace-label').textContent = t.replace;
+        $('#medium-label').textContent = t.medium;
+        $('#reply-medium').options[0].textContent = t.mediumRaster;
+        $('#reply-medium').options[1].textContent = t.mediumSvg;
+        $('#svg-code-label').textContent = t.svgCode;
+        $('#copy-svg').textContent = t.copySvg;
         $('#submit').textContent = t.submit;
         $('#conversation-title').textContent = t.conversation;
-        $('#latest-summary').textContent = t.latest;
+        $('#current-summary').textContent = t.currentCreation;
         $('#copy-uid').textContent = t.copyUid;
         $('#copy-uid').title = t.copyTitle;
         $('#kofi-link').textContent = t.supportKofi;
@@ -794,7 +849,7 @@
         $('#busy').textContent = t.listening;
         $('#edit-name').ariaLabel = t.editName;
         canvas.ariaLabel = t.canvasLabel;
-        $('#ai-layer').alt = t.latest;
+        $('#ai-layer').alt = t.currentCreation;
         $('#width-label').textContent = tool === 'text' ? t.size : t.width;
         const sketch = $('#sketch-name');
         sketch.ariaLabel = t.editName;
@@ -893,12 +948,29 @@
             body: JSON.stringify({ type: 'quotaStatus', uid }),
           });
           const data = await response.json();
-          if (response.ok && data.ok) updateQuotaBadge(data);
+          if (response.ok && data.ok) {
+            updateQuotaBadge(data);
+          }
           else if (data.code === 'REGION_UNAVAILABLE') showRegionUnavailable();
           else $('#quota-badge').textContent = I18N[currentLang].unavailable;
         } catch {
           $('#quota-badge').textContent = I18N[currentLang].offline;
         }
+      }
+
+      function svgToDataUrl(svg) {
+        return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+      }
+
+      function displaySvgCode(svg) {
+        $('#svg-code').value = svg;
+        $('#svg-code-box').hidden = false;
+        $('#latest-details').open = true;
+      }
+
+      function hideSvgCode() {
+        $('#svg-code').value = '';
+        $('#svg-code-box').hidden = true;
       }
 
       function canvasUrl() {
@@ -957,8 +1029,93 @@
         );
       }
 
+      function floodFill(x, y, hexColor) {
+        const width = canvas.width,
+          height = canvas.height,
+          px = Math.max(0, Math.min(width - 1, Math.floor(x))),
+          py = Math.max(0, Math.min(height - 1, Math.floor(y))),
+          imageData = ctx.getImageData(0, 0, width, height),
+          data = imageData.data,
+          startPixel = py * width + px,
+          startOffset = startPixel * 4,
+          target = [
+            data[startOffset],
+            data[startOffset + 1],
+            data[startOffset + 2],
+            data[startOffset + 3],
+          ],
+          fill = [
+            parseInt(hexColor.slice(1, 3), 16),
+            parseInt(hexColor.slice(3, 5), 16),
+            parseInt(hexColor.slice(5, 7), 16),
+            255,
+          ];
+        if (target.every((value, index) => value === fill[index])) return false;
+
+        const tolerance = 18,
+          matchesTarget = (offset) =>
+            Math.abs(data[offset] - target[0]) <= tolerance &&
+            Math.abs(data[offset + 1] - target[1]) <= tolerance &&
+            Math.abs(data[offset + 2] - target[2]) <= tolerance &&
+            Math.abs(data[offset + 3] - target[3]) <= tolerance,
+          stack = new Int32Array(width * height),
+          queued = new Uint8Array(width * height);
+        let stackSize = 0;
+        stack[stackSize++] = startPixel;
+        queued[startPixel] = 1;
+
+        while (stackSize) {
+          const pixel = stack[--stackSize],
+            offset = pixel * 4;
+          if (!matchesTarget(offset)) continue;
+          data[offset] = fill[0];
+          data[offset + 1] = fill[1];
+          data[offset + 2] = fill[2];
+          data[offset + 3] = fill[3];
+
+          const x = pixel % width,
+            neighbors = [];
+          if (x > 0) neighbors.push(pixel - 1);
+          if (x < width - 1) neighbors.push(pixel + 1);
+          if (pixel >= width) neighbors.push(pixel - width);
+          if (pixel < width * (height - 1)) neighbors.push(pixel + width);
+          for (const neighbor of neighbors) {
+            if (!queued[neighbor]) {
+              queued[neighbor] = 1;
+              stack[stackSize++] = neighbor;
+            }
+          }
+        }
+        ctx.putImageData(imageData, 0, 0);
+        return true;
+      }
+
+      function releaseDrawingPointer() {
+        if (
+          activePointerId !== null &&
+          canvas.hasPointerCapture?.(activePointerId)
+        ) {
+          canvas.releasePointerCapture(activePointerId);
+        }
+        activePointerId = null;
+        canvas.blur();
+      }
+
+      function finishDrawing(saveStroke) {
+        if (!drawing) {
+          releaseDrawingPointer();
+          return;
+        }
+        drawing = false;
+        ctx.closePath();
+        if (saveStroke) commit();
+        else if (snapshot) ctx.putImageData(snapshot, 0, 0);
+        releaseDrawingPointer();
+      }
+
       canvas.addEventListener('pointerdown', async (e) => {
         e.preventDefault();
+        if (drawing) finishDrawing(true);
         const p = point(e);
         setStyle();
         if (tool === 'text') {
@@ -973,7 +1130,12 @@
           }
           return;
         }
+        if (tool === 'fill') {
+          if (floodFill(p.x, p.y, $('#color').value)) commit();
+          return;
+        }
         drawing = true;
+        activePointerId = e.pointerId;
         start = p;
         snapshot = ctx.getImageData(0, 0, 512, 512);
         canvas.setPointerCapture(e.pointerId);
@@ -981,7 +1143,7 @@
         ctx.moveTo(p.x, p.y);
       });
       canvas.addEventListener('pointermove', (e) => {
-        if (!drawing) return;
+        if (!drawing || e.pointerId !== activePointerId) return;
         const p = point(e);
         if (tool === 'pen') {
           ctx.lineTo(p.x, p.y);
@@ -994,46 +1156,72 @@
           ctx.stroke();
         }
       });
-      canvas.addEventListener('pointerup', () => {
-        if (!drawing) return;
-        drawing = false;
-        ctx.closePath();
-        commit();
+      canvas.addEventListener('pointerup', (e) => {
+        if (e.pointerId === activePointerId) finishDrawing(true);
       });
-      canvas.addEventListener('pointercancel', () => {
-        if (drawing) {
-          drawing = false;
-          ctx.putImageData(snapshot, 0, 0);
-        }
+      canvas.addEventListener('pointercancel', (e) => {
+        if (e.pointerId === activePointerId) finishDrawing(false);
+      });
+      canvas.addEventListener('lostpointercapture', (e) => {
+        if (drawing && e.pointerId === activePointerId) finishDrawing(true);
+      });
+      window.addEventListener('pointerup', (e) => {
+        if (drawing && e.pointerId === activePointerId) finishDrawing(true);
       });
       $('#tools').addEventListener('click', (e) => {
         const b = e.target.closest('[data-tool]');
         if (!b) return;
+        finishDrawing(true);
         tool = b.dataset.tool;
         const textMode = tool === 'text',
+          fillMode = tool === 'fill',
           t = I18N[currentLang];
         document
           .querySelectorAll('[data-tool]')
           .forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
         $('#text-row').hidden = !textMode;
-        $('#stroke').hidden = textMode;
+        $('#width-control').hidden = fillMode;
+        $('#stroke').hidden = textMode || fillMode;
         $('#font').hidden = !textMode;
         $('#width-label').textContent = textMode ? t.size : t.width;
         if (textMode) $('#text').focus();
       });
       $('#undo').onclick = async () => {
+        if (drawing) finishDrawing(true);
         if (undoStack.length < 2) return;
         redoStack.push(undoStack.pop());
-        await restore(undoStack.at(-1));
+        const url = undoStack.at(-1);
+        await restore(url);
+        lastConversationStateUrl = url;
+        showCreationForCanvas(url);
         syncButtons();
       };
       $('#redo').onclick = async () => {
+        if (drawing) finishDrawing(true);
         if (!redoStack.length) return;
         const u = redoStack.pop();
         undoStack.push(u);
         await restore(u);
+        lastConversationStateUrl = u;
+        showCreationForCanvas(u);
         syncButtons();
       };
+      document.addEventListener('keydown', (event) => {
+        if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+        const target = event.target;
+        if (
+          target instanceof HTMLElement &&
+          (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
+        )
+          return;
+        const key = event.key.toLowerCase(),
+          undo = key === 'z' && !event.shiftKey,
+          redo = key === 'y' || (key === 'z' && event.shiftKey);
+        if (!undo && !redo) return;
+        event.preventDefault();
+        if (drawing) finishDrawing(true);
+        (undo ? $('#undo') : $('#redo')).click();
+      });
       $('#clear').onclick = () => {
         ctx.clearRect(0, 0, 512, 512);
         commit();
@@ -1085,19 +1273,61 @@
         }
       };
 
-      function addHistory(url, label) {
+      $('#copy-svg').onclick = async () => {
+        const svg = $('#svg-code').value,
+          button = $('#copy-svg');
+        if (!svg) return;
+        try {
+          await navigator.clipboard.writeText(svg);
+          button.textContent = I18N[currentLang].svgCopied;
+          setTimeout(() => (button.textContent = I18N[currentLang].copySvg), 1200);
+        } catch {
+          $('#svg-code').focus();
+          $('#svg-code').select();
+        }
+      };
+
+      function showCurrentCreation(entry) {
+        if (!entry) return;
+        selectedCreation = entry;
+        if (entry.changeUrl) {
+          $('#ai-layer').src = entry.changeUrl;
+          $('#ai-layer').style.display = 'block';
+        } else {
+          $('#ai-layer').removeAttribute('src');
+          $('#ai-layer').style.display = 'none';
+        }
+        if (entry.svg) displaySvgCode(entry.svg);
+        else hideSvgCode();
+        $('#latest-details').open = true;
+      }
+
+      function showCreationForCanvas(url) {
+        const entry = creationHistory.find((item) => item.canvasUrl === url);
+        if (entry) showCurrentCreation(entry);
+      }
+
+      function addHistory(entry) {
         const b = document.createElement('button');
-        b.title = label;
+        b.title = entry.label;
         const img = new Image();
-        img.src = url;
-        img.alt = label;
+        img.src = entry.canvasUrl;
+        img.alt = entry.label;
         b.append(img);
         b.onclick = async () => {
-          await restore(url);
+          await restore(entry.canvasUrl);
           commit();
+          lastConversationStateUrl = entry.canvasUrl;
+          showCurrentCreation(entry);
         };
+        entry.button = b;
+        creationHistory.unshift(entry);
         $('#history').prepend(b);
-        while ($('#history').children.length > 8) $('#history').lastElementChild.remove();
+        while (creationHistory.length > 8) {
+          const removed = creationHistory.pop();
+          removed.button.remove();
+        }
+        return entry;
       }
       function loadImage(url) {
         return new Promise((resolve, reject) => {
@@ -1128,6 +1358,7 @@
             Math.abs(after.data[i] - before.data[i]),
             Math.abs(after.data[i + 1] - before.data[i + 1]),
             Math.abs(after.data[i + 2] - before.data[i + 2]),
+            Math.abs(after.data[i + 3] - before.data[i + 3]),
           );
           const alpha = Math.max(0, Math.min(255, (d - 10) * 5));
           out.data[i] = after.data[i];
@@ -1139,9 +1370,19 @@
         bx.putImageData(out, 0, 0);
         return b.toDataURL('image/png');
       }
-      async function applyReply(editedUrl, mode, alpha, originalUrl) {
+      async function applyReply(
+        editedUrl,
+        mode,
+        alpha,
+        originalUrl,
+        replyMedium,
+        sourceText,
+      ) {
         const before = canvasUrl(),
-          t = I18N[currentLang];
+          t = I18N[currentLang],
+          baseline = lastConversationStateUrl || undoStack[0] || before,
+          userLayerUrl = await makeDifferenceLayer(baseline, before);
+        let replyLayerUrl;
         if (mode === 'replacement') {
           const img = await loadImage(editedUrl);
           ctx.clearRect(0, 0, 512, 512);
@@ -1149,19 +1390,38 @@
           ctx.globalAlpha = alpha;
           ctx.drawImage(img, 0, 0, 512, 512);
           ctx.restore();
+          replyLayerUrl = editedUrl;
         } else {
-          const layerUrl = await makeDifferenceLayer(originalUrl, editedUrl),
+          const layerUrl =
+              replyMedium === 'svg'
+                ? editedUrl
+                : await makeDifferenceLayer(originalUrl, editedUrl),
             layer = await loadImage(layerUrl);
           ctx.save();
           ctx.globalAlpha = alpha;
           ctx.drawImage(layer, 0, 0, 512, 512);
           ctx.restore();
-          $('#ai-layer').src = layerUrl;
-          $('#ai-layer').style.display = 'block';
+          replyLayerUrl = layerUrl;
         }
-        addHistory(before, t.yourTurn);
-        addHistory(canvasUrl(), t.aiReply);
+        const after = canvasUrl();
+        addHistory({
+          canvasUrl: before,
+          changeUrl: userLayerUrl,
+          label: t.yourTurn,
+          kind: 'user',
+          svg: null,
+        });
+        const replyEntry = addHistory({
+          canvasUrl: after,
+          changeUrl: replyLayerUrl,
+          label: t.aiReply,
+          kind: 'ai',
+          replyMedium,
+          svg: replyMedium === 'svg' ? sourceText : null,
+        });
+        lastConversationStateUrl = after;
         commit();
+        showCurrentCreation(replyEntry);
       }
 
       $('#submit').onclick = async () => {
@@ -1169,6 +1429,7 @@
         const button = $('#submit'),
           status = $('#status'),
           mode = document.querySelector('[name="mode"]:checked').value,
+          replyMedium = $('#reply-medium').value,
           inputImage = visionCanvasUrl();
         button.disabled = true;
         $('#busy').classList.add('show');
@@ -1177,7 +1438,13 @@
           const response = await fetch(API, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: 'pictureTalk', uid, image: inputImage, mode }),
+            body: JSON.stringify({
+              type: 'pictureTalk',
+              uid,
+              image: inputImage,
+              mode,
+              replyMedium,
+            }),
           });
           const data = await response.json();
           if (data.code === 'REGION_UNAVAILABLE') {
@@ -1187,7 +1454,21 @@
           updateQuotaBadge(data);
           if (!response.ok || !data.ok)
             throw new Error(data.error || data.message || I18N[currentLang].requestFailed);
-          await applyReply(data.image, mode, +$('#opacity').value / 100, inputImage);
+          if (replyMedium === 'svg' && data.replyMedium !== 'svg') {
+            currentStatusKey = null;
+            status.textContent = I18N[currentLang].svgWorkerMismatch;
+            return;
+          }
+          const replyUrl =
+            data.replyMedium === 'svg' ? svgToDataUrl(data.svg) : data.image;
+          await applyReply(
+            replyUrl,
+            mode,
+            +$('#opacity').value / 100,
+            inputImage,
+            data.replyMedium,
+            data.replyMedium === 'svg' ? data.svg : null,
+          );
           setStatus('received');
         } catch (error) {
           currentStatusKey = null;
@@ -1199,6 +1480,7 @@
       };
       setLang(currentLang);
       commit();
+      lastConversationStateUrl = canvasUrl();
       initializeIdentity().catch((error) => {
         $('#quota-badge').textContent = I18N[currentLang].identityUnavailable;
         currentStatusKey = null;
