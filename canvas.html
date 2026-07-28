@@ -13063,6 +13063,17 @@
           released.style.cursor = canEditElement(released) ? 'grab' : 'pointer';
           released._qianPressed = false;
           updateQianSymbolAppearance(released);
+          // For a tap (no drag) on a multi-selection, dragGroup members had their
+          // appearance set to "pressed" on pointerdown but dragGroupSet is never
+          // populated (it's set lazily on first move), so the group cleanup loop
+          // below is skipped. Reset all members here instead.
+          if (!released._dragged && dragGroup) {
+            for (const el of dragGroup.keys()) {
+              if (el === released) continue;
+              el._qianPressed = false;
+              updateQianSymbolAppearance(el);
+            }
+          }
 
           // --- 1) Decide final selection state for this mouseup ---
           // Default: keep selected
