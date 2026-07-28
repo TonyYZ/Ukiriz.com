@@ -86,8 +86,7 @@
 
       .symbol.white-fill-outline svg {
         overflow: visible;
-        filter:
-          drop-shadow(var(--white-outline, 1px) 0 0 #000)
+        filter: drop-shadow(var(--white-outline, 1px) 0 0 #000)
           drop-shadow(calc(0px - var(--white-outline, 1px)) 0 0 #000)
           drop-shadow(0 var(--white-outline, 1px) 0 #000)
           drop-shadow(0 calc(0px - var(--white-outline, 1px)) 0 #000);
@@ -6824,6 +6823,96 @@
         },
       });
 
+      function withTimeout(promise, ms) {
+        return Promise.race([
+          promise,
+          new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms)),
+        ]);
+      }
+
+      let _toastTimer = 0;
+      function showToast(message, { duration = 5000, retry = null } = {}) {
+        const existing = document.getElementById('app-toast');
+        if (existing) existing.remove();
+        clearTimeout(_toastTimer);
+
+        const lang = (typeof currentLang !== 'undefined' && currentLang) || 'en';
+        const toast = document.createElement('div');
+        toast.id = 'app-toast';
+        toast.style.cssText = [
+          'position:fixed',
+          'top:12px',
+          'left:50%',
+          'transform:translateX(-50%)',
+          'z-index:99999',
+          'background:#1a1a1a',
+          'color:#fff',
+          'padding:10px 16px',
+          'border-radius:8px',
+          'font-size:13px',
+          'display:flex',
+          'align-items:center',
+          'gap:12px',
+          'box-shadow:0 4px 16px rgba(0,0,0,0.35)',
+          'max-width:calc(100vw - 32px)',
+          'line-height:1.4',
+        ].join(';');
+
+        const text = document.createElement('span');
+        text.textContent = message;
+        toast.appendChild(text);
+
+        if (retry) {
+          const btn = document.createElement('button');
+          btn.textContent = lang === 'zh' ? '重试' : 'Retry';
+          btn.style.cssText = [
+            'background:#fff',
+            'color:#1a1a1a',
+            'border:none',
+            'padding:4px 10px',
+            'border-radius:4px',
+            'cursor:pointer',
+            'font-size:12px',
+            'white-space:nowrap',
+            'flex-shrink:0',
+          ].join(';');
+          btn.onclick = () => {
+            toast.remove();
+            retry();
+          };
+          toast.appendChild(btn);
+        }
+
+        const close = document.createElement('button');
+        close.textContent = '✕';
+        close.style.cssText = [
+          'background:transparent',
+          'color:#aaa',
+          'border:none',
+          'padding:0 2px',
+          'cursor:pointer',
+          'font-size:14px',
+          'flex-shrink:0',
+        ].join(';');
+        close.onclick = () => toast.remove();
+        toast.appendChild(close);
+
+        document.body.appendChild(toast);
+        if (duration > 0) {
+          _toastTimer = setTimeout(() => toast.remove(), duration);
+        }
+        return toast;
+      }
+
+      function showConnectivityError(context, retry) {
+        const lang = (typeof currentLang !== 'undefined' && currentLang) || 'en';
+        const msg =
+          lang === 'zh'
+            ? `${context}连接失败。若在中国大陆，可能需要 VPN 才能访问本服务。`
+            : `${context} Connection failed. If in mainland China, a VPN may be required.`;
+        showToast(msg, { duration: 0, retry });
+      }
+
       function normalizeJsonObject(value) {
         if (!value) return {};
         if (typeof value === 'string') {
@@ -7233,18 +7322,37 @@
       }
 
       async function boot() {
-        await restoreAnonymousSession();
+        // ✅ set language early so error messages are bilingual
+        currentLang = localStorage.getItem('lang') || 'en';
+
+        const authOk = await withTimeout(restoreAnonymousSession(), 10000)
+          .then(() => true)
+          .catch((e) => {
+            console.warn('Auth timed out or failed:', e);
+            showConnectivityError('', () => boot());
+            return false;
+          });
+
+        if (!authOk) return;
+
         await assignUserColor().catch(console.error);
         subscribeToWorldPresence();
         startWorldPresenceHeartbeat();
 
-        // ✅ set language BEFORE initNodes
-        currentLang = localStorage.getItem('lang') || 'en';
         setLang(currentLang);
         bindTutorialOverlayOnce?.();
 
         // ✅ now init nodes (symbolData must already exist by this line)
         await initNodes();
+
+        // Restore the room the user was in before the last refresh
+        const savedRoomId = localStorage.getItem('lastRoomId');
+        const savedIslandId = localStorage.getItem('lastIslandId');
+        if (savedRoomId && savedRoomId !== 'default') {
+          currentRoomId = savedRoomId;
+          if (savedIslandId) showChatTabForIsland(savedIslandId);
+          loadObj();
+        }
 
         // ✅ sync titles again (safe)
         refreshBasicTooltips?.();
@@ -7415,6 +7523,9 @@
               console.warn('World presence subscription failed');
               supabase.removeChannel(channel);
               worldPresenceUnsubscribe = null;
+              setTimeout(() => {
+                if (!worldPresenceUnsubscribe) subscribeToWorldPresence();
+              }, 4000);
             }
           });
         worldPresenceUnsubscribe = () => supabase.removeChannel(channel);
@@ -8050,7 +8161,26 @@
       }
 
       async function refreshRoomSnapshot(roomId) {
-        const { data, error } = await supabase.from('room_objs').select('*').eq('room_id', roomId);
+        let result;
+        try {
+          result = await withTimeout(
+            supabase.from('room_objs').select('*').eq('room_id', roomId),
+            8000,
+          );
+        } catch (e) {
+          const isTimeout = e.message === 'timeout';
+          const lang = (typeof currentLang !== 'undefined' && currentLang) || 'en';
+          const msg = isTimeout
+            ? lang === 'zh'
+              ? '加载房间数据超时。请检查网络连接。'
+              : 'Loading room data timed out. Check your connection.'
+            : lang === 'zh'
+              ? `加载失败：${e.message}`
+              : `Load failed: ${e.message}`;
+          showToast(msg, { duration: 0, retry: () => subscribeToRoom(roomId) });
+          throw e;
+        }
+        const { data, error } = result;
         if (error) throw error;
         await applyRoomSnapshot(makeRoomSnapshotFromRows(data || []), roomId);
       }
@@ -8094,6 +8224,9 @@
               console.error('Room subscription failed');
               supabase.removeChannel(channel);
               roomObjsUnsubscribe = null;
+              setTimeout(() => {
+                if (!roomObjsUnsubscribe && currentRoomId) subscribeToRoom(currentRoomId);
+              }, 4000);
             }
           });
         roomObjsUnsubscribe = () => supabase.removeChannel(channel);
@@ -8771,7 +8904,7 @@
           ],
           [
             ['monotonous', 'homogeneous', 'same', 'normal', 'substance'],
-            ['complex', 'system', 'order', 'organic', 'intricate', 'variegated'],
+            ['complex', 'system', 'order', 'intricate', 'variegated'],
           ],
         ],
 
@@ -11522,14 +11655,18 @@
           emitTutorialEvent?.('chat_symbol_message');
         } catch (error) {
           console.error(error);
-          alert('Symbol rendering failed.');
+          showToast(
+            currentLang === 'zh'
+              ? '符号渲染失败，请重试。'
+              : 'Symbol rendering failed. Please try again.',
+          );
         }
       }
 
       async function handleEmojiMessage(text) {
         const uid = currentUser?.uid || null;
         if (!uid) {
-          alert('Please sign in to generate emoji.');
+          showToast(currentLang === 'zh' ? '请先登录。' : 'Please sign in first.');
           return;
         }
 
@@ -11551,11 +11688,19 @@
           }
 
           if (data?.code === 'RATE_LIMITED' || data?.code === 'QUOTA_EXCEEDED') {
-            alert(data.message || 'Request blocked.');
+            showToast(
+              data.message ||
+                (currentLang === 'zh'
+                  ? '请求被限流，请稍后再试。'
+                  : 'Request blocked. Please try again later.'),
+            );
             return;
           }
           if (data?.ok !== true) {
-            alert(data?.error || 'Emoji generation failed.');
+            showToast(
+              data?.error ||
+                (currentLang === 'zh' ? '生成 emoji 失败。' : 'Emoji generation failed.'),
+            );
             return;
           }
 
@@ -11564,7 +11709,12 @@
           await createEmoji(emojiText);
         } catch (e) {
           console.error(e);
-          alert('Emoji generation failed.');
+          showToast(
+            currentLang === 'zh'
+              ? '生成 emoji 失败，请检查网络。'
+              : 'Emoji generation failed. Check your connection.',
+            { retry: () => handleEmojiMessage(text) },
+          );
         }
       }
 
@@ -14805,7 +14955,12 @@
             }
 
             if (data.code === 'RATE_LIMITED') {
-              alert(data.message);
+              showToast(
+                data.message ||
+                  (currentLang === 'zh'
+                    ? '请求过于频繁，请稍后再试。'
+                    : 'Too many requests. Please wait and try again.'),
+              );
               return;
             }
 
@@ -14817,7 +14972,12 @@
             showFeedback(data.result || data.error || 'No response', false);
           } catch (error) {
             console.error(error);
-            alert(t.validationFailed);
+            showToast(
+              currentLang === 'zh'
+                ? '验证失败，请检查网络连接。'
+                : 'Validation failed. Check your connection.',
+              { retry: () => submitButton.onclick(new Event('click')) },
+            );
           }
         };
 
@@ -20024,7 +20184,9 @@
         }
         suppressChatViewportSave = true;
         currentRoomId = roomId;
+        localStorage.setItem('lastRoomId', roomId);
         const presenceIslandId = selectedIsland?.dataset?.islandId || islandIdFromRoomId(roomId);
+        if (presenceIslandId) localStorage.setItem('lastIslandId', presenceIslandId);
         if (presenceIslandId) updateWorldPresence(presenceIslandId);
         updateChatQuestionPrompt(roomId);
         if (roomObjsUnsubscribe) {
