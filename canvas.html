@@ -5106,6 +5106,21 @@
         });
       }
 
+      function updateChatGridAlignment() {
+        const canvas = chatCanvas();
+        if (!canvas) return;
+        const dpr = window.devicePixelRatio || 1;
+        const zoom = chatCanvasZoom || 1;
+        // Round the small grid to the nearest whole device pixel, then derive the large
+        // grid as exactly 5× so both layers always land on the same device-pixel boundary.
+        const smallDp = Math.round(80 * zoom * dpr);
+        const smallCss = smallDp / dpr / zoom; // in the element's pre-zoom coordinate space
+        const largeCss = smallCss * 5;
+        canvas.style.backgroundSize =
+          `${smallCss}px ${smallCss}px, ${smallCss}px ${smallCss}px, ` +
+          `${largeCss}px ${largeCss}px, ${largeCss}px ${largeCss}px`;
+      }
+
       function updateCraftGridAlignment() {
         const container = tab1 || document.getElementById('tab1');
         const canvas = craftCanvas();
@@ -5250,6 +5265,7 @@
               _canvasZoomFrame = requestAnimationFrame(applyNextZoom);
             }
             if (isChat) {
+              updateChatGridAlignment();
               scheduleChatMiniMapUpdate?.();
               clearTimeout(_chatViewportSaveTimer);
               _chatViewportSaveTimer = setTimeout(() => {
@@ -5653,9 +5669,11 @@
       window.addEventListener('resize', () => {
         applyCraftCanvasPadding(getCanvasZoom(craftCanvas()) || 1);
         updateCraftGridAlignment();
+        updateChatGridAlignment();
       });
 
       applyCraftCanvasPadding(1);
+      updateChatGridAlignment();
 
       function updateChatQuestionPrompt(roomId) {
         const el = document.getElementById('chat-question-text');
@@ -13044,6 +13062,7 @@
         if (marqueeActive || marqueeJustDidSelect) {
           marqueeJustDidSelect = false; // clear after using marquee box
           endLongPress(true); // cancel any ring started by a tap inside the marquee selection
+          cancelDraggingState(); // reset qian pressed-lines and drag state without clearing selection
           return; // don't run isBlankCanvasClick and don't clear selection
         }
 
