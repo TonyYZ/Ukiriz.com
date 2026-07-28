@@ -5247,6 +5247,7 @@
             const { canvas, container, zoom, scrollLeft, scrollTop, isChat, isCraft } =
               _zoomQueue.shift();
             canvas.style.zoom = `${zoom}`;
+            canvas.style.setProperty('--white-outline', `${Math.max(1, 1 / zoom)}px`);
             if (isCraft) applyCraftCanvasPadding(zoom);
             void container.scrollWidth; // force layout so scroll limits reflect new zoom
             _applyingZoom = true;
