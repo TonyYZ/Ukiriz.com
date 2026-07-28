@@ -6747,6 +6747,7 @@
                 // pixels, so applying them at a different zoom lands on the wrong content.
                 if (Number.isFinite(saved.zoom) && saved.zoom !== chatCanvasZoom) {
                   setCanvasZoom(canvas, saved.zoom);
+                  updateChatGridAlignment();
                 }
                 tab.scrollLeft = saved.scrollLeft;
                 tab.scrollTop = saved.scrollTop;
