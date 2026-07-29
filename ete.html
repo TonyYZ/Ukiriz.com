@@ -1105,7 +1105,7 @@
             return { type: 'series', children };
           }
           tryImplicitComplex(outerStops) {
-            if (this.base() === 'a' && !accents.has(this.peek())) return null;
+            if (this.base() === 'a') return null;
             const snapshot = this.snapshot();
             try {
               const first = this.compactBranch();
@@ -1291,7 +1291,7 @@
             if (compactSecond && this.peek() === 'ớ') this.takeVowel('ơ');
             while (this.base() === 'a') {
               this.componentContinuesBranch = true;
-              this.elementHasNeutralPrefix ||= !accents.has(this.peek());
+              this.elementHasNeutralPrefix = true;
               this.takeVowel('a');
             }
             const outgoing = this.base() === 'i' ? this.markers('i') : 0;
@@ -1675,22 +1675,22 @@
               index + 1 < children.length && children[index + 1].type !== 'parallel';
 
             if (previousIsPlain) {
-              if (!text.startsWith('e')) {
+              if (!text || !'eéèē'.includes(text[0])) {
                 throw new Error('A fuseau after a plain segment must begin with e');
               }
-              current += 'e';
+              current += text[0];
               segments.push(current);
               current = '';
               text = text.slice(1);
             }
 
             if (followingIsPlain) {
-              if (!text.endsWith('o')) {
+              if (!text || !'oóòō'.includes(text.at(-1))) {
                 throw new Error('A fuseau before a plain segment must end with o');
               }
               current += text.slice(0, -1);
               segments.push(current);
-              current = 'o';
+              current = text.at(-1);
             } else {
               current += text;
             }
@@ -1733,6 +1733,14 @@
           return rendered.join('');
         }
 
+        function orientedFirstElement(branch) {
+          return (
+            branch.children.length > 0 &&
+            branch.children[0].type === 'element' &&
+            Boolean(branch.children[0].orientation)
+          );
+        }
+
         function serializeParallel(
           node,
           markers,
@@ -1741,12 +1749,25 @@
           omitClosing = false,
         ) {
           if (node.branches.length < 2) throw new Error('A V2 fuseau needs at least two branches');
-          const compact = node.branches.map((branch, index) =>
-            serializeCompactSeries(branch, markers, index === 1),
-          );
           if (node.branches.length === 2) {
-            if (framed) return `e${compact[0]}${compact[1]}o`;
-            const left = serializeCompactSeries(node.branches[0], markers);
+            if (framed) {
+              const compact = node.branches.map((branch, index) =>
+                serializeCompactSeries(branch, markers, index === 1),
+              );
+              let opening = 'e';
+              if (orientedFirstElement(node.branches[0])) {
+                opening = 'é';
+                compact[0] = serializeCompactSeries(node.branches[0], markers, false, '');
+              }
+              return `${opening}${compact[0]}${compact[1]}o`;
+            }
+            const firstIsOriented = orientedFirstElement(node.branches[0]);
+            const left = serializeCompactSeries(
+              node.branches[0],
+              markers,
+              false,
+              firstIsOriented ? '' : null,
+            );
             const right = serializeCompactSeries(node.branches[1], markers, false, '');
             const rightFirst = node.branches[1].children[0];
             const marker = rightFirst.type === 'element' && rightFirst.orientation ? 'ớ' : 'ơ';
@@ -1756,10 +1777,15 @@
               fuseauBranchMarks.has(rightFirst.char);
             const leftStartsNested = node.branches[0].children[0]?.type === 'parallel';
             const rightEndsNested = node.branches[1].children.at(-1)?.type === 'parallel';
-            const opening = omitOpening && !leftStartsNested ? '' : 'e';
+            const mayOmitOpening = omitOpening && !leftStartsNested;
+            const opening =
+              mayOmitOpening && !firstIsOriented ? '' : firstIsOriented ? 'é' : 'e';
             const closing = omitClosing && !rightIsMark && !rightEndsNested ? '' : 'o';
             return `${opening}${left}${marker}${right}${closing}`;
           }
+          const compact = node.branches.map((branch, index) =>
+            serializeCompactSeries(branch, markers, index === 1),
+          );
           if (node.branches.length === 3) {
             const first = node.branches[0].children;
             if (
@@ -1772,7 +1798,16 @@
             const safelyCompact = node.branches.every((branch) =>
               branch.children.every((child) => child.type === 'element'),
             );
-            const opening = omitOpening && !framed && safelyCompact ? '' : 'e';
+            const firstIsOriented = orientedFirstElement(node.branches[0]);
+            if (firstIsOriented) {
+              compact[0] = serializeCompactSeries(node.branches[0], markers, false, '');
+            }
+            const opening =
+              omitOpening && !framed && safelyCompact && !firstIsOriented
+                ? ''
+                : firstIsOriented
+                  ? 'é'
+                  : 'e';
             const final = node.branches.at(-1).children;
             const finalIsMark =
               final.length === 1 &&
@@ -1783,11 +1818,16 @@
             return `${opening}${compact[0]}${compact[1]}o${compact[2]}${closing}`;
           }
           const branches = node.branches.map((branch) => serializeSeries(branch, markers, true));
+          let opening = 'e';
+          if (orientedFirstElement(node.branches[0]) && branches[0].startsWith('á')) {
+            opening = 'é';
+            branches[0] = branches[0].slice(1);
+          }
           const middle = branches
             .slice(1, -2)
             .map((branch) => `e${branch}o`)
             .join('');
-          return `e${branches[0]}${middle}` + `${branches.at(-2)}o${branches.at(-1)}o`;
+          return `${opening}${branches[0]}${middle}` + `${branches.at(-2)}o${branches.at(-1)}o`;
         }
 
         function serializeNode(node, markers) {
