@@ -9937,7 +9937,7 @@
         if (translationCache.has(key)) return translationCache.get(key);
 
         const promise = (async () => {
-          const response = await fetch('https://divinatory-conlang.zhouyt-tony2018.workers.dev/', {
+          const response = await fetch('https://hooks.ukiriz.com/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -11680,7 +11680,7 @@
         }
 
         try {
-          const response = await fetch('https://divinatory-conlang.zhouyt-tony2018.workers.dev/', {
+          const response = await fetch('https://hooks.ukiriz.com/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -14687,7 +14687,7 @@
       async function refreshQuotaBadge() {
         if (!currentUser?.uid) return;
         try {
-          const resp = await fetch('https://divinatory-conlang.zhouyt-tony2018.workers.dev/', {
+          const resp = await fetch('https://hooks.ukiriz.com/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type: 'quotaStatus', uid: currentUser.uid }),
@@ -14940,7 +14940,7 @@
 
           try {
             const response = await fetch(
-              'https://divinatory-conlang.zhouyt-tony2018.workers.dev/',
+              'https://hooks.ukiriz.com/',
               {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
