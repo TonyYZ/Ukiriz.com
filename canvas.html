@@ -2244,8 +2244,10 @@
           </p>
 
           <p class="home-credit-note">
-          <i>P.S.</i> Definition checks use LLM credits, so free use is limited to
-          <b>100 free credits/day</b>. Support through Ko-fi or Afdian adds permanent credits that do not expire.
+            <i>P.S.</i> Calling an LLM API consumes tokens, so free usage is limited to
+            <b>100 credits per day</b>.<br />
+            Creating a word costs 5 credits, while each translation costs 1 credit.<br />
+            Supporting me on Ko-fi or Afdian grants you permanent credits that never expire.
           </p>
           <br /><br />
         `,
@@ -2356,7 +2358,8 @@
                   </p>
 
                   <p class="home-credit-note">
-                  <i>P.S.</i> AI 检查会消耗额度，免费使用目前为每天 <b>100</b> 点。<br>
+                  <i>P.S.</i> 调用大语言模型会消耗词元，故免费使用每天提供 <b>100</b> 点。<br>
+                  单次造词消耗5点，翻译消耗1点。<br>
                   如果你愿意在 Ko-fi 或爱发电上支持我，可以获得永久额度。
                   </p>
                   <br /><br />
@@ -7335,13 +7338,15 @@
         // read-only browsing still works. User can retry via the toast button.
         await withTimeout(restoreAnonymousSession(), 12000).catch((e) => {
           console.warn('Auth timed out or failed — continuing offline:', e);
-          showConnectivityError('', () => withTimeout(restoreAnonymousSession(), 12000)
-            .then(() => {
-              document.getElementById('app-toast')?.remove();
-              assignUserColor().catch(console.error);
-              subscribeToWorldPresence();
-            })
-            .catch(console.warn));
+          showConnectivityError('', () =>
+            withTimeout(restoreAnonymousSession(), 12000)
+              .then(() => {
+                document.getElementById('app-toast')?.remove();
+                assignUserColor().catch(console.error);
+                subscribeToWorldPresence();
+              })
+              .catch(console.warn),
+          );
         });
 
         await assignUserColor().catch(console.error);
@@ -7537,7 +7542,9 @@
               worldPresenceUnsubscribe = null;
               _wpFailCount++;
               if (_wpFailCount < 3) {
-                setTimeout(() => { if (!worldPresenceUnsubscribe) subscribeToWorldPresence(); }, 4000);
+                setTimeout(() => {
+                  if (!worldPresenceUnsubscribe) subscribeToWorldPresence();
+                }, 4000);
               } else {
                 clearInterval(_wpPollTimer);
                 _wpPollTimer = setInterval(() => refreshWorldPresence(), 30000);
@@ -10711,7 +10718,7 @@
             : network.getSelectedNodes(); // array of node IDs
 
         if (selectedNodeIds.length === 0) {
-          alert('No node selected!');
+          showToast(currentLang === 'zh' ? '尚未选择节点！' : 'No node selected!');
           return;
         }
 
@@ -14931,7 +14938,7 @@
         submitButton.onclick = async function () {
           const t = I18N[currentLang];
           tutorialPrepareDefinitionRetry?.(definitionComponentId);
-          word = input.value;
+          word = input.value.trim();
 
           // Recalculate the molecule to incorporate the advanced vocabulary
 
@@ -14996,21 +15003,18 @@
           }
 
           try {
-            const response = await fetch(
-              'https://hooks.ukiriz.com/',
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  type: 'conlang',
-                  uid: currentUser?.uid || null,
-                  word,
-                  definition,
-                  justification,
-                  lang: currentLang,
-                }),
-              },
-            );
+            const response = await fetch('https://hooks.ukiriz.com/', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                type: 'conlang',
+                uid: currentUser?.uid || null,
+                word,
+                definition,
+                justification,
+                lang: currentLang,
+              }),
+            });
 
             const data = await response.json();
 
@@ -15837,7 +15841,8 @@
           if (target === active) continue;
           // Skip symbols on a different canvas (chat vs craft) — their style.left/top share
           // the same coordinate space but belong to separate containers, causing phantom snaps
-          if ((target.closest('#craftCanvas') || target.closest('#chatCanvas')) !== activeCanvas) continue;
+          if ((target.closest('#craftCanvas') || target.closest('#chatCanvas')) !== activeCanvas)
+            continue;
           // During group drag, ignore targets inside the dragged group
           if (groupDragActive && dragGroupSet && dragGroupSet.has(target)) continue;
 
