@@ -771,6 +771,7 @@
       let creationHistory = [];
       let selectedCreation = null;
       let lastConversationStateUrl = null;
+      let opacityRenderVersion = 0;
       let currentStatusKey = 'intro';
       let regionUnavailable = false;
       const sketchNameKey = 'picture-talk.sketch-name';
@@ -1116,6 +1117,7 @@
       canvas.addEventListener('pointerdown', async (e) => {
         e.preventDefault();
         if (drawing) finishDrawing(true);
+        beginUserTurn();
         const p = point(e);
         setStyle();
         if (tool === 'text') {
@@ -1223,6 +1225,7 @@
         (undo ? $('#undo') : $('#redo')).click();
       });
       $('#clear').onclick = () => {
+        beginUserTurn();
         ctx.clearRect(0, 0, 512, 512);
         commit();
       };
@@ -1244,6 +1247,7 @@
         if (!f) return;
         const img = new Image();
         img.onload = () => {
+          beginUserTurn();
           ctx.clearRect(0, 0, 512, 512);
           const scale = Math.min(512 / img.width, 512 / img.height);
           const w = img.width * scale,
@@ -1254,7 +1258,27 @@
         };
         img.src = URL.createObjectURL(f);
       };
-      $('#opacity').oninput = (e) => ($('#opacityValue').value = `${e.target.value}%`);
+      $('#opacity').oninput = async (event) => {
+        const alpha = Number(event.target.value) / 100;
+        $('#opacityValue').value = `${event.target.value}%`;
+        const entry = selectedCreation;
+        if (entry?.kind !== 'ai' || !entry.layerUrl) return;
+        const renderVersion = ++opacityRenderVersion;
+        const previousUrl = entry.canvasUrl;
+        const nextUrl = await composeAiTurn(entry, alpha);
+        if (renderVersion !== opacityRenderVersion || selectedCreation !== entry) return;
+        const nextImage = await loadImage(nextUrl);
+        if (renderVersion !== opacityRenderVersion || selectedCreation !== entry) return;
+        ctx.clearRect(0, 0, 512, 512);
+        ctx.drawImage(nextImage, 0, 0, 512, 512);
+        entry.alpha = alpha;
+        entry.canvasUrl = nextUrl;
+        entry.button.querySelector('img').src = nextUrl;
+        if (undoStack.at(-1) === previousUrl) undoStack[undoStack.length - 1] = nextUrl;
+        if (lastConversationStateUrl === previousUrl) lastConversationStateUrl = nextUrl;
+        redoStack = [];
+        syncButtons();
+      };
       $('#copy-uid').onclick = async () => {
         if (!uid) return;
         const value = `UID:${uid}`,
@@ -1290,6 +1314,12 @@
       function showCurrentCreation(entry) {
         if (!entry) return;
         selectedCreation = entry;
+        opacityRenderVersion++;
+        if (entry.kind === 'ai' && Number.isFinite(entry.alpha)) {
+          const opacity = Math.round(entry.alpha * 100);
+          $('#opacity').value = opacity;
+          $('#opacityValue').value = `${opacity}%`;
+        }
         if (entry.changeUrl) {
           $('#ai-layer').src = entry.changeUrl;
           $('#ai-layer').style.display = 'block';
@@ -1302,9 +1332,15 @@
         $('#latest-details').open = true;
       }
 
+      function beginUserTurn() {
+        selectedCreation = null;
+        opacityRenderVersion++;
+      }
+
       function showCreationForCanvas(url) {
         const entry = creationHistory.find((item) => item.canvasUrl === url);
         if (entry) showCurrentCreation(entry);
+        else beginUserTurn();
       }
 
       function addHistory(entry) {
@@ -1336,6 +1372,21 @@
           img.onerror = () => reject(new Error(I18N[currentLang].imageError));
           img.src = url;
         });
+      }
+      async function composeAiTurn(entry, alpha) {
+        const [base, layer] = await Promise.all([
+            entry.baseUrl ? loadImage(entry.baseUrl) : Promise.resolve(null),
+            loadImage(entry.layerUrl),
+          ]),
+          composite = document.createElement('canvas'),
+          compositeCtx = composite.getContext('2d');
+        composite.width = composite.height = 512;
+        if (base) compositeCtx.drawImage(base, 0, 0, 512, 512);
+        compositeCtx.save();
+        compositeCtx.globalAlpha = alpha;
+        compositeCtx.drawImage(layer, 0, 0, 512, 512);
+        compositeCtx.restore();
+        return composite.toDataURL('image/png');
       }
       async function makeDifferenceLayer(originalUrl, editedUrl) {
         const [original, edited] = await Promise.all([
@@ -1414,6 +1465,9 @@
         const replyEntry = addHistory({
           canvasUrl: after,
           changeUrl: replyLayerUrl,
+          baseUrl: mode === 'replacement' ? null : before,
+          layerUrl: replyLayerUrl,
+          alpha,
           label: t.aiReply,
           kind: 'ai',
           replyMedium,

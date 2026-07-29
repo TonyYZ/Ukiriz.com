@@ -4879,19 +4879,8 @@
         }
 
         if (!chatViewportBound) {
-          let _prevScrollLeft = 0,
-            _prevScrollTop = 0;
           document.getElementById('tab4')?.addEventListener('scroll', (e) => {
             const t = e.currentTarget;
-            const dL = t.scrollLeft - _prevScrollLeft,
-              dT = t.scrollTop - _prevScrollTop;
-            if (Math.abs(dL) > 200 || Math.abs(dT) > 200) {
-              console.warn(
-                `[tab4-scroll] LARGE JUMP: (${_prevScrollLeft},${_prevScrollTop}) → (${t.scrollLeft},${t.scrollTop}) delta=(${dL.toFixed(0)},${dT.toFixed(0)})`,
-              );
-            }
-            _prevScrollLeft = t.scrollLeft;
-            _prevScrollTop = t.scrollTop;
             if (!tabHeadersActivated[4]) return;
             rememberChatViewportState();
             saveChatViewportState();
@@ -6817,7 +6806,8 @@
       // Supabase is loaded via <script src="./supabase.min.js"> above (same-origin, no CDN).
       const { createClient } = window.supabase;
 
-      const SUPABASE_URL = 'https://hooks.ukiriz.com/supabase';
+      const SUPABASE_URL = 'https://gaeohwxktoknajikddai.supabase.co';
+      const SUPABASE_PROXY = 'https://hooks.ukiriz.com/supabase';
       const SUPABASE_ANON_KEY =
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhZW9od3hrdG9rbmFqaWtkZGFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5Njc0NTQsImV4cCI6MjEwMDU0MzQ1NH0.JYiefoxXFc9ANNELL-Ig5CZeKIfre8suZ-KV5r8uNgI';
       const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -6825,6 +6815,12 @@
           persistSession: true,
           autoRefreshToken: true,
           detectSessionInUrl: false,
+        },
+        global: {
+          // Route all HTTP calls (REST + auth) through the Cloudflare proxy so
+          // China users can reach Supabase. WebSocket (Realtime) connects directly
+          // because outbound WS from Cloudflare Workers free plan is unreliable.
+          fetch: (url, options) => fetch(url.replace(SUPABASE_URL, SUPABASE_PROXY), options),
         },
       });
 
@@ -7078,6 +7074,8 @@
       let currentRoomId = 'default'; // default room (or null)
       let currentPresenceIslandId = null;
       let worldPresenceUnsubscribe = null;
+      let _wpFailCount = 0;
+      let _wpPollTimer = 0;
       let worldPresenceHeartbeatId = 0;
       let currentWorldPresenceEntries = [];
       const WORLD_PRESENCE_STALE_MS = 90 * 1000;
@@ -7528,13 +7526,20 @@
             refreshWorldPresence(),
           )
           .subscribe((status) => {
-            if (status === 'CHANNEL_ERROR') {
+            if (status === 'SUBSCRIBED') {
+              _wpFailCount = 0;
+              clearInterval(_wpPollTimer);
+            } else if (status === 'CHANNEL_ERROR') {
               console.warn('World presence subscription failed');
               supabase.removeChannel(channel);
               worldPresenceUnsubscribe = null;
-              setTimeout(() => {
-                if (!worldPresenceUnsubscribe) subscribeToWorldPresence();
-              }, 4000);
+              _wpFailCount++;
+              if (_wpFailCount < 3) {
+                setTimeout(() => { if (!worldPresenceUnsubscribe) subscribeToWorldPresence(); }, 4000);
+              } else {
+                clearInterval(_wpPollTimer);
+                _wpPollTimer = setInterval(() => refreshWorldPresence(), 30000);
+              }
             }
           });
         worldPresenceUnsubscribe = () => supabase.removeChannel(channel);
@@ -7619,6 +7624,8 @@
       var pendingLocalChatSymbolsByNonce = new Map();
       var pendingLocalChatEmojisByNonce = new Map();
       var roomObjsUnsubscribe = null;
+      let _roomFailCount = 0;
+      let _roomPollTimer = 0;
       var roomSyncQueue = Promise.resolve();
       var pendingChatViewportRestoreRoomId = null;
       const pendingOpsBySymbolId = new Map();
@@ -8199,6 +8206,8 @@
           roomObjsUnsubscribe();
           roomObjsUnsubscribe = null;
         }
+        clearInterval(_roomPollTimer);
+        _roomFailCount = 0;
 
         pendingChatViewportRestoreRoomId = roomId;
         roomSyncQueue = Promise.resolve();
@@ -8229,13 +8238,24 @@
             },
           )
           .subscribe((status) => {
-            if (status === 'CHANNEL_ERROR') {
-              console.error('Room subscription failed');
+            if (status === 'SUBSCRIBED') {
+              _roomFailCount = 0;
+              clearInterval(_roomPollTimer);
+            } else if (status === 'CHANNEL_ERROR') {
+              console.warn('Room subscription failed');
               supabase.removeChannel(channel);
               roomObjsUnsubscribe = null;
-              setTimeout(() => {
-                if (!roomObjsUnsubscribe && currentRoomId) subscribeToRoom(currentRoomId);
-              }, 4000);
+              _roomFailCount++;
+              if (_roomFailCount < 3) {
+                setTimeout(() => {
+                  if (!roomObjsUnsubscribe && currentRoomId) subscribeToRoom(currentRoomId);
+                }, 4000);
+              } else {
+                clearInterval(_roomPollTimer);
+                _roomPollTimer = setInterval(() => {
+                  if (currentRoomId) refreshRoomSnapshot(currentRoomId).catch(() => {});
+                }, 30000);
+              }
             }
           });
         roomObjsUnsubscribe = () => supabase.removeChannel(channel);
