@@ -454,7 +454,7 @@
       </div>
       <div class="account-tools">
         <div id="quota-badge">Turns: --/--</div>
-        <button id="copy-uid" type="button" title="Copy your full Firebase UID">copy UID</button>
+        <button id="copy-uid" type="button" title="Copy your UID">copy UID</button>
         <a
           id="kofi-link"
           class="support-link"
@@ -607,26 +607,21 @@
         </div>
       </aside>
     </main>
+    <script src="./supabase.min.js"></script>
     <script type="module">
-      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-      import {
-        getAuth,
-        setPersistence,
-        browserLocalPersistence,
-        signInAnonymously,
-        onAuthStateChanged,
-      } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+      const { createClient } = window.supabase;
+      const SUPABASE_URL = 'https://gaeohwxktoknajikddai.supabase.co';
+      const SUPABASE_PROXY = 'https://hooks.ukiriz.com/supabase';
+      const SUPABASE_ANON_KEY =
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhZW9od3hrdG9rbmFqaWtkZGFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5Njc0NTQsImV4cCI6MjEwMDU0MzQ1NH0.JYiefoxXFc9ANNELL-Ig5CZeKIfre8suZ-KV5r8uNgI';
+      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+        global: {
+          fetch: (url, options) => fetch(url.replace(SUPABASE_URL, SUPABASE_PROXY), options),
+        },
+      });
 
       const API = 'https://picture-talk.zhouyt-tony2018.workers.dev/';
-      const firebaseConfig = {
-        apiKey: 'AIzaSyDcnYVyHx8ZgE_kKquLctcA3Q5LuSagZUE',
-        authDomain: 'divinatoryconlang.firebaseapp.com',
-        projectId: 'divinatoryconlang',
-        storageBucket: 'divinatoryconlang.firebasestorage.app',
-        messagingSenderId: '939674998709',
-        appId: '1:939674998709:web:bbf228a108e046c8006bfc',
-        measurementId: 'G-GLFVN6M297',
-      };
       const canvas = document.querySelector('#canvas');
       const ctx = canvas.getContext('2d');
       const $ = (s) => document.querySelector(s);
@@ -704,7 +699,7 @@
           identityError: 'Could not connect to your Ukiriz identity',
           editName: 'Edit sketch-space name',
           canvasLabel: 'Drawing canvas',
-          copyTitle: 'Copy your full Firebase UID',
+          copyTitle: 'Copy your UID',
         },
         zh: {
           pageTitle: '涂鸦笔谈',
@@ -773,7 +768,7 @@
           identityError: '无法连接到你的 Ukiriz 身份',
           editName: '编辑共享画布名称',
           canvasLabel: '绘图画布',
-          copyTitle: '复制完整的 Firebase UID',
+          copyTitle: '复制 UID',
         },
       };
       let uid = null;
@@ -889,35 +884,15 @@
         $('#submit').disabled = true;
         $('#copy-uid').disabled = true;
         $('#quota-badge').textContent = I18N[currentLang].connecting;
-        const auth = getAuth(initializeApp(firebaseConfig));
-        await setPersistence(auth, browserLocalPersistence);
-        const user = await new Promise((resolve, reject) => {
-          let signingIn = false;
-          const unsubscribe = onAuthStateChanged(
-            auth,
-            async (existingUser) => {
-              if (existingUser) {
-                unsubscribe();
-                resolve(existingUser);
-                return;
-              }
-              if (signingIn) return;
-              signingIn = true;
-              try {
-                const credential = await signInAnonymously(auth);
-                unsubscribe();
-                resolve(credential.user);
-              } catch (error) {
-                unsubscribe();
-                reject(error);
-              }
-            },
-            reject,
-          );
-        });
-        uid = user.uid;
+        const existing = await supabase.auth.getUser();
+        let user = existing.data?.user;
+        if (!user) {
+          const { data, error } = await supabase.auth.signInAnonymously();
+          if (error) throw error;
+          user = data.user;
+        }
+        uid = user.id;
         localStorage.setItem('anonymousUID', uid);
-        localStorage.removeItem('ukiriz.uid');
         $('#copy-uid').disabled = false;
         $('#copy-uid').textContent = I18N[currentLang].copyUid;
         await refreshQuota();
