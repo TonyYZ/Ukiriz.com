@@ -316,6 +316,10 @@
       input[type='range'] {
         width: 130px;
         accent-color: var(--pink-dark);
+        cursor: ew-resize;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-drag: none;
       }
       input[type='color'] {
         width: 34px;
@@ -368,6 +372,12 @@
         height: 100%;
         object-fit: cover;
         display: block;
+        user-select: none;
+        -webkit-user-drag: none;
+      }
+      #ai-layer {
+        user-select: none;
+        -webkit-user-drag: none;
       }
       details {
         margin-top: 10px;
@@ -578,6 +588,7 @@
               <img
                 id="ai-layer"
                 alt="Current creation"
+                draggable="false"
                 style="
                   display: none;
                   width: 100%;
@@ -769,9 +780,13 @@
       let currentLang = localStorage.getItem('lang') === 'zh' ? 'zh' : 'en';
       let lastQuotaData = null;
       let creationHistory = [];
+      let creationSequence = 0;
       let selectedCreation = null;
+      let activeStateId = null;
       let lastConversationStateUrl = null;
       let opacityRenderVersion = 0;
+      let pendingOpacityRender = null;
+      let opacityRenderRunning = false;
       let currentStatusKey = 'intro';
       let regionUnavailable = false;
       const sketchNameKey = 'picture-talk.sketch-name';
@@ -1237,9 +1252,16 @@
               .replace(/[\\/:*?"<>|]+/g, '-')
               .replace(/[. ]+$/g, '')
               .slice(0, 120) || 'picture-talk',
+          exportCanvas = document.createElement('canvas'),
           link = document.createElement('a');
+        exportCanvas.width = canvas.width;
+        exportCanvas.height = canvas.height;
+        const exportCtx = exportCanvas.getContext('2d');
+        exportCtx.fillStyle = '#fff';
+        exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+        exportCtx.drawImage(canvas, 0, 0);
         link.download = `${safeName}.png`;
-        link.href = canvasUrl();
+        link.href = exportCanvas.toDataURL('image/png');
         link.click();
       };
       $('#file').onchange = (e) => {
@@ -1258,27 +1280,61 @@
         };
         img.src = URL.createObjectURL(f);
       };
-      $('#opacity').oninput = async (event) => {
+      $('#opacity').oninput = (event) => {
         const alpha = Number(event.target.value) / 100;
         $('#opacityValue').value = `${event.target.value}%`;
         const entry = selectedCreation;
         if (entry?.kind !== 'ai' || !entry.layerUrl) return;
-        const renderVersion = ++opacityRenderVersion;
+        pendingOpacityRender = {
+          entry,
+          alpha,
+          renderVersion: ++opacityRenderVersion,
+        };
+        drainOpacityRenders();
+      };
+
+      async function drainOpacityRenders() {
+        if (opacityRenderRunning) return;
+        opacityRenderRunning = true;
+        try {
+          while (pendingOpacityRender) {
+            const request = pendingOpacityRender;
+            pendingOpacityRender = null;
+            await renderOpacity(request);
+          }
+        } finally {
+          opacityRenderRunning = false;
+          if (pendingOpacityRender) drainOpacityRenders();
+        }
+      }
+
+      async function renderOpacity({ entry, alpha, renderVersion }) {
+        if (renderVersion !== opacityRenderVersion || selectedCreation !== entry) return;
         const previousUrl = entry.canvasUrl;
         const nextUrl = await composeAiTurn(entry, alpha);
         if (renderVersion !== opacityRenderVersion || selectedCreation !== entry) return;
+        const rebuiltTurns = await rebuildLaterTurns(entry, nextUrl, renderVersion);
+        if (rebuiltTurns === null || selectedCreation !== entry) return;
         const nextImage = await loadImage(nextUrl);
         if (renderVersion !== opacityRenderVersion || selectedCreation !== entry) return;
         ctx.clearRect(0, 0, 512, 512);
         ctx.drawImage(nextImage, 0, 0, 512, 512);
+        const changedUrls = new Map([[previousUrl, nextUrl]]);
         entry.alpha = alpha;
         entry.canvasUrl = nextUrl;
         entry.button.querySelector('img').src = nextUrl;
-        if (undoStack.at(-1) === previousUrl) undoStack[undoStack.length - 1] = nextUrl;
-        if (lastConversationStateUrl === previousUrl) lastConversationStateUrl = nextUrl;
+        for (const rebuilt of rebuiltTurns) {
+          changedUrls.set(rebuilt.previousUrl, rebuilt.canvasUrl);
+          rebuilt.entry.baseUrl = rebuilt.baseUrl;
+          rebuilt.entry.canvasUrl = rebuilt.canvasUrl;
+          rebuilt.entry.button.querySelector('img').src = rebuilt.canvasUrl;
+        }
+        undoStack = undoStack.map((url) => changedUrls.get(url) || url);
+        lastConversationStateUrl =
+          changedUrls.get(lastConversationStateUrl) || lastConversationStateUrl;
         redoStack = [];
         syncButtons();
-      };
+      }
       $('#copy-uid').onclick = async () => {
         if (!uid) return;
         const value = `UID:${uid}`,
@@ -1314,6 +1370,7 @@
       function showCurrentCreation(entry) {
         if (!entry) return;
         selectedCreation = entry;
+        activeStateId = entry.id;
         opacityRenderVersion++;
         if (entry.kind === 'ai' && Number.isFinite(entry.alpha)) {
           const opacity = Math.round(entry.alpha * 100);
@@ -1344,9 +1401,11 @@
       }
 
       function addHistory(entry) {
+        entry.id ||= `creation-${++creationSequence}`;
         const b = document.createElement('button');
         b.title = entry.label;
         const img = new Image();
+        img.draggable = false;
         img.src = entry.canvasUrl;
         img.alt = entry.label;
         b.append(img);
@@ -1373,10 +1432,60 @@
           img.src = url;
         });
       }
-      async function composeAiTurn(entry, alpha) {
+      async function removeEdgeWhiteBackground(url) {
+        const img = await loadImage(url),
+          cleaned = document.createElement('canvas'),
+          cleanedCtx = cleaned.getContext('2d');
+        cleaned.width = cleaned.height = 512;
+        cleanedCtx.drawImage(img, 0, 0, 512, 512);
+        const pixels = cleanedCtx.getImageData(0, 0, 512, 512),
+          data = pixels.data,
+          visited = new Uint8Array(512 * 512),
+          queue = new Int32Array(512 * 512);
+        let head = 0,
+          tail = 0,
+          removed = 0;
+        const isEdgeWhite = (index) => {
+            const offset = index * 4;
+            return (
+              data[offset + 3] > 0 &&
+              data[offset] >= 246 &&
+              data[offset + 1] >= 246 &&
+              data[offset + 2] >= 246
+            );
+          },
+          enqueue = (index) => {
+            if (visited[index] || !isEdgeWhite(index)) return;
+            visited[index] = 1;
+            queue[tail++] = index;
+          };
+        for (let x = 0; x < 512; x++) {
+          enqueue(x);
+          enqueue(511 * 512 + x);
+        }
+        for (let y = 1; y < 511; y++) {
+          enqueue(y * 512);
+          enqueue(y * 512 + 511);
+        }
+        while (head < tail) {
+          const index = queue[head++],
+            x = index % 512,
+            y = Math.floor(index / 512);
+          data[index * 4 + 3] = 0;
+          removed++;
+          if (x > 0) enqueue(index - 1);
+          if (x < 511) enqueue(index + 1);
+          if (y > 0) enqueue(index - 512);
+          if (y < 511) enqueue(index + 512);
+        }
+        if (!removed) return url;
+        cleanedCtx.putImageData(pixels, 0, 0);
+        return cleaned.toDataURL('image/png');
+      }
+      async function composeLayer(baseUrl, layerUrl, alpha) {
         const [base, layer] = await Promise.all([
-            entry.baseUrl ? loadImage(entry.baseUrl) : Promise.resolve(null),
-            loadImage(entry.layerUrl),
+            baseUrl ? loadImage(baseUrl) : Promise.resolve(null),
+            loadImage(layerUrl),
           ]),
           composite = document.createElement('canvas'),
           compositeCtx = composite.getContext('2d');
@@ -1387,6 +1496,43 @@
         compositeCtx.drawImage(layer, 0, 0, 512, 512);
         compositeCtx.restore();
         return composite.toDataURL('image/png');
+      }
+      async function composeAiTurn(entry, alpha) {
+        return composeLayer(entry.baseUrl, entry.layerUrl, alpha);
+      }
+      async function rebuildLaterTurns(targetEntry, targetUrl, renderVersion) {
+        const targetIndex = creationHistory.indexOf(targetEntry);
+        if (targetIndex <= 0) return [];
+        const rebuilt = [];
+        const rebuiltCanvasByState = new Map([[targetEntry.id, targetUrl]]);
+        for (const entry of creationHistory.slice(0, targetIndex).reverse()) {
+          if (renderVersion !== opacityRenderVersion) return null;
+          if (!rebuiltCanvasByState.has(entry.parentId)) continue;
+          const parentCanvasUrl = rebuiltCanvasByState.get(entry.parentId);
+          const layerUrl = entry.layerUrl || entry.changeUrl;
+          if (!layerUrl) {
+            rebuiltCanvasByState.set(entry.id, parentCanvasUrl);
+            continue;
+          }
+          const replacement =
+              entry.kind === 'ai' &&
+              (entry.mode === 'replacement' ||
+                (!entry.mode && entry.baseUrl === null)),
+            baseUrl = replacement ? null : parentCanvasUrl,
+            alpha =
+              entry.kind === 'ai' && Number.isFinite(entry.alpha)
+                ? entry.alpha
+                : 1,
+            nextCanvasUrl = await composeLayer(baseUrl, layerUrl, alpha);
+          rebuilt.push({
+            entry,
+            previousUrl: entry.canvasUrl,
+            canvasUrl: nextCanvasUrl,
+            baseUrl,
+          });
+          rebuiltCanvasByState.set(entry.id, nextCanvasUrl);
+        }
+        return renderVersion === opacityRenderVersion ? rebuilt : null;
       }
       async function makeDifferenceLayer(originalUrl, editedUrl) {
         const [original, edited] = await Promise.all([
@@ -1432,6 +1578,7 @@
         const before = canvasUrl(),
           t = I18N[currentLang],
           baseline = lastConversationStateUrl || undoStack[0] || before,
+          branchParentId = activeStateId,
           userLayerUrl = await makeDifferenceLayer(baseline, before);
         let replyLayerUrl;
         if (mode === 'replacement') {
@@ -1443,10 +1590,11 @@
           ctx.restore();
           replyLayerUrl = editedUrl;
         } else {
-          const layerUrl =
+          const rawLayerUrl =
               replyMedium === 'svg'
                 ? editedUrl
                 : await makeDifferenceLayer(originalUrl, editedUrl),
+            layerUrl = await removeEdgeWhiteBackground(rawLayerUrl),
             layer = await loadImage(layerUrl);
           ctx.save();
           ctx.globalAlpha = alpha;
@@ -1455,9 +1603,13 @@
           replyLayerUrl = layerUrl;
         }
         const after = canvasUrl();
-        addHistory({
+        const userEntry = addHistory({
           canvasUrl: before,
           changeUrl: userLayerUrl,
+          baseUrl: baseline,
+          layerUrl: userLayerUrl,
+          alpha: 1,
+          parentId: branchParentId,
           label: t.yourTurn,
           kind: 'user',
           svg: null,
@@ -1468,6 +1620,8 @@
           baseUrl: mode === 'replacement' ? null : before,
           layerUrl: replyLayerUrl,
           alpha,
+          mode,
+          parentId: userEntry.id,
           label: t.aiReply,
           kind: 'ai',
           replyMedium,
