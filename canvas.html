@@ -8279,6 +8279,28 @@
         }
       });
 
+      // When network comes back, reset fail counters + poll timers so subscriptions
+      // fully retry instead of staying in degraded 30s-polling mode.
+      window.addEventListener('online', () => {
+        if (worldPresenceUnsubscribe) {
+          worldPresenceUnsubscribe();
+          worldPresenceUnsubscribe = null;
+        }
+        clearInterval(_wpPollTimer);
+        _wpFailCount = 0;
+        subscribeToWorldPresence();
+
+        if (currentRoomId) {
+          if (roomObjsUnsubscribe) {
+            roomObjsUnsubscribe();
+            roomObjsUnsubscribe = null;
+          }
+          clearInterval(_roomPollTimer);
+          _roomFailCount = 0;
+          subscribeToRoom(currentRoomId);
+        }
+      });
+
       // Function to Load emojis and symbols
       async function loadObj() {
         subscribeToRoom(currentRoomId);
