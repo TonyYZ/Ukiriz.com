@@ -2140,6 +2140,9 @@
       </div>
     </div>
 
+    <!-- Supabase bundled locally so it loads from the same origin as this page.
+         Avoids CDN failures in networks where cdn.jsdelivr.net is slow or blocked. -->
+    <script src="./supabase.min.js"></script>
     <script type="module">
       // --- i18n dictionary (minimal starter) ---
       // Annotation tether bookkeeping (initialized early to avoid TDZ during boot)
@@ -6811,8 +6814,8 @@
       let clickOnlyEmoji = null;
       let selectionClickHandled = false;
 
-      // Supabase handles auth, persistence, and realtime room sync.
-      import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+      // Supabase is loaded via <script src="./supabase.min.js"> above (same-origin, no CDN).
+      const { createClient } = window.supabase;
 
       const SUPABASE_URL = 'https://gaeohwxktoknajikddai.supabase.co';
       const SUPABASE_ANON_KEY =
@@ -7327,15 +7330,19 @@
         // ✅ set language early so error messages are bilingual
         currentLang = localStorage.getItem('lang') || 'en';
 
-        const authOk = await withTimeout(restoreAnonymousSession(), 10000)
-          .then(() => true)
-          .catch((e) => {
-            console.warn('Auth timed out or failed:', e);
-            showConnectivityError('', () => boot());
-            return false;
-          });
-
-        if (!authOk) return;
+        // Auth is best-effort: if Supabase is slow or blocked (e.g. in mainland China),
+        // continue loading the page with currentUser=null. Write features silently no-op;
+        // read-only browsing still works. User can retry via the toast button.
+        await withTimeout(restoreAnonymousSession(), 12000).catch((e) => {
+          console.warn('Auth timed out or failed — continuing offline:', e);
+          showConnectivityError('', () => withTimeout(restoreAnonymousSession(), 12000)
+            .then(() => {
+              document.getElementById('app-toast')?.remove();
+              assignUserColor().catch(console.error);
+              subscribeToWorldPresence();
+            })
+            .catch(console.warn));
+        });
 
         await assignUserColor().catch(console.error);
         subscribeToWorldPresence();
