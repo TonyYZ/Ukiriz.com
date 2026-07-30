@@ -7,7 +7,7 @@
   'use strict';
 
   const IPA_READER = 'https://ipa-reader.com/';
-  const IPA_READER_VOICE = 'Zeina';
+  const IPA_READER_VOICE = 'Filiz';
   const VOWELS = Object.freeze({
     a: vowel('a', 33),
     á: vowel('a', 55),
