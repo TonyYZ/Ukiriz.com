@@ -2487,6 +2487,7 @@
       let tutorialSnapshots = new Map(); // stepIndex -> snapshot
       let tutorialLevel = 1;
       let tutorialLevel2SeenConnections = { serial: false, parallel: false };
+      let tutorialLevel2LongpressSymbols = null; // saved when step 2-6 long-press completes
       let tutorialLevel1ToolClicks = { rotate: false, dot: false };
       let tutorialLevel3DefinedGroups = { cold: null, food: null, icecream: null };
       let tutorialCompletedStep = null;
@@ -2501,6 +2502,9 @@
         if (tutorialLevel === 1) {
           if (name === 'craft_rotate') tutorialLevel1ToolClicks.rotate = true;
           if (name === 'craft_dot') tutorialLevel1ToolClicks.dot = true;
+        }
+        if (name === 'craft_longpress' && tutorialLevel === 2) {
+          tutorialLevel2LongpressSymbols = new Set(getCraftSelectedSymbols());
         }
         tutorialEvents.add(String(name));
         tutorialMaybeAdvance();
@@ -2527,6 +2531,7 @@
             return;
           }
           consumeTutorialEvent(step.advanceOnEvent);
+          step.onEventBlocked?.();
         }
         if (typeof step.advanceWhen === 'function') {
           try {
@@ -2612,6 +2617,13 @@
         }
         if (step.requireCraftInsightOn) {
           if (!eyeButton?.isActivated) return false;
+        }
+        if (step.requireMarqueeMatchesLongpress && tutorialLevel2LongpressSymbols?.size) {
+          const current = new Set(getCraftSelectedSymbols());
+          if (current.size !== tutorialLevel2LongpressSymbols.size) return false;
+          for (const sym of tutorialLevel2LongpressSymbols) {
+            if (!current.has(sym)) return false;
+          }
         }
         return true;
       }
@@ -3557,6 +3569,13 @@
             allowedTabs: [1],
             bubblePlacement: 'bottom',
             advanceOnEvent: 'craft_marquee_select',
+            requireMarqueeMatchesLongpress: true,
+            onEventBlocked: () => {
+              tutorialShowNudge(
+                "That's not the same group — try again. Drag a box that covers the same connected symbols you selected with long-press.",
+                '这不是同一个符号组，请再试一次。拖出一个框，覆盖上一步长按时选中的那些符号。',
+              );
+            },
           },
           {
             tab: 1,
@@ -3868,6 +3887,7 @@
         if (tutorialStepIndex >= 0 && !forceRestart) return;
         tutorialLevel = Number(level) === 2 ? 2 : Number(level) === 3 ? 3 : 1;
         tutorialLevel2SeenConnections = { serial: false, parallel: false };
+        tutorialLevel2LongpressSymbols = null;
         tutorialLevel1ToolClicks = { rotate: false, dot: false };
         tutorialLevel3DefinedGroups = { cold: null, food: null, icecream: null };
         tutorialCompletedStep = null;
@@ -4955,18 +4975,27 @@
       // Capture-phase listener that routes clicks to definition-form buttons by their
       // actual rendered rect (getBoundingClientRect accounts for CSS zoom correctly),
       // bypassing the broken z-index hit-testing caused by the canvas's CSS zoom.
-      craftCanvas().addEventListener('pointerdown', (e) => {
-        const buttons = craftCanvas().querySelectorAll('.submit-button.removable');
-        if (!buttons.length) return;
-        for (const btn of buttons) {
-          const r = btn.getBoundingClientRect();
-          if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
-            e.stopImmediatePropagation();
-            btn.click();
-            return;
+      craftCanvas().addEventListener(
+        'pointerdown',
+        (e) => {
+          const buttons = craftCanvas().querySelectorAll('.submit-button.removable');
+          if (!buttons.length) return;
+          for (const btn of buttons) {
+            const r = btn.getBoundingClientRect();
+            if (
+              e.clientX >= r.left &&
+              e.clientX <= r.right &&
+              e.clientY >= r.top &&
+              e.clientY <= r.bottom
+            ) {
+              e.stopImmediatePropagation();
+              btn.click();
+              return;
+            }
           }
-        }
-      }, true);
+        },
+        true,
+      );
 
       tab1?.addEventListener('scroll', () => {
         if (!tabHeadersActivated?.[1]) return;
@@ -8073,7 +8102,7 @@
           symbol.style.left = `${data.x}px`;
           symbol.style.top = `${data.y}px`;
           symbol.angle = content.angle ?? 0;
-          symbol.style.transform = `rotate(${symbol.angle}deg)`;
+          symbol.style.transform = getSymbolTransform(symbol.elemId, symbol.angle);
           dyeColor(symbol, content.color ?? '');
         }
 
@@ -9166,6 +9195,17 @@
         }
       }
 
+      // Kun (elemId=0) has 4 visually distinct forms: 0°=default, 90°=rotated,
+      // 180°=scaleY(-1) (vertical mirror of 0°), 270°=scaleX(-1) rotate(90deg)
+      // (horizontal mirror of 90°). Other symbols just use rotate(angle).
+      function getSymbolTransform(elemId, angle) {
+        if (elemId === 0) {
+          if (angle === 180) return 'scaleY(-1)';
+          if (angle === 270) return 'scaleX(-1) rotate(90deg)';
+        }
+        return `rotate(${angle}deg)`;
+      }
+
       function applySymbolRotationLocal(symbol, addAngle) {
         symbol.angle = (symbol.angle + addAngle) % 360;
         if (symbol.elemId === 1) {
@@ -9206,7 +9246,7 @@
           }
         }
 
-        symbol.style.transform = `rotate(${symbol.angle}deg)`;
+        symbol.style.transform = getSymbolTransform(symbol.elemId, symbol.angle);
         dyeColor(symbol, symbol.color);
       }
 
@@ -9720,13 +9760,19 @@
               updateDotPositionLocal(dot);
               appendToChatCanvas(dot);
 
-              if (eyeButton2.isActivated) { forceFreshInspectionLabels = true; refreshChatInspectionOverlays(); }
+              if (eyeButton2.isActivated) {
+                forceFreshInspectionLabels = true;
+                refreshChatInspectionOverlays();
+              }
               await persistDotPosition(dot);
             } else {
               selectedSymbol.dot?.remove();
               selectedSymbol.dot = null;
 
-              if (eyeButton2.isActivated) { forceFreshInspectionLabels = true; refreshChatInspectionOverlays(); }
+              if (eyeButton2.isActivated) {
+                forceFreshInspectionLabels = true;
+                refreshChatInspectionOverlays();
+              }
               if (tabHeadersActivated[4]) {
                 await updateRoomObj(selectedSymbol.dataset.id, {
                   'content.dotX': null,
@@ -10699,7 +10745,10 @@
           }
 
           // Full refresh immediately after local removals — don't wait for network delete.
-          if (eyeButton2.isActivated) { forceFreshInspectionLabels = true; refreshChatInspectionOverlays(); }
+          if (eyeButton2.isActivated) {
+            forceFreshInspectionLabels = true;
+            refreshChatInspectionOverlays();
+          }
         }
 
         // ----- Emojis: delete only mine -----
@@ -14827,9 +14876,9 @@
             const dw = (W - size.width) / 2;
             const dh = (H - size.height) / 2;
             const right = (parseFloat(s.style.left) || 0) + dw + size.width;
-            const top   = (parseFloat(s.style.top)  || 0) + dh;
+            const top = (parseFloat(s.style.top) || 0) + dh;
             if (right > rightMost) rightMost = right;
-            if (top   < topMost)   topMost   = top;
+            if (top < topMost) topMost = top;
           }
 
           return { canvas, rightMost, topMost };
@@ -14880,7 +14929,6 @@
         if (!bounds) return;
 
         const { canvas, rightMost, topMost } = bounds;
-
 
         const input = document.createElement('input');
         input.classList.add('label-input', 'removable');
@@ -15477,7 +15525,7 @@
         } // otherwise, newly created in the craft interface
 
         if (symbolAngle !== null) {
-          symbol.style.transform = `rotate(${symbolAngle}deg)`;
+          symbol.style.transform = getSymbolTransform(symbol.elemId, symbolAngle);
         }
         symbol.dot = null;
 
@@ -16249,14 +16297,39 @@
             { x: left + relJunctions[3].x * ss, y: top + relJunctions[3].y * ss },
           ];
         } else if (symbol.angle === 180) {
-          const right = left + symbolWidth * ss;
-          const bottom = top + symbolHeight * ss;
-          absJunctions = [
-            { x: right - relJunctions[1].x * ss, y: bottom - relJunctions[1].y * ss - calInvY },
-            { x: right - relJunctions[0].x * ss, y: bottom - relJunctions[0].y * ss - calInvY },
-            { x: right - relJunctions[3].x * ss, y: bottom - relJunctions[3].y * ss },
-            { x: right - relJunctions[2].x * ss, y: bottom - relJunctions[2].y * ss },
-          ];
+          if (symbol.elemId === 0) {
+            // Kun 180° is scaleY(-1): x stays, y flips about horizontal center.
+            // Subtract kunBarH (bar height in CSS-px unscaled = 2.56 SVG units × 67/21.44 ≈ 8)
+            // to shift junctions to the visual outer edge of each bar after the flip.
+            const kunBarH = 8;
+            absJunctions = [
+              {
+                x: left + relJunctions[0].x * ss,
+                y: top + (symbolHeight - relJunctions[0].y - kunBarH) * ss,
+              },
+              {
+                x: left + relJunctions[1].x * ss,
+                y: top + (symbolHeight - relJunctions[1].y - kunBarH) * ss,
+              },
+              {
+                x: left + relJunctions[2].x * ss,
+                y: top + (symbolHeight - relJunctions[2].y - kunBarH) * ss,
+              },
+              {
+                x: left + relJunctions[3].x * ss,
+                y: top + (symbolHeight - relJunctions[3].y - kunBarH) * ss,
+              },
+            ];
+          } else {
+            const right = left + symbolWidth * ss;
+            const bottom = top + symbolHeight * ss;
+            absJunctions = [
+              { x: right - relJunctions[1].x * ss, y: bottom - relJunctions[1].y * ss - calInvY },
+              { x: right - relJunctions[0].x * ss, y: bottom - relJunctions[0].y * ss - calInvY },
+              { x: right - relJunctions[3].x * ss, y: bottom - relJunctions[3].y * ss },
+              { x: right - relJunctions[2].x * ss, y: bottom - relJunctions[2].y * ss },
+            ];
+          }
         } else if (symbol.angle === 90) {
           // At 90° CW: visual_right = CSS_cx + CSS_height/2, visual_top = CSS_cy - CSS_width/2.
           const vR = left + ((symbolWidth + symbolHeight) * ss) / 2;
@@ -16269,15 +16342,30 @@
           ];
         } else {
           // angle === 270
-          // At 270° CW: visual_left = CSS_cx - CSS_height/2, visual_bottom = CSS_cy + CSS_width/2.
-          const vL = left + ((symbolWidth - symbolHeight) * ss) / 2;
-          const vB = top + ((symbolWidth + symbolHeight) * ss) / 2;
-          absJunctions = [
-            { x: vL + relJunctions[1].y * ss + calInvY, y: vB - relJunctions[1].x * ss },
-            { x: vL + relJunctions[0].y * ss + calInvY, y: vB - relJunctions[0].x * ss },
-            { x: vL + relJunctions[2].y * ss, y: vB - relJunctions[2].x * ss },
-            { x: vL + relJunctions[3].y * ss, y: vB - relJunctions[3].x * ss },
-          ];
+          if (symbol.elemId === 0) {
+            // Kun 270° is scaleX(-1) rotate(90deg): horizontal mirror of the 90° form.
+            // x flips about CSS center_x → vL + relJ.y * ss; y same as 90° → vT + relJ.x * ss.
+            // Add kunBarH to relJ.y before scaling to shift junctions to the visual outer edge.
+            const kunBarH = 8;
+            const vL = left + ((symbolWidth - symbolHeight) * ss) / 2;
+            const vT = top + ((symbolHeight - symbolWidth) * ss) / 2;
+            absJunctions = [
+              { x: vL + (relJunctions[0].y + kunBarH) * ss, y: vT + relJunctions[0].x * ss },
+              { x: vL + (relJunctions[1].y + kunBarH) * ss, y: vT + relJunctions[1].x * ss },
+              { x: vL + (relJunctions[3].y + kunBarH) * ss, y: vT + relJunctions[3].x * ss },
+              { x: vL + (relJunctions[2].y + kunBarH) * ss, y: vT + relJunctions[2].x * ss },
+            ];
+          } else {
+            // At 270° CW: visual_left = CSS_cx - CSS_height/2, visual_bottom = CSS_cy + CSS_width/2.
+            const vL = left + ((symbolWidth - symbolHeight) * ss) / 2;
+            const vB = top + ((symbolWidth + symbolHeight) * ss) / 2;
+            absJunctions = [
+              { x: vL + relJunctions[1].y * ss + calInvY, y: vB - relJunctions[1].x * ss },
+              { x: vL + relJunctions[0].y * ss + calInvY, y: vB - relJunctions[0].x * ss },
+              { x: vL + relJunctions[2].y * ss, y: vB - relJunctions[2].x * ss },
+              { x: vL + relJunctions[3].y * ss, y: vB - relJunctions[3].x * ss },
+            ];
+          }
         }
 
         if (symbol.elemId === 2) {
