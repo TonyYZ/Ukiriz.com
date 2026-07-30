@@ -1060,11 +1060,11 @@
         position: fixed;
         display: none;
         min-width: 138px;
-        padding: 6px;
+        padding: 3px;
         border: 2px solid #000;
-        border-radius: 12px;
+        border-radius: 4px;
         background: rgba(255, 255, 255, 0.98);
-        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
         z-index: 300000;
       }
 
@@ -1075,11 +1075,12 @@
       .canvas-context-menu button {
         width: 100%;
         border: none;
-        border-radius: 8px;
+        border-radius: 2px;
         background: transparent;
-        padding: 9px 12px;
+        padding: 9px 14px;
         text-align: left;
-        font: inherit;
+        font-size: 15px;
+        font-family: inherit;
         color: #111;
         cursor: pointer;
       }
@@ -4950,6 +4951,23 @@
       const craftControls = () => document.getElementById('craftControls');
       bindCanvasContextMenu(chatCanvas());
       bindCanvasContextMenu(craftCanvas());
+
+      // Capture-phase listener that routes clicks to definition-form buttons by their
+      // actual rendered rect (getBoundingClientRect accounts for CSS zoom correctly),
+      // bypassing the broken z-index hit-testing caused by the canvas's CSS zoom.
+      craftCanvas().addEventListener('pointerdown', (e) => {
+        const buttons = craftCanvas().querySelectorAll('.submit-button.removable');
+        if (!buttons.length) return;
+        for (const btn of buttons) {
+          const r = btn.getBoundingClientRect();
+          if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+            e.stopImmediatePropagation();
+            btn.click();
+            return;
+          }
+        }
+      }, true);
+
       tab1?.addEventListener('scroll', () => {
         if (!tabHeadersActivated?.[1]) return;
         updateCraftGridAlignment();
@@ -8803,12 +8821,9 @@
         function nodeMatch(si, pi) {
           const s = sel[si];
           const p = pattern.nodes[pi];
-          return (
-            s &&
-            s.elemIdTrue === p.elemIdTrue &&
-            !!s.isDynamic === !!p.isDynamic &&
-            s.angle === p.angle
-          );
+          if (!s || s.elemIdTrue !== p.elemIdTrue || !!s.isDynamic !== !!p.isDynamic) return false;
+          // Accept the mirror angle (0↔180, 90↔270) — both stay in the same direction.
+          return s.angle === p.angle || s.angle === (p.angle + 180) % 360;
         }
 
         function backtrack(pi) {
@@ -9547,7 +9562,11 @@
         dragGroupSet = null;
         pendingSnapDelta = null;
         resetPendingSnapState();
-
+        // Full refresh after local state settled, before network persistence.
+        if (inChat && eyeButton2?.isActivated) {
+          forceFreshInspectionLabels = true;
+          refreshChatInspectionOverlays();
+        }
         if (inChat) {
           for (const symbol of group) {
             await persistSymbolVisualState(symbol, true);
@@ -9575,7 +9594,11 @@
         await reconcileSymbolConnectivityAfterTurn(symbol, inChat);
         await new Promise((resolve) => requestAnimationFrame(resolve));
         await reconcileSymbolConnectivityAfterTurn(symbol, inChat);
-
+        // Full refresh after local state settled, before network persistence.
+        if (inChat && eyeButton2?.isActivated) {
+          forceFreshInspectionLabels = true;
+          refreshChatInspectionOverlays();
+        }
         if (inChat) {
           await persistSymbolVisualState(symbol, true);
           await syncSymbolLinksRemote(symbol, previousSnapshot);
@@ -9630,11 +9653,6 @@
               await rotateSymbol(selectedSymbol, 90, true);
             }
           }
-        }
-
-        if (eyeButton2.isActivated) {
-          forceFreshInspectionLabels = true;
-          refreshChatInspectionOverlays();
         }
       });
       appendToChatControls(turnButton2);
@@ -9702,24 +9720,21 @@
               updateDotPositionLocal(dot);
               appendToChatCanvas(dot);
 
+              if (eyeButton2.isActivated) { forceFreshInspectionLabels = true; refreshChatInspectionOverlays(); }
               await persistDotPosition(dot);
             } else {
+              selectedSymbol.dot?.remove();
+              selectedSymbol.dot = null;
+
+              if (eyeButton2.isActivated) { forceFreshInspectionLabels = true; refreshChatInspectionOverlays(); }
               if (tabHeadersActivated[4]) {
                 await updateRoomObj(selectedSymbol.dataset.id, {
                   'content.dotX': null,
                   'content.dotY': null,
                 });
               }
-
-              selectedSymbol.dot?.remove();
-              selectedSymbol.dot = null;
             }
           }
-        }
-
-        if (eyeButton2.isActivated) {
-          forceFreshInspectionLabels = true;
-          refreshChatInspectionOverlays();
         }
       });
       appendToChatControls(dotButton2);
@@ -10273,12 +10288,27 @@
                 break;
               }
             }
-            if (all) {
+            if (all && !wanted.has(gid)) {
               const first = Array.from(grp)[0];
+              const storedWord = String(first?.dataset?.exprWord || '').trim();
+
+              // Re-validate the group's current configuration against the library
+              // pattern for this word. Rotation or dot changes may have invalidated
+              // the original match. If the word isn't in the local library (cross-user
+              // expression), we skip revalidation and keep the card visible.
+              const libraryEntry = storedWord ? library.get(storedWord) : null;
+              if (libraryEntry) {
+                const [, storedGraph] = libraryEntry;
+                const stillMatches =
+                  storedGraph?.nodes?.length === grp.size &&
+                  !!matchPatternOnSelection(grp, storedGraph);
+                if (!stillMatches) continue;
+              }
+
               wanted.set(gid, {
                 key: gid,
                 group: grp,
-                word: String(first?.dataset?.exprWord || '').trim(),
+                word: storedWord,
                 why: String(first?.dataset?.exprWhy || '').trim(),
                 exprLang: String(first?.dataset?.exprLang || '').trim(),
                 nodeId: String(first?.dataset?.exprNodeId || ''),
@@ -10667,6 +10697,9 @@
             // Remove via helper so expressionGroups + graph + selection stay consistent.
             removeChatSymbolElement(selectedSymbol);
           }
+
+          // Full refresh immediately after local removals — don't wait for network delete.
+          if (eyeButton2.isActivated) { forceFreshInspectionLabels = true; refreshChatInspectionOverlays(); }
         }
 
         // ----- Emojis: delete only mine -----
@@ -11228,16 +11261,20 @@
       }
 
       function getSymbolRectOnCanvas(symbol) {
-        const left = parseFloat(symbol.style.left) || 0;
-        const top = parseFloat(symbol.style.top) || 0;
-        const fallback = getSymbolBoxSizeForAngle(symbol.angle ?? 0);
-        const width = symbol.offsetWidth || fallback.width || 0;
-        const height = symbol.offsetHeight || fallback.height || 0;
+        const cssLeft = parseFloat(symbol.style.left) || 0;
+        const cssTop = parseFloat(symbol.style.top) || 0;
+        // CSS rotation (transform: rotate) happens around the element center, so the
+        // visual box shifts relative to the CSS box when dimensions swap (90°/270°).
+        const size = getSymbolBoxSizeForAngle(symbol.angle ?? 0);
+        const W = symbolWidth * symbolScale;
+        const H = symbolHeight * symbolScale;
+        const dw = (W - size.width) / 2;
+        const dh = (H - size.height) / 2;
         return {
-          left,
-          top,
-          right: left + width,
-          bottom: top + height,
+          left: cssLeft + dw,
+          top: cssTop + dh,
+          right: cssLeft + dw + size.width,
+          bottom: cssTop + dh + size.height,
         };
       }
 
@@ -14783,11 +14820,16 @@
           let rightMost = -Infinity;
           let topMost = Infinity;
 
+          const W = symbolWidth * symbolScale;
+          const H = symbolHeight * symbolScale;
           for (const s of componentSymbols) {
-            const right = (parseFloat(s.style.left) || 0) + s.offsetWidth;
-            const top = parseFloat(s.style.top) || 0;
+            const size = getSymbolBoxSizeForAngle(s.angle ?? 0);
+            const dw = (W - size.width) / 2;
+            const dh = (H - size.height) / 2;
+            const right = (parseFloat(s.style.left) || 0) + dw + size.width;
+            const top   = (parseFloat(s.style.top)  || 0) + dh;
             if (right > rightMost) rightMost = right;
-            if (top < topMost) topMost = top;
+            if (top   < topMost)   topMost   = top;
           }
 
           return { canvas, rightMost, topMost };
@@ -14838,6 +14880,7 @@
         if (!bounds) return;
 
         const { canvas, rightMost, topMost } = bounds;
+
 
         const input = document.createElement('input');
         input.classList.add('label-input', 'removable');
@@ -17897,6 +17940,8 @@
         canvasContextMenuTarget = config;
         const copyButton = menu.querySelector('[data-action="copy"]');
         const pasteButton = menu.querySelector('[data-action="paste"]');
+        if (copyButton) copyButton.textContent = currentLang === 'zh' ? '复制' : 'Copy';
+        if (pasteButton) pasteButton.textContent = currentLang === 'zh' ? '粘贴' : 'Paste';
         if (copyButton) copyButton.style.display = config?.canCopy ? '' : 'none';
         if (pasteButton) {
           pasteButton.style.display =
