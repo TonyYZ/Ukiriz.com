@@ -3196,6 +3196,53 @@
           return widths.slice(0, ordered.length);
         }
 
+        function planFuseau(node, currentDirection, dimensions = 2) {
+          const direction =
+            dimensions === 3
+              ? chooseFuseauDirection3D(node, currentDirection)
+              : chooseFuseauDirection(node, currentDirection);
+          const measured = node.branches.map((branch, index) => ({
+            branch,
+            index,
+            length: projectedLength(branch, direction),
+            width: projectedWidth(branch, direction),
+          }));
+          const stemIndex = chooseFuseauStemIndex(
+            node,
+            direction,
+            measured.map((entry) => entry.length),
+          );
+          if (stemIndex < 0) {
+            throw new ParseError('A fuseau needs at least one non-chevron branch for its stem');
+          }
+          const stem = measured[stemIndex];
+          const ordered = [
+            stem,
+            ...measured
+              .filter((entry) => entry.index !== stemIndex)
+              .sort((left, right) => right.length - left.length || left.index - right.index),
+          ];
+          return {
+            direction,
+            stem,
+            ordered,
+            widths: allocateFuseauWidths(ordered, direction),
+          };
+        }
+
+        function fuseauBranchOffset(widths, stemLength, branchLength, drawIndex) {
+          let lateral = 0;
+          if (drawIndex) {
+            for (let index = drawIndex % 2; index <= drawIndex; index += 2) {
+              lateral += widths[index] || 0;
+            }
+          }
+          return {
+            lateral,
+            longitudinal: Math.max(0, (stemLength - branchLength) / 2),
+          };
+        }
+
         function boxExtentFromOrigin(box, origin, vector) {
           const corners = [
             { x: box.x, y: box.y },
@@ -3332,30 +3379,12 @@
           // y/w chevrons are side-only, even if they occur first or tie for
           // greatest length. Remaining branches retain the ordinary
           // length/source ordering and alternate sides.
-          const direction = chooseFuseauDirection(node, state.direction);
-          const measured = node.branches.map((branch, index) => ({
-            branch,
-            index,
-            length: projectedLength(branch, direction),
-            width: projectedWidth(branch, direction),
-          }));
-          const stemIndex = chooseFuseauStemIndex(
+          const { direction, stem, ordered, widths } = planFuseau(
             node,
-            direction,
-            measured.map((entry) => entry.length),
+            state.direction,
+            2,
           );
-          if (stemIndex < 0) {
-            throw new ParseError('A fuseau needs at least one non-chevron branch for its stem');
-          }
-          const stem = measured[stemIndex];
-          const ordered = [
-            stem,
-            ...measured
-              .filter((entry) => entry.index !== stemIndex)
-              .sort((a, b) => b.length - a.length || a.index - b.index),
-          ];
           const origin = { x: turtle.x, y: turtle.y };
-          const widths = allocateFuseauWidths(ordered, direction);
           let side = 1;
           let stemEnd = origin;
 
@@ -3365,13 +3394,16 @@
             turtle.goto(origin.x, origin.y);
             calibrate(turtle, direction, state.normalDir);
             if (drawIndex) {
-              let lastStep = 0;
-              for (let index = drawIndex % 2; index <= drawIndex; index += 2)
-                lastStep += widths[index] || 0;
+              const offset = fuseauBranchOffset(
+                widths,
+                stem.length,
+                entry.length,
+                drawIndex,
+              );
               turtle.right(90 * branchSide);
-              turtle.forward(lastStep);
+              turtle.forward(offset.lateral);
               turtle.left(90 * branchSide);
-              turtle.forward(Math.max(0, (stem.length - entry.length) / 2));
+              turtle.forward(offset.longitudinal);
             }
             turtle.pendown();
             const branchState = {
@@ -3834,6 +3866,9 @@
             a.x * b.y - a.y * b.x,
           );
         }
+        function dot3(a, b) {
+          return a.x * b.x + a.y * b.y + a.z * b.z;
+        }
         function glyphBasis3D(orientation = 0) {
           const basis = GLYPH_PLANES_3D[orientation] || GLYPH_PLANES_3D[0];
           return {
@@ -3924,6 +3959,238 @@
             );
           }
           add3dFace([...headRing].reverse(), '#080808');
+        }
+
+        function tubeRadius3D(command) {
+          return (
+            (command.role === 'gate' ? 1.55 : 2.6) *
+            (command.width || 1) /
+            2
+          );
+        }
+
+        function tubeFrameNormal3D(tangent, previous = null) {
+          if (previous) {
+            const transported = subtract3(
+              previous,
+              scale3(tangent, dot3(previous, tangent)),
+            );
+            if (length3(transported) > 0.001) return normalize3(transported);
+          }
+          const reference = Math.abs(tangent.z) < 0.82 ? AXES_3D[2] : AXES_3D[1];
+          return normalize3(cross3(tangent, reference));
+        }
+
+        function tubeMesh3D(points, radius, closed = false, sides = 10) {
+          const path = points.filter(
+            (point, index) =>
+              !index || length3(subtract3(point, points[index - 1])) > 0.0001,
+          );
+          if (
+            closed &&
+            path.length > 2 &&
+            length3(subtract3(path[0], path[path.length - 1])) < 0.0001
+          ) {
+            path.pop();
+          }
+          if (path.length < 2) return [];
+
+          const tangents = path.map((point, index) => {
+            if (closed) {
+              const previous = path[(index - 1 + path.length) % path.length];
+              const next = path[(index + 1) % path.length];
+              return normalize3(subtract3(next, previous));
+            }
+            if (!index) return normalize3(subtract3(path[1], point));
+            if (index === path.length - 1) {
+              return normalize3(subtract3(point, path[index - 1]));
+            }
+            return normalize3(subtract3(path[index + 1], path[index - 1]));
+          });
+
+          let previousNormal = null;
+          const rings = path.map((point, index) => {
+            const tangent = tangents[index];
+            const normal = tubeFrameNormal3D(tangent, previousNormal);
+            const binormal = normalize3(cross3(tangent, normal));
+            previousNormal = normal;
+            return Array.from({ length: sides }, (_, sideIndex) => {
+              const angle = (sideIndex / sides) * Math.PI * 2;
+              const radial = add3(
+                scale3(normal, Math.cos(angle)),
+                scale3(binormal, Math.sin(angle)),
+              );
+              return {
+                point: add3(point, scale3(radial, radius)),
+                normal: radial,
+              };
+            });
+          });
+
+          const faces = [];
+          const segmentCount = closed ? path.length : path.length - 1;
+          for (let index = 0; index < segmentCount; index++) {
+            const next = (index + 1) % path.length;
+            for (let sideIndex = 0; sideIndex < sides; sideIndex++) {
+              const nextSide = (sideIndex + 1) % sides;
+              faces.push({
+                points: [
+                  rings[index][sideIndex].point,
+                  rings[index][nextSide].point,
+                  rings[next][nextSide].point,
+                  rings[next][sideIndex].point,
+                ],
+                normal: normalize3(
+                  add3(rings[index][sideIndex].normal, rings[index][nextSide].normal),
+                ),
+              });
+            }
+          }
+
+          if (!closed) {
+            const addRoundedCap = (ring, center, tangent, direction) => {
+              const outward = scale3(tangent, direction);
+              const shoulderCenter = add3(center, scale3(outward, radius * 0.7));
+              const tip = add3(center, scale3(outward, radius));
+              const shoulder = ring.map((entry) => ({
+                point: add3(shoulderCenter, scale3(entry.normal, radius * 0.7)),
+                normal: normalize3(add3(entry.normal, scale3(outward, 0.7))),
+              }));
+              for (let sideIndex = 0; sideIndex < sides; sideIndex++) {
+                const nextSide = (sideIndex + 1) % sides;
+                const radial = normalize3(
+                  add3(ring[sideIndex].normal, ring[nextSide].normal),
+                );
+                faces.push({
+                  points: [
+                    ring[sideIndex].point,
+                    ring[nextSide].point,
+                    shoulder[nextSide].point,
+                    shoulder[sideIndex].point,
+                  ],
+                  normal: normalize3(add3(radial, scale3(outward, 0.42))),
+                });
+                faces.push({
+                  points: [
+                    shoulder[sideIndex].point,
+                    shoulder[nextSide].point,
+                    tip,
+                  ],
+                  normal: normalize3(add3(radial, scale3(outward, 1.25))),
+                });
+              }
+            };
+            addRoundedCap(rings[0], path[0], tangents[0], -1);
+            addRoundedCap(
+              rings[rings.length - 1],
+              path[path.length - 1],
+              tangents[tangents.length - 1],
+              1,
+            );
+          }
+          return faces;
+        }
+
+        function dashedPaths3D(points, dashLength = 7, gapLength = 5) {
+          const paths = [];
+          let drawing = true;
+          let phaseRemaining = dashLength;
+          let current = [];
+          for (let index = 1; index < points.length; index++) {
+            let cursor = points[index - 1];
+            const end = points[index];
+            const segmentVector = subtract3(end, cursor);
+            const segmentLength = length3(segmentVector);
+            if (segmentLength < 0.0001) continue;
+            const direction = scale3(segmentVector, 1 / segmentLength);
+            let segmentRemaining = segmentLength;
+            while (segmentRemaining > 0.0001) {
+              const step = Math.min(segmentRemaining, phaseRemaining);
+              const next = add3(cursor, scale3(direction, step));
+              if (drawing) {
+                if (!current.length) current.push(cursor);
+                current.push(next);
+              }
+              cursor = next;
+              segmentRemaining -= step;
+              phaseRemaining -= step;
+              if (phaseRemaining <= 0.0001) {
+                if (drawing && current.length > 1) paths.push(current);
+                current = [];
+                drawing = !drawing;
+                phaseRemaining = drawing ? dashLength : gapLength;
+              }
+            }
+          }
+          if (drawing && current.length > 1) paths.push(current);
+          return paths;
+        }
+
+        function parseColor3D(color) {
+          const hex = color.trim().match(/^#([\da-f]{3}|[\da-f]{6})$/i);
+          if (hex) {
+            const value =
+              hex[1].length === 3
+                ? hex[1].split('').map((part) => part + part).join('')
+                : hex[1];
+            return [
+              parseInt(value.slice(0, 2), 16),
+              parseInt(value.slice(2, 4), 16),
+              parseInt(value.slice(4, 6), 16),
+            ];
+          }
+          const rgb = color.match(/rgba?\(([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/i);
+          return rgb ? rgb.slice(1, 4).map(Number) : [48, 43, 32];
+        }
+
+        function shadeTubeColor3D(color, normal) {
+          const rotatedNormal = normalize3(
+            subtract3(
+              rotated3D(add3(view3d.center, normal)),
+              rotated3D(view3d.center),
+            ),
+          );
+          const light = normalize3(point3(-0.45, 0.7, -1));
+          const incidence = Math.max(0, dot3(rotatedNormal, light));
+          const adjustment = -0.24 + incidence * 0.36 + incidence ** 10 * 0.2;
+          const rgb = parseColor3D(color).map((channel) =>
+            Math.round(
+              adjustment >= 0
+                ? channel + (255 - channel) * adjustment
+                : channel * (1 + adjustment),
+            ),
+          );
+          return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+        }
+
+        function commandColor3D(command, colors) {
+          return (
+            command.color ||
+            (command.role === 'gate' || command.role === 'depth'
+              ? colors.accent
+              : colors.ink)
+          );
+        }
+
+        function expanded3DCommands(colors) {
+          return scene3d.commands.flatMap((command) => {
+            if (command.type !== 'polyline') return [command];
+            const paths =
+              command.role === 'gate' && gateStyle === 'dashed'
+                ? dashedPaths3D(command.points)
+                : [command.points];
+            const baseColor = commandColor3D(command, colors);
+            return paths.flatMap((path) =>
+              tubeMesh3D(path, tubeRadius3D(command), command.closed).map((face) => ({
+                type: 'face',
+                points: face.points,
+                role: command.role,
+                color: shadeTubeColor3D(baseColor, face.normal),
+                closed: true,
+                fill: true,
+              })),
+            );
+          });
         }
 
         function mapGlyphVector3D(point, orientation) {
@@ -4056,27 +4323,29 @@
           return mapGlyphPoint3D(start, localEnd, node.orientation);
         }
 
-        function branchOffset3D(index) {
-          if (index === 0) return 0;
-          const magnitude = Math.ceil(index / 2);
-          return (index % 2 ? -1 : 1) * magnitude;
-        }
-
-        function firstElement3D(node) {
-          if (!node) return null;
-          if (node.type === 'element') return node;
-          if (node.type === 'series') {
-            for (const child of node.children) {
-              const element = firstElement3D(child);
-              if (element) return element;
-            }
-            return null;
-          }
-          for (const branch of node.branches) {
-            const element = firstElement3D(branch);
-            if (element) return element;
-          }
-          return null;
+        function chooseFuseauDirection3D(node, currentDirection) {
+          const eligible = node.branches
+            .map((branch) => (branch.type === 'series' ? branch.children[0] : branch))
+            .filter((first) => first?.type === 'element')
+            .map((first) => first.orientation);
+          if (!eligible.length) return currentDirection;
+          const matching = eligible.filter(
+            (direction) => direction === currentDirection,
+          ).length;
+          if (matching >= eligible.length / 2) return currentDirection;
+          return [0, 1, 2]
+            .filter((direction) => direction !== currentDirection)
+            .map((direction) => ({
+              direction,
+              count: eligible.filter((candidate) => candidate === direction).length,
+              first: eligible.indexOf(direction),
+            }))
+            .sort(
+              (left, right) =>
+                right.count - left.count ||
+                (left.first < 0 ? Infinity : left.first) -
+                  (right.first < 0 ? Infinity : right.first),
+            )[0].direction;
         }
 
         function buildNode3D(
@@ -4103,33 +4372,56 @@
             return cursor;
           }
 
-          const first = firstElement3D(node.branches[0]);
-          const stemAxisIndex = first?.orientation ?? state.direction;
-          const spreadAxis = glyphBasis3D(stemAxisIndex).side;
-          const gap = 72;
-          const placements = node.branches.map((branch, index) => {
-            const offset = branchOffset3D(index);
-            const branchSide = offset < 0 ? 1 : -1;
-            const branchStart = add3(start, scale3(spreadAxis, offset * gap));
+          const { direction, stem, ordered, widths } = planFuseau(
+            node,
+            state.direction,
+            3,
+          );
+          const routeTurtle = new GeometryTurtle(0, 0, 0);
+          calibrate(routeTurtle, direction, state.normalDir);
+          const forwardDirection = normalize3(
+            mapGlyphVector3D(routeTurtle.vector(1), direction),
+          );
+          let side = 1;
+          const placements = ordered.map((entry, drawIndex) => {
+            const branchSide = side;
+            const offset = fuseauBranchOffset(
+              widths,
+              stem.length,
+              entry.length,
+              drawIndex,
+            );
+            const sideTurtle = new GeometryTurtle(0, 0, 0);
+            calibrate(sideTurtle, direction, state.normalDir);
+            sideTurtle.right(90 * branchSide);
+            const lateralDirection = normalize3(
+              mapGlyphVector3D(sideTurtle.vector(1), direction),
+            );
+            const branchStart = add3(
+              add3(start, scale3(lateralDirection, offset.lateral)),
+              scale3(forwardDirection, offset.longitudinal),
+            );
             const branchState = {
               ...state,
-              direction: stemAxisIndex,
+              direction,
               alter: branchSide,
               fuseauContext: {
-                direction: stemAxisIndex,
+                direction,
                 side: branchSide,
                 parentNormalDir: state.normalDir,
               },
             };
-            const branchEnd = buildNode3D(branch, branchStart, branchState, true, true);
-            return { offset, branchStart, branchEnd };
+            const branchEnd = buildNode3D(
+              entry.branch,
+              branchStart,
+              branchState,
+              true,
+              true,
+            );
+            side *= -1;
+            return { branchStart, branchEnd };
           });
-          const ordered = [...placements].sort((left, right) => left.offset - right.offset);
-          for (let index = 1; index < ordered.length; index++) {
-            add3dLine(ordered[index - 1].branchStart, ordered[index].branchStart, 'fuseau');
-            add3dLine(ordered[index - 1].branchEnd, ordered[index].branchEnd, 'fuseau');
-          }
-          state.direction = stemAxisIndex;
+          state.direction = direction;
           state.alter *= -1;
           return placements[0]?.branchEnd || start;
         }
@@ -4261,7 +4553,7 @@
           artwork3d.replaceChildren();
           axes3d.replaceChildren();
           const colors = palette3D();
-          const projectedCommands = scene3d.commands.map((command) => {
+          const projectedCommands = expanded3DCommands(colors).map((command) => {
             const points =
               command.type === 'dot' || command.type === 'sphere'
                 ? [project3D(command.center, width, height)]
@@ -4272,13 +4564,7 @@
           projectedCommands.sort((left, right) => left.depth - right.depth);
 
           projectedCommands.forEach(({ command, points }) => {
-            const color =
-              command.color ||
-              (command.role === 'gate' || command.role === 'depth'
-                ? colors.accent
-                : command.role === 'fuseau'
-                  ? colors.muted
-                  : colors.ink);
+            const color = commandColor3D(command, colors);
             if (command.type === 'dot' || command.type === 'sphere') {
               const radius = Math.max(
                 2.4,
@@ -4315,9 +4601,6 @@
               'stroke-linejoin': 'round',
             };
             if (command.role === 'gate') attributes.opacity = 0.76;
-            if (command.role === 'gate' && gateStyle === 'dashed') {
-              attributes['stroke-dasharray'] = '7 5';
-            }
             make(command.fill ? 'polygon' : 'polyline', attributes, artwork3d);
           });
           drawAxes3D(width, height, colors);
@@ -4413,7 +4696,8 @@
 
         function export3DSvg() {
           if (!scene3d.commands.length) return;
-          const projected = scene3d.commands.map((command) => {
+          const colors = palette3D();
+          const projected = expanded3DCommands(colors).map((command) => {
             const sourcePoints =
               command.type === 'dot' || command.type === 'sphere'
                 ? [command.center]
@@ -4437,16 +4721,9 @@
           const minY = Math.min(...coordinates.map((point) => point.y)) - pad;
           const maxX = Math.max(...coordinates.map((point) => point.x)) + pad;
           const maxY = Math.max(...coordinates.map((point) => point.y)) + pad;
-          const colors = palette3D();
           const body = projected
             .map(({ command, points }) => {
-              const color =
-                command.color ||
-                (command.role === 'gate' || command.role === 'depth'
-                  ? colors.accent
-                  : command.role === 'fuseau'
-                    ? colors.muted
-                    : colors.ink);
+              const color = commandColor3D(command, colors);
               if (command.type === 'dot' || command.type === 'sphere') {
                 const fill =
                   command.type === 'sphere' ? 'url(#ete-export-sphere-gradient)' : color;
@@ -4459,15 +4736,11 @@
               if (command.fill) {
                 return `<polygon points="${values}" fill="${color}"/>`;
               }
-              const dash =
-                command.role === 'gate' && gateStyle === 'dashed'
-                  ? ' stroke-dasharray="7 5"'
-                  : '';
               const opacity = command.role === 'gate' ? ' opacity=".76"' : '';
               const width = (command.role === 'gate' ? 1.55 : 2.6) * command.width;
               return `<polyline points="${values}" fill="none" stroke="${color}" ` +
                 `stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"` +
-                `${dash}${opacity}/>`;
+                `${opacity}/>`;
             })
             .join('');
           const sphereDefinition =
