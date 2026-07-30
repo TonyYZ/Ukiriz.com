@@ -449,12 +449,148 @@
         gap: 8px;
         margin-top: 2px;
       }
+      .help-dialog {
+        position: fixed;
+        z-index: 20;
+        inset: 88px 24px auto auto;
+        width: min(560px, calc(50vw - 28px));
+        max-height: calc(100dvh - 112px);
+        margin: 0;
+      }
+      .help-content {
+        padding: 22px;
+      }
+      .help-drag-handle {
+        margin: -22px -22px 20px;
+        padding: 18px 18px 13px 22px;
+        border-bottom: 1px solid var(--line);
+        cursor: grab;
+        touch-action: none;
+        user-select: none;
+      }
+      .help-drag-handle:active {
+        cursor: grabbing;
+      }
+      .help-drag-handle .settings-close {
+        cursor: pointer;
+      }
+      .help-intro {
+        margin: -6px 0 18px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.55;
+      }
+      .help-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+      .help-card {
+        padding: 14px 15px;
+        border: 1px solid rgba(143, 94, 13, 0.2);
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.42);
+      }
+      .help-card h3 {
+        margin: 0 0 8px;
+        color: var(--accent-deep);
+        font-size: 12px;
+        letter-spacing: 0.035em;
+      }
+      .help-card p {
+        margin: 0;
+        color: var(--ink);
+        font-size: 11px;
+        line-height: 1.55;
+      }
+      .help-card p + p {
+        margin-top: 7px;
+      }
+      .help-card code,
+      .help-tip code {
+        padding: 1px 4px;
+        border-radius: 2px;
+        color: var(--accent-deep);
+        background: rgba(201, 139, 34, 0.13);
+        font: 600 11px/1.4 var(--mono);
+      }
+      .help-card .iti-form,
+      .help-tip .iti-form {
+        font-family: 'Nuaiti', serif;
+        font-size: 1.25em;
+        font-weight: 400;
+        line-height: 1;
+      }
+      .help-wide {
+        grid-column: auto;
+      }
+      .help-tip {
+        margin: 12px 0 0;
+        padding: 10px 12px;
+        border-left: 3px solid var(--accent);
+        color: var(--muted);
+        background: rgba(201, 139, 34, 0.08);
+        font-size: 11px;
+        line-height: 1.5;
+      }
+      .help-page[hidden] {
+        display: none;
+      }
+      .help-pagination {
+        display: grid;
+        grid-template-columns: 110px minmax(0, 1fr) 150px;
+        align-items: center;
+        gap: 10px;
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid var(--line);
+      }
+      .help-pagination button:last-child {
+        justify-self: end;
+      }
+      .help-pagination button:disabled {
+        visibility: hidden;
+      }
+      .help-page-status {
+        color: var(--muted);
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        text-align: center;
+      }
 
       #drawing {
         display: block;
         width: 100%;
         height: 100%;
         touch-action: none;
+      }
+      #drawing-3d {
+        display: block;
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+        cursor: grab;
+      }
+      #drawing-3d:active {
+        cursor: grabbing;
+      }
+      #drawing[hidden],
+      #drawing-3d[hidden],
+      .three-d-hint[hidden] {
+        display: none;
+      }
+      .three-d-hint {
+        position: absolute;
+        z-index: 2;
+        right: 18px;
+        bottom: 16px;
+        padding: 6px 9px;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        color: var(--muted);
+        background: rgba(248, 239, 207, 0.9);
+        pointer-events: none;
+        font-size: 10px;
       }
       #artwork {
         fill: none;
@@ -467,6 +603,9 @@
         stroke: var(--accent-deep);
         stroke-width: 1.5;
         opacity: 0.72;
+      }
+      #artwork .collision-extension {
+        stroke: #c43b2f;
       }
       #artwork .node-dot {
         fill: var(--ink);
@@ -493,14 +632,22 @@
         }
         .toolbar {
           min-height: 66px;
-          padding: 10px 12px;
-          gap: 8px;
+          padding: 10px 8px;
+          gap: 6px;
         }
         .brand p {
           display: none;
         }
+        .brand h1 {
+          font-size: 22px;
+        }
+        .toolbar button {
+          padding-inline: 7px;
+          font-size: 11px;
+        }
         .font-switch label {
-          padding: 7px 9px;
+          padding: 7px;
+          font-size: 11px;
         }
         textarea {
           min-height: 38dvh;
@@ -512,6 +659,20 @@
         }
         .settings-grid {
           grid-template-columns: 1fr;
+        }
+        .help-grid {
+          grid-template-columns: 1fr;
+        }
+        .help-wide {
+          grid-column: auto;
+        }
+        .help-pagination {
+          grid-template-columns: 82px minmax(0, 1fr) 118px;
+        }
+        .help-dialog {
+          inset: 76px 10px auto auto;
+          width: calc(100vw - 20px);
+          max-height: calc(100dvh - 88px);
         }
       }
     </style>
@@ -534,6 +695,7 @@
           <button type="button" id="random-settings" title="Set random text parameters">
             Settings
           </button>
+          <button type="button" id="help-open" title="Ítí writing guide">Help</button>
           <div class="font-switch" role="radiogroup" aria-label="Writing font">
             <input type="radio" id="uriti" name="font" value="uriti" checked />
             <label for="uriti">Uriti</label>
@@ -549,7 +711,7 @@
           aria-label="Ítí text"
           placeholder="Type Ítí here…"
         >
-çrağ rám. Zacan. Can zág. Graman.</textarea
+Çrağ rám. Zacan. Can zág. Graman.</textarea
         >
         <footer class="editor-footer">
           <span class="status" id="status" role="status">Ready</span>
@@ -567,8 +729,16 @@
 
       <section class="drawer" aria-label="Ítí drawing">
         <div class="drawer-head">
-          <span class="drawer-title">Live drawing</span>
+          <span class="drawer-title" id="drawer-title">Live drawing</span>
           <div class="actions">
+            <button
+              type="button"
+              id="dimension-mode"
+              aria-pressed="false"
+              title="Switch between the flat V2 drawer and the interactive three-axis drawer"
+            >
+              3D
+            </button>
             <label class="gate-style-control">
               Gate
               <select id="gate-style" aria-label="Gate style">
@@ -579,7 +749,8 @@
             </label>
             <button
               type="button"
-              id="maze-mode" aria-pressed="true"
+              id="maze-mode"
+              aria-pressed="true"
               title="Collision avoidance is on; click to use the unadjusted layout"
             >
               Maze
@@ -596,6 +767,27 @@
         >
           <g id="viewport"><g id="artwork"></g></g>
         </svg>
+        <svg
+          id="drawing-3d"
+          xmlns="http://www.w3.org/2000/svg"
+          role="img"
+          aria-label="Interactive three-dimensional Ítí drawing"
+          hidden
+        >
+          <defs>
+            <radialGradient id="ete-sphere-gradient" cx="31%" cy="27%" r="72%">
+              <stop offset="0%" stop-color="#77736a"></stop>
+              <stop offset="15%" stop-color="#292825"></stop>
+              <stop offset="55%" stop-color="#090909"></stop>
+              <stop offset="100%" stop-color="#000000"></stop>
+            </radialGradient>
+          </defs>
+          <g id="artwork-3d"></g>
+          <g id="axes-3d" aria-hidden="true"></g>
+        </svg>
+        <div class="three-d-hint" id="three-d-hint" hidden>
+          Drag to orbit · Shift-drag to pan · wheel to zoom
+        </div>
       </section>
     </main>
 
@@ -684,6 +876,21 @@
               max="1"
               step="0.01"
               value="0.5"
+              required
+            />
+          </div>
+          <div class="setting">
+            <label for="random-third-axis-rate"
+              >Third-axis rate <small>Used only while 3D mode is on</small></label
+            >
+            <input
+              id="random-third-axis-rate"
+              name="thirdAxisRate"
+              type="number"
+              min="0"
+              max="1"
+              step="0.01"
+              value="0.2"
               required
             />
           </div>
@@ -781,6 +988,302 @@
       </form>
     </dialog>
 
+    <dialog class="help-dialog" id="help-dialog" aria-labelledby="help-title">
+      <div class="help-content">
+        <div class="settings-head help-drag-handle" id="help-drag-handle">
+          <div>
+            <h2 id="help-title">Start here</h2>
+          </div>
+          <button class="settings-close" type="button" id="help-close" aria-label="Close help">
+            ×
+          </button>
+        </div>
+        <p class="help-intro" id="help-intro">
+          Write your first drawable Ítí sentence in a minute.
+        </p>
+
+        <div class="help-page" data-help-page="0">
+          <div class="help-grid">
+            <section class="help-card">
+              <h3>What Ete reads</h3>
+              <p>
+                Most consonants draw one visible symbol. Vowels usually tell Ete how
+                those symbols connect or turn; they are instructions rather than extra
+                symbols.
+              </p>
+              <p>
+                Start with <code class="iti-form">s.</code> for one symbol. Then try
+                <code class="iti-form">sat.</code> for two symbols joined in one path.
+              </p>
+            </section>
+            <section class="help-card">
+              <h3>One sentence, one path</h3>
+              <p>
+                Ete reads an ordinary path from left to right, then top to bottom.
+                Punctuation or a new line begins a new path.
+              </p>
+              <p>
+                A period adds the small finishing dot. A comma separates paths without
+                that dot.
+              </p>
+            </section>
+            <section class="help-card">
+              <h3>The symbol families</h3>
+              <p>
+                Each pair shares a basic shape. The first is static; the second is its
+                dynamic partner:
+              </p>
+              <p>
+                <code class="iti-form">ğ / h</code>
+                <code class="iti-form">g / c</code>
+                <code class="iti-form">l / r</code>
+                <code class="iti-form">v / f</code>
+                <code class="iti-form">d / t</code>
+                <code class="iti-form">b / p</code>
+                <code class="iti-form">s / z</code>
+                <code class="iti-form">ş / ç</code>
+                <code class="iti-form">n / m</code>.
+              </p>
+            </section>
+          </div>
+          <p class="help-tip">
+            Keep this window open and type in the editor beside it. The drawing updates
+            as soon as the sentence is valid.
+          </p>
+        </div>
+
+        <div class="help-page" data-help-page="1" hidden>
+          <div class="help-grid">
+            <section class="help-card">
+              <h3>Use <span class="iti-form">a</span> as glue</h3>
+              <p>
+                Put <code class="iti-form">a</code> before the next consonant when it
+                continues the same branch. In <code class="iti-form">sat</code>,
+                <code class="iti-form">s</code> comes first and
+                <code class="iti-form">t</code> continues after it.
+              </p>
+              <p>
+                The <code class="iti-form">a</code> itself does not add another symbol.
+              </p>
+            </section>
+            <section class="help-card">
+              <h3>Turn a symbol</h3>
+              <p>
+                An acute vowel turns the element it introduces by 90°. Compare
+                <code class="iti-form">s</code> with <code class="iti-form">ás</code>.
+              </p>
+              <p>
+                When typing, press <code>`</code> after a vowel to add the acute:
+                <code>a`→<span class="iti-form">á</span></code>.
+              </p>
+            </section>
+            <section class="help-card">
+              <h3>Three special elements</h3>
+              <p>
+                <code class="iti-form">ā</code> is a visible long line, not glue.
+                <code class="iti-form">y</code> and <code class="iti-form">w</code> are
+                side branches and therefore only belong inside a fuseau.
+              </p>
+            </section>
+          </div>
+          <p class="help-tip">
+            A branch is simply a sequence of symbols. Build this comfortably before
+            moving on to parallel branches.
+          </p>
+        </div>
+
+        <div class="help-page" data-help-page="2" hidden>
+          <div class="help-grid">
+            <section class="help-card">
+              <h3>Put two branches in parallel</h3>
+              <p>
+                When both branches are one plain element, write
+                <code class="iti-form">ơ</code> between them. For example,
+                <code class="iti-form">rơt</code> places branch
+                <code class="iti-form">r</code> beside branch
+                <code class="iti-form">t</code>. Together they form one fuseau.
+              </p>
+              <p>
+                This shorthand contains no other vowel. Use accented
+                <code class="iti-form">ớ</code> when the right-hand element is
+                oriented: <code class="iti-form">zớc</code>. When a plain series
+                follows, retain the closing <code class="iti-form">o</code>, as in
+                <code class="iti-form">zớcons</code>.
+              </p>
+            </section>
+            <section class="help-card">
+              <h3>Add a third branch</h3>
+              <p>
+                While learning, use the fully framed form
+                <code class="iti-form">elroto</code>:
+                <code class="iti-form">e</code> opens the fuseau,
+                <code class="iti-form">l</code>, <code class="iti-form">r</code>, and
+                <code class="iti-form">t</code> are its branches, and
+                <code class="iti-form">o</code> marks the later boundaries.
+              </p>
+            </section>
+            <section class="help-card">
+              <h3>Put a fuseau inside another</h3>
+              <p>
+                Wrap an inner fuseau in apostrophes and keep its full frame:
+                <code class="iti-form">'esto'</code>. Quoting tells Ete exactly where
+                the inner structure begins and ends.
+              </p>
+            </section>
+          </div>
+          <p class="help-tip">
+            Use full <code class="iti-form">e/o</code> framing until the structure feels
+            natural. The shorter spellings on the next page are optional.
+          </p>
+        </div>
+
+        <div class="help-page" data-help-page="3" hidden>
+          <div class="help-grid">
+            <section class="help-card">
+              <h3>The simple rule</h3>
+              <p>
+                In a complex fuseau, drop the opening <code class="iti-form">e</code>
+                only when the fuseau
+                starts a path or follows another fuseau. Drop the final
+                <code class="iti-form">o</code> only when it ends a path or comes before
+                another fuseau.
+              </p>
+            </section>
+            <section class="help-card">
+              <h3><span class="iti-form">ơ</span> is already complete</h3>
+              <p>
+                <code class="iti-form">rơt</code> is not an omitted version of a longer
+                spelling. It is a special complete form for exactly two plain,
+                single-element branches. Do not write
+                <code class="iti-form">erơto</code>.
+              </p>
+            </section>
+            <section class="help-card">
+              <h3>Safe complex short forms</h3>
+              <p>
+                <code class="iti-form">elroto</code>,
+                <code class="iti-form">elrot</code>,
+                <code class="iti-form">lroto</code>, and
+                <code class="iti-form">lrot</code> describe the same standalone fuseau.
+              </p>
+            </section>
+            <section class="help-card">
+              <h3>Keep the boundary beside plain symbols</h3>
+              <p>
+                A simple <code class="iti-form">AơB</code> or
+                <code class="iti-form">AớB</code> pair before plain symbols keeps its
+                closing <code class="iti-form">o</code>. Richer fuseaux retain the
+                <code class="iti-form">e/o</code> boundaries needed to show where
+                they end.
+              </p>
+            </section>
+            <section class="help-card">
+              <h3>Adjacent and nested fuseaux</h3>
+              <p>
+                Adjacent simple fuseaux may be written
+                <code class="iti-form">rơt sơt</code>. Each
+                <code class="iti-form">ơ</code> still joins only its two neighboring
+                elements.
+              </p>
+              <p>
+                Nested fuseaux never use <code class="iti-form">ơ</code>: keep the
+                inner binary fuseau fully framed as
+                <code class="iti-form">'esto'</code>.
+              </p>
+              <p>
+                When both branches are nested binary fuseaux, their middle apostrophe
+                is shared: <code class="iti-form">e'etmo'etmo'o</code>.
+              </p>
+            </section>
+            <section class="help-card">
+              <h3>One orientation exception</h3>
+              <p>
+                If the first branch begins turned, keep the accented opening
+                <code class="iti-form">é</code>. Write
+                <code class="iti-form">éğarhom</code>, not
+                <code class="iti-form">áğarhom</code>.
+              </p>
+            </section>
+          </div>
+          <p class="help-tip">
+            You never have to abbreviate. The explicit spelling is the safest choice,
+            and Ete’s serializer shortens it only when the result stays unambiguous.
+          </p>
+        </div>
+
+        <div class="help-page" data-help-page="4" hidden>
+          <div class="help-grid">
+            <section class="help-card">
+              <h3>Draw a gate</h3>
+              <p>
+                In <code class="iti-form">isut</code>,
+                <code class="iti-form">i</code> marks
+                <code class="iti-form">s</code> as the source and
+                <code class="iti-form">u</code> connects the later
+                <code class="iti-form">t</code> as its target.
+              </p>
+              <p>
+                Every opened source needs a target. Repeat the source marker when one
+                element must connect to more than one target.
+              </p>
+            </section>
+            <section class="help-card">
+              <h3>Typing shortcuts</h3>
+              <p>
+                Vowels: <code>ae→<span class="iti-form">ẽ</span></code>
+                <code>ao→<span class="iti-form">õ</span></code>
+                <code>ei→<span class="iti-form">ĩ</span></code>
+                <code>oi→<span class="iti-form">ị</span></code>
+                <code>oe→<span class="iti-form">ẹ</span></code>
+                <code>eu→<span class="iti-form">ư</span></code>
+                <code>eo→<span class="iti-form">ơ</span></code>
+                <code>ou→<span class="iti-form">ũ</span></code>
+                <code>aoe→<span class="iti-form">ȡ</span></code>.
+              </p>
+              <p>
+                Consonants: <code>sh→<span class="iti-form">ş</span></code>
+                <code>ch→<span class="iti-form">ç</span></code>
+                <code>gh→<span class="iti-form">ğ</span></code>. After a vowel,
+                <code>`</code> adds acute, <code>-</code> grave, and
+                <code>=</code> macron.
+              </p>
+            </section>
+            <section class="help-card">
+              <h3>When Ete reports an error</h3>
+              <p>
+                Read the message below the editor. The most common fixes are to restore
+                a missing <code class="iti-form">e/o</code> boundary, move
+                <code class="iti-form">y/w</code> into a fuseau, or finish an open gate.
+              </p>
+            </section>
+            <section class="help-card">
+              <h3>Write on the third axis</h3>
+              <p>
+                Turn on <strong>3D</strong>, then place two acute accents before an
+                element. One accent selects the second axis; two select the third.
+                Compound spellings retain both accents—for example,
+                <code class="iti-form">smỏt</code> uses
+                <code class="iti-form">ỏ = á + ó</code> to put
+                <code class="iti-form">t</code> on the third axis.
+              </p>
+            </section>
+          </div>
+          <p class="help-tip">
+            Use <strong>Random text</strong> whenever you want more valid structures to
+            inspect. You can undo it with <code>Ctrl+Z</code>.
+          </p>
+        </div>
+
+        <nav class="help-pagination" aria-label="Tutorial pages">
+          <button type="button" id="help-previous" disabled>← Back</button>
+          <span class="help-page-status" id="help-page-status" aria-live="polite"
+            >Start · 1 / 5</span
+          >
+          <button type="button" id="help-next">Branches →</button>
+        </nav>
+      </div>
+    </dialog>
+
     <script src="./ete-speech.js"></script>
     <script>
       (() => {
@@ -792,15 +1295,36 @@
         const count = document.querySelector('#count');
         const speakButton = document.querySelector('#speak-text');
         const svg = document.querySelector('#drawing');
+        const canvas3d = document.querySelector('#drawing-3d');
+        const artwork3d = document.querySelector('#artwork-3d');
+        const axes3d = document.querySelector('#axes-3d');
+        const drawerTitle = document.querySelector('#drawer-title');
+        const dimensionModeButton = document.querySelector('#dimension-mode');
+        const threeDHint = document.querySelector('#three-d-hint');
+        const mazeButton = document.querySelector('#maze-mode');
         const drawerPanel = document.querySelector('.drawer');
         const randomSettingsDialog = document.querySelector('#random-settings-dialog');
         const randomSettingsForm = document.querySelector('#random-settings-form');
         const randomSettingsError = document.querySelector('#random-settings-error');
+        const helpDialog = document.querySelector('#help-dialog');
+        const helpTitle = document.querySelector('#help-title');
+        const helpIntro = document.querySelector('#help-intro');
+        const helpPages = Array.from(document.querySelectorAll('[data-help-page]'));
+        const helpPrevious = document.querySelector('#help-previous');
+        const helpNext = document.querySelector('#help-next');
+        const helpPageStatus = document.querySelector('#help-page-status');
+        const helpDragHandle = document.querySelector('#help-drag-handle');
         const viewport = document.querySelector('#viewport');
         const artwork = document.querySelector('#artwork');
         const gateStyleSelect = document.querySelector('#gate-style');
         const consonants = new Set(Array.from('çşzspbtdmnfvlrcghğ'));
+        const fixedFacingConsonants = new Set(Array.from('tdszfvcg'));
         const fuseauBranchMarks = new Set(['y', 'w']);
+        let drawingDimensions = 2;
+        function setDrawingDimensions(dimensions) {
+          if (![2, 3].includes(dimensions)) throw new RangeError('Dimensions must be 2 or 3');
+          drawingDimensions = dimensions;
+        }
         const vowelBase = Object.fromEntries(
           [
             ['aáà', 'a'],
@@ -871,15 +1395,15 @@
         }
 
         class Parser {
-          constructor(text, sentence, gates, sources) {
-            this.text = text
-              .replace(/\s/g, '')
-              .replace(/[aà](?=[eéèēoóòō])/gu, '');
+          constructor(text, sentence, gates, sources, dimensions = drawingDimensions) {
+            if (![2, 3].includes(dimensions)) throw new RangeError('Dimensions must be 2 or 3');
+            this.text = text.replace(/\s/g, '').replace(/[aà](?=[eéèēoóòō])/gu, '');
             this.pos = 0;
             this.sentence = sentence;
             this.number = 0;
             this.gates = gates;
             this.sources = sources;
+            this.dimensions = dimensions;
             this.orientation = 0;
             this.componentContinuesBranch = false;
             this.elementHasNeutralPrefix = false;
@@ -913,6 +1437,37 @@
             this.takeVowel(expected);
             return true;
           }
+          takeOptionalOrientedStructuralVowel(expected) {
+            const snapshot = this.snapshot();
+            if (this.dimensions === 3) {
+              while (this.base() === 'a' && accents.has(this.peek())) this.takeVowel('a');
+            }
+            if (this.base() !== expected) {
+              this.restore(snapshot);
+              return false;
+            }
+            this.takeVowel(expected);
+            return true;
+          }
+          orientedStructuralVowelAhead(expected) {
+            if (this.dimensions !== 3) return false;
+            let index = this.pos;
+            let sawAccent = false;
+            while (
+              index < this.text.length &&
+              this.base(this.text[index]) === 'a' &&
+              accents.has(this.text[index])
+            ) {
+              sawAccent = true;
+              index++;
+            }
+            return (
+              sawAccent &&
+              index < this.text.length &&
+              this.base(this.text[index]) === expected &&
+              accents.has(this.text[index])
+            );
+          }
           atSeriesBoundary(stops) {
             return this.pos >= this.text.length || stops.has(this.base());
           }
@@ -935,21 +1490,48 @@
                 this.componentContinuesBranch = false;
               } else if (this.base() === 'e') {
                 simpleLeftStart = children.length;
-                const explicitSimple = this.tryExplicitSimpleFuseau(stops);
-                appendComponent(explicitSimple || this.complex(stops));
+                appendComponent(this.complex(stops));
                 this.componentContinuesBranch = false;
               } else if (this.base() === 'ơ') {
-                if (!children.length) this.fail('ơ needs a branch before it');
-                if (simpleLeftHasVowelPrefix) {
-                  this.fail('A vowel before a fuseau requires its opening e');
+                if (!children.length) this.fail('ơ needs one plain element before it');
+                const leftChildren = children.slice(simpleLeftStart);
+                const leftElement = leftChildren[0];
+                const leftIsPlain =
+                  leftChildren.length === 1 &&
+                  leftElement?.type === 'element' &&
+                  leftElement.orientation === 0 &&
+                  this.pos > 0 &&
+                  this.text[this.pos - 1] === leftElement.char;
+                if (!leftIsPlain || simpleLeftHasVowelPrefix) {
+                  this.fail('ơ may only join two plain single-element branches');
+                }
+                if (!['ơ', 'ớ'].includes(this.peek())) {
+                  this.fail('The simple fuseau marker may only be ơ or ớ');
                 }
                 this.takeVowel('ơ');
-                const right = this.simpleRightBranch(stops);
-                if (!right.children.length) this.fail('ơ needs a branch after it');
+                const rightStart = this.pos;
+                const rightElement = this.element(false, false, true);
+                const rightIsPlain =
+                  rightElement !== null &&
+                  [0, 1].includes(rightElement.orientation) &&
+                  this.pos === rightStart + 1 &&
+                  this.text[rightStart] === rightElement.char;
+                if (!rightIsPlain) {
+                  this.fail('ơ may only join two plain single-element branches');
+                }
                 const prefix = children.slice(0, simpleLeftStart);
-                const left = { type: 'series', children: children.slice(simpleLeftStart) };
+                const left = { type: 'series', children: leftChildren };
+                const right = { type: 'series', children: [rightElement] };
                 const simple = { type: 'parallel', branches: [left, right] };
-                const closingOmitted = !this.takeOptionalVowel('o');
+                let closingOmitted = true;
+                if (
+                  !stops.has('o') &&
+                  this.base() === 'o' &&
+                  this.pos + 1 < this.text.length
+                ) {
+                  this.takeVowel('o');
+                  closingOmitted = false;
+                }
                 this.recordFuseauBoundaries(simple, true, closingOmitted);
                 if (prefix.length && prefix.at(-1).type !== 'parallel') {
                   this.fail('A fuseau preceded by a non-fuseau element must retain its first e');
@@ -971,10 +1553,7 @@
                   if (!this.componentContinuesBranch) {
                     simpleLeftStart = children.length;
                     simpleLeftHasVowelPrefix = false;
-                  } else if (
-                    children.length === simpleLeftStart &&
-                    this.elementHasNeutralPrefix
-                  ) {
+                  } else if (children.length === simpleLeftStart && this.elementHasNeutralPrefix) {
                     simpleLeftHasVowelPrefix = true;
                   }
                   appendComponent(element);
@@ -1014,37 +1593,6 @@
             if (openingOmitted) this.omittedFuseauOpenings.push(node);
             if (closingOmitted) this.omittedFuseauClosings.push(node);
             return node;
-          }
-          simpleRightBranch(outerStops) {
-            if (this.peek() === "'") return { type: 'series', children: [this.quoted()] };
-            if (this.base() === 'e')
-              return { type: 'series', children: [this.complex(outerStops)] };
-            const implicit = outerStops.has('o') ? null : this.tryImplicitComplex(outerStops);
-            if (implicit) return { type: 'series', children: [implicit] };
-            return this.compactBranch();
-          }
-          tryExplicitSimpleFuseau(outerStops) {
-            const snapshot = this.snapshot();
-            try {
-              this.takeVowel('e');
-              const left = this.series(new Set(['ơ']));
-              if (!left.children.length || this.peek() !== 'ơ') {
-                this.fail('Explicit simple fuseau needs ơ between its branches');
-              }
-              this.takeVowel('ơ');
-              const right = this.simpleRightBranch(new Set(['o', ...outerStops]));
-              if (!right.children.length) this.fail('Explicit simple fuseau needs a right branch');
-              const closingOmitted = !this.takeOptionalVowel('o');
-              return this.recordFuseauBoundaries(
-                { type: 'parallel', branches: [left, right] },
-                false,
-                closingOmitted,
-              );
-            } catch (error) {
-              if (!(error instanceof ParseError)) throw error;
-              this.restore(snapshot);
-              return null;
-            }
           }
           snapshot() {
             return {
@@ -1087,6 +1635,7 @@
           compactBranch(secondBranch = false) {
             const children = [this.branchAtom(secondBranch)];
             while (this.pos < this.text.length) {
+              if (this.orientedStructuralVowelAhead('o')) break;
               const continuationSnapshot = this.snapshot();
               let candidate;
               try {
@@ -1171,10 +1720,18 @@
               }
 
               const second = this.compactBranch(true);
-              if (this.base() !== 'o') this.fail('Compact fuseau needs o after its second branch');
-              this.takeVowel('o');
+              if (!this.takeOptionalOrientedStructuralVowel('o')) {
+                this.fail('Compact fuseau needs o after its second branch');
+              }
               const third = this.compactBranch();
               const closingOmitted = !this.takeOptionalVowel('o');
+              if (
+                closingOmitted &&
+                !this.atSeriesBoundary(outerStops) &&
+                !this.remainingSeriesStartsWithFuseau(outerStops)
+              ) {
+                this.fail('An abbreviated fuseau before a plain element needs its final o');
+              }
               return this.recordFuseauBoundaries(
                 { type: 'parallel', branches: [first, second, third] },
                 true,
@@ -1184,6 +1741,18 @@
               if (!(error instanceof ParseError)) throw error;
               this.restore(snapshot);
               return null;
+            }
+          }
+          remainingSeriesStartsWithFuseau(outerStops) {
+            const snapshot = this.snapshot();
+            try {
+              const remainder = this.series(outerStops);
+              return remainder.children[0]?.type === 'parallel';
+            } catch (error) {
+              if (!(error instanceof ParseError)) throw error;
+              return false;
+            } finally {
+              this.restore(snapshot);
             }
           }
           quoted() {
@@ -1204,11 +1773,12 @@
           complex(outerStops = new Set(), requireFinalO = false) {
             this.takeVowel('e');
             const afterOpening = this.snapshot();
+            const sharedNested = this.trySharedNestedBinary();
+            if (sharedNested) return sharedNested;
             try {
               const first = this.compactBranch();
               const second = this.compactBranch(true);
-              if (this.base() === 'o') {
-                this.takeVowel('o');
+              if (this.takeOptionalOrientedStructuralVowel('o')) {
                 if (this.pos >= this.text.length || outerStops.has(this.base())) {
                   return { type: 'parallel', branches: [first, second] };
                 }
@@ -1273,6 +1843,34 @@
               closingOmitted,
             );
           }
+          trySharedNestedBinary() {
+            const snapshot = this.snapshot();
+            try {
+              this.take("'");
+              if (this.base() !== 'e') {
+                this.fail('Shared nested fuseau needs an explicit left frame');
+              }
+              const left = this.complex(new Set(["'"]), true);
+              this.take("'");
+              if (this.base() !== 'e') {
+                this.fail('Shared nested fuseau needs an explicit right frame');
+              }
+              const right = this.complex(new Set(["'"]), true);
+              this.take("'");
+              this.takeVowel('o');
+              return {
+                type: 'parallel',
+                branches: [
+                  { type: 'series', children: [left] },
+                  { type: 'series', children: [right] },
+                ],
+              };
+            } catch (error) {
+              if (!(error instanceof ParseError)) throw error;
+              this.restore(snapshot);
+              return null;
+            }
+          }
           markers(marker) {
             let n = 0;
             while (this.base() === marker) {
@@ -1285,7 +1883,11 @@
             }
             return n;
           }
-          element(allowTrailingNeutral = false, compactSecond = false) {
+          element(
+            allowTrailingNeutral = false,
+            compactSecond = false,
+            allowFuseauMarkTerminal = false,
+          ) {
             this.componentContinuesBranch = false;
             this.elementHasNeutralPrefix = false;
             if (compactSecond && this.peek() === 'ớ') this.takeVowel('ơ');
@@ -1293,6 +1895,9 @@
               this.componentContinuesBranch = true;
               this.elementHasNeutralPrefix = true;
               this.takeVowel('a');
+            }
+            if (this.dimensions === 3 && this.orientation) {
+              while (accents.has(this.peek())) this.takeVowel(this.base());
             }
             const outgoing = this.base() === 'i' ? this.markers('i') : 0;
             const incoming = this.base() === 'u' ? this.markers('u') : 0;
@@ -1311,12 +1916,16 @@
               return null;
             }
             if (this.peek() === "'" && !outgoing && !incoming) return null;
-            if (this.orientation > 1)
-              this.fail('Only one accented orientation vowel is allowed per element');
+            if (this.orientation >= this.dimensions) {
+              this.fail(
+                `Orientation ${this.orientation} is unavailable in ${this.dimensions}D; ` +
+                  `use at most ${this.dimensions - 1} accented vowels before an element`,
+              );
+            }
             const char = this.peek();
             if (fuseauBranchMarks.has(char)) {
               const following = this.text.slice(this.pos + 1, this.pos + 2);
-              if (!Object.hasOwn(vowelBase, following)) {
+              if (!Object.hasOwn(vowelBase, following) && !allowFuseauMarkTerminal) {
                 this.fail(`${char} fuseau mark must be followed by a vowel`);
               }
             } else if (!consonants.has(char) && char !== 'ā') {
@@ -1341,12 +1950,12 @@
           }
         }
 
-        function parse(text) {
+        function parse(text, dimensions = drawingDimensions) {
           const gates = [],
             sources = [];
           const records = splitSentenceRecords(text);
           const sentences = records.map((record, index) =>
-            new Parser(record.text, index + 1, gates, sources).parse(),
+            new Parser(record.text, index + 1, gates, sources, dimensions).parse(),
           );
           sentences.forEach((root) => validateFuseauBranchMarks(root));
           if (sources.length) throw new ParseError('One or more gate sources are still open');
@@ -1392,6 +2001,7 @@
           fuseauRate: 0.2,
           gateRate: 0.08,
           verticalRate: 0.5,
+          thirdAxisRate: 0.2,
           nestedFuseauRate: 0.25,
           maxFuseauDepth: 3,
           maxBranches: 6,
@@ -1438,11 +2048,19 @@
           }
           element() {
             const chars = 'çşzspbtdmnfvlrcghğ';
+            const roll = this.random();
+            const thirdAxisRate = drawingDimensions === 3 ? this.options.thirdAxisRate : 0;
+            const orientation =
+              roll < thirdAxisRate
+                ? 2
+                : roll < thirdAxisRate + this.options.verticalRate
+                  ? 1
+                  : 0;
             return {
               type: 'element',
               id: `s${this.sentenceNumber}n${++this.elementNumber}`,
               char: randomChoice(Array.from(chars), this.random),
-              orientation: Number(this.random() < this.options.verticalRate),
+              orientation,
             };
           }
           branch(length, depth = 1) {
@@ -1592,22 +2210,26 @@
           return result;
         }
 
-        function serializeElement(node, markers, continuation = false, orientationVowel = 'á') {
+        function serializeElement(
+          node,
+          markers,
+          continuation = false,
+          orientationVowel = 'á',
+          orientationConsumed = 0,
+        ) {
           const prefix =
             repeatMarker('i', markers.outgoing.get(node.id) || 0) +
             repeatMarker('u', markers.incoming.get(node.id) || 0);
-          const vowels =
-            (continuation && !node.orientation ? 'a' : '') +
-            (node.orientation ? orientationVowel : '');
+          const remainingOrientation = Math.max(0, node.orientation - orientationConsumed);
+          const orientationText =
+            orientationVowel === 'ớ' && remainingOrientation
+              ? `ớ${'á'.repeat(remainingOrientation - 1)}`
+              : orientationVowel.repeat(remainingOrientation);
+          const vowels = (continuation && !node.orientation ? 'a' : '') + orientationText;
           return vowels + prefix + node.char;
         }
 
-        function serializeSeries(
-          node,
-          markers,
-          insideBranch = false,
-          separatePlainPairs = false,
-        ) {
+        function serializeSeries(node, markers, insideBranch = false, separatePlainPairs = false) {
           const rendered = node.children.map((child, index) => {
             if (child.type !== 'parallel') return serializeNode(child, markers);
             const previous = index ? node.children[index - 1] : null;
@@ -1622,6 +2244,17 @@
               !insideBranch && mayOmitClosing,
             );
             if (insideBranch) text = `'${text}'`;
+            else if (
+              child.branches.length === 2 &&
+              (
+              (previous !== null && previous.type !== 'parallel') ||
+              (following !== null && following.type !== 'parallel')
+              )
+            ) {
+              if ((text.startsWith('e') || text.startsWith('é')) && text.endsWith('o')) {
+                text = `'${text}'`;
+              }
+            }
             return text;
           });
           if (insideBranch) return rendered.join('');
@@ -1674,6 +2307,15 @@
             const followingIsPlain =
               index + 1 < children.length && children[index + 1].type !== 'parallel';
 
+            if (text.startsWith("'") && text.endsWith("'")) {
+              if (current) {
+                segments.push(current);
+                current = '';
+              }
+              segments.push(text);
+              return;
+            }
+
             if (previousIsPlain) {
               if (!text || !'eéèē'.includes(text[0])) {
                 throw new Error('A fuseau after a plain segment must begin with e');
@@ -1705,6 +2347,7 @@
           markers,
           secondBranch = false,
           firstOrientationVowel = null,
+          firstOrientationConsumed = 0,
         ) {
           const rendered = [];
           node.children.forEach((child, index) => {
@@ -1719,6 +2362,7 @@
                   : secondBranch && index === 0
                     ? 'ớ'
                     : 'á',
+                index === 0 ? firstOrientationConsumed : 0,
               );
             } else {
               text =
@@ -1741,6 +2385,28 @@
           );
         }
 
+        function canUseSimpleMarker(node, markers) {
+          if (node.branches.length !== 2) return false;
+          const elements = [];
+          const valid = node.branches.every((branch) => {
+            if (branch.children.length !== 1 || branch.children[0].type !== 'element') {
+              return false;
+            }
+            const element = branch.children[0];
+            elements.push(element);
+            return (
+              element.char !== 'ā' &&
+              !(markers.outgoing.get(element.id) || 0) &&
+              !(markers.incoming.get(element.id) || 0)
+            );
+          });
+          return (
+            valid &&
+            elements[0].orientation === 0 &&
+            [0, 1].includes(elements[1].orientation)
+          );
+        }
+
         function serializeParallel(
           node,
           markers,
@@ -1750,38 +2416,32 @@
         ) {
           if (node.branches.length < 2) throw new Error('A V2 fuseau needs at least two branches');
           if (node.branches.length === 2) {
-            if (framed) {
-              const compact = node.branches.map((branch, index) =>
-                serializeCompactSeries(branch, markers, index === 1),
-              );
-              let opening = 'e';
-              if (orientedFirstElement(node.branches[0])) {
-                opening = 'é';
-                compact[0] = serializeCompactSeries(node.branches[0], markers, false, '');
-              }
-              return `${opening}${compact[0]}${compact[1]}o`;
+            const simpleMarker =
+              !framed &&
+              omitOpening &&
+              canUseSimpleMarker(node, markers);
+            if (simpleMarker) {
+              const left = serializeElement(node.branches[0].children[0], markers);
+              const rightElement = node.branches[1].children[0];
+              const marker = rightElement.orientation ? 'ớ' : 'ơ';
+              const right = serializeElement(rightElement, markers, false, '');
+              const closing = omitClosing ? '' : 'o';
+              return `${left}${marker}${right}${closing}`;
             }
-            const firstIsOriented = orientedFirstElement(node.branches[0]);
-            const left = serializeCompactSeries(
-              node.branches[0],
-              markers,
-              false,
-              firstIsOriented ? '' : null,
+
+            const compact = node.branches.map((branch, index) =>
+              serializeCompactSeries(branch, markers, index === 1),
             );
-            const right = serializeCompactSeries(node.branches[1], markers, false, '');
-            const rightFirst = node.branches[1].children[0];
-            const marker = rightFirst.type === 'element' && rightFirst.orientation ? 'ớ' : 'ơ';
-            const rightIsMark =
-              node.branches[1].children.length === 1 &&
-              rightFirst.type === 'element' &&
-              fuseauBranchMarks.has(rightFirst.char);
-            const leftStartsNested = node.branches[0].children[0]?.type === 'parallel';
-            const rightEndsNested = node.branches[1].children.at(-1)?.type === 'parallel';
-            const mayOmitOpening = omitOpening && !leftStartsNested;
-            const opening =
-              mayOmitOpening && !firstIsOriented ? '' : firstIsOriented ? 'é' : 'e';
-            const closing = omitClosing && !rightIsMark && !rightEndsNested ? '' : 'o';
-            return `${opening}${left}${marker}${right}${closing}`;
+            const firstIsOriented = orientedFirstElement(node.branches[0]);
+            let opening = firstIsOriented ? 'é' : 'e';
+            if (firstIsOriented) {
+              compact[0] = serializeCompactSeries(node.branches[0], markers, false, 'á', 1);
+            }
+            const middle =
+              compact[0].endsWith("'") && compact[1].startsWith("'")
+                ? compact[0] + compact[1].slice(1)
+                : compact[0] + compact[1];
+            return `${opening}${middle}o`;
           }
           const compact = node.branches.map((branch, index) =>
             serializeCompactSeries(branch, markers, index === 1),
@@ -1800,7 +2460,7 @@
             );
             const firstIsOriented = orientedFirstElement(node.branches[0]);
             if (firstIsOriented) {
-              compact[0] = serializeCompactSeries(node.branches[0], markers, false, '');
+              compact[0] = serializeCompactSeries(node.branches[0], markers, false, 'á', 1);
             }
             const opening =
               omitOpening && !framed && safelyCompact && !firstIsOriented
@@ -1813,9 +2473,18 @@
               final.length === 1 &&
               final[0].type === 'element' &&
               fuseauBranchMarks.has(final[0].char);
-            const closing =
-              omitClosing && !framed && safelyCompact && !finalIsMark ? '' : 'o';
-            return `${opening}${compact[0]}${compact[1]}o${compact[2]}${closing}`;
+            const closing = omitClosing && !framed && safelyCompact && !finalIsMark ? '' : 'o';
+            let separator = 'o';
+            const thirdFirst = node.branches[2].children[0];
+            if (
+              thirdFirst?.type === 'element' &&
+              thirdFirst.orientation === 2 &&
+              compact[2].startsWith('áá')
+            ) {
+              separator = 'áó';
+              compact[2] = compact[2].slice(2);
+            }
+            return `${opening}${compact[0]}${compact[1]}${separator}${compact[2]}${closing}`;
           }
           const branches = node.branches.map((branch) => serializeSeries(branch, markers, true));
           let opening = 'e';
@@ -1840,7 +2509,18 @@
           return text.replace(/\p{L}/u, (letter) => letter.toUpperCase());
         }
 
-        function serializeDocument(document, separatePlainPairs = false) {
+        function serializeDocument(
+          document,
+          separatePlainPairs = false,
+          dimensions = drawingDimensions,
+        ) {
+          const unavailable = orderedElements(
+            { type: 'series', children: document.sentences },
+            [],
+          ).find((element) => element.orientation >= dimensions);
+          if (unavailable) {
+            throw new Error(`Orientation ${unavailable.orientation} is unavailable in ${dimensions}D`);
+          }
           const markers = gateMarkerMaps(document);
           return document.sentences
             .map((root) =>
@@ -1875,7 +2555,7 @@
             const generator = new RandomV2Generator(options, (seed + attempt) >>> 0);
             const text = `${separateConsonantRuns(serializeDocument(generator.build(), true))}.`;
             try {
-              parse(text);
+              parse(text, drawingDimensions);
               return text;
             } catch (error) {
               if (!(error instanceof ParseError)) throw error;
@@ -1893,6 +2573,14 @@
           }
           if (options.sentences > options.elements) {
             randomSettingsError.textContent = 'Sentence count cannot exceed the element count.';
+            return null;
+          }
+          if (
+            drawingDimensions === 3 &&
+            options.verticalRate + options.thirdAxisRate > 1
+          ) {
+            randomSettingsError.textContent =
+              'Vertical and third-axis rates cannot total more than 1.';
             return null;
           }
           randomSettingsError.textContent = '';
@@ -1930,6 +2618,25 @@
               : 1;
           const parentMirror = parentNormalDir ? -1 : 1;
           return mirror * parentMirror === -1 ? 1 : 0;
+        }
+
+        function elementNormalDir(char, requestedNormalDir) {
+          // These directional primitives keep their absolute facing. A
+          // vertical form therefore points upward even while the surrounding
+          // route is travelling downward.
+          return fixedFacingConsonants.has(char) ? 0 : requestedNormalDir;
+        }
+
+        function elementAlter(char, requestedAlter) {
+          // Fuseau branches alternate sides, but that placement must not
+          // mirror an asymmetric primitive's own canonical facing.
+          return fixedFacingConsonants.has(char) ? 1 : requestedAlter;
+        }
+
+        function fuseauOrnamentFacesBack(char, alter) {
+          // The offset circles of s/z/f/v occupy the opposite fuseau side
+          // from the legacy hook-like primitives at the same alternation.
+          return 'szfv'.includes(char) ? alter === 1 : alter === -1;
         }
 
         function isChevronBranch(branch) {
@@ -1977,6 +2684,7 @@
         let drawingLayer = artwork;
         const occupied = [];
         const MAZE_CHANCES = 4;
+        const MAX_MAZE_BACKTRACK_ATTEMPTS = 20000;
         // DrawerV2 enables maze routing by default so adjacent components are
         // spaced before they can overlap. The toolbar button can still expose
         // the unadjusted layout for comparison.
@@ -2026,11 +2734,15 @@
             const radians = (heading * Math.PI) / 180;
             return { x: Math.cos(radians) * distance, y: -Math.sin(radians) * distance };
           }
-          forward(distance) {
+          forward(distance, className = '') {
             const delta = this.vector(distance);
             const nx = this.x + delta.x;
             const ny = this.y + delta.y;
-            if (this.down && distance) make('path', { d: `M${this.x} ${this.y}L${nx} ${ny}` });
+            if (this.down && distance)
+              make('path', {
+                d: `M${this.x} ${this.y}L${nx} ${ny}`,
+                ...(className ? { class: className } : {}),
+              });
             this.x = nx;
             this.y = ny;
           }
@@ -2047,6 +2759,48 @@
           }
           dot(size) {
             make('circle', { cx: this.x, cy: this.y, r: size / 2, class: 'node-dot' });
+          }
+        }
+
+        // Runs the authoritative 2D turtle program without touching the DOM.
+        // The recorded primitives can then be transformed rigidly into a 3D
+        // plane, preserving every glyph's original proportions and pen lifts.
+        class GeometryTurtle extends SvgTurtle {
+          constructor(x = 0, y = 0, heading = 0) {
+            super(x, y, heading);
+            this.geometry = [];
+          }
+          forward(distance) {
+            const start = { x: this.x, y: this.y };
+            const delta = this.vector(distance);
+            const end = { x: start.x + delta.x, y: start.y + delta.y };
+            if (this.down && distance) this.geometry.push({ type: 'line', start, end });
+            this.x = end.x;
+            this.y = end.y;
+          }
+          goto(x, y) {
+            const start = { x: this.x, y: this.y };
+            const end = { x, y };
+            if (this.down) this.geometry.push({ type: 'line', start, end });
+            this.x = x;
+            this.y = y;
+          }
+          circle(radius) {
+            const side = radius < 0 ? -1 : 1;
+            const r = Math.abs(radius);
+            const normal = this.vector(r, this.heading + 90 * side);
+            this.geometry.push({
+              type: 'circle',
+              center: { x: this.x + normal.x, y: this.y + normal.y },
+              radius: r,
+            });
+          }
+          dot(size) {
+            this.geometry.push({
+              type: 'dot',
+              center: { x: this.x, y: this.y },
+              radius: size / 2,
+            });
           }
         }
 
@@ -2075,6 +2829,18 @@
           }
           return surface;
         }
+        function staticGateAnchor(node, start, end, anchor, box) {
+          if (node.char === 'b') {
+            // b has no dynamic dot. Its U-shaped arms reach toward the
+            // hypothetical p-dot, but the gate belongs at the middle of the
+            // longitudinal base stem below them.
+            return {
+              x: (start.x + end.x) / 2,
+              y: (start.y + end.y) / 2,
+            };
+          }
+          return anchorAtSymbolSurface(anchor, box);
+        }
         function calibrate(turtle, orientation, normalDir = 0) {
           const headings = [180, 0, 90, 270];
           turtle.setheading(orientation ? headings[2 + normalDir] : headings[normalDir]);
@@ -2088,6 +2854,7 @@
           connectedStart = true,
           connectedEnd = true,
           fuseauContext = null,
+          anchorStore = anchors,
         ) {
           calibrate(turtle, node.orientation, normalDir);
           const char = node.char;
@@ -2116,23 +2883,25 @@
             turtle.forward(UNIT * (1 - 1 / SCALE));
           }
           if ('pb'.includes(char)) {
-            turtle.forward((UNIT * (1 - 1 / SCALE)) / 2);
-            turtle.right(90 * alter);
-            turtle.forward(UNIT / SCALE);
-            turtle.left(180);
+            // Match the 离 primitive: one-unit transparent margins around a
+            // three-unit base with one-unit arms, forming an outward-facing U.
             turtle.penup();
             turtle.forward(UNIT / SCALE);
             turtle.right(90 * alter);
             turtle.forward(UNIT / SCALE);
-            turtle.pendown();
-            turtle.right(90 * alter);
-            turtle.forward(UNIT / SCALE);
             turtle.left(180);
-            turtle.penup();
+            turtle.pendown();
             turtle.forward(UNIT / SCALE);
             turtle.right(90 * alter);
+            turtle.forward(UNIT * (1 - 2 / SCALE));
+            turtle.right(90 * alter);
+            turtle.forward(UNIT / SCALE);
+            turtle.penup();
+            turtle.left(180);
+            turtle.forward(UNIT / SCALE);
+            turtle.right(90 * alter);
+            turtle.forward(UNIT / SCALE);
             turtle.pendown();
-            turtle.forward((UNIT * (1 - 1 / SCALE)) / 2);
           }
           if ('td'.includes(char)) {
             turtle.penup();
@@ -2226,21 +2995,20 @@
               x: -side * stemRight.x,
               y: -side * stemRight.y,
             };
-            const pointing =
-              char === 'w' ? inward : { x: -inward.x, y: -inward.y };
+            const pointing = char === 'w' ? inward : { x: -inward.x, y: -inward.y };
             const center = {
-              x: start.x + elementForward.x * UNIT / 2,
-              y: start.y + elementForward.y * UNIT / 2,
+              x: start.x + (elementForward.x * UNIT) / 2,
+              y: start.y + (elementForward.y * UNIT) / 2,
             };
             const depth = UNIT / SCALE;
             const halfWidth = UNIT / SCALE;
             const apex = {
-              x: center.x + pointing.x * depth / 2,
-              y: center.y + pointing.y * depth / 2,
+              x: center.x + (pointing.x * depth) / 2,
+              y: center.y + (pointing.y * depth) / 2,
             };
             const armCenter = {
-              x: center.x - pointing.x * depth / 2,
-              y: center.y - pointing.y * depth / 2,
+              x: center.x - (pointing.x * depth) / 2,
+              y: center.y - (pointing.y * depth) / 2,
             };
             const arms = [-1, 1].map((armSide) => ({
               x: armCenter.x + stemForward.x * halfWidth * armSide,
@@ -2284,7 +3052,7 @@
             turtle.forward(pos);
             turtle.pendown();
           }
-          anchors.set(node.id, { dot: gate, surface: gate, dynamic, right });
+          anchorStore.set(node.id, { dot: gate, surface: gate, dynamic, right });
         }
 
         function projectedLength(node, direction) {
@@ -2303,7 +3071,28 @@
           // interval, UNIT / SCALE (10 with the canonical 50/5 settings).
           if (node.type === 'series')
             return Math.max(0, ...node.children.map((child) => projectedWidth(child, direction)));
-          return node.branches.reduce((sum, branch) => sum + projectedWidth(branch, direction), 0);
+          const branchWidth = node.branches.reduce(
+            (sum, branch) => sum + projectedWidth(branch, direction),
+            0,
+          );
+          const circleOverhang = Math.max(
+            0,
+            ...node.branches.map((branch) => centeredCircleOverhang(branch, direction)),
+          );
+          return branchWidth + circleOverhang * 2;
+        }
+
+        function centeredCircleOverhang(node, direction) {
+          if (node.type === 'element') {
+            return 'şç'.includes(node.char) && node.orientation === direction
+              ? UNIT / SCALE
+              : 0;
+          }
+          const children = node.type === 'series' ? node.children : node.branches;
+          return Math.max(
+            0,
+            ...children.map((child) => centeredCircleOverhang(child, direction)),
+          );
         }
 
         function perpendicularMeasure(node, direction) {
@@ -2361,16 +3150,17 @@
               const same = component.type === 'element' && component.orientation === direction;
               if (same) {
                 const measured = perpendicularMeasure(component, direction);
+                const facesBack = fuseauOrnamentFacesBack(component.char, alter);
                 if (
                   measured > offMax &&
-                  alter !== -1 &&
+                  !facesBack &&
                   (alter !== 1 || (sameCombo && index >= lastSame))
                 )
                   offMax = measured;
                 if (
                   drawIndex === 0 &&
                   measured > offMaxBack &&
-                  alter === -1 &&
+                  facesBack &&
                   (index < firstDifferent || firstDifferent === -1) &&
                   !'|-'.includes(component.char)
                 ) {
@@ -2388,10 +3178,64 @@
               alter *= -1;
             });
             currentWidth += offMax;
+            if (
+              drawIndex === 0 &&
+              components[0]?.type === 'parallel' &&
+              offMaxBack === 0
+            ) {
+              // A nested stem is centered on the outer fuseau axis. Its
+              // projected width is the complete span across both sides, so
+              // reserve only half on either side plus one ordinary gap.
+              const nestedHalfWidth = currentWidth / 2;
+              offMaxBack = nestedHalfWidth + UNIT / SCALE;
+              currentWidth = nestedHalfWidth + UNIT / SCALE;
+            }
             if (drawIndex === 0) widths.push(offMaxBack, currentWidth);
             else widths.push(currentWidth);
           });
           return widths.slice(0, ordered.length);
+        }
+
+        function boxExtentFromOrigin(box, origin, vector) {
+          const corners = [
+            { x: box.x, y: box.y },
+            { x: box.x + box.width, y: box.y },
+            { x: box.x, y: box.y + box.height },
+            { x: box.x + box.width, y: box.y + box.height },
+          ];
+          return Math.max(
+            0,
+            ...corners.map(
+              (point) =>
+                (point.x - origin.x) * vector.x +
+                (point.y - origin.y) * vector.y,
+            ),
+          );
+        }
+
+        function refineNestedStemWidths(widths, stem, box, origin, direction, normalDir) {
+          if (
+            stem.branch.type !== 'series' ||
+            stem.branch.children[0]?.type !== 'parallel'
+          ) {
+            return;
+          }
+          const probe = new SvgTurtle(origin.x, origin.y);
+          calibrate(probe, direction, normalDir);
+          probe.left(90);
+          const firstSide = probe.vector(1);
+          const firstExtent = boxExtentFromOrigin(box, origin, firstSide);
+          const secondExtent = boxExtentFromOrigin(box, origin, {
+            x: -firstSide.x,
+            y: -firstSide.y,
+          });
+          const reservedHalf = projectedWidth(stem.branch, direction) / 2;
+          if (widths.length > 1) {
+            widths[1] = Math.max(0, widths[1] + firstExtent - reservedHalf);
+          }
+          if (widths.length > 2) {
+            widths[2] = Math.max(0, widths[2] + secondExtent - reservedHalf);
+          }
         }
 
         function renderNode(
@@ -2405,7 +3249,7 @@
           if (node.type === 'element') {
             const start = { x: turtle.x, y: turtle.y };
             const periodCircle = boundaryEnd && 'şç'.includes(node.char);
-            const normalDir = state.fuseauContext
+            const requestedNormalDir = state.fuseauContext
               ? fuseauElementNormalDir(
                   node.orientation,
                   state.fuseauContext.direction,
@@ -2413,6 +3257,21 @@
                   state.fuseauContext.parentNormalDir,
                 )
               : state.normalDir;
+            const normalDir = elementNormalDir(node.char, requestedNormalDir);
+            const drawAlter = elementAlter(node.char, state.alter);
+            const facesAgainstRoute = normalDir !== requestedNormalDir;
+            let routeEnd = null;
+            if (facesAgainstRoute) {
+              // Reserve the symbol's slot in the route first, then draw the
+              // fixed-facing primitive back toward its entry junction. This
+              // preserves its absolute direction without making it retrace a
+              // collision-extension stroke or move the logical cursor back.
+              calibrate(turtle, node.orientation, requestedNormalDir);
+              turtle.penup();
+              turtle.forward(UNIT);
+              routeEnd = { x: turtle.x, y: turtle.y };
+              turtle.pendown();
+            }
             const parent = drawingLayer;
             const group = make('g', { 'data-node': node.id }, parent);
             drawingLayer = group;
@@ -2420,26 +3279,35 @@
               turtle,
               node,
               normalDir,
-              state.alter,
+              drawAlter,
               boundaryStart || periodCircle,
               boundaryEnd,
               state.fuseauContext || null,
             );
             const box = group.getBBox();
             const anchor = anchors.get(node.id);
-            if (anchor && !anchor.dynamic) anchor.surface = anchorAtSymbolSurface(anchor, box);
+            if (anchor && !anchor.dynamic) {
+              anchor.surface = staticGateAnchor(
+                node,
+                start,
+                { x: turtle.x, y: turtle.y },
+                anchor,
+                box,
+              );
+            }
             drawingLayer = parent;
+            if (routeEnd) {
+              turtle.penup();
+              turtle.goto(routeEnd.x, routeEnd.y);
+              calibrate(turtle, node.orientation, requestedNormalDir);
+              turtle.pendown();
+            }
             if (componentBoxes) {
-              componentBoxes.push({
-                x: box.x + 1,
-                y: box.y + 1,
-                width: Math.max(0, box.width - 2),
-                height: Math.max(0, box.height - 2),
-              });
+              componentBoxes.push(collisionBox(box));
             }
             state.alter *= -1;
             state.direction = node.orientation;
-            return { start, end: { x: turtle.x, y: turtle.y } };
+            return { start, end: routeEnd || { x: turtle.x, y: turtle.y } };
           }
           if (node.type === 'series') {
             let result = {
@@ -2517,7 +3385,28 @@
                 parentNormalDir: state.normalDir,
               },
             };
+            const branchParent = drawingLayer;
+            const measuresNestedStem =
+              drawIndex === 0 &&
+              entry.branch.type === 'series' &&
+              entry.branch.children[0]?.type === 'parallel';
+            const branchGroup = measuresNestedStem
+              ? make('g', { 'data-fuseau-branch': 'nested-stem' }, branchParent)
+              : null;
+            if (branchGroup) drawingLayer = branchGroup;
             renderNode(entry.branch, turtle, branchState, true, true, componentBoxes);
+            if (branchGroup) {
+              const nestedBox = branchGroup.getBBox();
+              drawingLayer = branchParent;
+              refineNestedStemWidths(
+                widths,
+                stem,
+                nestedBox,
+                origin,
+                direction,
+                state.normalDir,
+              );
+            }
             if (!drawIndex) stemEnd = { x: turtle.x, y: turtle.y };
             side *= -1;
           });
@@ -2539,11 +3428,115 @@
           return width > threshold && height > threshold;
         }
 
+        function collisionBox(box) {
+          // Straight SVG strokes otherwise have a zero-width or zero-height
+          // bounding box and become invisible to collision detection. Inflate
+          // only that thin axis; trim the longitudinal ends as before so
+          // connected neighbours can still share their intended junction.
+          const minimumThickness = UNIT / SCALE / 2;
+          const thinX = box.width < minimumThickness;
+          const thinY = box.height < minimumThickness;
+          return {
+            x: thinX ? box.x - minimumThickness / 2 : box.x + 1,
+            y: thinY ? box.y - minimumThickness / 2 : box.y + 1,
+            width: thinX ? minimumThickness : Math.max(0, box.width - 2),
+            height: thinY ? minimumThickness : Math.max(0, box.height - 2),
+          };
+        }
+
         function collisionCount(boxes) {
           return boxes.reduce(
             (count, box) => count + occupied.filter((other) => boxesOverlap(box, other)).length,
             0,
           );
+        }
+
+        function segmentCrossesBox(start, end, box, endpointClearance = 3) {
+          const dx = end.x - start.x;
+          const dy = end.y - start.y;
+          const distance = Math.hypot(dx, dy);
+          if (distance <= endpointClearance * 2) return false;
+          const inset = endpointClearance / distance;
+          const a = { x: start.x + dx * inset, y: start.y + dy * inset };
+          const b = { x: end.x - dx * inset, y: end.y - dy * inset };
+          const left = box.x;
+          const right = box.x + box.width;
+          const top = box.y;
+          const bottom = box.y + box.height;
+          if (Math.abs(a.y - b.y) < 0.001) {
+            return (
+              a.y > top &&
+              a.y < bottom &&
+              Math.min(a.x, b.x) < right &&
+              Math.max(a.x, b.x) > left
+            );
+          }
+          if (Math.abs(a.x - b.x) < 0.001) {
+            return (
+              a.x > left &&
+              a.x < right &&
+              Math.min(a.y, b.y) < bottom &&
+              Math.max(a.y, b.y) > top
+            );
+          }
+          return false;
+        }
+
+        function pathCollisionCount(points, boxes) {
+          return boxes.filter((box) =>
+            points.slice(1).some((point, index) =>
+              segmentCrossesBox(points[index], point, box),
+            ),
+          ).length;
+        }
+
+        function extensionCollisionBoxes(points) {
+          const thickness = UNIT / SCALE / 2;
+          const endpointClearance = 3;
+          return points.slice(1).flatMap((end, index) => {
+            const start = points[index];
+            const dx = end.x - start.x;
+            const dy = end.y - start.y;
+            const distance = Math.hypot(dx, dy);
+            if (distance <= endpointClearance * 2) return [];
+            if (Math.abs(dy) < 0.001) {
+              return [{
+                x: Math.min(start.x, end.x) + endpointClearance,
+                y: start.y - thickness / 2,
+                width: distance - endpointClearance * 2,
+                height: thickness,
+              }];
+            }
+            return [{
+              x: start.x - thickness / 2,
+              y: Math.min(start.y, end.y) + endpointClearance,
+              width: thickness,
+              height: distance - endpointClearance * 2,
+            }];
+          });
+        }
+
+        function collisionExtensionPath(turtle, distance) {
+          const start = { x: turtle.x, y: turtle.y };
+          const forward = turtle.vector(distance);
+          const end = { x: start.x + forward.x, y: start.y + forward.y };
+          const straight = [start, end];
+          return pathCollisionCount(straight, occupied) ? null : straight;
+        }
+
+        function drawCollisionExtension(turtle, distance) {
+          const points = collisionExtensionPath(turtle, distance);
+          if (!points) return { collisions: 1, points: [] };
+          make('path', {
+            class: 'collision-extension',
+            d: points
+              .map((point, index) => `${index ? 'L' : 'M'}${point.x} ${point.y}`)
+              .join(''),
+          });
+          const end = points[points.length - 1];
+          turtle.x = end.x;
+          turtle.y = end.y;
+          return { collisions: 0, points };
         }
 
         function captureRenderState(turtle, state) {
@@ -2574,86 +3567,124 @@
           spacingStep,
           normalDir,
         ) {
-          if (spacingStep) turtle.forward((UNIT / 2) * spacingStep);
+          // A primitive may have left the physical turtle facing opposite the
+          // logical route. V2 always realigns to the route before inserting
+          // collision spacing.
+          calibrate(turtle, state.direction, state.normalDir);
+          const extension = spacingStep
+            ? drawCollisionExtension(turtle, (UNIT / 2) * spacingStep)
+            : { collisions: 0, points: [] };
           state.normalDir = normalDir;
           const boxes = [];
           const result = renderNode(node, turtle, state, boundaryStart, boundaryEnd, boxes);
+          const extensionCollisions =
+            extension.collisions +
+            (extension.points.length ? pathCollisionCount(extension.points, boxes) : 0);
           return {
             boxes,
+            extensionBoxes: extensionCollisionBoxes(extension.points),
             result,
-            collisions: collisionCount(boxes),
+            collisions: collisionCount(boxes) + extensionCollisions,
             distance: Math.hypot(turtle.x, turtle.y),
           };
         }
 
-        function renderMazeComponent(node, turtle, state, boundaryStart, boundaryEnd) {
-          const snapshot = captureRenderState(turtle, state);
-          let chosen = null;
-          let fallback = null;
-          const directions = mazeNormalDirections(node, snapshot.state);
-
-          for (let spacingStep = 0; spacingStep < MAZE_CHANCES; spacingStep++) {
-            const valid = [];
-            for (const normalDir of directions) {
-              restoreRenderState(snapshot, turtle, state);
-              const candidate = runMazeCandidate(
+        function mazePassageTasks(documentTree) {
+          const tasks = [];
+          documentTree.sentences.forEach((sentence, sentenceIndex) => {
+            const hasPeriod = documentTree.periods[sentenceIndex];
+            sentence.children.forEach((node, childIndex) => {
+              tasks.push({
+                type: 'node',
                 node,
-                turtle,
-                state,
-                boundaryStart,
-                boundaryEnd,
-                spacingStep,
-                normalDir,
-              );
-              const route = { spacingStep, normalDir, ...candidate };
-              if (
-                !fallback ||
-                route.collisions < fallback.collisions ||
-                (route.collisions === fallback.collisions && route.distance < fallback.distance)
-              ) {
-                fallback = route;
-              }
-              if (!route.collisions) valid.push(route);
-            }
-            if (valid.length) {
-              chosen = valid.sort((a, b) => a.distance - b.distance)[0];
-              break;
-            }
-          }
-
-          chosen ||= fallback;
-          restoreRenderState(snapshot, turtle, state);
-          const committed = runMazeCandidate(
-            node,
-            turtle,
-            state,
-            boundaryStart,
-            boundaryEnd,
-            chosen?.spacingStep || 0,
-            chosen?.normalDir ?? snapshot.state.normalDir,
-          );
-          occupied.push(...committed.boxes);
-          return committed.result;
+                boundaryStart: childIndex > 0,
+                boundaryEnd: hasPeriod || childIndex < sentence.children.length - 1,
+              });
+            });
+            if (hasPeriod) tasks.push({ type: 'period' });
+            if (sentenceIndex < documentTree.sentences.length - 1) tasks.push({ type: 'gap' });
+          });
+          return tasks;
         }
 
-        function renderMazeSeries(
-          node,
-          turtle,
-          state,
-          boundaryStart = false,
-          boundaryEnd = false,
-        ) {
-          let result = { start: { x: turtle.x, y: turtle.y }, end: { x: turtle.x, y: turtle.y } };
-          node.children.forEach((child, index) => {
-            result = renderMazeComponent(
-              child,
-              turtle,
-              state,
-              boundaryStart || index > 0,
-              boundaryEnd || index < node.children.length - 1,
-            );
-          });
-          return result;
+        function renderMazePassage(documentTree, turtle, state) {
+          const tasks = mazePassageTasks(documentTree);
+          let attempts = 0;
+
+          function restoreMazeStep(snapshot, occupiedCount) {
+            restoreRenderState(snapshot, turtle, state);
+            occupied.length = occupiedCount;
+          }
+
+          function solve(taskIndex) {
+            if (taskIndex >= tasks.length) return true;
+            if (++attempts > MAX_MAZE_BACKTRACK_ATTEMPTS) {
+              throw new ParseError('Maze search exceeded its backtracking limit');
+            }
+
+            const task = tasks[taskIndex];
+            const snapshot = captureRenderState(turtle, state);
+            const occupiedCount = occupied.length;
+
+            if (task.type === 'period') {
+              turtle.dot(UNIT / SCALE / 2);
+              if (solve(taskIndex + 1)) return true;
+              restoreMazeStep(snapshot, occupiedCount);
+              return false;
+            }
+            if (task.type === 'gap') {
+              turtle.penup();
+              turtle.forward(UNIT / SCALE);
+              turtle.pendown();
+              if (solve(taskIndex + 1)) return true;
+              restoreMazeStep(snapshot, occupiedCount);
+              return false;
+            }
+
+            const directions = mazeNormalDirections(task.node, snapshot.state);
+            for (let spacingStep = 0; spacingStep < MAZE_CHANCES; spacingStep++) {
+              const routes = [];
+              for (const normalDir of directions) {
+                restoreMazeStep(snapshot, occupiedCount);
+                const candidate = runMazeCandidate(
+                  task.node,
+                  turtle,
+                  state,
+                  task.boundaryStart,
+                  task.boundaryEnd,
+                  spacingStep,
+                  normalDir,
+                );
+                if (!candidate.collisions) {
+                  routes.push({ spacingStep, normalDir, distance: candidate.distance });
+                }
+              }
+              routes.sort((first, second) => first.distance - second.distance);
+
+              for (const route of routes) {
+                restoreMazeStep(snapshot, occupiedCount);
+                const committed = runMazeCandidate(
+                  task.node,
+                  turtle,
+                  state,
+                  task.boundaryStart,
+                  task.boundaryEnd,
+                  route.spacingStep,
+                  route.normalDir,
+                );
+                if (committed.collisions) continue;
+                occupied.push(...committed.boxes, ...committed.extensionBoxes);
+                if (solve(taskIndex + 1)) return true;
+              }
+            }
+
+            restoreMazeStep(snapshot, occupiedCount);
+            return false;
+          }
+
+          if (!solve(0)) {
+            throw new ParseError('No collision-free maze direction was found');
+          }
         }
 
         function gateCurve(start, end, lift, wavy = false) {
@@ -2723,10 +3754,7 @@
 
         function gatePath(start, end, wavy = false) {
           const distance = Math.hypot(end.x - start.x, end.y - start.y);
-          const baseLift = Math.max(
-            (UNIT / SCALE) * 1.25,
-            Math.min(UNIT * 0.45, distance * 0.1),
-          );
+          const baseLift = Math.max((UNIT / SCALE) * 1.25, Math.min(UNIT * 0.45, distance * 0.1));
           const maxLift = Math.max(baseLift, Math.min(UNIT * 0.9, distance * 0.22));
           const attempts = 8;
           let curve = gateCurve(start, end, baseLift, wavy);
@@ -2752,6 +3780,715 @@
           make('polygon', { points, class: 'turtle-cursor', 'aria-hidden': 'true' }, artwork);
         }
 
+        const AXES_3D = [
+          { x: 1, y: 0, z: 0 },
+          { x: 0, y: 1, z: 0 },
+          { x: 0, y: 0, z: 1 },
+        ];
+        const GLYPH_PLANES_3D = [
+          // Unaccented and once-accented glyphs retain the original page plane.
+          { axis: AXES_3D[0], side: { x: 0, y: -1, z: 0 } },
+          { axis: { x: 0, y: -1, z: 0 }, side: AXES_3D[0] },
+          // A second accent turns the complete flat glyph onto the depth plane.
+          { axis: AXES_3D[2], side: { x: 0, y: -1, z: 0 } },
+        ];
+        const scene3d = {
+          commands: [],
+          anchors: new Map(),
+          points: [],
+          elementCount: 0,
+        };
+        const view3d = {
+          yaw: -0.68,
+          pitch: 0.46,
+          zoom: 1,
+          panX: 0,
+          panY: 0,
+          center: { x: 0, y: 0, z: 0 },
+        };
+        let threeDInteraction = null;
+
+        function point3(x = 0, y = 0, z = 0) {
+          return { x, y, z };
+        }
+        function add3(a, b) {
+          return point3(a.x + b.x, a.y + b.y, a.z + b.z);
+        }
+        function subtract3(a, b) {
+          return point3(a.x - b.x, a.y - b.y, a.z - b.z);
+        }
+        function scale3(a, amount) {
+          return point3(a.x * amount, a.y * amount, a.z * amount);
+        }
+        function length3(a) {
+          return Math.hypot(a.x, a.y, a.z);
+        }
+        function normalize3(a) {
+          const length = length3(a) || 1;
+          return scale3(a, 1 / length);
+        }
+        function cross3(a, b) {
+          return point3(
+            a.y * b.z - a.z * b.y,
+            a.z * b.x - a.x * b.z,
+            a.x * b.y - a.y * b.x,
+          );
+        }
+        function glyphBasis3D(orientation = 0) {
+          const basis = GLYPH_PLANES_3D[orientation] || GLYPH_PLANES_3D[0];
+          return {
+            axis: basis.axis,
+            side: basis.side,
+            planeNormal: normalize3(cross3(basis.axis, basis.side)),
+          };
+        }
+        function remember3dPoints(points) {
+          points.forEach((point) => scene3d.points.push(point));
+        }
+        function add3dPolyline(points, role = 'ink', closed = false, width = 1) {
+          const command = { type: 'polyline', points, role, closed, width };
+          scene3d.commands.push(command);
+          remember3dPoints(points);
+          return command;
+        }
+        function add3dLine(start, end, role = 'ink', width = 1) {
+          return add3dPolyline([start, end], role, false, width);
+        }
+        function add3dCircle(center, firstAxis, secondAxis, radius, role = 'ink') {
+          const points = Array.from({ length: 33 }, (_, index) => {
+            const angle = (index / 32) * Math.PI * 2;
+            return add3(
+              center,
+              add3(
+                scale3(firstAxis, Math.cos(angle) * radius),
+                scale3(secondAxis, Math.sin(angle) * radius),
+              ),
+            );
+          });
+          return add3dPolyline(points, role, true);
+        }
+        function add3dDot(center, radius = 4.5, role = 'ink') {
+          scene3d.commands.push({ type: 'dot', center, radius, role });
+          remember3dPoints([center]);
+        }
+        function add3dSphere(center, radius, role = 'sphere') {
+          scene3d.commands.push({ type: 'sphere', center, radius, role });
+          remember3dPoints([center]);
+        }
+        function add3dFace(points, color, role = 'solid') {
+          const command = { type: 'face', points, color, role, closed: true, fill: true };
+          scene3d.commands.push(command);
+          remember3dPoints(points);
+          return command;
+        }
+
+        function add3dArrow(origin, forward, side, up) {
+          const segments = 12;
+          const shaftLength = 9;
+          const shaftRadius = 2.4;
+          const headLength = 14;
+          const headRadius = 6.5;
+          const shaftEnd = add3(origin, scale3(forward, shaftLength));
+          const tip = add3(shaftEnd, scale3(forward, headLength));
+          const ring = (center, radius) =>
+            Array.from({ length: segments }, (_, index) => {
+              const angle = (index / segments) * Math.PI * 2;
+              return add3(
+                center,
+                add3(
+                  scale3(side, Math.cos(angle) * radius),
+                  scale3(up, Math.sin(angle) * radius),
+                ),
+              );
+            });
+          const tailRing = ring(origin, shaftRadius);
+          const shaftRing = ring(shaftEnd, shaftRadius);
+          const headRing = ring(shaftEnd, headRadius);
+          const facetColor = (index, dark = false) => {
+            const light = (Math.cos((index / segments) * Math.PI * 2 - 0.8) + 1) / 2;
+            const value = Math.round((dark ? 4 : 8) + light * (dark ? 18 : 30));
+            const channel = value.toString(16).padStart(2, '0');
+            return `#${channel}${channel}${channel}`;
+          };
+
+          add3dFace([...tailRing].reverse(), '#050505');
+          for (let index = 0; index < segments; index++) {
+            const next = (index + 1) % segments;
+            add3dFace(
+              [tailRing[index], tailRing[next], shaftRing[next], shaftRing[index]],
+              facetColor(index, true),
+            );
+            add3dFace(
+              [headRing[index], headRing[next], tip],
+              facetColor(index),
+            );
+          }
+          add3dFace([...headRing].reverse(), '#080808');
+        }
+
+        function mapGlyphVector3D(point, orientation) {
+          const basis = glyphBasis3D(orientation);
+          return orientation === 0
+            ? add3(scale3(basis.axis, point.x), scale3(basis.side, point.y))
+            : add3(scale3(basis.side, point.x), scale3(basis.axis, point.y));
+        }
+
+        function mapGlyphPoint3D(start, point, orientation) {
+          return add3(start, mapGlyphVector3D(point, orientation));
+        }
+
+        function geometryBounds2D(geometry) {
+          const xs = [];
+          const ys = [];
+          geometry.forEach((primitive) => {
+            if (primitive.type === 'line') {
+              xs.push(primitive.start.x, primitive.end.x);
+              ys.push(primitive.start.y, primitive.end.y);
+              return;
+            }
+            xs.push(
+              primitive.center.x - primitive.radius,
+              primitive.center.x + primitive.radius,
+            );
+            ys.push(
+              primitive.center.y - primitive.radius,
+              primitive.center.y + primitive.radius,
+            );
+          });
+          if (!xs.length) return { x: 0, y: 0, width: 0, height: 0 };
+          const minX = Math.min(...xs);
+          const minY = Math.min(...ys);
+          return {
+            x: minX,
+            y: minY,
+            width: Math.max(...xs) - minX,
+            height: Math.max(...ys) - minY,
+          };
+        }
+
+        function drawElement3D(
+          node,
+          start,
+          state,
+          boundaryStart = false,
+          boundaryEnd = false,
+        ) {
+          const periodCircle = boundaryEnd && 'şç'.includes(node.char);
+          const requestedNormalDir = state.fuseauContext
+            ? fuseauElementNormalDir(
+                node.orientation,
+                state.fuseauContext.direction,
+                state.fuseauContext.side,
+                state.fuseauContext.parentNormalDir,
+              )
+            : state.normalDir;
+          const normalDir = elementNormalDir(node.char, requestedNormalDir);
+          const drawAlter = elementAlter(node.char, state.alter);
+          const facesAgainstRoute = normalDir !== requestedNormalDir;
+          const turtle = new GeometryTurtle(0, 0, 0);
+          let routeEnd = null;
+
+          if (facesAgainstRoute) {
+            calibrate(turtle, node.orientation, requestedNormalDir);
+            turtle.penup();
+            turtle.forward(UNIT);
+            routeEnd = { x: turtle.x, y: turtle.y };
+            turtle.pendown();
+          }
+
+          const localAnchors = new Map();
+          drawElement(
+            turtle,
+            node,
+            normalDir,
+            drawAlter,
+            boundaryStart || periodCircle,
+            boundaryEnd,
+            state.fuseauContext || null,
+            localAnchors,
+          );
+
+          const xAxis = mapGlyphVector3D({ x: 1, y: 0 }, node.orientation);
+          const yAxis = mapGlyphVector3D({ x: 0, y: 1 }, node.orientation);
+          turtle.geometry.forEach((primitive) => {
+            if (primitive.type === 'line') {
+              add3dLine(
+                mapGlyphPoint3D(start, primitive.start, node.orientation),
+                mapGlyphPoint3D(start, primitive.end, node.orientation),
+              );
+            } else if (primitive.type === 'circle') {
+              add3dCircle(
+                mapGlyphPoint3D(start, primitive.center, node.orientation),
+                xAxis,
+                yAxis,
+                primitive.radius,
+              );
+            } else {
+              add3dSphere(
+                mapGlyphPoint3D(start, primitive.center, node.orientation),
+                primitive.radius,
+              );
+            }
+          });
+
+          const drawnEnd = { x: turtle.x, y: turtle.y };
+          const localEnd = routeEnd || { x: turtle.x, y: turtle.y };
+          const localAnchor = localAnchors.get(node.id);
+          if (localAnchor) {
+            if (!localAnchor.dynamic) {
+              localAnchor.surface = staticGateAnchor(
+                node,
+                { x: 0, y: 0 },
+                drawnEnd,
+                localAnchor,
+                geometryBounds2D(turtle.geometry),
+              );
+            }
+            scene3d.anchors.set(node.id, {
+              dot: mapGlyphPoint3D(start, localAnchor.dot, node.orientation),
+              surface: mapGlyphPoint3D(start, localAnchor.surface, node.orientation),
+              dynamic: localAnchor.dynamic,
+            });
+          }
+          state.alter *= -1;
+          state.direction = node.orientation;
+          scene3d.elementCount++;
+          return mapGlyphPoint3D(start, localEnd, node.orientation);
+        }
+
+        function branchOffset3D(index) {
+          if (index === 0) return 0;
+          const magnitude = Math.ceil(index / 2);
+          return (index % 2 ? -1 : 1) * magnitude;
+        }
+
+        function firstElement3D(node) {
+          if (!node) return null;
+          if (node.type === 'element') return node;
+          if (node.type === 'series') {
+            for (const child of node.children) {
+              const element = firstElement3D(child);
+              if (element) return element;
+            }
+            return null;
+          }
+          for (const branch of node.branches) {
+            const element = firstElement3D(branch);
+            if (element) return element;
+          }
+          return null;
+        }
+
+        function buildNode3D(
+          node,
+          start,
+          state = { direction: 0, normalDir: 1, alter: 1, fuseauContext: null },
+          boundaryStart = false,
+          boundaryEnd = false,
+        ) {
+          if (node.type === 'element') {
+            return drawElement3D(node, start, state, boundaryStart, boundaryEnd);
+          }
+          if (node.type === 'series') {
+            let cursor = start;
+            node.children.forEach((child, index) => {
+              cursor = buildNode3D(
+                child,
+                cursor,
+                state,
+                boundaryStart || index > 0,
+                boundaryEnd || index < node.children.length - 1,
+              );
+            });
+            return cursor;
+          }
+
+          const first = firstElement3D(node.branches[0]);
+          const stemAxisIndex = first?.orientation ?? state.direction;
+          const spreadAxis = glyphBasis3D(stemAxisIndex).side;
+          const gap = 72;
+          const placements = node.branches.map((branch, index) => {
+            const offset = branchOffset3D(index);
+            const branchSide = offset < 0 ? 1 : -1;
+            const branchStart = add3(start, scale3(spreadAxis, offset * gap));
+            const branchState = {
+              ...state,
+              direction: stemAxisIndex,
+              alter: branchSide,
+              fuseauContext: {
+                direction: stemAxisIndex,
+                side: branchSide,
+                parentNormalDir: state.normalDir,
+              },
+            };
+            const branchEnd = buildNode3D(branch, branchStart, branchState, true, true);
+            return { offset, branchStart, branchEnd };
+          });
+          const ordered = [...placements].sort((left, right) => left.offset - right.offset);
+          for (let index = 1; index < ordered.length; index++) {
+            add3dLine(ordered[index - 1].branchStart, ordered[index].branchStart, 'fuseau');
+            add3dLine(ordered[index - 1].branchEnd, ordered[index].branchEnd, 'fuseau');
+          }
+          state.direction = stemAxisIndex;
+          state.alter *= -1;
+          return placements[0]?.branchEnd || start;
+        }
+
+        function addGates3D(documentTree) {
+          documentTree.gates.forEach((gate) => {
+            const sourceAnchor = scene3d.anchors.get(gate.source);
+            const targetAnchor = scene3d.anchors.get(gate.target);
+            if (!sourceAnchor || !targetAnchor) return;
+            const start = sourceAnchor.dynamic ? sourceAnchor.dot : sourceAnchor.surface;
+            const end = targetAnchor.dynamic ? targetAnchor.dot : targetAnchor.surface;
+            const route = subtract3(end, start);
+            const direction = normalize3(route);
+            let normal = cross3(direction, AXES_3D[2]);
+            if (length3(normal) < 0.1) normal = cross3(direction, AXES_3D[1]);
+            normal = normalize3(normal);
+            const distance = length3(route);
+            const lift = Math.max(
+              (UNIT / SCALE) * 1.25,
+              Math.min(UNIT * 0.45, distance * 0.1),
+            );
+            const control1 = add3(
+              add3(start, scale3(route, 1 / 3)),
+              scale3(normal, lift),
+            );
+            const control2 = add3(
+              add3(start, scale3(route, 2 / 3)),
+              scale3(normal, lift),
+            );
+            const steps = Math.max(48, Math.ceil(distance / 1.5));
+            const points = Array.from({ length: steps + 1 }, (_, index) => {
+              const t = index / steps;
+              const one = 1 - t;
+              let point = add3(
+                add3(
+                  scale3(start, one ** 3),
+                  scale3(control1, 3 * one ** 2 * t),
+                ),
+                add3(
+                  scale3(control2, 3 * one * t ** 2),
+                  scale3(end, t ** 3),
+                ),
+              );
+              if (gateStyle === 'wavy') {
+                const wave =
+                  (UNIT / SCALE / 4) *
+                  Math.sin(Math.PI * t) *
+                  Math.sin((2 * Math.PI * distance * t) / ((UNIT / SCALE) * 2.5));
+                point = add3(point, scale3(normal, wave));
+              }
+              return point;
+            });
+            add3dPolyline(points, 'gate');
+          });
+        }
+
+        function buildScene3D(documentTree) {
+          scene3d.commands.length = 0;
+          scene3d.points.length = 0;
+          scene3d.anchors.clear();
+          scene3d.elementCount = 0;
+          let sentenceOrigin = point3(0, 0, 0);
+          let lastEnd = sentenceOrigin;
+          const state = { direction: 0, normalDir: 1, alter: 1, fuseauContext: null };
+          documentTree.sentences.forEach((sentence, index) => {
+            const hasPeriod = documentTree.periods[index];
+            lastEnd = buildNode3D(sentence, sentenceOrigin, state, false, hasPeriod);
+            if (hasPeriod) add3dDot(lastEnd, UNIT / SCALE / 4);
+            sentenceOrigin = point3(0, sentenceOrigin.y - 150, 0);
+          });
+          addGates3D(documentTree);
+          if (scene3d.elementCount) {
+            const cursorTurtle = new GeometryTurtle(0, 0, 0);
+            calibrate(cursorTurtle, state.direction, state.normalDir);
+            const forward = normalize3(
+              mapGlyphVector3D(cursorTurtle.vector(1), state.direction),
+            );
+            const side = normalize3(
+              mapGlyphVector3D(
+                cursorTurtle.vector(1, cursorTurtle.heading + 90),
+                state.direction,
+              ),
+            );
+            const up = normalize3(cross3(forward, side));
+            add3dArrow(lastEnd, forward, side, up);
+          }
+        }
+
+        function rotated3D(point) {
+          const centered = subtract3(point, view3d.center);
+          const cosYaw = Math.cos(view3d.yaw);
+          const sinYaw = Math.sin(view3d.yaw);
+          const xYaw = centered.x * cosYaw + centered.z * sinYaw;
+          const zYaw = -centered.x * sinYaw + centered.z * cosYaw;
+          const cosPitch = Math.cos(view3d.pitch);
+          const sinPitch = Math.sin(view3d.pitch);
+          return {
+            x: xYaw,
+            y: centered.y * cosPitch - zYaw * sinPitch,
+            z: centered.y * sinPitch + zYaw * cosPitch,
+          };
+        }
+
+        function project3D(point, width = canvas3d.clientWidth, height = canvas3d.clientHeight) {
+          const rotated = rotated3D(point);
+          const perspective = 900 / Math.max(300, 900 + rotated.z);
+          return {
+            x: width / 2 + rotated.x * view3d.zoom * perspective + view3d.panX,
+            y: height / 2 - rotated.y * view3d.zoom * perspective + view3d.panY,
+            z: rotated.z,
+            perspective,
+          };
+        }
+
+        function palette3D() {
+          const palette = getComputedStyle(document.documentElement);
+          return {
+            ink: palette.getPropertyValue('--ink').trim() || '#302b20',
+            accent: palette.getPropertyValue('--accent-deep').trim() || '#8f5e0d',
+            muted: palette.getPropertyValue('--muted').trim() || '#776c55',
+          };
+        }
+
+        function render3DCanvas() {
+          if (canvas3d.hidden) return;
+          const width = canvas3d.clientWidth || 1;
+          const height = canvas3d.clientHeight || 1;
+          canvas3d.setAttribute('viewBox', `0 0 ${width} ${height}`);
+          artwork3d.replaceChildren();
+          axes3d.replaceChildren();
+          const colors = palette3D();
+          const projectedCommands = scene3d.commands.map((command) => {
+            const points =
+              command.type === 'dot' || command.type === 'sphere'
+                ? [project3D(command.center, width, height)]
+                : command.points.map((point) => project3D(point, width, height));
+            const depth = points.reduce((sum, point) => sum + point.z, 0) / points.length;
+            return { command, points, depth };
+          });
+          projectedCommands.sort((left, right) => left.depth - right.depth);
+
+          projectedCommands.forEach(({ command, points }) => {
+            const color =
+              command.color ||
+              (command.role === 'gate' || command.role === 'depth'
+                ? colors.accent
+                : command.role === 'fuseau'
+                  ? colors.muted
+                  : colors.ink);
+            if (command.type === 'dot' || command.type === 'sphere') {
+              const radius = Math.max(
+                2.4,
+                command.radius * view3d.zoom * points[0].perspective,
+              );
+              make(
+                'circle',
+                {
+                  cx: points[0].x,
+                  cy: points[0].y,
+                  r: radius,
+                  fill:
+                    command.type === 'sphere'
+                      ? 'url(#ete-sphere-gradient)'
+                      : color,
+                },
+                artwork3d,
+              );
+              return;
+            }
+            const renderedPoints = command.closed ? [...points, points[0]] : points;
+            const projectionScale =
+              points.reduce((sum, point) => sum + point.perspective, 0) / points.length;
+            const attributes = {
+              points: renderedPoints.map((point) => `${point.x},${point.y}`).join(' '),
+              fill: command.fill ? color : 'none',
+              stroke: command.fill ? 'none' : color,
+              'stroke-width':
+                (command.role === 'gate' ? 1.55 : 2.6) *
+                command.width *
+                view3d.zoom *
+                projectionScale,
+              'stroke-linecap': 'round',
+              'stroke-linejoin': 'round',
+            };
+            if (command.role === 'gate') attributes.opacity = 0.76;
+            if (command.role === 'gate' && gateStyle === 'dashed') {
+              attributes['stroke-dasharray'] = '7 5';
+            }
+            make(command.fill ? 'polygon' : 'polyline', attributes, artwork3d);
+          });
+          drawAxes3D(width, height, colors);
+        }
+
+        function drawAxes3D(width, height, colors) {
+          const origin = { x: 42, y: height - 40 };
+          const labels = ['x', 'y', 'z'];
+          const axisColors = [colors.ink, colors.muted, colors.accent];
+          AXES_3D.forEach((axis, index) => {
+            const rotated = rotated3D(add3(view3d.center, scale3(axis, 26)));
+            const base = rotated3D(view3d.center);
+            const dx = rotated.x - base.x;
+            const dy = -(rotated.y - base.y);
+            make(
+              'line',
+              {
+                x1: origin.x,
+                y1: origin.y,
+                x2: origin.x + dx,
+                y2: origin.y + dy,
+                stroke: axisColors[index],
+                'stroke-width': 1.7,
+                'stroke-linecap': 'round',
+              },
+              axes3d,
+            );
+            const label = make(
+              'text',
+              {
+                x: origin.x + dx + 4,
+                y: origin.y + dy + 3,
+                fill: axisColors[index],
+                'font-size': 10,
+                'font-family': 'Consolas, monospace',
+              },
+              axes3d,
+            );
+            label.textContent = labels[index];
+          });
+          make(
+            'circle',
+            { cx: origin.x, cy: origin.y, r: 2.6, fill: colors.ink },
+            axes3d,
+          );
+        }
+
+        function fit3DScene() {
+          if (!scene3d.points.length) return;
+          const xs = scene3d.points.map((point) => point.x);
+          const ys = scene3d.points.map((point) => point.y);
+          const zs = scene3d.points.map((point) => point.z);
+          view3d.center = point3(
+            (Math.min(...xs) + Math.max(...xs)) / 2,
+            (Math.min(...ys) + Math.max(...ys)) / 2,
+            (Math.min(...zs) + Math.max(...zs)) / 2,
+          );
+          const extent = Math.max(
+            100,
+            Math.max(...xs) - Math.min(...xs),
+            Math.max(...ys) - Math.min(...ys),
+            Math.max(...zs) - Math.min(...zs),
+          );
+          const available = Math.max(
+            120,
+            Math.min(canvas3d.clientWidth || 600, canvas3d.clientHeight || 600) - 120,
+          );
+          view3d.zoom = Math.max(0.08, Math.min(5, available / extent));
+          view3d.panX = 0;
+          view3d.panY = 0;
+          render3DCanvas();
+        }
+
+        function draw3D(fit = true) {
+          status.classList.remove('error');
+          try {
+            const documentTree = parse(source.value, 3);
+            buildScene3D(documentTree);
+            const elements = scene3d.elementCount;
+            status.textContent = elements ? 'Live · 3D' : 'Ready';
+            count.textContent = `${elements} element${elements === 1 ? '' : 's'}`;
+            requestAnimationFrame(fit ? fit3DScene : render3DCanvas);
+          } catch (error) {
+            scene3d.commands.length = 0;
+            scene3d.points.length = 0;
+            scene3d.anchors.clear();
+            status.textContent = error.message;
+            status.classList.add('error');
+            count.textContent = '0 elements';
+            render3DCanvas();
+          }
+        }
+
+        function export3DSvg() {
+          if (!scene3d.commands.length) return;
+          const projected = scene3d.commands.map((command) => {
+            const sourcePoints =
+              command.type === 'dot' || command.type === 'sphere'
+                ? [command.center]
+                : command.points;
+            const points = sourcePoints.map((point) => {
+              const rotated = rotated3D(point);
+              const perspective = 900 / Math.max(300, 900 + rotated.z);
+              return {
+                x: rotated.x * perspective,
+                y: -rotated.y * perspective,
+                z: rotated.z,
+                perspective,
+              };
+            });
+            const depth = points.reduce((sum, point) => sum + point.z, 0) / points.length;
+            return { command, points, depth };
+          }).sort((left, right) => left.depth - right.depth);
+          const coordinates = projected.flatMap(({ points }) => points);
+          const pad = 28;
+          const minX = Math.min(...coordinates.map((point) => point.x)) - pad;
+          const minY = Math.min(...coordinates.map((point) => point.y)) - pad;
+          const maxX = Math.max(...coordinates.map((point) => point.x)) + pad;
+          const maxY = Math.max(...coordinates.map((point) => point.y)) + pad;
+          const colors = palette3D();
+          const body = projected
+            .map(({ command, points }) => {
+              const color =
+                command.color ||
+                (command.role === 'gate' || command.role === 'depth'
+                  ? colors.accent
+                  : command.role === 'fuseau'
+                    ? colors.muted
+                    : colors.ink);
+              if (command.type === 'dot' || command.type === 'sphere') {
+                const fill =
+                  command.type === 'sphere' ? 'url(#ete-export-sphere-gradient)' : color;
+                return `<circle cx="${points[0].x}" cy="${points[0].y}" ` +
+                  `r="${command.radius * points[0].perspective}" fill="${fill}"/>`;
+              }
+              const pathPoints =
+                command.closed && points.length ? [...points, points[0]] : points;
+              const values = pathPoints.map((point) => `${point.x},${point.y}`).join(' ');
+              if (command.fill) {
+                return `<polygon points="${values}" fill="${color}"/>`;
+              }
+              const dash =
+                command.role === 'gate' && gateStyle === 'dashed'
+                  ? ' stroke-dasharray="7 5"'
+                  : '';
+              const opacity = command.role === 'gate' ? ' opacity=".76"' : '';
+              const width = (command.role === 'gate' ? 1.55 : 2.6) * command.width;
+              return `<polyline points="${values}" fill="none" stroke="${color}" ` +
+                `stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"` +
+                `${dash}${opacity}/>`;
+            })
+            .join('');
+          const sphereDefinition =
+            '<defs><radialGradient id="ete-export-sphere-gradient" cx="31%" cy="27%" r="72%">' +
+            '<stop offset="0%" stop-color="#77736a"/>' +
+            '<stop offset="15%" stop-color="#292825"/>' +
+            '<stop offset="55%" stop-color="#090909"/>' +
+            '<stop offset="100%" stop-color="#000000"/>' +
+            '</radialGradient></defs>';
+          const svgText =
+            `<svg xmlns="${NS}" viewBox="${minX} ${minY} ${maxX - minX} ${maxY - minY}" ` +
+            `width="${Math.ceil(maxX - minX)}" height="${Math.ceil(maxY - minY)}">` +
+            `${sphereDefinition}${body}</svg>`;
+          const blob = new Blob([svgText], { type: 'image/svg+xml' });
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = 'ete-drawing-3d.svg';
+          link.click();
+          setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+        }
+
         let viewBox = { x: 0, y: 0, w: 100, h: 100 };
         function getArtworkViewBox(pad = 54) {
           if (!artwork.childNodes.length) return;
@@ -2771,7 +4508,7 @@
           svg.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
         }
 
-        function draw() {
+        function draw2D() {
           artwork.replaceChildren();
           anchors.clear();
           status.classList.remove('error');
@@ -2783,17 +4520,20 @@
             // left-to-right and vertical paths advance top-to-bottom.
             const turtle = new SvgTurtle(0, 0, 0);
             const drawingState = { direction: 0, normalDir: 1, alter: 1 };
-            documentTree.sentences.forEach((sentence, index) => {
-              const hasPeriod = documentTree.periods[index];
-              if (mazeMode) renderMazeSeries(sentence, turtle, drawingState, false, hasPeriod);
-              else renderNode(sentence, turtle, drawingState, false, hasPeriod);
-              if (hasPeriod) turtle.dot(UNIT / SCALE / 2);
-              if (index < documentTree.sentences.length - 1) {
-                turtle.penup();
-                turtle.forward(UNIT / SCALE);
-                turtle.pendown();
-              }
-            });
+            if (mazeMode) {
+              renderMazePassage(documentTree, turtle, drawingState);
+            } else {
+              documentTree.sentences.forEach((sentence, index) => {
+                const hasPeriod = documentTree.periods[index];
+                renderNode(sentence, turtle, drawingState, false, hasPeriod);
+                if (hasPeriod) turtle.dot(UNIT / SCALE / 2);
+                if (index < documentTree.sentences.length - 1) {
+                  turtle.penup();
+                  turtle.forward(UNIT / SCALE);
+                  turtle.pendown();
+                }
+              });
+            }
             const elements = anchors.size;
             documentTree.gates.forEach((gate) => {
               const sourceAnchor = anchors.get(gate.source),
@@ -2819,6 +4559,11 @@
             count.textContent = `${anchors.size} elements`;
             if (artwork.childNodes.length) requestAnimationFrame(fitDrawing);
           }
+        }
+
+        function draw() {
+          if (drawingDimensions === 3) draw3D();
+          else draw2D();
         }
 
         const typedCompounds = new Map([
@@ -3045,11 +4790,125 @@
         document
           .querySelector('#random-settings-cancel')
           .addEventListener('click', () => randomSettingsDialog.close());
+        const helpPageMeta = [
+          {
+            title: 'Start here',
+            short: 'Start',
+            intro: 'Write your first drawable Ítí sentence in a minute.',
+          },
+          {
+            title: 'Build a branch',
+            short: 'Branches',
+            intro: 'Join symbols into one readable path.',
+          },
+          {
+            title: 'Build a fuseau',
+            short: 'Fuseaux',
+            intro: 'Place two or more branches in parallel.',
+          },
+          {
+            title: 'Omission rules',
+            short: 'Omissions',
+            intro: 'Shorten fuseau framing without changing the structure.',
+          },
+          {
+            title: 'Gates and typing',
+            short: 'Gates',
+            intro: 'Connect elements and type special forms quickly.',
+          },
+        ];
+        let helpPageIndex = 0;
+        function showHelpPage(index) {
+          helpPageIndex = Math.max(0, Math.min(helpPages.length - 1, index));
+          helpPages.forEach((page, pageIndex) => {
+            page.hidden = pageIndex !== helpPageIndex;
+          });
+          helpPrevious.disabled = helpPageIndex === 0;
+          helpNext.disabled = helpPageIndex === helpPages.length - 1;
+          const current = helpPageMeta[helpPageIndex];
+          const following = helpPageMeta[helpPageIndex + 1];
+          helpTitle.textContent = current.title;
+          helpIntro.textContent = current.intro;
+          helpPageStatus.textContent = `${current.short} · ${helpPageIndex + 1} / ${helpPages.length}`;
+          if (following) helpNext.textContent = `${following.short} →`;
+          helpDialog.scrollTop = 0;
+        }
+        document.querySelector('#help-open').addEventListener('click', () => {
+          showHelpPage(0);
+          if (!helpDialog.open) helpDialog.show();
+        });
+        document.querySelector('#help-close').addEventListener('click', () => helpDialog.close());
+        helpPrevious.addEventListener('click', () => showHelpPage(helpPageIndex - 1));
+        helpNext.addEventListener('click', () => showHelpPage(helpPageIndex + 1));
+
+        let helpDrag = null;
+        helpDragHandle.addEventListener('pointerdown', (event) => {
+          if (event.pointerType === 'mouse' && event.button !== 0) return;
+          if (event.target.closest('button')) return;
+          const rect = helpDialog.getBoundingClientRect();
+          helpDialog.style.left = `${rect.left}px`;
+          helpDialog.style.top = `${rect.top}px`;
+          helpDialog.style.right = 'auto';
+          helpDialog.style.bottom = 'auto';
+          helpDrag = {
+            pointerId: event.pointerId,
+            offsetX: event.clientX - rect.left,
+            offsetY: event.clientY - rect.top,
+          };
+          helpDragHandle.setPointerCapture(event.pointerId);
+          event.preventDefault();
+        });
+        helpDragHandle.addEventListener('pointermove', (event) => {
+          if (!helpDrag || event.pointerId !== helpDrag.pointerId) return;
+          const rect = helpDialog.getBoundingClientRect();
+          const left = Math.min(
+            Math.max(8, event.clientX - helpDrag.offsetX),
+            Math.max(8, window.innerWidth - rect.width - 8),
+          );
+          const top = Math.min(
+            Math.max(8, event.clientY - helpDrag.offsetY),
+            Math.max(8, window.innerHeight - Math.min(rect.height, window.innerHeight - 16) - 8),
+          );
+          helpDialog.style.left = `${left}px`;
+          helpDialog.style.top = `${top}px`;
+          event.preventDefault();
+        });
+        const endHelpDrag = (event) => {
+          if (!helpDrag || event.pointerId !== helpDrag.pointerId) return;
+          helpDrag = null;
+        };
+        helpDragHandle.addEventListener('pointerup', endHelpDrag);
+        helpDragHandle.addEventListener('pointercancel', endHelpDrag);
         randomSettingsForm.addEventListener('submit', (event) => {
           event.preventDefault();
           if (readRandomSettings()) randomSettingsDialog.close();
         });
-        document.querySelector('#maze-mode').addEventListener('click', (event) => {
+
+        function applyDimensionMode(dimensions) {
+          setDrawingDimensions(dimensions);
+          const threeDimensional = dimensions === 3;
+          dimensionModeButton.setAttribute('aria-pressed', String(threeDimensional));
+          dimensionModeButton.textContent = threeDimensional ? '2D' : '3D';
+          dimensionModeButton.title = threeDimensional
+            ? 'Return to the flat V2 drawer'
+            : 'Open the interactive three-axis drawer';
+          svg.toggleAttribute('hidden', threeDimensional);
+          canvas3d.toggleAttribute('hidden', !threeDimensional);
+          threeDHint.toggleAttribute('hidden', !threeDimensional);
+          drawerTitle.textContent = threeDimensional ? 'Live drawing · 3D' : 'Live drawing';
+          mazeButton.disabled = threeDimensional;
+          mazeButton.title = threeDimensional
+            ? 'Maze routing applies only to the flat drawer'
+            : 'Collision avoidance is on; click to use the unadjusted layout';
+          draw();
+        }
+
+        dimensionModeButton.addEventListener('click', () => {
+          applyDimensionMode(drawingDimensions === 2 ? 3 : 2);
+        });
+
+        mazeButton.addEventListener('click', (event) => {
+          if (drawingDimensions === 3) return;
           mazeMode = !mazeMode;
           event.currentTarget.setAttribute('aria-pressed', String(mazeMode));
           draw();
@@ -3058,10 +4917,18 @@
           const nextStyle = event.target.value;
           if (!['solid', 'dashed', 'wavy'].includes(nextStyle)) return;
           gateStyle = nextStyle;
-          draw();
+          if (drawingDimensions === 3) draw3D(false);
+          else draw();
         });
-        document.querySelector('#fit').addEventListener('click', fitDrawing);
+        document.querySelector('#fit').addEventListener('click', () => {
+          if (drawingDimensions === 3) fit3DScene();
+          else fitDrawing();
+        });
         document.querySelector('#download').addEventListener('click', () => {
+          if (drawingDimensions === 3) {
+            export3DSvg();
+            return;
+          }
           const exportViewBox = getArtworkViewBox();
           if (!exportViewBox) return;
 
@@ -3159,6 +5026,70 @@
           },
           { passive: false },
         );
+
+        canvas3d.addEventListener(
+          'pointerdown',
+          (event) => {
+            if (event.pointerType === 'mouse' && event.button !== 0) return;
+            if (event.cancelable) event.preventDefault();
+            threeDInteraction = {
+              pointerId: event.pointerId,
+              x: event.clientX,
+              y: event.clientY,
+              yaw: view3d.yaw,
+              pitch: view3d.pitch,
+              panX: view3d.panX,
+              panY: view3d.panY,
+              pan: event.shiftKey,
+            };
+            canvas3d.setPointerCapture(event.pointerId);
+          },
+          { passive: false },
+        );
+        canvas3d.addEventListener(
+          'pointermove',
+          (event) => {
+            if (!threeDInteraction || event.pointerId !== threeDInteraction.pointerId) return;
+            if (event.cancelable) event.preventDefault();
+            const dx = event.clientX - threeDInteraction.x;
+            const dy = event.clientY - threeDInteraction.y;
+            if (threeDInteraction.pan || event.shiftKey) {
+              view3d.panX = threeDInteraction.panX + dx;
+              view3d.panY = threeDInteraction.panY + dy;
+            } else {
+              view3d.yaw = threeDInteraction.yaw + dx * 0.009;
+              view3d.pitch = Math.max(
+                -Math.PI * 0.48,
+                Math.min(Math.PI * 0.48, threeDInteraction.pitch - dy * 0.009),
+              );
+            }
+            render3DCanvas();
+          },
+          { passive: false },
+        );
+        const end3DInteraction = (event) => {
+          if (!threeDInteraction || event.pointerId !== threeDInteraction.pointerId) return;
+          threeDInteraction = null;
+        };
+        canvas3d.addEventListener('pointerup', end3DInteraction);
+        canvas3d.addEventListener('pointercancel', end3DInteraction);
+        canvas3d.addEventListener('lostpointercapture', () => {
+          threeDInteraction = null;
+        });
+        canvas3d.addEventListener(
+          'wheel',
+          (event) => {
+            event.preventDefault();
+            const factor = Math.exp(-event.deltaY * 0.0012);
+            view3d.zoom = Math.max(0.05, Math.min(12, view3d.zoom * factor));
+            render3DCanvas();
+          },
+          { passive: false },
+        );
+        canvas3d.addEventListener('dblclick', fit3DScene);
+        new ResizeObserver(() => {
+          if (drawingDimensions === 3) render3DCanvas();
+        }).observe(canvas3d);
 
         draw();
       })();
