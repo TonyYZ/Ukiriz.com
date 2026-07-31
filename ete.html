@@ -1778,7 +1778,9 @@
             try {
               const first = this.compactBranch();
               const second = this.compactBranch(true);
+              let explicitDualEnd = null;
               if (this.takeOptionalOrientedStructuralVowel('o')) {
+                explicitDualEnd = this.snapshot();
                 if (this.pos >= this.text.length || outerStops.has(this.base())) {
                   return { type: 'parallel', branches: [first, second] };
                 }
@@ -1789,6 +1791,14 @@
 
               const third = this.compactBranch();
               const closingOmitted = !this.takeOptionalVowel('o');
+              if (
+                closingOmitted &&
+                !this.atSeriesBoundary(outerStops) &&
+                !this.remainingSeriesStartsWithFuseau(outerStops)
+              ) {
+                this.restore(explicitDualEnd);
+                return { type: 'parallel', branches: [first, second] };
+              }
               if (closingOmitted && requireFinalO) {
                 this.fail('A nested three-branch fuseau must end with o');
               }
