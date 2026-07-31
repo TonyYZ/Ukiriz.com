@@ -99,7 +99,7 @@
         cursor: grab;
         user-select: none;
         touch-action: none;
-        z-index: 6;
+        z-index: 8;
       }
 
       /* Highlight connections */
@@ -8864,7 +8864,9 @@
           if (pi === m) {
             // Reverse check: every selection edge between mapped symbols must also exist in pattern.
             // Skipped for old-format patterns (empty adj) — they have no edge data to check against.
-            const patternHasEdges = pattern.adj.some(sides => sides.some(list => list.length > 0));
+            const patternHasEdges = pattern.adj.some((sides) =>
+              sides.some((list) => list.length > 0),
+            );
             if (patternHasEdges) {
               for (let si = 0; si < n; si++) {
                 const piOfSi = selToPat[si];
@@ -8873,7 +8875,11 @@
                   for (const [sj, sjSide] of selAdj[si][side]) {
                     const piOfSj = selToPat[sj];
                     if (piOfSj === -1) continue;
-                    if (!pattern.adj[piOfSi][side].some(([pj, pjSide]) => pj === piOfSj && pjSide === sjSide)) {
+                    if (
+                      !pattern.adj[piOfSi][side].some(
+                        ([pj, pjSide]) => pj === piOfSj && pjSide === sjSide,
+                      )
+                    ) {
                       return false;
                     }
                   }
@@ -9150,8 +9156,8 @@
         `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M0 16.96v-1.28h49.92v2.56H0Zm8-11.2V4.48h33.92v2.56H8Z"></path></svg>`,
       ];
 
-      const dotData = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><circle cx="5" cy="5" r="5" fill="red"/></svg>`;
-      const dotDataMini = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><circle cx="2" cy="2" r="2" fill="red"/></svg>`;
+      const dotData = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><circle cx="5" cy="5" r="5" fill="#d00000"/></svg>`;
+      const dotDataMini = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><circle cx="2" cy="2" r="2" fill="#d00000"/></svg>`;
       const dotOffsetXData = [0, 45, 0, 46, -45, 0, -46, 0, 0];
       const dotOffsetYData = [0, 0, 0, -8, 0, 0, -8, -8, 0];
       const QIAN_ELEM_ID = 7;
@@ -9647,7 +9653,13 @@
         return snapped;
       }
 
-      async function rotateSymbol(symbol, addAngle, inChat = false, skipSound = false, skipInspection = false) {
+      async function rotateSymbol(
+        symbol,
+        addAngle,
+        inChat = false,
+        skipSound = false,
+        skipInspection = false,
+      ) {
         const previousSnapshot = snapshotSymbolConnections(symbol);
         const pendingIds = [symbol.dataset?.id];
         for (const side of previousSnapshot) {
@@ -9725,7 +9737,7 @@
 
             // Snapshot connections and gather pending IDs for ALL symbols first,
             // before any mutation so we don't observe partially-detached state.
-            const snapshots = symbols.map(sym => snapshotSymbolConnections(sym));
+            const snapshots = symbols.map((sym) => snapshotSymbolConnections(sym));
             const allPendingIds = symbols.flatMap((sym, i) => {
               const ids = [sym.dataset?.id];
               for (const side of snapshots[i]) {
@@ -9756,7 +9768,7 @@
             for (let i = 0; i < symbols.length; i++) {
               resetPendingSnapState();
               await reconcileSymbolConnectivityAfterTurn(symbols[i], true);
-              await new Promise(resolve => requestAnimationFrame(resolve));
+              await new Promise((resolve) => requestAnimationFrame(resolve));
               await reconcileSymbolConnectivityAfterTurn(symbols[i], true);
               await persistSymbolVisualState(symbols[i], true);
               await syncSymbolLinksRemote(symbols[i], snapshots[i]);
@@ -9844,10 +9856,12 @@
               // that carries old dotX/dotY) from flashing the dot back before our null write lands.
               markLocalRoomObjMutation(selectedSymbol, 1600);
               if (tabHeadersActivated[4]) {
-                pendingPersists.push(updateRoomObj(selectedSymbol.dataset.id, {
-                  'content.dotX': null,
-                  'content.dotY': null,
-                }));
+                pendingPersists.push(
+                  updateRoomObj(selectedSymbol.dataset.id, {
+                    'content.dotX': null,
+                    'content.dotY': null,
+                  }),
+                );
               }
             }
           }
@@ -10384,8 +10398,11 @@
               // Skip multi-symbol patterns with no edge data (old format without topology info).
               // Without edges, any connection topology would match, causing false positives.
               if (storedGraph.nodes.length > 1) {
-                const hasEdges = Array.isArray(storedGraph.adj) &&
-                  storedGraph.adj.some(sides => Array.isArray(sides) && sides.some(list => list?.length > 0));
+                const hasEdges =
+                  Array.isArray(storedGraph.adj) &&
+                  storedGraph.adj.some(
+                    (sides) => Array.isArray(sides) && sides.some((list) => list?.length > 0),
+                  );
                 if (!hasEdges) continue;
               }
               const matched = matchPatternOnSelection(component, storedGraph);
@@ -20527,363 +20544,616 @@
 
     <script src="https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.js"></script>
     <script>
-    (function () {
-      // Kick off the AudioContext on the first user touch/click so it's ready
-      // by the time the first sound fires. iOS Safari requires the resume() call
-      // to happen synchronously in a gesture handler — the async await inside
-      // each sfx function alone isn't always enough on older iOS.
-      const _startTone = () => { if (typeof Tone !== 'undefined') Tone.start(); };
-      document.addEventListener('pointerdown', _startTone, { capture: true });
-      document.addEventListener('touchstart',  _startTone, { capture: true, passive: true });
+      (function () {
+        // Kick off the AudioContext on the first user touch/click so it's ready
+        // by the time the first sound fires. iOS Safari requires the resume() call
+        // to happen synchronously in a gesture handler — the async await inside
+        // each sfx function alone isn't always enough on older iOS.
+        const _startTone = () => {
+          if (typeof Tone !== 'undefined') Tone.start();
+        };
+        document.addEventListener('pointerdown', _startTone, { capture: true });
+        document.addEventListener('touchstart', _startTone, { capture: true, passive: true });
 
-      function _dispose(nodes) {
-        nodes.forEach(n => { try { if (typeof n.stop === 'function') n.stop(); n.dispose(); } catch (_) {} });
-      }
-
-      // Shared guard: resumes AudioContext if suspended, returns false if it can't start.
-      async function _sfxEnsureRunning() {
-        if (typeof Tone === 'undefined') return false;
-        if (Tone.context.state !== 'running') {
-          try { await Tone.start(); } catch (_) {}
-          if (Tone.context.state !== 'running') return false;
+        function _dispose(nodes) {
+          nodes.forEach((n) => {
+            try {
+              if (typeof n.stop === 'function') n.stop();
+              n.dispose();
+            } catch (_) {}
+          });
         }
-        return true;
-      }
 
-      // Simple one-osc+noise synth. `now` is always captured AFTER await rev.ready.
-      async function _sfxSynth(p) {
-        if (!await _sfxEnsureRunning()) return;
-        const dur = p.duration * 0.001;
-        const nodes = [];
-        const track = (...ns) => { nodes.push(...ns); return ns; };
-        const rev = new Tone.Reverb({ decay: Math.max(0.1, 0.08 + p.reverb * 3.9) });
-        rev.wet.value = p.reverb * 0.82;
-        await rev.ready;
-        const now = Tone.now();
-        const filt = new Tone.Filter({ frequency: p.filterFreq, type: 'lowpass', rolloff: -24 });
-        const vol  = new Tone.Volume(p.volume);
-        filt.connect(rev); rev.connect(vol); vol.toDestination();
-        track(rev, filt, vol);
-        const [osc, env] = track(
-          new Tone.Oscillator({ type: p.oscType || 'triangle', frequency: p.pitch }),
-          new Tone.AmplitudeEnvelope({ attack: p.attack ?? 0.002, decay: dur, sustain: 0, release: p.release ?? 0.1 }),
-        );
-        osc.connect(env); env.connect(filt);
-        if (p.pitchEnd != null) {
-          osc.frequency.setValueAtTime(p.pitch, now);
-          osc.frequency.exponentialRampToValueAtTime(p.pitchEnd, now + dur);
+        // Shared guard: resumes AudioContext if suspended, returns false if it can't start.
+        async function _sfxEnsureRunning() {
+          if (typeof Tone === 'undefined') return false;
+          if (Tone.context.state !== 'running') {
+            try {
+              await Tone.start();
+            } catch (_) {}
+            if (Tone.context.state !== 'running') return false;
+          }
+          return true;
         }
-        osc.start(now); env.triggerAttackRelease(dur, now);
-        if (p.noiseMix > 0.005) {
-          const [noise, nenv, ngain] = track(
-            new Tone.Noise('pink'),
-            new Tone.AmplitudeEnvelope({ attack: 0.001, decay: dur * 0.4, sustain: 0, release: 0.04 }),
-            new Tone.Gain(p.noiseMix * 0.45),
-          );
-          noise.connect(nenv); nenv.connect(ngain); ngain.connect(filt);
-          noise.start(now); nenv.triggerAttackRelease(dur * 0.4, now);
-        }
-        setTimeout(() => _dispose(nodes), p.duration + p.reverb * 4200 + 1800);
-      }
 
-      window._sfxPlacement = function () {
-        _sfxSynth({ pitch: 220, duration: 100, filterFreq: 2700, noiseMix: 0.09, reverb: 0.32, volume: -14 });
-      };
-
-      window._sfxDeletion = function () {
-        _sfxSynth({ pitch: 640, duration: 180, filterFreq: 1400, noiseMix: 0.28, reverb: 0.18, volume: -16,
-                    pitchEnd: 640 * 0.36, release: 0.06 });
-      };
-
-      // Snap: bandpass noise burst + brief sine — dry and immediate.
-      window._sfxSnap = async function () {
-        if (!await _sfxEnsureRunning()) return;
-        const nodes = [];
-        const track = (...ns) => { nodes.push(...ns); return ns; };
-        const rev = new Tone.Reverb({ decay: 0.28 }); rev.wet.value = 0.05; await rev.ready;
-        const now = Tone.now();
-        const dur = 0.055;
-        const vol = new Tone.Volume(-10);
-        rev.connect(vol); vol.toDestination(); track(rev, vol);
-        const bpf = new Tone.Filter({ frequency: 1200, type: 'bandpass', Q: 3.5 });
-        bpf.connect(rev); track(bpf);
-        const [noise, nenv, ng] = track(
-          new Tone.Noise('pink'),
-          new Tone.AmplitudeEnvelope({ attack: 0.001, decay: dur * 0.7, sustain: 0, release: 0.012 }),
-          new Tone.Gain(0.55 * 0.9),
-        );
-        noise.connect(nenv); nenv.connect(ng); ng.connect(bpf);
-        noise.start(now); nenv.triggerAttackRelease(dur * 0.7, now);
-        const [osc, env] = track(
-          new Tone.Oscillator({ type: 'sine', frequency: 1200 }),
-          new Tone.AmplitudeEnvelope({ attack: 0.001, decay: dur * 0.5, sustain: 0, release: 0.01 }),
-        );
-        osc.connect(env); env.connect(rev);
-        osc.start(now); env.triggerAttackRelease(dur * 0.5, now);
-        setTimeout(() => _dispose(nodes), 1200);
-      };
-
-      // Save library: staggered sine chord (0.5× 1× 1.5× pitch) — same as playground.
-      window._sfxSaveLibrary = async function () {
-        if (!await _sfxEnsureRunning()) return;
-        const nodes = [];
-        const track = (...ns) => { nodes.push(...ns); return ns; };
-        const rev = new Tone.Reverb({ decay: 3.16 }); rev.wet.value = 0.78 * 0.82; await rev.ready;
-        const now = Tone.now();
-        const dur = 0.9;
-        const filt = new Tone.Filter({ frequency: 2200, type: 'lowpass', rolloff: -24 });
-        const vol = new Tone.Volume(-11);
-        filt.connect(rev); rev.connect(vol); vol.toDestination(); track(rev, filt, vol);
-        [0.5, 1, 1.5].forEach((ratio, i) => {
-          const [g] = track(new Tone.Gain(0.38));
+        // Simple one-osc+noise synth. `now` is always captured AFTER await rev.ready.
+        async function _sfxSynth(p) {
+          if (!(await _sfxEnsureRunning())) return;
+          const dur = p.duration * 0.001;
+          const nodes = [];
+          const track = (...ns) => {
+            nodes.push(...ns);
+            return ns;
+          };
+          const rev = new Tone.Reverb({ decay: Math.max(0.1, 0.08 + p.reverb * 3.9) });
+          rev.wet.value = p.reverb * 0.82;
+          await rev.ready;
+          const now = Tone.now();
+          const filt = new Tone.Filter({ frequency: p.filterFreq, type: 'lowpass', rolloff: -24 });
+          const vol = new Tone.Volume(p.volume);
+          filt.connect(rev);
+          rev.connect(vol);
+          vol.toDestination();
+          track(rev, filt, vol);
           const [osc, env] = track(
-            new Tone.Oscillator({ type: 'sine', frequency: 330 * ratio }),
-            new Tone.AmplitudeEnvelope({ attack: 0.09 + i * 0.06, decay: dur * 0.42, sustain: 0.12, release: dur * 0.58 }),
+            new Tone.Oscillator({ type: p.oscType || 'triangle', frequency: p.pitch }),
+            new Tone.AmplitudeEnvelope({
+              attack: p.attack ?? 0.002,
+              decay: dur,
+              sustain: 0,
+              release: p.release ?? 0.1,
+            }),
           );
-          osc.connect(env); env.connect(g); g.connect(filt);
-          const t = now + i * 0.035;
-          osc.start(t); env.triggerAttackRelease(dur, t);
-        });
-        setTimeout(() => _dispose(nodes), 900 + 0.78 * 4200 + 1800);
-      };
+          osc.connect(env);
+          env.connect(filt);
+          if (p.pitchEnd != null) {
+            osc.frequency.setValueAtTime(p.pitch, now);
+            osc.frequency.exponentialRampToValueAtTime(p.pitchEnd, now + dur);
+          }
+          osc.start(now);
+          env.triggerAttackRelease(dur, now);
+          if (p.noiseMix > 0.005) {
+            const [noise, nenv, ngain] = track(
+              new Tone.Noise('pink'),
+              new Tone.AmplitudeEnvelope({
+                attack: 0.001,
+                decay: dur * 0.4,
+                sustain: 0,
+                release: 0.04,
+              }),
+              new Tone.Gain(p.noiseMix * 0.45),
+            );
+            noise.connect(nenv);
+            nenv.connect(ngain);
+            ngain.connect(filt);
+            noise.start(now);
+            nenv.triggerAttackRelease(dur * 0.4, now);
+          }
+          setTimeout(() => _dispose(nodes), p.duration + p.reverb * 4200 + 1800);
+        }
 
-      // Plink: clean bright chime with pitch-drop tail — for dynamic dot.
-      window._sfxPlink = async function () {
-        if (!await _sfxEnsureRunning()) return;
-        const nodes = [];
-        const track = (...ns) => { nodes.push(...ns); return ns; };
-        const rev = new Tone.Reverb({ decay: 1.1 }); rev.wet.value = 0.24; await rev.ready;
-        const now = Tone.now();
-        const dur = 0.08;
-        const filt = new Tone.Filter({ frequency: 5500, type: 'lowpass' });
-        const vol = new Tone.Volume(-11);
-        filt.connect(rev); rev.connect(vol); vol.toDestination(); track(rev, filt, vol);
-        const [osc, env] = track(
-          new Tone.Oscillator({ type: 'sine', frequency: 1440 }),
-          new Tone.AmplitudeEnvelope({ attack: 0.002, decay: dur * 0.95, sustain: 0, release: 0.1 }),
-        );
-        osc.connect(env); env.connect(filt);
-        osc.frequency.setValueAtTime(1440, now);
-        osc.frequency.exponentialRampToValueAtTime(1267, now + dur * 0.55);
-        osc.start(now); env.triggerAttackRelease(dur, now);
-        const [o2, e2, g2] = track(
-          new Tone.Oscillator({ type: 'sine', frequency: 2880 }),
-          new Tone.AmplitudeEnvelope({ attack: 0.001, decay: dur * 0.45, sustain: 0, release: 0.07 }),
-          new Tone.Gain(0.20),
-        );
-        o2.connect(e2); e2.connect(g2); g2.connect(filt);
-        o2.start(now); e2.triggerAttackRelease(dur * 0.45, now);
-        setTimeout(() => _dispose(nodes), 2200);
-      };
+        window._sfxPlacement = function () {
+          _sfxSynth({
+            pitch: 220,
+            duration: 100,
+            filterFreq: 2700,
+            noiseMix: 0.09,
+            reverb: 0.32,
+            volume: -14,
+          });
+        };
 
-      // Color: warm sine + major-third harmonic — gentle paintbrush feel.
-      window._sfxColor = async function () {
-        if (!await _sfxEnsureRunning()) return;
-        const nodes = [];
-        const track = (...ns) => { nodes.push(...ns); return ns; };
-        const rev = new Tone.Reverb({ decay: 0.6 }); rev.wet.value = 0.25; await rev.ready;
-        const now = Tone.now();
-        const dur = 0.12;
-        const filt = new Tone.Filter({ frequency: 4000, type: 'lowpass' });
-        const vol = new Tone.Volume(-13);
-        filt.connect(rev); rev.connect(vol); vol.toDestination(); track(rev, filt, vol);
-        const [osc, env] = track(
-          new Tone.Oscillator({ type: 'sine', frequency: 980 }),
-          new Tone.AmplitudeEnvelope({ attack: 0.003, decay: dur, sustain: 0, release: 0.1 }),
-        );
-        osc.connect(env); env.connect(filt);
-        osc.frequency.setValueAtTime(980, now);
-        osc.frequency.exponentialRampToValueAtTime(880, now + dur * 0.6);
-        osc.start(now); env.triggerAttackRelease(dur, now);
-        const [o2, e2, g2] = track(
-          new Tone.Oscillator({ type: 'sine', frequency: 1235 }),
-          new Tone.AmplitudeEnvelope({ attack: 0.002, decay: dur * 0.7, sustain: 0, release: 0.08 }),
-          new Tone.Gain(0.28),
-        );
-        o2.connect(e2); e2.connect(g2); g2.connect(filt);
-        o2.start(now); e2.triggerAttackRelease(dur * 0.7, now);
-        setTimeout(() => _dispose(nodes), 2000);
-      };
+        window._sfxDeletion = function () {
+          _sfxSynth({
+            pitch: 640,
+            duration: 180,
+            filterFreq: 1400,
+            noiseMix: 0.28,
+            reverb: 0.18,
+            volume: -16,
+            pitchEnd: 640 * 0.36,
+            release: 0.06,
+          });
+        };
 
-      window._sfxIslandCrossing = async function () {
-        if (!await _sfxEnsureRunning()) return;
-        const nodes = [];
-        const track = (...ns) => { nodes.push(...ns); return ns; };
-        const rev = new Tone.Reverb({ decay: 2.8 }); rev.wet.value = 0.59; await rev.ready;
-        const now = Tone.now();
-        const dur = 1.8;
-        const vol = new Tone.Volume(-15);
-        rev.connect(vol); vol.toDestination(); track(rev, vol);
-        const bpf = new Tone.Filter({ frequency: 390, type: 'bandpass', Q: 1.3 });
-        bpf.connect(rev); track(bpf);
-        const lfo = new Tone.LFO({ frequency: 0.22, min: 91, max: 832, type: 'sine' });
-        lfo.connect(bpf.frequency); lfo.start(now); track(lfo);
-        const [noise, nenv, ng] = track(
-          new Tone.Noise('pink'),
-          new Tone.AmplitudeEnvelope({ attack: dur * 0.22, decay: dur * 0.38, sustain: 0.58, release: dur * 0.4 }),
-          new Tone.Gain(0.72),
-        );
-        noise.connect(nenv); nenv.connect(ng); ng.connect(bpf);
-        noise.start(now); nenv.triggerAttackRelease(dur, now);
-        const [ro, re, rg] = track(
-          new Tone.Oscillator({ type: 'sine', frequency: 41 }),
-          new Tone.AmplitudeEnvelope({ attack: dur * 0.28, decay: dur * 0.38, sustain: 0.32, release: dur * 0.34 }),
-          new Tone.Gain(0.5),
-        );
-        ro.connect(re); re.connect(rg); rg.connect(rev);
-        ro.start(now); re.triggerAttackRelease(dur, now);
-        setTimeout(() => _dispose(nodes), 9000);
-      };
+        // Snap: bandpass noise burst + brief sine — dry and immediate.
+        window._sfxSnap = async function () {
+          if (!(await _sfxEnsureRunning())) return;
+          const nodes = [];
+          const track = (...ns) => {
+            nodes.push(...ns);
+            return ns;
+          };
+          const rev = new Tone.Reverb({ decay: 0.28 });
+          rev.wet.value = 0.05;
+          await rev.ready;
+          const now = Tone.now();
+          const dur = 0.055;
+          const vol = new Tone.Volume(-10);
+          rev.connect(vol);
+          vol.toDestination();
+          track(rev, vol);
+          const bpf = new Tone.Filter({ frequency: 1200, type: 'bandpass', Q: 3.5 });
+          bpf.connect(rev);
+          track(bpf);
+          const [noise, nenv, ng] = track(
+            new Tone.Noise('pink'),
+            new Tone.AmplitudeEnvelope({
+              attack: 0.001,
+              decay: dur * 0.7,
+              sustain: 0,
+              release: 0.012,
+            }),
+            new Tone.Gain(0.55 * 0.9),
+          );
+          noise.connect(nenv);
+          nenv.connect(ng);
+          ng.connect(bpf);
+          noise.start(now);
+          nenv.triggerAttackRelease(dur * 0.7, now);
+          const [osc, env] = track(
+            new Tone.Oscillator({ type: 'sine', frequency: 1200 }),
+            new Tone.AmplitudeEnvelope({
+              attack: 0.001,
+              decay: dur * 0.5,
+              sustain: 0,
+              release: 0.01,
+            }),
+          );
+          osc.connect(env);
+          env.connect(rev);
+          osc.start(now);
+          env.triggerAttackRelease(dur * 0.5, now);
+          setTimeout(() => _dispose(nodes), 1200);
+        };
 
-      window._sfxRotate = async function () {
-        if (!await _sfxEnsureRunning()) return;
-        const nodes = [];
-        const track = (...ns) => { nodes.push(...ns); return ns; };
-        const rev = new Tone.Reverb({ decay: 0.4 }); rev.wet.value = 0.08; await rev.ready;
-        const now = Tone.now();
-        const dur = 0.1;
-        const vol = new Tone.Volume(-14);
-        rev.connect(vol); vol.toDestination(); track(rev, vol);
-        const bpf = new Tone.Filter({ frequency: 192, type: 'bandpass', Q: 1.8 });
-        bpf.frequency.setValueAtTime(192, now);
-        bpf.frequency.exponentialRampToValueAtTime(1200, now + dur * 0.82);
-        bpf.connect(rev); track(bpf);
-        const [noise, nenv, ng] = track(
-          new Tone.Noise('pink'),
-          new Tone.AmplitudeEnvelope({ attack: 0.002, decay: dur * 0.85, sustain: 0, release: 0.04 }),
-          new Tone.Gain(0.38),
-        );
-        noise.connect(nenv); nenv.connect(ng); ng.connect(bpf);
-        noise.start(now); nenv.triggerAttackRelease(dur, now);
-        const [osc, oenv] = track(
-          new Tone.Oscillator({ type: 'triangle', frequency: 480 }),
-          new Tone.AmplitudeEnvelope({ attack: 0.001, decay: dur * 0.65, sustain: 0, release: 0.04 }),
-        );
-        osc.connect(oenv); oenv.connect(rev);
-        osc.start(now); oenv.triggerAttackRelease(dur * 0.65, now);
-        setTimeout(() => _dispose(nodes), 1800);
-      };
+        // Save library: staggered sine chord (0.5× 1× 1.5× pitch) — same as playground.
+        window._sfxSaveLibrary = async function () {
+          if (!(await _sfxEnsureRunning())) return;
+          const nodes = [];
+          const track = (...ns) => {
+            nodes.push(...ns);
+            return ns;
+          };
+          const rev = new Tone.Reverb({ decay: 3.16 });
+          rev.wet.value = 0.78 * 0.82;
+          await rev.ready;
+          const now = Tone.now();
+          const dur = 0.9;
+          const filt = new Tone.Filter({ frequency: 2200, type: 'lowpass', rolloff: -24 });
+          const vol = new Tone.Volume(-11);
+          filt.connect(rev);
+          rev.connect(vol);
+          vol.toDestination();
+          track(rev, filt, vol);
+          [0.5, 1, 1.5].forEach((ratio, i) => {
+            const [g] = track(new Tone.Gain(0.38));
+            const [osc, env] = track(
+              new Tone.Oscillator({ type: 'sine', frequency: 330 * ratio }),
+              new Tone.AmplitudeEnvelope({
+                attack: 0.09 + i * 0.06,
+                decay: dur * 0.42,
+                sustain: 0.12,
+                release: dur * 0.58,
+              }),
+            );
+            osc.connect(env);
+            env.connect(g);
+            g.connect(filt);
+            const t = now + i * 0.035;
+            osc.start(t);
+            env.triggerAttackRelease(dur, t);
+          });
+          setTimeout(() => _dispose(nodes), 900 + 0.78 * 4200 + 1800);
+        };
 
-      window._sfxEye = async function () {
-        if (!await _sfxEnsureRunning()) return;
-        const nodes = [];
-        const track = (...ns) => { nodes.push(...ns); return ns; };
-        const rev = new Tone.Reverb({ decay: 2.2 }); rev.wet.value = 0.48; await rev.ready;
-        const now = Tone.now();
-        const dur = 0.32;
-        const filt = new Tone.Filter({ frequency: 3200, type: 'lowpass' });
-        const vol = new Tone.Volume(-14);
-        filt.connect(rev); rev.connect(vol); vol.toDestination(); track(rev, filt, vol);
-        const [osc, env] = track(
-          new Tone.Oscillator({ type: 'sine', frequency: 560 }),
-          new Tone.AmplitudeEnvelope({ attack: 0.02, decay: dur * 0.7, sustain: 0.12, release: dur * 0.3 }),
-        );
-        osc.connect(env); env.connect(filt);
-        osc.frequency.setValueAtTime(560, now);
-        osc.frequency.exponentialRampToValueAtTime(924, now + dur * 0.7);
-        osc.start(now); env.triggerAttackRelease(dur, now);
-        const hpf = new Tone.Filter({ frequency: 4160, type: 'highpass' });
-        hpf.frequency.setValueAtTime(4160, now);
-        hpf.frequency.exponentialRampToValueAtTime(1408, now + dur * 0.85);
-        hpf.connect(filt); track(hpf);
-        const [noise, nenv, ng] = track(
-          new Tone.Noise('pink'),
-          new Tone.AmplitudeEnvelope({ attack: dur * 0.15, decay: dur * 0.5, sustain: 0.1, release: dur * 0.35 }),
-          new Tone.Gain(0.10),
-        );
-        noise.connect(nenv); nenv.connect(ng); ng.connect(hpf);
-        noise.start(now); nenv.triggerAttackRelease(dur, now);
-        setTimeout(() => _dispose(nodes), 3200);
-      };
+        // Plink: clean bright chime with pitch-drop tail — for dynamic dot.
+        window._sfxPlink = async function () {
+          if (!(await _sfxEnsureRunning())) return;
+          const nodes = [];
+          const track = (...ns) => {
+            nodes.push(...ns);
+            return ns;
+          };
+          const rev = new Tone.Reverb({ decay: 1.1 });
+          rev.wet.value = 0.24;
+          await rev.ready;
+          const now = Tone.now();
+          const dur = 0.08;
+          const filt = new Tone.Filter({ frequency: 5500, type: 'lowpass' });
+          const vol = new Tone.Volume(-11);
+          filt.connect(rev);
+          rev.connect(vol);
+          vol.toDestination();
+          track(rev, filt, vol);
+          const [osc, env] = track(
+            new Tone.Oscillator({ type: 'sine', frequency: 1440 }),
+            new Tone.AmplitudeEnvelope({
+              attack: 0.002,
+              decay: dur * 0.95,
+              sustain: 0,
+              release: 0.1,
+            }),
+          );
+          osc.connect(env);
+          env.connect(filt);
+          osc.frequency.setValueAtTime(1440, now);
+          osc.frequency.exponentialRampToValueAtTime(1267, now + dur * 0.55);
+          osc.start(now);
+          env.triggerAttackRelease(dur, now);
+          const [o2, e2, g2] = track(
+            new Tone.Oscillator({ type: 'sine', frequency: 2880 }),
+            new Tone.AmplitudeEnvelope({
+              attack: 0.001,
+              decay: dur * 0.45,
+              sustain: 0,
+              release: 0.07,
+            }),
+            new Tone.Gain(0.2),
+          );
+          o2.connect(e2);
+          e2.connect(g2);
+          g2.connect(filt);
+          o2.start(now);
+          e2.triggerAttackRelease(dur * 0.45, now);
+          setTimeout(() => _dispose(nodes), 2200);
+        };
 
-      window._sfxAnnotation = async function () {
-        if (!await _sfxEnsureRunning()) return;
-        const nodes = [];
-        const track = (...ns) => { nodes.push(...ns); return ns; };
-        const rev = new Tone.Reverb({ decay: 0.9 }); rev.wet.value = 0.28; await rev.ready;
-        const now = Tone.now();
-        const dur = 0.13;
-        const vol = new Tone.Volume(-13);
-        rev.connect(vol); vol.toDestination(); track(rev, vol);
-        const [osc, env] = track(
-          new Tone.Oscillator({ type: 'triangle', frequency: 640 }),
-          new Tone.AmplitudeEnvelope({ attack: 0.005, decay: dur * 0.6, sustain: 0.05, release: dur * 0.4 }),
-        );
-        osc.connect(env); env.connect(rev);
-        osc.frequency.setValueAtTime(640, now);
-        osc.frequency.exponentialRampToValueAtTime(820, now + dur * 0.4);
-        osc.start(now); env.triggerAttackRelease(dur, now);
-        const [hpf] = track(new Tone.Filter({ frequency: 5200, type: 'highpass' }));
-        hpf.connect(rev);
-        const [noise, nenv, ng] = track(
-          new Tone.Noise('white'),
-          new Tone.AmplitudeEnvelope({ attack: 0.003, decay: dur * 0.45, sustain: 0, release: 0.01 }),
-          new Tone.Gain(0.07),
-        );
-        noise.connect(nenv); nenv.connect(ng); ng.connect(hpf);
-        noise.start(now); nenv.triggerAttackRelease(dur * 0.5, now);
-        setTimeout(() => _dispose(nodes), 2000);
-      };
+        // Color: warm sine + major-third harmonic — gentle paintbrush feel.
+        window._sfxColor = async function () {
+          if (!(await _sfxEnsureRunning())) return;
+          const nodes = [];
+          const track = (...ns) => {
+            nodes.push(...ns);
+            return ns;
+          };
+          const rev = new Tone.Reverb({ decay: 0.6 });
+          rev.wet.value = 0.25;
+          await rev.ready;
+          const now = Tone.now();
+          const dur = 0.12;
+          const filt = new Tone.Filter({ frequency: 4000, type: 'lowpass' });
+          const vol = new Tone.Volume(-13);
+          filt.connect(rev);
+          rev.connect(vol);
+          vol.toDestination();
+          track(rev, filt, vol);
+          const [osc, env] = track(
+            new Tone.Oscillator({ type: 'sine', frequency: 980 }),
+            new Tone.AmplitudeEnvelope({ attack: 0.003, decay: dur, sustain: 0, release: 0.1 }),
+          );
+          osc.connect(env);
+          env.connect(filt);
+          osc.frequency.setValueAtTime(980, now);
+          osc.frequency.exponentialRampToValueAtTime(880, now + dur * 0.6);
+          osc.start(now);
+          env.triggerAttackRelease(dur, now);
+          const [o2, e2, g2] = track(
+            new Tone.Oscillator({ type: 'sine', frequency: 1235 }),
+            new Tone.AmplitudeEnvelope({
+              attack: 0.002,
+              decay: dur * 0.7,
+              sustain: 0,
+              release: 0.08,
+            }),
+            new Tone.Gain(0.28),
+          );
+          o2.connect(e2);
+          e2.connect(g2);
+          g2.connect(filt);
+          o2.start(now);
+          e2.triggerAttackRelease(dur * 0.7, now);
+          setTimeout(() => _dispose(nodes), 2000);
+        };
 
-      // Organize: three staggered chess-piece placements rising in pitch.
-      window._sfxOrganize = async function () {
-        if (!await _sfxEnsureRunning()) return;
-        const nodes = [];
-        const track = (...ns) => { nodes.push(...ns); return ns; };
-        const rev = new Tone.Reverb({ decay: 0.35 }); rev.wet.value = 0.06; await rev.ready;
-        const now = Tone.now();
-        const vol = new Tone.Volume(-12);
-        rev.connect(vol); vol.toDestination(); track(rev, vol);
-        [0, 0.065, 0.13].forEach((t, i) => {
-          const pitch = [540, 680, 860][i];
-          const [bpf] = track(new Tone.Filter({ frequency: pitch, type: 'bandpass', Q: 2.2 }));
+        window._sfxIslandCrossing = async function () {
+          if (!(await _sfxEnsureRunning())) return;
+          const nodes = [];
+          const track = (...ns) => {
+            nodes.push(...ns);
+            return ns;
+          };
+          const rev = new Tone.Reverb({ decay: 2.8 });
+          rev.wet.value = 0.59;
+          await rev.ready;
+          const now = Tone.now();
+          const dur = 1.8;
+          const vol = new Tone.Volume(-15);
+          rev.connect(vol);
+          vol.toDestination();
+          track(rev, vol);
+          const bpf = new Tone.Filter({ frequency: 390, type: 'bandpass', Q: 1.3 });
+          bpf.connect(rev);
+          track(bpf);
+          const lfo = new Tone.LFO({ frequency: 0.22, min: 91, max: 832, type: 'sine' });
+          lfo.connect(bpf.frequency);
+          lfo.start(now);
+          track(lfo);
+          const [noise, nenv, ng] = track(
+            new Tone.Noise('pink'),
+            new Tone.AmplitudeEnvelope({
+              attack: dur * 0.22,
+              decay: dur * 0.38,
+              sustain: 0.58,
+              release: dur * 0.4,
+            }),
+            new Tone.Gain(0.72),
+          );
+          noise.connect(nenv);
+          nenv.connect(ng);
+          ng.connect(bpf);
+          noise.start(now);
+          nenv.triggerAttackRelease(dur, now);
+          const [ro, re, rg] = track(
+            new Tone.Oscillator({ type: 'sine', frequency: 41 }),
+            new Tone.AmplitudeEnvelope({
+              attack: dur * 0.28,
+              decay: dur * 0.38,
+              sustain: 0.32,
+              release: dur * 0.34,
+            }),
+            new Tone.Gain(0.5),
+          );
+          ro.connect(re);
+          re.connect(rg);
+          rg.connect(rev);
+          ro.start(now);
+          re.triggerAttackRelease(dur, now);
+          setTimeout(() => _dispose(nodes), 9000);
+        };
+
+        window._sfxRotate = async function () {
+          if (!(await _sfxEnsureRunning())) return;
+          const nodes = [];
+          const track = (...ns) => {
+            nodes.push(...ns);
+            return ns;
+          };
+          const rev = new Tone.Reverb({ decay: 0.4 });
+          rev.wet.value = 0.08;
+          await rev.ready;
+          const now = Tone.now();
+          const dur = 0.1;
+          const vol = new Tone.Volume(-14);
+          rev.connect(vol);
+          vol.toDestination();
+          track(rev, vol);
+          const bpf = new Tone.Filter({ frequency: 192, type: 'bandpass', Q: 1.8 });
+          bpf.frequency.setValueAtTime(192, now);
+          bpf.frequency.exponentialRampToValueAtTime(1200, now + dur * 0.82);
+          bpf.connect(rev);
+          track(bpf);
+          const [noise, nenv, ng] = track(
+            new Tone.Noise('pink'),
+            new Tone.AmplitudeEnvelope({
+              attack: 0.002,
+              decay: dur * 0.85,
+              sustain: 0,
+              release: 0.04,
+            }),
+            new Tone.Gain(0.38),
+          );
+          noise.connect(nenv);
+          nenv.connect(ng);
+          ng.connect(bpf);
+          noise.start(now);
+          nenv.triggerAttackRelease(dur, now);
+          const [osc, oenv] = track(
+            new Tone.Oscillator({ type: 'triangle', frequency: 480 }),
+            new Tone.AmplitudeEnvelope({
+              attack: 0.001,
+              decay: dur * 0.65,
+              sustain: 0,
+              release: 0.04,
+            }),
+          );
+          osc.connect(oenv);
+          oenv.connect(rev);
+          osc.start(now);
+          oenv.triggerAttackRelease(dur * 0.65, now);
+          setTimeout(() => _dispose(nodes), 1800);
+        };
+
+        window._sfxEye = async function () {
+          if (!(await _sfxEnsureRunning())) return;
+          const nodes = [];
+          const track = (...ns) => {
+            nodes.push(...ns);
+            return ns;
+          };
+          const rev = new Tone.Reverb({ decay: 2.2 });
+          rev.wet.value = 0.48;
+          await rev.ready;
+          const now = Tone.now();
+          const dur = 0.32;
+          const filt = new Tone.Filter({ frequency: 3200, type: 'lowpass' });
+          const vol = new Tone.Volume(-14);
+          filt.connect(rev);
+          rev.connect(vol);
+          vol.toDestination();
+          track(rev, filt, vol);
+          const [osc, env] = track(
+            new Tone.Oscillator({ type: 'sine', frequency: 560 }),
+            new Tone.AmplitudeEnvelope({
+              attack: 0.02,
+              decay: dur * 0.7,
+              sustain: 0.12,
+              release: dur * 0.3,
+            }),
+          );
+          osc.connect(env);
+          env.connect(filt);
+          osc.frequency.setValueAtTime(560, now);
+          osc.frequency.exponentialRampToValueAtTime(924, now + dur * 0.7);
+          osc.start(now);
+          env.triggerAttackRelease(dur, now);
+          const hpf = new Tone.Filter({ frequency: 4160, type: 'highpass' });
+          hpf.frequency.setValueAtTime(4160, now);
+          hpf.frequency.exponentialRampToValueAtTime(1408, now + dur * 0.85);
+          hpf.connect(filt);
+          track(hpf);
+          const [noise, nenv, ng] = track(
+            new Tone.Noise('pink'),
+            new Tone.AmplitudeEnvelope({
+              attack: dur * 0.15,
+              decay: dur * 0.5,
+              sustain: 0.1,
+              release: dur * 0.35,
+            }),
+            new Tone.Gain(0.1),
+          );
+          noise.connect(nenv);
+          nenv.connect(ng);
+          ng.connect(hpf);
+          noise.start(now);
+          nenv.triggerAttackRelease(dur, now);
+          setTimeout(() => _dispose(nodes), 3200);
+        };
+
+        window._sfxAnnotation = async function () {
+          if (!(await _sfxEnsureRunning())) return;
+          const nodes = [];
+          const track = (...ns) => {
+            nodes.push(...ns);
+            return ns;
+          };
+          const rev = new Tone.Reverb({ decay: 0.9 });
+          rev.wet.value = 0.28;
+          await rev.ready;
+          const now = Tone.now();
+          const dur = 0.13;
+          const vol = new Tone.Volume(-13);
+          rev.connect(vol);
+          vol.toDestination();
+          track(rev, vol);
+          const [osc, env] = track(
+            new Tone.Oscillator({ type: 'triangle', frequency: 640 }),
+            new Tone.AmplitudeEnvelope({
+              attack: 0.005,
+              decay: dur * 0.6,
+              sustain: 0.05,
+              release: dur * 0.4,
+            }),
+          );
+          osc.connect(env);
+          env.connect(rev);
+          osc.frequency.setValueAtTime(640, now);
+          osc.frequency.exponentialRampToValueAtTime(820, now + dur * 0.4);
+          osc.start(now);
+          env.triggerAttackRelease(dur, now);
+          const [hpf] = track(new Tone.Filter({ frequency: 5200, type: 'highpass' }));
+          hpf.connect(rev);
+          const [noise, nenv, ng] = track(
+            new Tone.Noise('white'),
+            new Tone.AmplitudeEnvelope({
+              attack: 0.003,
+              decay: dur * 0.45,
+              sustain: 0,
+              release: 0.01,
+            }),
+            new Tone.Gain(0.07),
+          );
+          noise.connect(nenv);
+          nenv.connect(ng);
+          ng.connect(hpf);
+          noise.start(now);
+          nenv.triggerAttackRelease(dur * 0.5, now);
+          setTimeout(() => _dispose(nodes), 2000);
+        };
+
+        // Organize: three staggered chess-piece placements rising in pitch.
+        window._sfxOrganize = async function () {
+          if (!(await _sfxEnsureRunning())) return;
+          const nodes = [];
+          const track = (...ns) => {
+            nodes.push(...ns);
+            return ns;
+          };
+          const rev = new Tone.Reverb({ decay: 0.35 });
+          rev.wet.value = 0.06;
+          await rev.ready;
+          const now = Tone.now();
+          const vol = new Tone.Volume(-12);
+          rev.connect(vol);
+          vol.toDestination();
+          track(rev, vol);
+          [0, 0.065, 0.13].forEach((t, i) => {
+            const pitch = [540, 680, 860][i];
+            const [bpf] = track(new Tone.Filter({ frequency: pitch, type: 'bandpass', Q: 2.2 }));
+            bpf.connect(rev);
+            const [noise, nenv, ng] = track(
+              new Tone.Noise('pink'),
+              new Tone.AmplitudeEnvelope({
+                attack: 0.001,
+                decay: 0.022,
+                sustain: 0,
+                release: 0.008,
+              }),
+              new Tone.Gain(0.55),
+            );
+            noise.connect(nenv);
+            nenv.connect(ng);
+            ng.connect(bpf);
+            noise.start(now + t);
+            nenv.triggerAttackRelease(0.022, now + t);
+            const [osc, oenv] = track(
+              new Tone.Oscillator({ type: 'triangle', frequency: pitch * 0.72 }),
+              new Tone.AmplitudeEnvelope({
+                attack: 0.001,
+                decay: 0.018,
+                sustain: 0,
+                release: 0.006,
+              }),
+            );
+            osc.connect(oenv);
+            oenv.connect(rev);
+            osc.start(now + t);
+            oenv.triggerAttackRelease(0.018, now + t);
+          });
+          setTimeout(() => _dispose(nodes), 1200);
+        };
+
+        // Bubble pop: sine drop from 520→180 Hz + airy noise burst.
+        window._sfxBubblePop = async function () {
+          if (!(await _sfxEnsureRunning())) return;
+          const nodes = [];
+          const track = (...ns) => {
+            nodes.push(...ns);
+            return ns;
+          };
+          const rev = new Tone.Reverb({ decay: 0.5 });
+          rev.wet.value = 0.18;
+          await rev.ready;
+          const now = Tone.now();
+          const vol = new Tone.Volume(-12);
+          rev.connect(vol);
+          vol.toDestination();
+          track(rev, vol);
+          const [osc, env] = track(
+            new Tone.Oscillator({ type: 'sine', frequency: 520 }),
+            new Tone.AmplitudeEnvelope({ attack: 0.001, decay: 0.055, sustain: 0, release: 0.02 }),
+          );
+          osc.connect(env);
+          env.connect(rev);
+          osc.frequency.setValueAtTime(520, now);
+          osc.frequency.exponentialRampToValueAtTime(180, now + 0.045);
+          osc.start(now);
+          env.triggerAttackRelease(0.055, now);
+          const [bpf] = track(new Tone.Filter({ frequency: 1000, type: 'bandpass', Q: 1.8 }));
           bpf.connect(rev);
           const [noise, nenv, ng] = track(
             new Tone.Noise('pink'),
-            new Tone.AmplitudeEnvelope({ attack: 0.001, decay: 0.022, sustain: 0, release: 0.008 }),
-            new Tone.Gain(0.55),
+            new Tone.AmplitudeEnvelope({ attack: 0.001, decay: 0.04, sustain: 0, release: 0.012 }),
+            new Tone.Gain(0.22),
           );
-          noise.connect(nenv); nenv.connect(ng); ng.connect(bpf);
-          noise.start(now + t); nenv.triggerAttackRelease(0.022, now + t);
-          const [osc, oenv] = track(
-            new Tone.Oscillator({ type: 'triangle', frequency: pitch * 0.72 }),
-            new Tone.AmplitudeEnvelope({ attack: 0.001, decay: 0.018, sustain: 0, release: 0.006 }),
-          );
-          osc.connect(oenv); oenv.connect(rev);
-          osc.start(now + t); oenv.triggerAttackRelease(0.018, now + t);
-        });
-        setTimeout(() => _dispose(nodes), 1200);
-      };
-
-      // Bubble pop: sine drop from 520→180 Hz + airy noise burst.
-      window._sfxBubblePop = async function () {
-        if (!await _sfxEnsureRunning()) return;
-        const nodes = [];
-        const track = (...ns) => { nodes.push(...ns); return ns; };
-        const rev = new Tone.Reverb({ decay: 0.5 }); rev.wet.value = 0.18; await rev.ready;
-        const now = Tone.now();
-        const vol = new Tone.Volume(-12);
-        rev.connect(vol); vol.toDestination(); track(rev, vol);
-        const [osc, env] = track(
-          new Tone.Oscillator({ type: 'sine', frequency: 520 }),
-          new Tone.AmplitudeEnvelope({ attack: 0.001, decay: 0.055, sustain: 0, release: 0.02 }),
-        );
-        osc.connect(env); env.connect(rev);
-        osc.frequency.setValueAtTime(520, now);
-        osc.frequency.exponentialRampToValueAtTime(180, now + 0.045);
-        osc.start(now); env.triggerAttackRelease(0.055, now);
-        const [bpf] = track(new Tone.Filter({ frequency: 1000, type: 'bandpass', Q: 1.8 }));
-        bpf.connect(rev);
-        const [noise, nenv, ng] = track(
-          new Tone.Noise('pink'),
-          new Tone.AmplitudeEnvelope({ attack: 0.001, decay: 0.04, sustain: 0, release: 0.012 }),
-          new Tone.Gain(0.22),
-        );
-        noise.connect(nenv); nenv.connect(ng); ng.connect(bpf);
-        noise.start(now); nenv.triggerAttackRelease(0.04, now);
-        setTimeout(() => _dispose(nodes), 1200);
-      };
-    })();
+          noise.connect(nenv);
+          nenv.connect(ng);
+          ng.connect(bpf);
+          noise.start(now);
+          nenv.triggerAttackRelease(0.04, now);
+          setTimeout(() => _dispose(nodes), 1200);
+        };
+      })();
     </script>
   </body>
 </html>
