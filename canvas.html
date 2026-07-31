@@ -8222,7 +8222,11 @@
           if (symbol._suppressRemoteUntil && symbol._suppressRemoteUntil > now) return;
         }
 
+        const chatSurface = chatCanvas();
         for (const symbol of symbolById.values()) {
+          // Only reset connections for chat canvas symbols — craft canvas symbols are not
+          // tracked in roomObjDataById and would lose their connections permanently.
+          if (getCanvasForElem(symbol) !== chatSurface) continue;
           currentGraph.addSymbol(symbol, [[], [], [], [], [], []]);
         }
 
@@ -10030,6 +10034,7 @@
           }
         }
 
+        updateExpressionGroupFramesFromSelection(craftCanvas());
         if (eyeButton.isActivated) {
           forceFreshInspectionLabels = true;
           refreshCraftInspectionUI();
@@ -11301,6 +11306,7 @@
             removedAny = true;
           }
           selectedSymbols.clear();
+          updateExpressionGroupFramesFromSelection(craftCanvas());
           if (removedAny) {
             window._sfxDeletion?.();
             emitTutorialEvent?.('craft_remove');
@@ -11448,15 +11454,31 @@
           return;
         }
 
+        const primitiveSelected = selectedNodeIds.some((id) => basicNodeIds.has(id));
+        const deletable = selectedNodeIds.filter((id) => !basicNodeIds.has(id));
+
+        if (primitiveSelected && deletable.length === 0) {
+          showToast(
+            currentLang === 'zh'
+              ? '原始符号是系统内置的，无法删除。'
+              : "Primitive symbols are built into the system and can't be removed.",
+          );
+          return;
+        }
+        if (primitiveSelected) {
+          showToast(
+            currentLang === 'zh'
+              ? '原始符号已跳过，仅删除自定义节点。'
+              : 'Primitive symbols were skipped — only your custom nodes were removed.',
+          );
+        }
+
         window._sfxDeletion?.();
-        for (const nodeId of selectedNodeIds) {
+        for (const nodeId of deletable) {
           const node = nodes.get(nodeId);
           if (!node) continue;
 
-          // 1) Prevent deleting basic nodes (use ID-based check)
-          if (basicNodeIds.has(nodeId)) {
-            continue;
-          }
+          // basicNodeIds already excluded above
 
           // 2) Remove from in-memory library (semantic layer)
           if (node.word) {
@@ -13499,9 +13521,9 @@
           }
 
           // Keep spawned-expression bounding frame(s) in sync during group drag.
-          if (canvas === chatCanvas() && selectedSymbols.size > 1) {
+          if (selectedSymbols.size > 1) {
             updateExpressionGroupFramesFromSelection(canvas);
-            updateSpawnedExpressionMetaCardsPosition();
+            if (canvas === chatCanvas()) updateSpawnedExpressionMetaCardsPosition();
           }
 
           // ✅ 只对 leader（若是 symbol）执行你原来的“断链/检查连接”逻辑
@@ -14971,27 +14993,21 @@
 
           if (usingChatCanvas) {
             pastedSymbol = await createSymbolCopy(
-              null,
-              null,
-              snapshot.elemId,
-              snapshot.elemIdTrue,
-              targetLeft,
-              targetTop,
-              snapshot.color,
-              snapshot.angle,
+              null, null,
+              snapshot.elemId, snapshot.elemIdTrue,
+              targetLeft, targetTop,
+              snapshot.color, snapshot.angle,
+              null, chatCanvas(),
             );
           } else {
             const clientX = canvasRect.left + targetLeft + (symbolWidth * symbolScale) / 2;
             const clientY = canvasRect.top + targetTop + (symbolHeight * symbolScale) / 2;
             pastedSymbol = await createSymbolCopy(
-              clientX,
-              clientY,
-              snapshot.elemId,
-              snapshot.elemIdTrue,
-              null,
-              null,
-              snapshot.color,
-              snapshot.angle,
+              clientX, clientY,
+              snapshot.elemId, snapshot.elemIdTrue,
+              null, null,
+              snapshot.color, snapshot.angle,
+              null, craftCanvas(),
             );
           }
 
@@ -16147,6 +16163,7 @@
         symbolColor = null,
         symbolAngle = null,
         symbolId = null,
+        targetCanvas = null,
       ) {
         const requestedElemId = elemId;
         elemId = Number(elemId);
@@ -16155,8 +16172,8 @@
           elemId = null;
         }
 
-        const spawnCanvas =
-          symbolX !== null ? chatCanvas() : tabHeadersActivated[4] ? chatCanvas() : craftCanvas();
+        const spawnCanvas = targetCanvas
+          || (symbolX !== null ? chatCanvas() : tabHeadersActivated[4] ? chatCanvas() : craftCanvas());
         const { x, y } = clientToLocal(spawnCanvas, mouseX, mouseY);
         let offsetX = (symbolWidth * symbolScale) / 2;
         let offsetY = (symbolHeight * symbolScale) / 2;
@@ -16404,10 +16421,16 @@
         currentGraph.addSymbol(symbol, [[], [], [], [], [], []]);
         updateQianSymbolAppearance(symbol);
 
-        if (tabHeadersActivated[1]) appendToCraftCanvas(symbol);
-        if (tabHeadersActivated[4] || symbolX !== null) appendToChatCanvas(symbol);
+        if (targetCanvas) {
+          if (targetCanvas === craftCanvas()) appendToCraftCanvas(symbol);
+          else appendToChatCanvas(symbol);
+        } else {
+          if (tabHeadersActivated[1]) appendToCraftCanvas(symbol);
+          if (tabHeadersActivated[4] || symbolX !== null) appendToChatCanvas(symbol);
+        }
 
-        if (tabHeadersActivated[4] && symbolX === null) {
+        const isChatSymbol = targetCanvas ? targetCanvas === chatCanvas() : (tabHeadersActivated[4] || symbolX !== null);
+        if (isChatSymbol && symbolX === null && !targetCanvas) {
           symbol.style.zIndex = '7';
         }
 
@@ -16457,7 +16480,7 @@
           } else {
             // New local chat symbol: suppress immediate echo frames (often dotX/dotY = null first).
             markLocalSymbolMutation(symbol, 2500);
-            const clientNonce = tabHeadersActivated[4] ? makeClientNonce('symbol') : null;
+            const clientNonce = isChatSymbol ? makeClientNonce('symbol') : null;
             if (clientNonce) {
               symbol.dataset.clientNonce = clientNonce;
               pendingLocalChatSymbolsByNonce.set(clientNonce, symbol);
@@ -16472,23 +16495,25 @@
                 parseFloat(symbol.style.top),
                 clientNonce ? { clientNonce } : {},
               );
-              roomObjDataById?.set?.(docId, {
-                id: docId,
-                type: 'symbol',
-                content: { ...symbolPacket },
-                x: parseFloat(symbol.style.left),
-                y: parseFloat(symbol.style.top),
-                links: [],
-                ownerUid: currentUser?.uid || '',
-                clientNonce: clientNonce || '',
-              });
-              const existing = symbolById.get(docId);
-              if (existing && existing !== symbol) {
-                adoptExistingChatSymbol(existing, symbol);
+              if (isChatSymbol) {
+                roomObjDataById?.set?.(docId, {
+                  id: docId,
+                  type: 'symbol',
+                  content: { ...symbolPacket },
+                  x: parseFloat(symbol.style.left),
+                  y: parseFloat(symbol.style.top),
+                  links: [],
+                  ownerUid: currentUser?.uid || '',
+                  clientNonce: clientNonce || '',
+                });
+                const existing = symbolById.get(docId);
+                if (existing && existing !== symbol) {
+                  adoptExistingChatSymbol(existing, symbol);
+                }
               }
               symbol.dataset.id = docId;
               symbol.dataset.ownerUid = currentUser?.uid || '';
-              symbolById.set(docId, symbol);
+              if (isChatSymbol) symbolById.set(docId, symbol);
               if (clientNonce) pendingLocalChatSymbolsByNonce.delete(clientNonce);
               return docId;
             })();
@@ -17682,18 +17707,62 @@
           isLibraryV2ParallelLink,
         );
 
-        parallelGroups.sort((left, right) => {
-          const leftFirst = [...left.nodes].sort((a, b) =>
+        const groupByNode = new Map();
+        parallelGroups.forEach((group, groupIndex) => {
+          group.nodes.forEach((nodeIndex) => groupByNode.set(nodeIndex, groupIndex));
+        });
+        const serialGroupLinks = graph.links
+          .filter((link) => !isLibraryV2ParallelLink(link))
+          .map((link) => ({
+            from: groupByNode.get(link.from),
+            to: groupByNode.get(link.to),
+          }))
+          .filter((link) => link.from != null && link.to != null && link.from !== link.to);
+        const compareGroups = (leftIndex, rightIndex) => {
+          const leftFirst = [...parallelGroups[leftIndex].nodes].sort((a, b) =>
             compareLibraryV2SpatialNodes(a, b, graph.nodes),
           )[0];
-          const rightFirst = [...right.nodes].sort((a, b) =>
+          const rightFirst = [...parallelGroups[rightIndex].nodes].sort((a, b) =>
             compareLibraryV2SpatialNodes(a, b, graph.nodes),
           )[0];
           return compareLibraryV2SpatialNodes(leftFirst, rightFirst, graph.nodes);
-        });
+        };
+        const orderedGroupIndices = getLibraryV2Components(
+          parallelGroups.length,
+          serialGroupLinks,
+          () => true,
+        )
+          .sort((left, right) =>
+            compareGroups(
+              [...left.nodes].sort(compareGroups)[0],
+              [...right.nodes].sort(compareGroups)[0],
+            ),
+          )
+          .flatMap((component) => {
+            const members = new Set(component.nodes);
+            const endpoints = component.nodes.filter(
+              (index) =>
+                component.adjacency[index].filter((neighbor) => members.has(neighbor)).length <= 1,
+            );
+            const ordered = [];
+            const visited = new Set();
+            const visit = (index) => {
+              if (visited.has(index)) return;
+              visited.add(index);
+              ordered.push(index);
+              component.adjacency[index]
+                .filter((neighbor) => members.has(neighbor))
+                .sort(compareGroups)
+                .forEach(visit);
+            };
+            visit([...(endpoints.length ? endpoints : component.nodes)].sort(compareGroups)[0]);
+            [...component.nodes].sort(compareGroups).forEach(visit);
+            return ordered;
+          });
 
         const children = [];
-        for (const group of parallelGroups) {
+        for (const groupIndex of orderedGroupIndices) {
+          const group = parallelGroups[groupIndex];
           if (group.nodes.length === 1) {
             const index = group.nodes[0];
             children.push(libraryV2Element(graph.nodes[index], index));
