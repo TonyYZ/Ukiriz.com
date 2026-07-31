@@ -509,6 +509,62 @@
         cursor: default;
         opacity: 0.65;
       }
+      /* Mystery overlay for expressions authored by other users */
+      .spawned-expression-meta.other-user:not(.revealed) > .spawned-expression-translate {
+        visibility: hidden;
+      }
+      .expr-mystery-overlay {
+        position: absolute;
+        inset: 0;
+        border-radius: 7px;
+        background: rgba(248, 246, 240, 0.98);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        cursor: pointer;
+        z-index: 2;
+        transition:
+          opacity 0.25s,
+          transform 0.25s;
+        touch-action: none;
+      }
+      .expr-mystery-overlay.hiding {
+        opacity: 0;
+        transform: scale(0.96);
+        pointer-events: none;
+      }
+      .expr-mystery-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: rgba(0, 0, 0, 0.36);
+        text-align: center;
+        pointer-events: none;
+        user-select: none;
+        line-height: 1.3;
+      }
+      .expr-hide-btn {
+        position: absolute;
+        top: 6px;
+        right: 7px;
+        padding: 2px 6px;
+        border: 1px solid rgba(0, 0, 0, 0.18);
+        border-radius: 4px;
+        background: transparent;
+        color: rgba(0, 0, 0, 0.38);
+        font: inherit;
+        font-size: 10px;
+        line-height: 1.2;
+        cursor: pointer;
+        display: none;
+        touch-action: manipulation;
+        z-index: 3;
+        pointer-events: auto;
+      }
+      .spawned-expression-meta.revealed .expr-hide-btn {
+        display: block;
+      }
 
       #chatMinimap {
         position: fixed;
@@ -10557,6 +10613,100 @@
             }
 
             card.appendChild(textWrap);
+
+            // Mystery overlay for cards belonging to other users.
+            const firstSym = Array.from(grp)[0];
+            const cardOwnerUid = firstSym?.dataset?.ownerUid || '';
+            const isOwnCard = !cardOwnerUid || cardOwnerUid === currentUser?.uid;
+
+            if (!isOwnCard) {
+              card.classList.add('other-user');
+
+              const overlay = document.createElement('div');
+              overlay.className = 'expr-mystery-overlay';
+
+              const label = document.createElement('div');
+              label.className = 'expr-mystery-label';
+              label.textContent = currentLang === 'zh' ? '点击揭晓' : 'Reveal';
+              overlay.appendChild(label);
+
+              const hideBtn = document.createElement('button');
+              hideBtn.className = 'expr-hide-btn';
+              hideBtn.textContent = currentLang === 'zh' ? '隐藏' : 'Hide';
+
+              function revealCard() {
+                overlay.classList.add('hiding');
+                card.classList.add('revealed');
+                setTimeout(() => {
+                  overlay.style.display = 'none';
+                }, 260);
+              }
+
+              // Overlay handles both tap-to-reveal and drag-to-move-card.
+              overlay.addEventListener('pointerdown', (e) => {
+                if (e.button != null && e.button !== 0) return;
+                e.stopPropagation();
+                e.preventDefault();
+                const startX = e.clientX;
+                const startY = e.clientY;
+                let moved = false;
+                overlay.setPointerCapture(e.pointerId);
+                const canvas = chatCanvas();
+                const local = canvas
+                  ? clientToLocal(canvas, e.clientX, e.clientY)
+                  : { x: 0, y: 0 };
+                const offX = local.x - (parseFloat(card.style.left) || 0);
+                const offY = local.y - (parseFloat(card.style.top) || 0);
+
+                function onMove(me) {
+                  if (
+                    !moved &&
+                    (Math.abs(me.clientX - startX) > 5 || Math.abs(me.clientY - startY) > 5)
+                  ) {
+                    moved = true;
+                  }
+                  if (moved && canvas) {
+                    const dl = clientToLocal(canvas, me.clientX, me.clientY);
+                    const x = dl.x - offX;
+                    const y = dl.y - offY;
+                    card.style.left = `${x}px`;
+                    card.style.top = `${y}px`;
+                    const grpNow =
+                      spawnedExpressionMetaCardGroups.get(card.dataset.exprGroupId) ||
+                      expressionGroups.get(card.dataset.exprGroupId);
+                    const bounds = getSymbolGroupBounds(grpNow);
+                    if (bounds)
+                      card._manualOffset = { x: x - bounds.centerX, y: y - bounds.centerY };
+                    scheduleChatMiniMapUpdate?.();
+                  }
+                  me.preventDefault();
+                }
+
+                function onUp() {
+                  overlay.removeEventListener('pointermove', onMove);
+                  overlay.removeEventListener('pointerup', onUp);
+                  if (!moved) revealCard();
+                }
+
+                overlay.addEventListener('pointermove', onMove);
+                overlay.addEventListener('pointerup', onUp);
+              });
+
+              hideBtn.addEventListener('pointerdown', (e) => e.stopPropagation());
+              hideBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                overlay.style.display = '';
+                card.classList.remove('revealed');
+                requestAnimationFrame(() =>
+                  requestAnimationFrame(() => overlay.classList.remove('hiding')),
+                );
+              });
+
+              card.appendChild(overlay);
+              card.appendChild(hideBtn);
+            }
+
             makeSpawnedExpressionMetaCardDraggable(card);
             appendToChatCanvas(card);
             spawnedExpressionMetaCardEls.set(gid, card);
@@ -17134,70 +17284,55 @@
         const graph = getLibraryV2Graph(node);
         if (!graph) return null;
 
-        const serialComponents = getLibraryV2Components(
+        // Resolve fuseaux before following serial links.  A serial link leaving
+        // any member of a parallel stack continues after that whole fuseau; it
+        // must not silently turn just that member into a longer branch.
+        //
+        // For example, b ∥ z with z--f is (b ∥ z)--f, not b ∥ (z--f).
+        const parallelGroups = getLibraryV2Components(
           graph.nodes.length,
           graph.links,
-          (link) => !isLibraryV2ParallelLink(link),
+          isLibraryV2ParallelLink,
         );
-        const componentByNode = new Map();
-        serialComponents.forEach((component, componentIndex) => {
-          component.nodes.forEach((nodeIndex) => componentByNode.set(nodeIndex, componentIndex));
-        });
 
-        const parallelComponentLinks = [];
-        const seenParallelComponentLinks = new Set();
-        graph.links.filter(isLibraryV2ParallelLink).forEach((link) => {
-          const from = componentByNode.get(link.from);
-          const to = componentByNode.get(link.to);
-          if (from === to || from == null || to == null) return;
-          const key = from < to ? `${from}|${to}` : `${to}|${from}`;
-          if (seenParallelComponentLinks.has(key)) return;
-          seenParallelComponentLinks.add(key);
-          parallelComponentLinks.push({ from, to });
-        });
-
-        const groups = getLibraryV2Components(
-          serialComponents.length,
-          parallelComponentLinks.map((link) => ({
-            ...link,
-            fromSide: Side.PAR_TOP,
-            toSide: Side.PAR_BOT,
-          })),
-          () => true,
-        ).sort((left, right) => {
-          const leftNodes = left.nodes.flatMap((index) => serialComponents[index].nodes);
-          const rightNodes = right.nodes.flatMap((index) => serialComponents[index].nodes);
-          const leftFirst = [...leftNodes].sort((a, b) =>
+        parallelGroups.sort((left, right) => {
+          const leftFirst = [...left.nodes].sort((a, b) =>
             compareLibraryV2SpatialNodes(a, b, graph.nodes),
           )[0];
-          const rightFirst = [...rightNodes].sort((a, b) =>
+          const rightFirst = [...right.nodes].sort((a, b) =>
             compareLibraryV2SpatialNodes(a, b, graph.nodes),
           )[0];
           return compareLibraryV2SpatialNodes(leftFirst, rightFirst, graph.nodes);
         });
 
         const children = [];
-        for (const group of groups) {
+        for (const group of parallelGroups) {
+          if (group.nodes.length === 1) {
+            const index = group.nodes[0];
+            children.push(libraryV2Element(graph.nodes[index], index));
+            continue;
+          }
+
+          const branchComponents = group.nodes.map((index) => ({
+            nodes: [index],
+            adjacency: group.adjacency,
+          }));
           const orderedComponents = orderLibraryV2FuseauComponents(
-            group.nodes,
-            serialComponents,
+            branchComponents.map((_, index) => index),
+            branchComponents,
             graph.nodes,
           );
           const branches = orderedComponents.map((componentIndex) => ({
             type: 'series',
-            children: orderLibraryV2Branch(serialComponents[componentIndex], graph.nodes).map(
-              (index) => libraryV2Element(graph.nodes[index], index),
+            children: branchComponents[componentIndex].nodes.map((index) =>
+              libraryV2Element(graph.nodes[index], index),
             ),
           }));
-          if (branches.length > 1) {
-            children.push({
-              type: 'parallel',
-              orientation: normalizeLibraryV2FuseauOrientation(branches),
-              branches,
-            });
-          } else {
-            children.push(...branches[0].children);
-          }
+          children.push({
+            type: 'parallel',
+            orientation: normalizeLibraryV2FuseauOrientation(branches),
+            branches,
+          });
         }
         return { type: 'series', children };
       }
@@ -17246,19 +17381,12 @@
         orientationVowel = 'á',
         orientationConsumed = 0,
       ) {
-        const remainingOrientation = Math.max(
-          0,
-          element.orientation - orientationConsumed,
-        );
+        const remainingOrientation = Math.max(0, element.orientation - orientationConsumed);
         const orientationText =
           orientationVowel === 'ớ' && remainingOrientation
             ? `ớ${'á'.repeat(remainingOrientation - 1)}`
             : orientationVowel.repeat(remainingOrientation);
-        return (
-          (continuation && !element.orientation ? 'a' : '') +
-          orientationText +
-          element.char
-        );
+        return (continuation && !element.orientation ? 'a' : '') + orientationText + element.char;
       }
 
       function accentLibraryV2Boundary(vowel) {
@@ -17291,8 +17419,7 @@
             rendered[index].endsWith('o') &&
             rendered[index + 1].startsWith('á')
           ) {
-            rendered[index] =
-              rendered[index].slice(0, -1) + accentLibraryV2Boundary('o');
+            rendered[index] = rendered[index].slice(0, -1) + accentLibraryV2Boundary('o');
             rendered[index + 1] = rendered[index + 1].slice(1);
           }
         }
@@ -17402,8 +17529,8 @@
       function libraryV2OrientedFirstElement(branch) {
         return Boolean(
           branch.children.length &&
-            branch.children[0].type === 'element' &&
-            branch.children[0].orientation,
+          branch.children[0].type === 'element' &&
+          branch.children[0].orientation,
         );
       }
 
@@ -17417,11 +17544,7 @@
           elements.push(branch.children[0]);
           return true;
         });
-        return (
-          valid &&
-          elements[0].orientation === 0 &&
-          [0, 1].includes(elements[1].orientation)
-        );
+        return valid && elements[0].orientation === 0 && [0, 1].includes(elements[1].orientation);
       }
 
       function serializeLibraryV2Parallel(
@@ -17433,8 +17556,7 @@
         const branches = parallel.branches;
         if (branches.length < 2) throw new Error('A V2 fuseau needs at least two branches');
         if (branches.length === 2) {
-          const simpleMarker =
-            !framed && omitOpening && canUseLibraryV2SimpleMarker(parallel);
+          const simpleMarker = !framed && omitOpening && canUseLibraryV2SimpleMarker(parallel);
           if (simpleMarker) {
             const left = serializeLibraryV2Element(branches[0].children[0]);
             const rightElement = branches[1].children[0];
@@ -17449,12 +17571,7 @@
           const firstIsOriented =
             Boolean(parallel.orientation) || libraryV2OrientedFirstElement(branches[0]);
           if (!parallel.orientation && libraryV2OrientedFirstElement(branches[0])) {
-            compact[0] = serializeLibraryV2CompactSeries(
-              branches[0],
-              false,
-              'á',
-              1,
-            );
+            compact[0] = serializeLibraryV2CompactSeries(branches[0], false, 'á', 1);
           }
           const middle =
             compact[0].endsWith("'") && compact[1].startsWith("'")
@@ -17473,12 +17590,7 @@
           const firstIsOriented =
             Boolean(parallel.orientation) || libraryV2OrientedFirstElement(branches[0]);
           if (!parallel.orientation && libraryV2OrientedFirstElement(branches[0])) {
-            compact[0] = serializeLibraryV2CompactSeries(
-              branches[0],
-              false,
-              'á',
-              1,
-            );
+            compact[0] = serializeLibraryV2CompactSeries(branches[0], false, 'á', 1);
           }
           const opening =
             omitOpening && !framed && safelyCompact && !firstIsOriented
