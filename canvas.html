@@ -20528,15 +20528,17 @@
     <script src="https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.js"></script>
     <script>
     (function () {
-      document.addEventListener('pointerdown', () => { Tone.start(); }, { once: true, capture: true });
-
       function _dispose(nodes) {
         nodes.forEach(n => { try { if (typeof n.stop === 'function') n.stop(); n.dispose(); } catch (_) {} });
       }
 
       // Simple one-osc+noise synth. `now` is always captured AFTER await rev.ready.
       async function _sfxSynth(p) {
-        if (typeof Tone === 'undefined' || Tone.context.state !== 'running') return;
+        if (typeof Tone === 'undefined') return;
+        if (Tone.context.state !== 'running') {
+          try { await Tone.start(); } catch (_) {}
+          if (Tone.context.state !== 'running') return;
+        }
         const dur = p.duration * 0.001;
         const nodes = [];
         const track = (...ns) => { nodes.push(...ns); return ns; };
