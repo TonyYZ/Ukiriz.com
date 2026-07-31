@@ -513,16 +513,30 @@
       .spawned-expression-meta.other-user:not(.revealed) > .spawned-expression-translate {
         visibility: hidden;
       }
+      .spawned-expression-meta.other-user:not(.revealed) {
+        border-color: #3528a8;
+      }
+      @keyframes mysteryTextPulse {
+        0%, 100% { opacity: 1; }
+        50%       { opacity: 0.55; }
+      }
       .expr-mystery-overlay {
         position: absolute;
         inset: 0;
         border-radius: 7px;
-        background: rgba(248, 246, 240, 0.98);
+        background: repeating-linear-gradient(
+          -45deg,
+          #3528a8 0px,
+          #3528a8 13px,
+          #dbd7ff 13px,
+          #dbd7ff 26px
+        );
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 4px;
+        gap: 5px;
         cursor: pointer;
         z-index: 2;
         transition:
@@ -535,14 +549,28 @@
         transform: scale(0.96);
         pointer-events: none;
       }
+      .expr-mystery-glyph {
+        font-size: 18px;
+        line-height: 1;
+        pointer-events: none;
+        user-select: none;
+        filter: drop-shadow(0 0 6px rgba(200, 180, 255, 0.95));
+        animation: mysteryTextPulse 2.4s ease-in-out infinite;
+      }
       .expr-mystery-label {
-        font-size: 12px;
-        font-weight: 600;
-        color: rgba(0, 0, 0, 0.36);
+        font-size: 11px;
+        font-weight: 700;
+        color: #fff;
+        text-shadow:
+          0 1px 4px rgba(20, 8, 100, 0.9),
+          0 0 12px rgba(140, 110, 255, 0.7);
         text-align: center;
         pointer-events: none;
         user-select: none;
         line-height: 1.3;
+        letter-spacing: 0.02em;
+        animation: mysteryTextPulse 2.4s ease-in-out infinite;
+        animation-delay: 0.2s;
       }
       .expr-hide-btn {
         position: absolute;
@@ -4885,6 +4913,23 @@
           enableWorldPanning();
           renderWorld();
           enableIslandSelection();
+          // Restore the previously-selected island if nothing is already selected.
+          // This handles page refresh: the stickman presence is restored but the
+          // visual island selection is lost until the world tab is first opened.
+          if (!selectedIsland) {
+            const restoredIslandId = localStorage.getItem('lastIslandId');
+            if (restoredIslandId) {
+              const islandEl = document.querySelector(
+                `#world svg.island[data-island-id="${restoredIslandId}"]`,
+              );
+              if (islandEl) {
+                selectedIsland = islandEl;
+                selectedIsland.classList.add('selected');
+                renderIslandInfoCard?.(restoredIslandId);
+                updateIslandInfoCardPosition?.();
+              }
+            }
+          }
         }
 
         if (tabIndex === 2) {
@@ -6879,7 +6924,15 @@
       let pendingDeleteCommits = 0;
 
       window.addEventListener('beforeunload', (e) => {
-        saveChatViewportState();
+        if (tabHeadersActivated[4]) {
+          // Tab is visible — read live scroll position.
+          saveChatViewportState();
+        } else {
+          // Tab is hidden: display:none resets scrollLeft/scrollTop to 0, so reading
+          // the live values would overwrite the correct saved position with (0,0).
+          // Use the in-memory snapshot captured when the user last left the tab.
+          persistRememberedChatViewportState(currentRoomId);
+        }
         if (pendingDeleteCommits > 0) {
           e.preventDefault();
           e.returnValue = '';
@@ -7721,6 +7774,18 @@
         return owner === me;
       }
 
+      let _lastNoEditToastMs = 0;
+      function showNoEditToast() {
+        const now = Date.now();
+        if (now - _lastNoEditToastMs < 2500) return;
+        _lastNoEditToastMs = now;
+        showToast(
+          currentLang === 'zh'
+            ? '无法编辑他人的符号 — 您可以为其添加注释。'
+            : "Can't edit others' symbols — you can annotate them instead.",
+        );
+      }
+
       function getEditableSelectedSymbols() {
         return Array.from(selectedSymbols).filter((s) => canEditElement(s));
       }
@@ -7966,6 +8031,15 @@
       }
 
       function rebuildChatSymbolLinks() {
+        // If any symbol is under local mutation suppression, skip the rebuild entirely.
+        // Queued realtime snapshots from postgres_changes fire after deselect and carry
+        // stale/intermediate link data; letting them overwrite fresh local state causes
+        // the visible post-deselect desync the user reported.
+        const now = Date.now();
+        for (const symbol of symbolById.values()) {
+          if (symbol._suppressRemoteUntil && symbol._suppressRemoteUntil > now) return;
+        }
+
         for (const symbol of symbolById.values()) {
           currentGraph.addSymbol(symbol, [[], [], [], [], [], []]);
         }
@@ -9700,6 +9774,9 @@
           refreshChatInspectionOverlays();
         }
         if (inChat) {
+          // Guard each symbol against late realtime echoes from previous rotations
+          // arriving during the async persistence loop and reverting local state.
+          for (const symbol of group) markLocalSymbolMutation(symbol, 2500);
           for (const symbol of group) {
             await persistSymbolVisualState(symbol, true);
             await syncSymbolLinksRemote(symbol, previousSnapshotsBySymbol.get(symbol) || []);
@@ -9781,13 +9858,69 @@
 
       const turnButton2 = turnButton.cloneNode(true);
       turnButton2.id = 'chat-turn-button';
+      let _chatRotating = false;
       turnButton2.addEventListener('click', async (e) => {
+        if (_chatRotating) {
+          showToast(currentLang === 'zh' ? '旋转中，请稍候…' : 'Still rotating — please wait.');
+          return;
+        }
+        _chatRotating = true;
+        try {
         if (selectedSymbols.size !== 0) {
           const group = new Set(
             Array.from(selectedSymbols).filter((symbol) => canEditElement(symbol)),
           );
-          if (group.size > 1 && isSelectionConnected(group, currentGraph)) {
+          if (group.size === 0) {
+            showNoEditToast();
+          } else if (group.size > 1 && isSelectionConnected(group, currentGraph)) {
             await rotateConnectedSelection(group, 90, true);
+          } else if (group.size > 1) {
+            // Multiple disconnected components: rotate each connected component as a unit
+            // so that expressions keep their shape instead of each symbol spinning in place.
+            const components = getConnectedComponentsInSelection(group, currentGraph);
+            const singleSymbols = [];
+            for (const component of components) {
+              if (component.size > 1) {
+                await rotateConnectedSelection(component, 90, true);
+              } else {
+                singleSymbols.push(...component);
+              }
+            }
+            // Rotate any isolated (unconnected) symbols individually.
+            if (singleSymbols.length > 0) {
+              const snapshots = singleSymbols.map((sym) => snapshotSymbolConnections(sym));
+              const allPendingIds = singleSymbols.flatMap((sym, i) => {
+                const ids = [sym.dataset?.id];
+                for (const side of snapshots[i]) {
+                  for (const [nbr] of side || []) {
+                    if (nbr?.dataset?.id) ids.push(nbr.dataset.id);
+                  }
+                }
+                return ids;
+              });
+              await waitForPendingSymbolOps(allPendingIds);
+              resetPendingSnapState();
+              for (const sym of singleSymbols) {
+                markLocalSymbolMutation(sym, 1200);
+                detachSymbolLocal(sym);
+                applySymbolRotationLocal(sym, 90);
+                if (sym.isDynamic && sym.dot) updateDotPositionLocal(sym.dot);
+              }
+              window._sfxRotate?.();
+              updateExpressionGroupFramesFromSelection(chatCanvas());
+              for (let i = 0; i < singleSymbols.length; i++) {
+                resetPendingSnapState();
+                await reconcileSymbolConnectivityAfterTurn(singleSymbols[i], true);
+                await new Promise((resolve) => requestAnimationFrame(resolve));
+                await reconcileSymbolConnectivityAfterTurn(singleSymbols[i], true);
+                await persistSymbolVisualState(singleSymbols[i], true);
+                await syncSymbolLinksRemote(singleSymbols[i], snapshots[i]);
+              }
+            }
+            if (eyeButton2?.isActivated) {
+              forceFreshInspectionLabels = true;
+              refreshChatInspectionOverlays();
+            }
           } else {
             const symbols = [...group];
 
@@ -9835,6 +9968,9 @@
               refreshChatInspectionOverlays();
             }
           }
+        }
+        } finally {
+          _chatRotating = false;
         }
       });
       appendToChatControls(turnButton2);
@@ -9886,8 +10022,18 @@
 
       const dotButton2 = dotButton.cloneNode(true);
       dotButton2.id = 'chat-dot-button';
+      let _chatDotting = false;
       dotButton2.addEventListener('pointerup', async (e) => {
+        if (_chatDotting) {
+          showToast(currentLang === 'zh' ? '处理中，请稍候…' : 'Still processing — please wait.');
+          return;
+        }
+        _chatDotting = true;
+        try {
         if (selectedSymbols.size !== 0) {
+          if (!Array.from(selectedSymbols).some(canEditElement)) {
+            showNoEditToast();
+          }
           const pendingPersists = [];
           let anyChanged = false;
 
@@ -9931,6 +10077,9 @@
           }
 
           await Promise.all(pendingPersists);
+        }
+        } finally {
+          _chatDotting = false;
         }
       });
       appendToChatControls(dotButton2);
@@ -10044,6 +10193,33 @@
 
       function isSelectionConnected(selectedSymbols, graph) {
         return countConnectedComponentsInSelection(selectedSymbols, graph) <= 1;
+      }
+
+      function getConnectedComponentsInSelection(selectedSymbols, graph) {
+        const sel = selectedSymbols instanceof Set ? selectedSymbols : new Set(selectedSymbols);
+        const visited = new Set();
+        const components = [];
+        for (const start of sel) {
+          if (visited.has(start)) continue;
+          const component = new Set();
+          const queue = [start];
+          visited.add(start);
+          while (queue.length) {
+            const node = queue.pop();
+            component.add(node);
+            const conns = graph.getSymbolConnections(node);
+            if (!conns) continue;
+            for (let side = 0; side < 6; side++) {
+              for (const [nbr] of conns[side] || []) {
+                if (!sel.has(nbr) || visited.has(nbr)) continue;
+                visited.add(nbr);
+                queue.push(nbr);
+              }
+            }
+          }
+          components.push(component);
+        }
+        return components;
       }
 
       const eyeButton = document.createElement('div');
@@ -10165,7 +10341,7 @@
       }
 
       const translationCache = new Map();
-      const TRANSLATION_CACHE_STORAGE_KEY = 'ukiriz.translationCache.v1';
+      const TRANSLATION_CACHE_STORAGE_KEY = 'ukiriz.translationCache.v3';
 
       function loadTranslationCache() {
         try {
@@ -10295,6 +10471,9 @@
 
           const translatedWord = translated.word;
           const translatedWhy = translated.explanation;
+          // Snapshot originals before overwriting so revert can restore them.
+          if (!card.dataset.originalWord) card.dataset.originalWord = titleEl.textContent;
+          if (!card.dataset.originalWhy) card.dataset.originalWhy = whyEl?.textContent ?? why ?? '';
           titleEl.textContent = translatedWord;
           if (!whyEl && translatedWhy) {
             whyEl = document.createElement('div');
@@ -10303,7 +10482,9 @@
           }
           if (whyEl) whyEl.textContent = translatedWhy;
           card.dataset.translatedTo = currentLang;
-          button.textContent = currentLang === 'zh' ? '已翻译' : 'Translated';
+          button.textContent = currentLang === 'zh' ? '显示原文' : 'Show original';
+          button.dataset.mode = 'revert';
+          button.disabled = false;
         } catch (e) {
           console.warn('translateSpawnedExpressionCard failed:', e);
           button.disabled = false;
@@ -10601,13 +10782,25 @@
             if (shouldOfferExpressionTranslation(sourceLang)) {
               const translateButton = createLightTranslateButton();
               if (cachedTranslation) {
-                translateButton.disabled = true;
-                translateButton.textContent = currentLang === 'zh' ? '已翻译' : 'Translated';
+                translateButton.textContent = currentLang === 'zh' ? '显示原文' : 'Show original';
+                translateButton.dataset.mode = 'revert';
               }
               translateButton.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                translateSpawnedExpressionCard(card, { word, why, sourceLang });
+                if (translateButton.dataset.mode === 'revert') {
+                  const titleEl = card.querySelector('.library-tree-card-word');
+                  const whyEl = card.querySelector('.library-tree-card-definition');
+                  if (titleEl) titleEl.textContent = card.dataset.originalWord ?? word;
+                  if (whyEl) whyEl.textContent = card.dataset.originalWhy ?? why;
+                  delete card.dataset.translatedTo;
+                  card.dataset.userShowingOriginal = 'true';
+                  translateButton.textContent = currentLang === 'zh' ? '翻译' : 'Translate';
+                  translateButton.dataset.mode = 'translate';
+                } else {
+                  delete card.dataset.userShowingOriginal;
+                  translateSpawnedExpressionCard(card, { word, why, sourceLang });
+                }
               });
               card.appendChild(translateButton);
             }
@@ -10625,9 +10818,14 @@
               const overlay = document.createElement('div');
               overlay.className = 'expr-mystery-overlay';
 
+              const glyph = document.createElement('div');
+              glyph.className = 'expr-mystery-glyph';
+              glyph.textContent = '✦';
+              overlay.appendChild(glyph);
+
               const label = document.createElement('div');
               label.className = 'expr-mystery-label';
-              label.textContent = currentLang === 'zh' ? '点击揭晓' : 'Reveal';
+              label.textContent = currentLang === 'zh' ? '点击揭晓' : 'Reveal / 揭晓';
               overlay.appendChild(label);
 
               const hideBtn = document.createElement('button');
@@ -10635,6 +10833,7 @@
               hideBtn.textContent = currentLang === 'zh' ? '隐藏' : 'Hide';
 
               function revealCard() {
+                window._sfxMysteryReveal?.();
                 overlay.classList.add('hiding');
                 card.classList.add('revealed');
                 setTimeout(() => {
@@ -12471,6 +12670,7 @@
           if (!canEditElement(emoji)) {
             emoji.style.cursor = NO_EDIT_CURSOR;
             clickOnlyEmoji = emoji;
+            showNoEditToast();
             return;
           }
 
@@ -13888,11 +14088,10 @@
           if (clickToggle) {
             selectionClickHandled = true;
             if (selectedEmojis.has(released)) {
-              const isInspecting = eyeButton.isActivated || eyeButton2.isActivated;
               const isAnno = released.dataset?.isAnnotation === 'true';
-              // In inspection mode, clicking an already-selected annotation should keep it
-              // selected so the remove button can act on it in the same gesture.
-              if (isInspecting && isAnno) {
+              // Clicking an already-selected annotation always keeps it selected so
+              // the Remove button can act on it without requiring a second selection click.
+              if (isAnno) {
                 released.selected = true;
                 released.classList.add('active');
                 selectedEmojis.add(released);
@@ -15928,6 +16127,7 @@
             symbol.style.cursor = 'pointer'; // clickable but not draggable
             // allow click-to-toggle selection for others
             clickOnlySymbol = symbol;
+            showNoEditToast();
             return; // no dragging
           }
 
@@ -20638,6 +20838,8 @@
           if (!selectedIsland) return;
           selectedIsland.classList.remove('selected');
           selectedIsland = null;
+          // Clear persisted island so showTab(3)'s restore block doesn't immediately re-select it.
+          localStorage.removeItem('lastIslandId');
           clearWorldPresence();
           hideChatTab();
           hideIslandInfoCard();
@@ -21309,6 +21511,69 @@
           noise.start(now);
           nenv.triggerAttackRelease(dur * 0.5, now);
           setTimeout(() => _dispose(nodes), 2000);
+        };
+
+        // Mystery reveal: pink-noise veil sweep + blooming shimmer chord + deep bass.
+        window._sfxMysteryReveal = async function () {
+          if (!(await _sfxEnsureRunning())) return;
+          const nodes = [];
+          const track = (...ns) => {
+            nodes.push(...ns);
+            return ns;
+          };
+          const rev = new Tone.Reverb({ decay: 5 });
+          rev.wet.value = 0.85;
+          await rev.ready;
+          const vol = new Tone.Volume(-10);
+          rev.connect(vol);
+          vol.toDestination();
+          track(rev, vol);
+          const now = Tone.now();
+
+          // Veil sweep: pink noise through a bandpass that rises quickly
+          const [bpf] = track(new Tone.BiquadFilter({ type: 'bandpass', frequency: 260, Q: 1.2 }));
+          bpf.connect(rev);
+          bpf.frequency.setValueAtTime(260, now);
+          bpf.frequency.exponentialRampToValueAtTime(3200, now + 0.52);
+          const [noise, nenv, ng] = track(
+            new Tone.Noise('pink'),
+            new Tone.AmplitudeEnvelope({ attack: 0.04, decay: 0.55, sustain: 0, release: 0.08 }),
+            new Tone.Gain(0.38),
+          );
+          noise.connect(nenv);
+          nenv.connect(ng);
+          ng.connect(bpf);
+          noise.start(now);
+          nenv.triggerAttackRelease(0.55, now);
+
+          // Deep rumble: low bass tone (the weight of the veil lifting)
+          const [bass, benv, bg] = track(
+            new Tone.Oscillator({ type: 'sine', frequency: 90 }),
+            new Tone.AmplitudeEnvelope({ attack: 0.06, decay: 0.75, sustain: 0, release: 0.2 }),
+            new Tone.Gain(0.22),
+          );
+          bass.connect(benv);
+          benv.connect(bg);
+          bg.connect(rev);
+          bass.start(now);
+          benv.triggerAttackRelease(0.75, now);
+
+          // Shimmer chord: staggered harmonics bloom after the sweep (the reveal)
+          [880, 1108, 1320, 1760, 2640].forEach((freq, i) => {
+            const t = now + 0.22 + i * 0.055;
+            const [osc, env, g] = track(
+              new Tone.Oscillator({ type: 'sine', frequency: freq }),
+              new Tone.AmplitudeEnvelope({ attack: 0.03, decay: 0.55, sustain: 0, release: 0.25 }),
+              new Tone.Gain(0.1 - i * 0.012),
+            );
+            osc.connect(env);
+            env.connect(g);
+            g.connect(rev);
+            osc.start(t);
+            env.triggerAttackRelease(0.5, t);
+          });
+
+          setTimeout(() => _dispose(nodes), 7000);
         };
 
         // Organize: three staggered chess-piece placements rising in pitch.
