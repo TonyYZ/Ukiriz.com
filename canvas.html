@@ -5690,7 +5690,7 @@
       }
 
       function applyCoordJump() {
-        const parts = (chatCoordInput.value || '').trim().split(/[\s,]+/).map(Number);
+        const parts = (chatCoordInput.value || '').trim().split(/[\s,，]+/).map(Number);
         chatCoordInput.style.display = 'none';
         chatCoordText.style.display = '';
         document.body.classList.remove('coord-input-open');
