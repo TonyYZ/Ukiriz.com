@@ -17116,6 +17116,20 @@
         };
       }
 
+      function normalizeLibraryV2FuseauOrientation(branches) {
+        const stem = branches[0]?.children.find((child) => child.type === 'element');
+        const orientation = stem?.orientation || 0;
+        if (!orientation) return 0;
+        branches.forEach((branch) => {
+          branch.children.forEach((child) => {
+            if (child.type === 'element') {
+              child.orientation = (child.orientation - orientation + 2) % 2;
+            }
+          });
+        });
+        return orientation;
+      }
+
       function buildLibraryV2Series(node) {
         const graph = getLibraryV2Graph(node);
         if (!graph) return null;
@@ -17176,7 +17190,11 @@
             ),
           }));
           if (branches.length > 1) {
-            children.push({ type: 'parallel', branches });
+            children.push({
+              type: 'parallel',
+              orientation: normalizeLibraryV2FuseauOrientation(branches),
+              branches,
+            });
           } else {
             children.push(...branches[0].children);
           }
@@ -17222,12 +17240,29 @@
         return result;
       }
 
-      function serializeLibraryV2Element(element, continuation = false, orientationVowel = 'á') {
+      function serializeLibraryV2Element(
+        element,
+        continuation = false,
+        orientationVowel = 'á',
+        orientationConsumed = 0,
+      ) {
+        const remainingOrientation = Math.max(
+          0,
+          element.orientation - orientationConsumed,
+        );
+        const orientationText =
+          orientationVowel === 'ớ' && remainingOrientation
+            ? `ớ${'á'.repeat(remainingOrientation - 1)}`
+            : orientationVowel.repeat(remainingOrientation);
         return (
           (continuation && !element.orientation ? 'a' : '') +
-          (element.orientation ? orientationVowel : '') +
+          orientationText +
           element.char
         );
+      }
+
+      function accentLibraryV2Boundary(vowel) {
+        return { e: 'é', o: 'ó' }[vowel] || vowel;
       }
 
       function serializeLibraryV2Series(series, insideBranch = false, separatePlainPairs = false) {
@@ -17246,6 +17281,21 @@
           if (insideBranch) text = `'${text}'`;
           return text;
         });
+        for (let index = 0; index + 1 < series.children.length; index++) {
+          const child = series.children[index];
+          const following = series.children[index + 1];
+          if (
+            child.type === 'parallel' &&
+            following.type === 'element' &&
+            following.orientation > 0 &&
+            rendered[index].endsWith('o') &&
+            rendered[index + 1].startsWith('á')
+          ) {
+            rendered[index] =
+              rendered[index].slice(0, -1) + accentLibraryV2Boundary('o');
+            rendered[index + 1] = rendered[index + 1].slice(1);
+          }
+        }
         if (insideBranch) return rendered.join('');
         if (separatePlainPairs) {
           separateLibraryV2PlainElementPairs(series.children, rendered);
@@ -17263,17 +17313,21 @@
           const followingIsPlain =
             index + 1 < series.children.length && series.children[index + 1].type !== 'parallel';
           if (previousIsPlain) {
-            if (!text.startsWith('e')) throw new Error('Missing V2 fuseau opening');
-            current += 'e';
+            if (!text || !'eéèē'.includes(text[0])) {
+              throw new Error('Missing V2 fuseau opening');
+            }
+            current += text[0];
             segments.push(current);
             current = '';
             text = text.slice(1);
           }
           if (followingIsPlain) {
-            if (!text.endsWith('o')) throw new Error('Missing V2 fuseau closing');
+            if (!text || !'oóòō'.includes(text.at(-1))) {
+              throw new Error('Missing V2 fuseau closing');
+            }
             current += text.slice(0, -1);
             segments.push(current);
-            current = 'o';
+            current = text.at(-1);
           } else {
             current += text;
           }
@@ -17319,6 +17373,7 @@
         series,
         secondBranch = false,
         firstOrientationVowel = null,
+        firstOrientationConsumed = 0,
       ) {
         return series.children
           .map((child, index) => {
@@ -17331,6 +17386,7 @@
                   : secondBranch && index === 0
                     ? 'ớ'
                     : 'á',
+                index === 0 ? firstOrientationConsumed : 0,
               );
             }
             let text =
@@ -17343,6 +17399,31 @@
           .join('');
       }
 
+      function libraryV2OrientedFirstElement(branch) {
+        return Boolean(
+          branch.children.length &&
+            branch.children[0].type === 'element' &&
+            branch.children[0].orientation,
+        );
+      }
+
+      function canUseLibraryV2SimpleMarker(parallel) {
+        if (parallel.orientation || parallel.branches.length !== 2) return false;
+        const elements = [];
+        const valid = parallel.branches.every((branch) => {
+          if (branch.children.length !== 1 || branch.children[0].type !== 'element') {
+            return false;
+          }
+          elements.push(branch.children[0]);
+          return true;
+        });
+        return (
+          valid &&
+          elements[0].orientation === 0 &&
+          [0, 1].includes(elements[1].orientation)
+        );
+      }
+
       function serializeLibraryV2Parallel(
         parallel,
         framed = false,
@@ -17351,33 +17432,88 @@
       ) {
         const branches = parallel.branches;
         if (branches.length < 2) throw new Error('A V2 fuseau needs at least two branches');
+        if (branches.length === 2) {
+          const simpleMarker =
+            !framed && omitOpening && canUseLibraryV2SimpleMarker(parallel);
+          if (simpleMarker) {
+            const left = serializeLibraryV2Element(branches[0].children[0]);
+            const rightElement = branches[1].children[0];
+            const marker = rightElement.orientation ? 'ớ' : 'ơ';
+            const right = serializeLibraryV2Element(rightElement, false, '');
+            return `${left}${marker}${right}${omitClosing ? '' : 'o'}`;
+          }
+
+          const compact = branches.map((branch, index) =>
+            serializeLibraryV2CompactSeries(branch, index === 1),
+          );
+          const firstIsOriented =
+            Boolean(parallel.orientation) || libraryV2OrientedFirstElement(branches[0]);
+          if (!parallel.orientation && libraryV2OrientedFirstElement(branches[0])) {
+            compact[0] = serializeLibraryV2CompactSeries(
+              branches[0],
+              false,
+              'á',
+              1,
+            );
+          }
+          const middle =
+            compact[0].endsWith("'") && compact[1].startsWith("'")
+              ? compact[0] + compact[1].slice(1)
+              : compact[0] + compact[1];
+          return `${firstIsOriented ? 'é' : 'e'}${middle}o`;
+        }
+
         const compact = branches.map((branch, index) =>
           serializeLibraryV2CompactSeries(branch, index === 1),
         );
-        if (branches.length === 2) {
-          if (framed) return `e${compact[0]}${compact[1]}o`;
-          const left = serializeLibraryV2CompactSeries(branches[0]);
-          const right = serializeLibraryV2CompactSeries(branches[1], false, '');
-          const rightFirst = branches[1].children[0];
-          const marker = rightFirst.type === 'element' && rightFirst.orientation ? 'ớ' : 'ơ';
-          const opening = omitOpening ? '' : 'e';
-          const closing = omitClosing ? '' : 'o';
-          return `${opening}${left}${marker}${right}${closing}`;
-        }
         if (branches.length === 3) {
           const safelyCompact = branches.every((branch) =>
             branch.children.every((child) => child.type === 'element'),
           );
-          const opening = omitOpening && !framed && safelyCompact ? '' : 'e';
+          const firstIsOriented =
+            Boolean(parallel.orientation) || libraryV2OrientedFirstElement(branches[0]);
+          if (!parallel.orientation && libraryV2OrientedFirstElement(branches[0])) {
+            compact[0] = serializeLibraryV2CompactSeries(
+              branches[0],
+              false,
+              'á',
+              1,
+            );
+          }
+          const opening =
+            omitOpening && !framed && safelyCompact && !firstIsOriented
+              ? ''
+              : firstIsOriented
+                ? 'é'
+                : 'e';
           const closing = omitClosing && !framed && safelyCompact ? '' : 'o';
-          return `${opening}${compact[0]}${compact[1]}o${compact[2]}${closing}`;
+          let separator = 'o';
+          const thirdFirst = branches[2].children[0];
+          if (
+            thirdFirst?.type === 'element' &&
+            thirdFirst.orientation === 2 &&
+            compact[2].startsWith('áá')
+          ) {
+            separator = 'áó';
+            compact[2] = compact[2].slice(2);
+          }
+          return `${opening}${compact[0]}${compact[1]}${separator}${compact[2]}${closing}`;
         }
         const rendered = branches.map((branch) => serializeLibraryV2Series(branch, true));
+        let opening = parallel.orientation ? 'é' : 'e';
+        if (
+          !parallel.orientation &&
+          libraryV2OrientedFirstElement(branches[0]) &&
+          rendered[0].startsWith('á')
+        ) {
+          opening = 'é';
+          rendered[0] = rendered[0].slice(1);
+        }
         const middle = rendered
           .slice(1, -2)
           .map((branch) => `e${branch}o`)
           .join('');
-        return `e${rendered[0]}${middle}${rendered.at(-2)}o${rendered.at(-1)}o`;
+        return `${opening}${rendered[0]}${middle}${rendered.at(-2)}o${rendered.at(-1)}o`;
       }
 
       function serializeLibraryV2Node(node) {
@@ -17408,7 +17544,9 @@
           const series = buildLibraryV2Series(node);
           if (!series?.children?.length) return null;
           const written = separateLibraryV2ConsonantRuns(
-            compactLibraryV2Vowels(serializeLibraryV2Series(series, false, true)),
+            compactLibraryV2Vowels(
+              serializeLibraryV2Series(series, false, true).replace(/\s+/g, ''),
+            ),
           );
           return {
             written,
