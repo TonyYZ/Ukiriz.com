@@ -20528,17 +20528,31 @@
     <script src="https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.js"></script>
     <script>
     (function () {
+      // Kick off the AudioContext on the first user touch/click so it's ready
+      // by the time the first sound fires. iOS Safari requires the resume() call
+      // to happen synchronously in a gesture handler — the async await inside
+      // each sfx function alone isn't always enough on older iOS.
+      const _startTone = () => { if (typeof Tone !== 'undefined') Tone.start(); };
+      document.addEventListener('pointerdown', _startTone, { capture: true });
+      document.addEventListener('touchstart',  _startTone, { capture: true, passive: true });
+
       function _dispose(nodes) {
         nodes.forEach(n => { try { if (typeof n.stop === 'function') n.stop(); n.dispose(); } catch (_) {} });
       }
 
-      // Simple one-osc+noise synth. `now` is always captured AFTER await rev.ready.
-      async function _sfxSynth(p) {
-        if (typeof Tone === 'undefined') return;
+      // Shared guard: resumes AudioContext if suspended, returns false if it can't start.
+      async function _sfxEnsureRunning() {
+        if (typeof Tone === 'undefined') return false;
         if (Tone.context.state !== 'running') {
           try { await Tone.start(); } catch (_) {}
-          if (Tone.context.state !== 'running') return;
+          if (Tone.context.state !== 'running') return false;
         }
+        return true;
+      }
+
+      // Simple one-osc+noise synth. `now` is always captured AFTER await rev.ready.
+      async function _sfxSynth(p) {
+        if (!await _sfxEnsureRunning()) return;
         const dur = p.duration * 0.001;
         const nodes = [];
         const track = (...ns) => { nodes.push(...ns); return ns; };
@@ -20583,7 +20597,7 @@
 
       // Snap: bandpass noise burst + brief sine — dry and immediate.
       window._sfxSnap = async function () {
-        if (typeof Tone === 'undefined' || Tone.context.state !== 'running') return;
+        if (!await _sfxEnsureRunning()) return;
         const nodes = [];
         const track = (...ns) => { nodes.push(...ns); return ns; };
         const rev = new Tone.Reverb({ decay: 0.28 }); rev.wet.value = 0.05; await rev.ready;
@@ -20611,7 +20625,7 @@
 
       // Save library: staggered sine chord (0.5× 1× 1.5× pitch) — same as playground.
       window._sfxSaveLibrary = async function () {
-        if (typeof Tone === 'undefined' || Tone.context.state !== 'running') return;
+        if (!await _sfxEnsureRunning()) return;
         const nodes = [];
         const track = (...ns) => { nodes.push(...ns); return ns; };
         const rev = new Tone.Reverb({ decay: 3.16 }); rev.wet.value = 0.78 * 0.82; await rev.ready;
@@ -20635,7 +20649,7 @@
 
       // Plink: clean bright chime with pitch-drop tail — for dynamic dot.
       window._sfxPlink = async function () {
-        if (typeof Tone === 'undefined' || Tone.context.state !== 'running') return;
+        if (!await _sfxEnsureRunning()) return;
         const nodes = [];
         const track = (...ns) => { nodes.push(...ns); return ns; };
         const rev = new Tone.Reverb({ decay: 1.1 }); rev.wet.value = 0.24; await rev.ready;
@@ -20664,7 +20678,7 @@
 
       // Color: warm sine + major-third harmonic — gentle paintbrush feel.
       window._sfxColor = async function () {
-        if (typeof Tone === 'undefined' || Tone.context.state !== 'running') return;
+        if (!await _sfxEnsureRunning()) return;
         const nodes = [];
         const track = (...ns) => { nodes.push(...ns); return ns; };
         const rev = new Tone.Reverb({ decay: 0.6 }); rev.wet.value = 0.25; await rev.ready;
@@ -20692,7 +20706,7 @@
       };
 
       window._sfxIslandCrossing = async function () {
-        if (typeof Tone === 'undefined' || Tone.context.state !== 'running') return;
+        if (!await _sfxEnsureRunning()) return;
         const nodes = [];
         const track = (...ns) => { nodes.push(...ns); return ns; };
         const rev = new Tone.Reverb({ decay: 2.8 }); rev.wet.value = 0.59; await rev.ready;
@@ -20722,7 +20736,7 @@
       };
 
       window._sfxRotate = async function () {
-        if (typeof Tone === 'undefined' || Tone.context.state !== 'running') return;
+        if (!await _sfxEnsureRunning()) return;
         const nodes = [];
         const track = (...ns) => { nodes.push(...ns); return ns; };
         const rev = new Tone.Reverb({ decay: 0.4 }); rev.wet.value = 0.08; await rev.ready;
@@ -20751,7 +20765,7 @@
       };
 
       window._sfxEye = async function () {
-        if (typeof Tone === 'undefined' || Tone.context.state !== 'running') return;
+        if (!await _sfxEnsureRunning()) return;
         const nodes = [];
         const track = (...ns) => { nodes.push(...ns); return ns; };
         const rev = new Tone.Reverb({ decay: 2.2 }); rev.wet.value = 0.48; await rev.ready;
@@ -20783,7 +20797,7 @@
       };
 
       window._sfxAnnotation = async function () {
-        if (typeof Tone === 'undefined' || Tone.context.state !== 'running') return;
+        if (!await _sfxEnsureRunning()) return;
         const nodes = [];
         const track = (...ns) => { nodes.push(...ns); return ns; };
         const rev = new Tone.Reverb({ decay: 0.9 }); rev.wet.value = 0.28; await rev.ready;
@@ -20813,7 +20827,7 @@
 
       // Organize: three staggered chess-piece placements rising in pitch.
       window._sfxOrganize = async function () {
-        if (typeof Tone === 'undefined' || Tone.context.state !== 'running') return;
+        if (!await _sfxEnsureRunning()) return;
         const nodes = [];
         const track = (...ns) => { nodes.push(...ns); return ns; };
         const rev = new Tone.Reverb({ decay: 0.35 }); rev.wet.value = 0.06; await rev.ready;
@@ -20843,7 +20857,7 @@
 
       // Bubble pop: sine drop from 520→180 Hz + airy noise burst.
       window._sfxBubblePop = async function () {
-        if (typeof Tone === 'undefined' || Tone.context.state !== 'running') return;
+        if (!await _sfxEnsureRunning()) return;
         const nodes = [];
         const track = (...ns) => { nodes.push(...ns); return ns; };
         const rev = new Tone.Reverb({ decay: 0.5 }); rev.wet.value = 0.18; await rev.ready;
