@@ -1971,7 +1971,7 @@
 
         #chatMinimap {
           right: 30px !important;
-          bottom: 88px !important;
+          bottom: 116px !important;
           width: 164px;
           height: 115px;
           transform: none;
@@ -1979,8 +1979,24 @@
         }
         #chatCoordDisplay {
           right: 30px !important;
-          bottom: 66px !important;
+          bottom: 94px !important;
           width: 164px;
+        }
+        body.mobile-keyboard-open.coord-input-open #chatCoordDisplay {
+          display: flex !important;
+          position: fixed !important;
+          top: var(--mobile-keyboard-input-top, 44vh) !important;
+          bottom: auto !important;
+          left: 50% !important;
+          right: auto !important;
+          transform: translateX(-50%) !important;
+          background: rgba(255, 255, 255, 0.97) !important;
+          border: 1.5px solid rgba(0, 176, 240, 0.55) !important;
+          border-radius: 10px !important;
+          padding: 6px 14px !important;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18) !important;
+          z-index: 100002 !important;
+          width: auto !important;
         }
 
         body.craft-tab-active #craftMinimap {
@@ -4733,7 +4749,7 @@
 
       function isMobileKeyboardTextTarget(target) {
         return !!target?.matches?.(
-          '.label-input, .label-textarea, #symbol-message-input, #message-input',
+          '.label-input, .label-textarea, #symbol-message-input, #message-input, #chatCoordInput',
         );
       }
 
@@ -5668,6 +5684,7 @@
         chatCoordText.style.display = 'none';
         chatCoordInput.style.display = 'block';
         chatCoordInput.value = chatCoordText.textContent;
+        document.body.classList.add('coord-input-open');
         chatCoordInput.select();
         chatCoordInput.focus();
       }
@@ -5676,6 +5693,7 @@
         const parts = (chatCoordInput.value || '').trim().split(/[\s,]+/).map(Number);
         chatCoordInput.style.display = 'none';
         chatCoordText.style.display = '';
+        document.body.classList.remove('coord-input-open');
         const x = parts[0], y = parts[1];
         if (!isNaN(x) && !isNaN(y)) {
           const zoom = getCanvasZoom(chatCanvas()) || 1;
@@ -5696,6 +5714,7 @@
         if (e.key === 'Escape') {
           chatCoordInput.style.display = 'none';
           chatCoordText.style.display = '';
+          document.body.classList.remove('coord-input-open');
         }
       });
       chatCoordInput?.addEventListener('blur', applyCoordJump);
