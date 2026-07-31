@@ -628,6 +628,67 @@
         touch-action: none;
       }
 
+      #chatCoordDisplay {
+        position: fixed;
+        right: calc(var(--sidebar-w) + 44px);
+        bottom: 4px;
+        width: 210px;
+        height: 20px;
+        background: none;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        z-index: 24;
+        user-select: none;
+      }
+      #chatCoordText {
+        font-size: 11px;
+        font-family: monospace;
+        color: rgba(80, 80, 100, 0.72);
+        letter-spacing: 0.03em;
+        cursor: pointer;
+        transition: color 0.15s;
+      }
+      #chatCoordText:hover {
+        color: rgba(0, 140, 200, 0.9);
+      }
+      #chatCoordInput {
+        display: none;
+        border: none;
+        border-bottom: 1.5px solid rgba(0, 176, 240, 0.6);
+        background: transparent;
+        font-size: 11px;
+        font-family: monospace;
+        color: #1a1a2e;
+        width: 120px;
+        text-align: center;
+        outline: none;
+        letter-spacing: 0.03em;
+      }
+      #chatDenseJumpBtn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        border: none;
+        background: none;
+        padding: 0;
+        cursor: pointer;
+        opacity: 0.45;
+        transition: opacity 0.15s;
+        flex-shrink: 0;
+      }
+      #chatDenseJumpBtn:hover {
+        opacity: 0.9;
+      }
+      #chatDenseJumpBtn svg {
+        width: 14px;
+        height: 14px;
+      }
+
       #craftMinimap {
         position: fixed;
         right: 10px;
@@ -1916,6 +1977,11 @@
           transform: none;
           transform-origin: bottom right;
         }
+        #chatCoordDisplay {
+          right: 30px !important;
+          bottom: 66px !important;
+          width: 164px;
+        }
 
         body.craft-tab-active #craftMinimap {
           display: block;
@@ -2059,6 +2125,7 @@
         body.mobile-keyboard-open .vertical-bar,
         body.mobile-keyboard-open #craftMinimap,
         body.mobile-keyboard-open #chatMinimap,
+        body.mobile-keyboard-open #chatCoordDisplay,
         body.mobile-keyboard-open #tutorialOverlay,
         body.mobile-keyboard-open .wheel,
         body.mobile-keyboard-open #chat-question {
@@ -2196,6 +2263,19 @@
         <div id="chatMinimap">
           <canvas id="chatMinimapCanvas" width="210" height="148"></canvas>
           <div id="chatMinimapViewport"></div>
+        </div>
+        <div id="chatCoordDisplay">
+          <span id="chatCoordText" title="Click to jump to coordinates">0, 0</span>
+          <input id="chatCoordInput" type="text" placeholder="x, y" />
+          <button id="chatDenseJumpBtn" title="Jump to densest symbol area">
+            <svg viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="7" cy="7" r="2.5" fill="currentColor"/>
+              <line x1="7" y1="0.5" x2="7" y2="3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+              <line x1="7" y1="10.5" x2="7" y2="13.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+              <line x1="0.5" y1="7" x2="3.5" y2="7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+              <line x1="10.5" y1="7" x2="13.5" y2="7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            </svg>
+          </button>
         </div>
         <div id="chatCanvas"></div>
         <div id="chatControls">
@@ -5571,6 +5651,88 @@
         craftMiniMapDragging = true;
         jumpCraftViewportFromMiniMap(e.clientX, e.clientY);
       });
+      // Coordinate display — shows current canvas top-left position; click to jump.
+      const chatCoordDisplay = document.getElementById('chatCoordDisplay');
+      const chatCoordText = document.getElementById('chatCoordText');
+      const chatCoordInput = document.getElementById('chatCoordInput');
+
+      function updateChatCoordDisplay() {
+        if (!tab4 || !chatCoordText || chatCoordInput?.style.display === 'block') return;
+        const zoom = getCanvasZoom(chatCanvas()) || 1;
+        const x = Math.round(tab4.scrollLeft / zoom);
+        const y = Math.round(tab4.scrollTop / zoom);
+        chatCoordText.textContent = `${x}, ${y}`;
+      }
+
+      function openCoordInput() {
+        chatCoordText.style.display = 'none';
+        chatCoordInput.style.display = 'block';
+        chatCoordInput.value = chatCoordText.textContent;
+        chatCoordInput.select();
+        chatCoordInput.focus();
+      }
+
+      function applyCoordJump() {
+        const parts = (chatCoordInput.value || '').trim().split(/[\s,]+/).map(Number);
+        chatCoordInput.style.display = 'none';
+        chatCoordText.style.display = '';
+        const x = parts[0], y = parts[1];
+        if (!isNaN(x) && !isNaN(y)) {
+          const zoom = getCanvasZoom(chatCanvas()) || 1;
+          const maxLeft = Math.max(0, tab4.scrollWidth - tab4.clientWidth);
+          const maxTop = Math.max(0, tab4.scrollHeight - tab4.clientHeight);
+          tab4.scrollLeft = Math.max(0, Math.min(maxLeft, x * zoom));
+          tab4.scrollTop = Math.max(0, Math.min(maxTop, y * zoom));
+          saveChatViewportState();
+          scheduleChatMiniMapUpdate();
+        }
+      }
+
+      chatCoordDisplay?.addEventListener('click', (e) => {
+        if (chatCoordInput.style.display !== 'block') openCoordInput();
+      });
+      chatCoordInput?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); applyCoordJump(); }
+        if (e.key === 'Escape') {
+          chatCoordInput.style.display = 'none';
+          chatCoordText.style.display = '';
+        }
+      });
+      chatCoordInput?.addEventListener('blur', applyCoordJump);
+
+      document.getElementById('chatDenseJumpBtn')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const surface = chatCanvas();
+        if (!surface || !tab4) return;
+        const symbols = Array.from(surface.querySelectorAll('.symbol'));
+        if (!symbols.length) return;
+        // Grid-cell density: find the 300px cell with the most symbols, jump to its center.
+        const CELL = 300;
+        const counts = new Map();
+        for (const s of symbols) {
+          const cx = Math.floor(parseFloat(s.style.left) / CELL);
+          const cy = Math.floor(parseFloat(s.style.top) / CELL);
+          const key = `${cx},${cy}`;
+          counts.set(key, (counts.get(key) || 0) + 1);
+        }
+        let bestKey = null, bestCount = 0;
+        for (const [key, count] of counts) {
+          if (count > bestCount) { bestCount = count; bestKey = key; }
+        }
+        const [gx, gy] = bestKey.split(',').map(Number);
+        const targetX = gx * CELL + CELL / 2;
+        const targetY = gy * CELL + CELL / 2;
+        const zoom = getCanvasZoom(surface) || 1;
+        const maxLeft = Math.max(0, tab4.scrollWidth - tab4.clientWidth);
+        const maxTop = Math.max(0, tab4.scrollHeight - tab4.clientHeight);
+        const left = (targetX - tab4.clientWidth / (2 * zoom)) * zoom;
+        const top  = (targetY - tab4.clientHeight / (2 * zoom)) * zoom;
+        tab4.scrollLeft = Math.max(0, Math.min(maxLeft, left));
+        tab4.scrollTop  = Math.max(0, Math.min(maxTop, top));
+        saveChatViewportState();
+        scheduleChatMiniMapUpdate();
+      });
+
       chatMiniMap?.addEventListener('dblclick', (e) => e.preventDefault());
       document
         .getElementById('craftMinimap')
@@ -6136,6 +6298,7 @@
         chatMiniMapFrame = requestAnimationFrame(() => {
           chatMiniMapFrame = 0;
           updateChatMiniMap();
+          updateChatCoordDisplay();
           if (window.eyeButton2?.isActivated) {
             showAnnotationsForSelection();
           }
@@ -12670,7 +12833,6 @@
           if (!canEditElement(emoji)) {
             emoji.style.cursor = NO_EDIT_CURSOR;
             clickOnlyEmoji = emoji;
-            showNoEditToast();
             return;
           }
 
@@ -13105,11 +13267,18 @@
             clickOnlySymbol._dragged = true;
             endLongPress(true);
           }
+          // Toast only after a more deliberate drag (≥10 px) to avoid false positives.
+          if (!canEditElement(clickOnlySymbol) && dx * dx + dy * dy > 100) {
+            showNoEditToast();
+          }
         }
         if (clickOnlyEmoji && !clickOnlyEmoji._dragged) {
           const dx = e.clientX - (clickOnlyEmoji._downClientX ?? e.clientX);
           const dy = e.clientY - (clickOnlyEmoji._downClientY ?? e.clientY);
           if (dx * dx + dy * dy > 16) clickOnlyEmoji._dragged = true;
+          if (!canEditElement(clickOnlyEmoji) && dx * dx + dy * dy > 100) {
+            showNoEditToast();
+          }
         }
 
         // mark as dragged (for click-vs-drag toggle)
@@ -16127,7 +16296,6 @@
             symbol.style.cursor = 'pointer'; // clickable but not draggable
             // allow click-to-toggle selection for others
             clickOnlySymbol = symbol;
-            showNoEditToast();
             return; // no dragging
           }
 
