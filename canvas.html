@@ -794,8 +794,10 @@
         font-size: 9px;
         font-weight: 700;
         padding: 0 4px;
-        margin-left: 4px;
-        vertical-align: middle;
+        margin-left: 6px;
+        vertical-align: top;
+        position: relative;
+        top: 1px;
         line-height: 1;
         flex-shrink: 0;
       }
@@ -810,7 +812,8 @@
         text-decoration: underline;
         touch-action: manipulation;
         text-align: left;
-        width: 100%;
+        width: fit-content;
+        align-self: flex-start;
         margin-top: 2px;
       }
       .library-tree-interps-toggle:hover {
@@ -8962,6 +8965,8 @@
         if (!hasLocalChatDragInProgress()) {
           rebuildChatSymbolLinks();
         }
+
+        if (selectedSymbols.size) updateExpressionGroupFramesFromSelection(chatCanvas());
 
         scheduleChatMiniMapUpdate();
 
@@ -20280,6 +20285,13 @@
               interpOpen = !interpOpen;
               interpsSection.style.display = interpOpen ? 'flex' : 'none';
               toggle.textContent = interpOpen ? (zh ? '收起' : 'Collapse') : toggleTextCollapsed();
+              if (interpOpen && currentUser?.uid) {
+                const ids = interps.map((i) => i.id);
+                (async () => {
+                  try { await supabase.from('interpretations').update({ seen_by_author: true }).in('id', ids); }
+                  catch (_) {}
+                })();
+              }
             });
 
             textWrap.appendChild(toggle);
@@ -20408,24 +20420,19 @@
         card.classList.remove('dragging');
         card.releasePointerCapture?.(e.pointerId);
         stopLibraryTreeEdgeFollow();
+        const didMove = libraryTreeDragState.moved;
         let updates = [];
-        if (libraryTreeDragState.moved) {
+        if (didMove) {
           startLibraryTreeEdgeFollow();
           updates = await animateLibraryTreeColumnToPackedPositions(libraryTreeDragState);
           stopLibraryTreeEdgeFollow();
-        } else {
-          const columnIds = libraryTreeRenderState?.columns?.get(level) || [String(nodeId)];
-          updates = columnIds
-            .map((id) => {
-              const pos = getLibraryTreeCardDomPosition(id);
-              return pos ? { id, _treeY: pos.y } : null;
-            })
-            .filter(Boolean);
         }
         libraryTreeDragState = null;
-        if (updates.length) nodes.update(updates);
-        renderLibraryTreeView();
-        scheduleSaveLibraryGraph();
+        if (didMove) {
+          if (updates.length) nodes.update(updates);
+          renderLibraryTreeView();
+          scheduleSaveLibraryGraph();
+        }
       });
 
       document.addEventListener('pointercancel', () => {
