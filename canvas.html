@@ -8145,7 +8145,9 @@
         await initNodes();
 
         // Load received interpretations (non-blocking; also triggers notification toast)
-        loadLibraryInterpretations().then(checkInterpretationNotifications).catch(console.error);
+        loadLibraryInterpretations()
+          .then(() => { renderLibraryTreeView?.(); return checkInterpretationNotifications(); })
+          .catch(console.error);
 
         // Restore the room the user was in before the last refresh
         const savedRoomId = localStorage.getItem('lastRoomId');
@@ -11506,21 +11508,7 @@
                 yourSec.appendChild(yourLbl);
                 yourSec.appendChild(yourTxt);
 
-                const authSec = document.createElement('div');
-                authSec.className = 'expr-juxtapose-section expr-juxtapose-author';
-                const authLbl = document.createElement('span');
-                authLbl.className = 'expr-juxtapose-label';
-                authLbl.textContent = zh ? '作者的定义' : "Author's meaning";
-                const authTxt = document.createElement('p');
-                const wordStrong = document.createElement('strong');
-                wordStrong.textContent = word;
-                authTxt.appendChild(wordStrong);
-                if (why) authTxt.appendChild(document.createTextNode(' — ' + why));
-                authSec.appendChild(authLbl);
-                authSec.appendChild(authTxt);
-
                 juxtaEl.appendChild(yourSec);
-                juxtaEl.appendChild(authSec);
 
                 // Check for duplicate submission before showing send button
                 let alreadySent = false;
@@ -11755,7 +11743,7 @@
           // Let interactive children handle their own events
           if (
             e.target?.closest?.(
-              '.spawned-expression-translate, .expr-resize-handle, .expr-interp-panel, .expr-juxtapose, .expr-anon-send, textarea, button, input',
+              '.spawned-expression-translate, .expr-resize-handle, textarea, button, input',
             )
           )
             return;
@@ -20035,6 +20023,7 @@
       function attachLibraryTreeCardDrag(card, nodeId, positions, sizes) {
         card.addEventListener('pointerdown', (e) => {
           if (e.button !== 0) return;
+          if (e.target.closest('button, a, input, textarea, [role="button"]')) return;
           hideLibraryTreeContextMenu();
           e.preventDefault();
           e.stopPropagation();
