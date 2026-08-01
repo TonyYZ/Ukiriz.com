@@ -437,7 +437,7 @@
         height: 100%;
         overflow: visible;
         pointer-events: none;
-        z-index: 7;
+        z-index: 9;
       }
 
       /* Annotation bubbles – hidden until inspection mode reveals them */
@@ -515,7 +515,7 @@
       }
       .spawned-expression-meta.other-user:not(.revealed) {
         border-color: #3528a8;
-        min-height: 210px; /* enough room for prompt + textarea + buttons */
+        min-height: 155px;
         max-width: 320px;
       }
       @keyframes mysteryTextPulse {
@@ -1174,7 +1174,7 @@
         font-size: 16px;
         font-family: inherit; /* Set font to match labels */
         cursor: pointer;
-        z-index: 8;
+        z-index: 10;
         pointer-events: auto;
         user-select: none;
         -webkit-user-select: none;
@@ -1183,7 +1183,7 @@
 
       .symbol-label.active {
         border-width: 3px; /* Thicker border when clicked */
-        z-index: 9;
+        z-index: 11;
       }
 
       .symbol-label[data-inspection-label='true'] {
@@ -6729,20 +6729,27 @@
 
         function upsertSvgLine(key, className, a, b) {
           liveKeys.add(`line:${key}`);
-          let line = layer.querySelector(`[data-anno-line="${key}"]`);
-          if (!line) {
-            line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-            line.classList.add(className);
-            line.dataset.annoLine = key;
-            line.setAttribute('stroke', '#000');
-            line.setAttribute('stroke-width', '2');
-            line.setAttribute('stroke-dasharray', '6 4');
-            layer.appendChild(line);
+          let path = layer.querySelector(`[data-anno-line="${key}"]`);
+          if (!path) {
+            path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.classList.add(className);
+            path.dataset.annoLine = key;
+            path.setAttribute('stroke', '#000');
+            path.setAttribute('stroke-width', '1.5');
+            path.setAttribute('stroke-dasharray', '6 4');
+            path.setAttribute('fill', 'none');
+            layer.appendChild(path);
           }
-          line.setAttribute('x1', a.x);
-          line.setAttribute('y1', a.y);
-          line.setAttribute('x2', b.x);
-          line.setAttribute('y2', b.y);
+          const mx = (a.x + b.x) / 2;
+          const my = (a.y + b.y) / 2;
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          const len = Math.sqrt(dx * dx + dy * dy) || 1;
+          const bow = Math.min(len * 0.22, 36);
+          // Control point bows perpendicular to the line (left-hand side)
+          const cpx = mx - (dy / len) * bow;
+          const cpy = my + (dx / len) * bow;
+          path.setAttribute('d', `M ${a.x} ${a.y} Q ${cpx} ${cpy} ${b.x} ${b.y}`);
         }
 
         function upsertSvgDot(key, className, p) {
@@ -6835,23 +6842,26 @@
           upsertSvgDot(key, 'anno-link-dot', b);
         }
 
-        // Render anchors from root annotations -> inspected symbol component center
-        for (const emoji of emojiById.values()) {
-          if (!emoji?.isConnected) continue;
-          if (emoji.dataset?.isAnnotation !== 'true') continue;
-          if (!emoji.classList.contains('annotation-visible')) continue;
-
+        // Render anchors from root annotations -> inspected symbol component center.
+        // Query the DOM directly so pending-save annotations (not yet in emojiById) are included.
+        const _anchorCanvas = chatCanvas();
+        const _visibleBubbles = _anchorCanvas
+          ? _anchorCanvas.querySelectorAll('.annotation-bubble.annotation-visible')
+          : [];
+        for (const emoji of _visibleBubbles) {
           const emojiId = emoji.dataset?.id;
-          if (!emojiId) continue;
+          // Use clientNonce as fallback key while the DB save is in-flight (emojiId is '').
+          const keyId = emojiId || emoji.dataset?.clientNonce;
+          if (!keyId) continue;
 
           // If this annotation is chained to another annotation, it anchors to that bubble instead.
-          if (annoChildToParent.has(emojiId)) continue;
+          if (emojiId && annoChildToParent.has(emojiId)) continue;
 
           const from = getElementCenterInChatCanvas(emoji);
           const to = getAnnotationAnchorCenter(emoji);
           if (!from || !to) continue;
 
-          const key = `anchor-${emojiId}`;
+          const key = `anchor-${keyId}`;
           upsertSvgLine(key, 'anno-anchor-line', from, to);
           upsertSvgDot(key, 'anno-anchor-dot', to);
         }
@@ -8490,6 +8500,7 @@
       }
       const expressionGroupFrameEls = new Map(); // groupId → DOM element
       const spawnedExpressionMetaCardEls = new Map(); // groupId -> DOM element
+      const spawnedExpressionMetaCardOffsets = new Map(); // groupId -> {x, y} manual offset, persists across deselect/reselect
       // (annoChildToParent, lastInspectionRootSymbolId) initialized near top of module
 
       function makeClientNonce(prefix) {
@@ -11664,8 +11675,10 @@
                       spawnedExpressionMetaCardGroups.get(card.dataset.exprGroupId) ||
                       expressionGroups.get(card.dataset.exprGroupId);
                     const bounds = getSymbolGroupBounds(grpNow);
-                    if (bounds)
+                    if (bounds) {
                       card._manualOffset = { x: x - bounds.centerX, y: y - bounds.centerY };
+                      spawnedExpressionMetaCardOffsets.set(card.dataset.exprGroupId, card._manualOffset);
+                    }
                     scheduleChatMiniMapUpdate?.();
                   }
                   me.preventDefault();
@@ -11702,6 +11715,8 @@
             makeSpawnedExpressionMetaCardDraggable(card);
             appendToChatCanvas(card);
             spawnedExpressionMetaCardEls.set(gid, card);
+            if (spawnedExpressionMetaCardOffsets.has(gid))
+              card._manualOffset = spawnedExpressionMetaCardOffsets.get(gid);
           }
 
           updateSpawnedExpressionMetaCardsPosition();
@@ -11784,6 +11799,7 @@
               x: x - bounds.centerX,
               y: y - bounds.centerY,
             };
+            spawnedExpressionMetaCardOffsets.set(card.dataset.exprGroupId, card._manualOffset);
           }
           scheduleChatMiniMapUpdate?.();
           e.preventDefault();
@@ -11994,7 +12010,12 @@
             em.selected = false;
             // Remove from emojiById immediately so renderAnnotationLinks doesn't
             // draw a (0,0)-anchored ghost line for the disconnected element.
-            if (id) emojiById.delete(id);
+            // Also mark as pending-delete so applyRoomSnapshot won't re-insert it
+            // from a Supabase echo that arrives before the server confirms the delete.
+            if (id) {
+              emojiById.delete(id);
+              _pendingDeleteEmojiIds.add(id);
+            }
           }
 
           // Best-effort: also remove any annotation-link docs that touch these annotations.
@@ -12016,7 +12037,8 @@
               annoLinkById.delete(linkDocId);
             }
           }
-          scheduleAnnotationLinksUpdate?.();
+          if (annotationLinkFrame) { cancelAnimationFrame(annotationLinkFrame); annotationLinkFrame = 0; }
+          renderAnnotationLinks();
 
           await deleteChatSelectionBatch(currentRoomId, [], annoIds.concat(linkDocIdsToDelete));
           window._sfxDeletion?.();
@@ -12393,8 +12415,34 @@
           if (centers.length) {
             const cx = centers.reduce((sum, p) => sum + p.x, 0) / centers.length;
             const cy = centers.reduce((sum, p) => sum + p.y, 0) / centers.length;
-            annotationX = cx + 120;
-            annotationY = cy + 60;
+
+            // Find mystery card for the selected expression and spawn annotation away from it
+            let mysteryCardForGroup = null;
+            for (const [gid, metaCard] of spawnedExpressionMetaCardEls) {
+              if (!metaCard || !metaCard.isConnected || metaCard.style.display === 'none') continue;
+              const grp =
+                spawnedExpressionMetaCardGroups.get(gid) || expressionGroups.get(gid);
+              if (grp && Array.from(selectedSymbols).some((s) => grp.has(s))) {
+                mysteryCardForGroup = metaCard;
+                break;
+              }
+            }
+
+            if (mysteryCardForGroup) {
+              const mcx =
+                parseFloat(mysteryCardForGroup.style.left) +
+                (mysteryCardForGroup.offsetWidth || 0) / 2;
+              const mcy =
+                parseFloat(mysteryCardForGroup.style.top) +
+                (mysteryCardForGroup.offsetHeight || 0) / 2;
+              const awayAngle = Math.atan2(mcy - cy, mcx - cx) + Math.PI;
+              const dist = 130;
+              annotationX = cx + Math.cos(awayAngle) * dist;
+              annotationY = cy + Math.sin(awayAngle) * dist;
+            } else {
+              annotationX = cx + 120;
+              annotationY = cy + 60;
+            }
           }
         }
 
@@ -12454,7 +12502,10 @@
 
         document.querySelectorAll('.annotation-bubble').forEach((el) => {
           const match = rootSymbolId && el.dataset?.annoRootSymbolId === rootSymbolId;
-          if (match) {
+          // Keep directly-selected annotation bubbles visible even if the parent symbol
+          // was deselected (e.g. user clicked the bubble itself, clearing symbol selection).
+          const directlySelected = selectedEmojis.has(el);
+          if (match || directlySelected) {
             el.classList.add('annotation-visible');
             ensureAnnotationTranslationButton(el);
           } else {
@@ -12462,7 +12513,14 @@
           }
         });
 
-        scheduleAnnotationLinksUpdate?.();
+        // Force a synchronous reflow so newly-shown bubbles have correct
+        // offsetWidth/offsetHeight before renderAnnotationLinks reads them.
+        // Without this, offsetWidth is 0 for elements just changed from display:none
+        // → line endpoints land at the bubble's top-left corner for one frame.
+        void document.querySelector('.annotation-bubble.annotation-visible')?.offsetWidth;
+        // Render lines in the same frame as bubble visibility — no rAF gap.
+        if (annotationLinkFrame) { cancelAnimationFrame(annotationLinkFrame); annotationLinkFrame = 0; }
+        renderAnnotationLinks();
       }
 
       function hideAllAnnotations() {
@@ -19742,6 +19800,13 @@
           }
         }
 
+        // Play rustling sound when the set of displaced cards changes (a card swaps order)
+        const _shiftedNow = shiftedY.size;
+        if (_shiftedNow !== (libraryTreeDragState._shiftedCount ?? _shiftedNow)) {
+          window._sfxRustle?.();
+        }
+        libraryTreeDragState._shiftedCount = _shiftedNow;
+
         for (const entry of entries) {
           if (entry.id === draggedId) continue;
           entry.card.style.top = `${shiftedY.get(entry.id) ?? entry.baseY}px`;
@@ -19804,6 +19869,12 @@
             (entry) => selectedCenter < entry.baseY + entry.size.height / 2,
           );
           if (insertIndex < 0) insertIndex = unselectedEntries.length;
+
+          // Play rustling sound when the drag card passes another card in this column
+          if (insertIndex !== (group._prevInsertIndex ?? insertIndex)) {
+            window._sfxRustle?.();
+          }
+          group._prevInsertIndex = insertIndex;
 
           const ordered = [
             ...unselectedEntries.slice(0, insertIndex),
@@ -22694,6 +22765,43 @@
           noise.start(now);
           nenv.triggerAttackRelease(0.04, now);
           setTimeout(() => _dispose(nodes), 1200);
+        };
+
+        // Rustle: pure pink-noise swish for library cards brushing past each other.
+        // Uses no oscillator (which causes a click) — just shaped broadband noise.
+        window._sfxRustle = async function () {
+          if (!(await _sfxEnsureRunning())) return;
+          const nodes = [];
+          const track = (...ns) => { nodes.push(...ns); return ns; };
+          const rev = new Tone.Reverb({ decay: 0.22 });
+          rev.wet.value = 0.1;
+          await rev.ready;
+          const now = Tone.now();
+          const vol = new Tone.Volume(-16);
+          rev.connect(vol);
+          vol.toDestination();
+          track(rev, vol);
+          // Two overlapping bandpass filters give a papery mid-range texture
+          const [bpf1] = track(new Tone.Filter({ frequency: 1200, type: 'bandpass', Q: 0.9 }));
+          const [bpf2] = track(new Tone.Filter({ frequency: 2800, type: 'bandpass', Q: 1.1 }));
+          bpf1.connect(rev);
+          bpf2.connect(rev);
+          const dur = 0.075;
+          const [n1, env1, g1] = track(
+            new Tone.Noise('pink'),
+            new Tone.AmplitudeEnvelope({ attack: 0.004, decay: dur * 0.65, sustain: 0, release: 0.028 }),
+            new Tone.Gain(0.65),
+          );
+          n1.connect(env1); env1.connect(g1); g1.connect(bpf1);
+          n1.start(now); env1.triggerAttackRelease(dur * 0.65, now);
+          const [n2, env2, g2] = track(
+            new Tone.Noise('pink'),
+            new Tone.AmplitudeEnvelope({ attack: 0.002, decay: dur * 0.45, sustain: 0, release: 0.018 }),
+            new Tone.Gain(0.35),
+          );
+          n2.connect(env2); env2.connect(g2); g2.connect(bpf2);
+          n2.start(now); env2.triggerAttackRelease(dur * 0.45, now);
+          setTimeout(() => _dispose(nodes), 900);
         };
       })();
     </script>
