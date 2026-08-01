@@ -515,10 +515,17 @@
       }
       .spawned-expression-meta.other-user:not(.revealed) {
         border-color: #3528a8;
+        min-height: 210px; /* enough room for prompt + textarea + buttons */
+        max-width: 320px;
       }
       @keyframes mysteryTextPulse {
-        0%, 100% { opacity: 1; }
-        50%       { opacity: 0.55; }
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.55;
+        }
       }
       .expr-mystery-overlay {
         position: absolute;
@@ -592,6 +599,317 @@
       }
       .spawned-expression-meta.revealed .expr-hide-btn {
         display: block;
+      }
+
+      /* ── Spawned-expression-meta resize handle (SE corner only) ──────── */
+      .expr-resize-handle {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 14px;
+        height: 14px;
+        cursor: se-resize;
+        z-index: 10;
+        touch-action: none;
+        /* Faint visual cue — three diagonal dots */
+        background:
+          radial-gradient(circle, rgba(53,40,168,0.35) 1.5px, transparent 1.5px) 4px 10px,
+          radial-gradient(circle, rgba(53,40,168,0.35) 1.5px, transparent 1.5px) 8px  6px,
+          radial-gradient(circle, rgba(53,40,168,0.35) 1.5px, transparent 1.5px) 12px 2px;
+        background-repeat: no-repeat;
+      }
+
+      /* ── Interpretation step (overlay transforms into input panel) ─────── */
+      .expr-mystery-overlay.expr-interp-mode {
+        background: rgba(40, 28, 160, 0.96);
+        align-items: stretch;
+        justify-content: flex-start;
+        padding: 10px 10px 8px;
+        box-sizing: border-box;
+        overflow-y: auto;
+        gap: 0;
+        cursor: default;
+      }
+      .expr-interp-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        width: 100%;
+      }
+      .expr-interp-prompt {
+        margin: 0 0 2px;
+        font-size: 11px;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.9);
+        line-height: 1.35;
+      }
+      .expr-interp-textarea {
+        width: 100%;
+        min-height: 52px;
+        resize: none;
+        border: 1.5px solid rgba(255, 255, 255, 0.3);
+        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+        font: inherit;
+        font-size: 11px;
+        padding: 5px 7px;
+        box-sizing: border-box;
+        outline: none;
+        line-height: 1.4;
+      }
+      .expr-interp-textarea::placeholder {
+        color: rgba(255, 255, 255, 0.38);
+      }
+      .expr-interp-textarea:focus {
+        border-color: rgba(255, 255, 255, 0.65);
+      }
+      .expr-interp-textarea.expr-interp-error {
+        border-color: #f96;
+        animation: interpErrorShake 0.25s;
+      }
+      @keyframes interpErrorShake {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        25% {
+          transform: translateX(-3px);
+        }
+        75% {
+          transform: translateX(3px);
+        }
+      }
+      .expr-interp-btns {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        margin-top: 1px;
+      }
+      .expr-interp-submit {
+        background: rgba(255, 255, 255, 0.92);
+        color: #28189e;
+        border: none;
+        border-radius: 5px;
+        padding: 5px 8px;
+        font: inherit;
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+        touch-action: manipulation;
+        transition: background 0.12s;
+      }
+      .expr-interp-submit:hover:not(:disabled) {
+        background: #fff;
+      }
+      .expr-interp-submit:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .expr-interp-skip {
+        background: none;
+        color: rgba(255, 255, 255, 0.5);
+        border: none;
+        font: inherit;
+        font-size: 10px;
+        cursor: pointer;
+        text-decoration: underline;
+        padding: 1px 0;
+        touch-action: manipulation;
+        text-align: left;
+        align-self: flex-start;
+      }
+      .expr-interp-skip:hover {
+        color: rgba(255, 255, 255, 0.82);
+      }
+
+      /* ── Juxtaposition panel (appears below card after reveal) ───────── */
+      .expr-juxtapose {
+        margin-top: 7px;
+        border-top: 1px solid rgba(0, 0, 0, 0.09);
+        padding-top: 7px;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+      .expr-juxtapose-section {
+        background: rgba(53, 40, 168, 0.07);
+        border-radius: 5px;
+        padding: 6px 8px;
+      }
+      .expr-juxtapose-section.expr-juxtapose-author {
+        background: rgba(0, 140, 200, 0.07);
+      }
+      .expr-juxtapose-label {
+        display: block;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: rgba(0, 0, 0, 0.38);
+        margin-bottom: 2px;
+      }
+      .expr-juxtapose-section p {
+        margin: 0;
+        font-size: 11px;
+        color: rgba(0, 0, 0, 0.72);
+        line-height: 1.4;
+      }
+      .expr-anon-send {
+        background: none;
+        border: 1px solid rgba(53, 40, 168, 0.38);
+        border-radius: 5px;
+        color: rgba(53, 40, 168, 0.78);
+        font: inherit;
+        font-size: 10px;
+        padding: 4px 8px;
+        cursor: pointer;
+        touch-action: manipulation;
+        text-align: center;
+        transition: background 0.13s;
+        width: 100%;
+      }
+      .expr-anon-send:hover:not(:disabled) {
+        background: rgba(53, 40, 168, 0.08);
+      }
+      .expr-anon-send.sent {
+        color: rgba(53, 40, 168, 0.45);
+        cursor: default;
+      }
+      .expr-anon-send:disabled {
+        opacity: 0.7;
+        cursor: default;
+      }
+
+      /* ── Library card: received interpretations ─────────────────────── */
+      .library-tree-interp-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 15px;
+        height: 15px;
+        border-radius: 8px;
+        background: #3528a8;
+        color: #fff;
+        font-size: 9px;
+        font-weight: 700;
+        padding: 0 4px;
+        margin-left: 4px;
+        vertical-align: middle;
+        line-height: 1;
+        flex-shrink: 0;
+      }
+      .library-tree-interps-toggle {
+        background: none;
+        border: none;
+        color: rgba(53, 40, 168, 0.72);
+        font: inherit;
+        font-size: 10px;
+        cursor: pointer;
+        padding: 2px 0;
+        text-decoration: underline;
+        touch-action: manipulation;
+        text-align: left;
+        width: 100%;
+        margin-top: 2px;
+      }
+      .library-tree-interps-toggle:hover {
+        color: rgba(53, 40, 168, 1);
+      }
+      .library-tree-interps {
+        margin-top: 4px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .library-tree-interp-item {
+        background: rgba(53, 40, 168, 0.05);
+        border-left: 2px solid rgba(53, 40, 168, 0.28);
+        border-radius: 0 4px 4px 0;
+        padding: 4px 6px;
+      }
+      .library-tree-interp-date {
+        display: block;
+        font-size: 9px;
+        color: rgba(0, 0, 0, 0.36);
+        margin-bottom: 2px;
+      }
+      .library-tree-interp-item p {
+        margin: 0;
+        font-size: 11px;
+        color: rgba(0, 0, 0, 0.68);
+        line-height: 1.4;
+      }
+      .library-tree-interp-summary-btn {
+        background: none;
+        border: 1px dashed rgba(53, 40, 168, 0.38);
+        border-radius: 4px;
+        color: rgba(53, 40, 168, 0.68);
+        font: inherit;
+        font-size: 10px;
+        cursor: pointer;
+        padding: 3px 7px;
+        margin-top: 4px;
+        touch-action: manipulation;
+        width: 100%;
+        transition: background 0.13s;
+      }
+      .library-tree-interp-summary-btn:hover:not(:disabled) {
+        background: rgba(53, 40, 168, 0.06);
+      }
+      .library-tree-interp-summary-btn:disabled {
+        opacity: 0.55;
+        cursor: default;
+      }
+      .library-tree-interp-summary {
+        margin-top: 6px;
+        background: rgba(53, 40, 168, 0.06);
+        border-radius: 5px;
+        padding: 7px 9px;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+      .library-tree-interp-summary-claim {
+        font-size: 11px;
+        color: rgba(0, 0, 0, 0.72);
+        margin: 0;
+        line-height: 1.4;
+      }
+      .library-tree-interp-feedback {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 2px;
+      }
+      .library-tree-interp-feedback button {
+        background: rgba(255, 255, 255, 0.8);
+        border: 1px solid rgba(0, 0, 0, 0.13);
+        border-radius: 10px;
+        font: inherit;
+        font-size: 9px;
+        color: rgba(0, 0, 0, 0.55);
+        padding: 2px 7px;
+        cursor: pointer;
+        touch-action: manipulation;
+        transition:
+          background 0.12s,
+          border-color 0.12s;
+      }
+      .library-tree-interp-feedback button.active,
+      .library-tree-interp-feedback button:hover {
+        background: rgba(53, 40, 168, 0.15);
+        border-color: rgba(53, 40, 168, 0.45);
+        color: rgba(53, 40, 168, 0.9);
+      }
+
+      /* ── Home copyright ───────────────────────────────────────────── */
+      .home-copyright {
+        text-align: center;
+        font-size: 11px;
+        color: rgba(0, 0, 0, 0.3);
+        margin-top: 16px;
+        letter-spacing: 0.01em;
       }
 
       #chatMinimap {
@@ -2285,11 +2603,43 @@
           <input id="chatCoordInput" type="text" placeholder="x, y" />
           <button id="chatDenseJumpBtn" title="Jump to densest symbol area">
             <svg viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="7" cy="7" r="2.5" fill="currentColor"/>
-              <line x1="7" y1="0.5" x2="7" y2="3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-              <line x1="7" y1="10.5" x2="7" y2="13.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-              <line x1="0.5" y1="7" x2="3.5" y2="7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-              <line x1="10.5" y1="7" x2="13.5" y2="7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+              <circle cx="7" cy="7" r="2.5" fill="currentColor" />
+              <line
+                x1="7"
+                y1="0.5"
+                x2="7"
+                y2="3.5"
+                stroke="currentColor"
+                stroke-width="1.4"
+                stroke-linecap="round"
+              />
+              <line
+                x1="7"
+                y1="10.5"
+                x2="7"
+                y2="13.5"
+                stroke="currentColor"
+                stroke-width="1.4"
+                stroke-linecap="round"
+              />
+              <line
+                x1="0.5"
+                y1="7"
+                x2="3.5"
+                y2="7"
+                stroke="currentColor"
+                stroke-width="1.4"
+                stroke-linecap="round"
+              />
+              <line
+                x1="10.5"
+                y1="7"
+                x2="13.5"
+                y2="7"
+                stroke="currentColor"
+                stroke-width="1.4"
+                stroke-linecap="round"
+              />
             </svg>
           </button>
         </div>
@@ -2430,6 +2780,7 @@
             Creating a word costs 5 credits, while each translation costs 1 credit.<br />
             Supporting me on Ko-fi or Afdian grants you permanent credits that never expire.
           </p>
+          <p class="home-copyright">© 2026 Ukiriz · Yutong Zhou</p>
           <br /><br />
         `,
           home: 'Home',
@@ -2543,6 +2894,7 @@
                   单次造词消耗5点，翻译消耗1点。<br>
                   如果你愿意在 Ko-fi 或爱发电上支持我，可以获得永久额度。
                   </p>
+                  <p class="home-copyright">© 2026 Ukiriz · 周雨桐</p>
                   <br /><br />
                 `,
           home: '欢迎',
@@ -5690,11 +6042,15 @@
       }
 
       function applyCoordJump() {
-        const parts = (chatCoordInput.value || '').trim().split(/[\s,，]+/).map(Number);
+        const parts = (chatCoordInput.value || '')
+          .trim()
+          .split(/[\s,，]+/)
+          .map(Number);
         chatCoordInput.style.display = 'none';
         chatCoordText.style.display = '';
         document.body.classList.remove('coord-input-open');
-        const x = parts[0], y = parts[1];
+        const x = parts[0],
+          y = parts[1];
         if (!isNaN(x) && !isNaN(y)) {
           const zoom = getCanvasZoom(chatCanvas()) || 1;
           const maxLeft = Math.max(0, tab4.scrollWidth - tab4.clientWidth);
@@ -5710,7 +6066,10 @@
         if (chatCoordInput.style.display !== 'block') openCoordInput();
       });
       chatCoordInput?.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); applyCoordJump(); }
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          applyCoordJump();
+        }
         if (e.key === 'Escape') {
           chatCoordInput.style.display = 'none';
           chatCoordText.style.display = '';
@@ -5734,9 +6093,13 @@
           const key = `${cx},${cy}`;
           counts.set(key, (counts.get(key) || 0) + 1);
         }
-        let bestKey = null, bestCount = 0;
+        let bestKey = null,
+          bestCount = 0;
         for (const [key, count] of counts) {
-          if (count > bestCount) { bestCount = count; bestKey = key; }
+          if (count > bestCount) {
+            bestCount = count;
+            bestKey = key;
+          }
         }
         const [gx, gy] = bestKey.split(',').map(Number);
         const targetX = gx * CELL + CELL / 2;
@@ -5745,9 +6108,9 @@
         const maxLeft = Math.max(0, tab4.scrollWidth - tab4.clientWidth);
         const maxTop = Math.max(0, tab4.scrollHeight - tab4.clientHeight);
         const left = (targetX - tab4.clientWidth / (2 * zoom)) * zoom;
-        const top  = (targetY - tab4.clientHeight / (2 * zoom)) * zoom;
+        const top = (targetY - tab4.clientHeight / (2 * zoom)) * zoom;
         tab4.scrollLeft = Math.max(0, Math.min(maxLeft, left));
-        tab4.scrollTop  = Math.max(0, Math.min(maxTop, top));
+        tab4.scrollTop = Math.max(0, Math.min(maxTop, top));
         saveChatViewportState();
         scheduleChatMiniMapUpdate();
       });
@@ -7667,6 +8030,90 @@
         return waitForAuth();
       }
 
+      // ── Interpretation data for the current user's library cards ────────
+      const libraryInterpretationsCache = new Map(); // word → [{id,interpretation_text,created_at}]
+
+      async function loadLibraryInterpretations() {
+        if (!currentUser?.uid) return;
+        const { data, error } = await supabase
+          .from('interpretations')
+          .select('id, expr_word, interpretation_text, created_at')
+          .eq('expr_author_uid', currentUser.uid)
+          .order('created_at', { ascending: false });
+        if (error || !data) return;
+        libraryInterpretationsCache.clear();
+        for (const row of data) {
+          const w = row.expr_word || '';
+          if (!libraryInterpretationsCache.has(w)) libraryInterpretationsCache.set(w, []);
+          libraryInterpretationsCache.get(w).push(row);
+        }
+      }
+
+      async function checkInterpretationNotifications() {
+        if (!currentUser?.uid) return;
+        const { data, error } = await supabase
+          .from('interpretations')
+          .select('id, expr_word, island_id')
+          .eq('expr_author_uid', currentUser.uid)
+          .eq('seen_by_author', false);
+        if (error || !data?.length) return;
+
+        // Group by word and pick the first for the toast
+        const wordCounts = new Map();
+        for (const row of data) {
+          const w = row.expr_word || '?';
+          if (!wordCounts.has(w)) wordCounts.set(w, { count: 0, islandId: row.island_id || '' });
+          wordCounts.get(w).count++;
+        }
+        const firstWord = [...wordCounts.keys()][0];
+        const { count, islandId } = wordCounts.get(firstWord);
+        const islandName = islandId || '';
+        const zh = currentLang === 'zh';
+        const extraWords = wordCounts.size > 1 ? wordCounts.size - 1 : 0;
+
+        let msg = zh
+          ? `有人解读了你在${islandName ? `「${islandName}」` : '聊天区'}留下的「${firstWord}」！`
+          : `Someone interpreted your "${firstWord}"${islandName ? ` on ${islandName}` : ''}!`;
+        if (count > 1 || extraWords > 0) {
+          const total = data.length;
+          msg += zh
+            ? `（共 ${total} 条新解读）`
+            : ` (${total} new interpretation${total > 1 ? 's' : ''} total)`;
+        }
+
+        showToast(msg, { duration: 8000 });
+
+        // Mark all as seen
+        const ids = data.map((r) => r.id);
+        await supabase
+          .from('interpretations')
+          .update({ seen_by_author: true })
+          .in('id', ids)
+          .catch(console.error);
+      }
+
+      async function generateInterpretationSummary(word, interps) {
+        const response = await fetch('https://hooks.ukiriz.com/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'interpretation-summary',
+            uid: currentUser?.uid || null,
+            word,
+            interpretations: interps.map((i) => i.interpretation_text),
+          }),
+        });
+        const data = await response.json();
+        if (!data.ok) throw new Error(data.message || 'Summary generation failed');
+        if (!Array.isArray(data.summary)) throw new Error('Invalid summary format');
+        for (const item of data.summary) {
+          if (typeof item.claim !== 'string') throw new Error('Invalid claim in summary');
+          if (!Array.isArray(item.support) || item.support.length < 3)
+            throw new Error('Each claim needs at least 3 supporting interpretations');
+        }
+        return data.summary;
+      }
+
       async function boot() {
         // ✅ set language early so error messages are bilingual
         currentLang = localStorage.getItem('lang') || 'en';
@@ -7696,6 +8143,9 @@
 
         // ✅ now init nodes (symbolData must already exist by this line)
         await initNodes();
+
+        // Load received interpretations (non-blocking; also triggers notification toast)
+        loadLibraryInterpretations().then(checkInterpretationNotifications).catch(console.error);
 
         // Restore the room the user was in before the last refresh
         const savedRoomId = localStorage.getItem('lastRoomId');
@@ -10053,30 +10503,68 @@
         }
         _chatRotating = true;
         try {
-        if (selectedSymbols.size !== 0) {
-          const group = new Set(
-            Array.from(selectedSymbols).filter((symbol) => canEditElement(symbol)),
-          );
-          if (group.size === 0) {
-            showNoEditToast();
-          } else if (group.size > 1 && isSelectionConnected(group, currentGraph)) {
-            await rotateConnectedSelection(group, 90, true);
-          } else if (group.size > 1) {
-            // Multiple disconnected components: rotate each connected component as a unit
-            // so that expressions keep their shape instead of each symbol spinning in place.
-            const components = getConnectedComponentsInSelection(group, currentGraph);
-            const singleSymbols = [];
-            for (const component of components) {
-              if (component.size > 1) {
-                await rotateConnectedSelection(component, 90, true);
-              } else {
-                singleSymbols.push(...component);
+          if (selectedSymbols.size !== 0) {
+            const group = new Set(
+              Array.from(selectedSymbols).filter((symbol) => canEditElement(symbol)),
+            );
+            if (group.size === 0) {
+              showNoEditToast();
+            } else if (group.size > 1 && isSelectionConnected(group, currentGraph)) {
+              await rotateConnectedSelection(group, 90, true);
+            } else if (group.size > 1) {
+              // Multiple disconnected components: rotate each connected component as a unit
+              // so that expressions keep their shape instead of each symbol spinning in place.
+              const components = getConnectedComponentsInSelection(group, currentGraph);
+              const singleSymbols = [];
+              for (const component of components) {
+                if (component.size > 1) {
+                  await rotateConnectedSelection(component, 90, true);
+                } else {
+                  singleSymbols.push(...component);
+                }
               }
-            }
-            // Rotate any isolated (unconnected) symbols individually.
-            if (singleSymbols.length > 0) {
-              const snapshots = singleSymbols.map((sym) => snapshotSymbolConnections(sym));
-              const allPendingIds = singleSymbols.flatMap((sym, i) => {
+              // Rotate any isolated (unconnected) symbols individually.
+              if (singleSymbols.length > 0) {
+                const snapshots = singleSymbols.map((sym) => snapshotSymbolConnections(sym));
+                const allPendingIds = singleSymbols.flatMap((sym, i) => {
+                  const ids = [sym.dataset?.id];
+                  for (const side of snapshots[i]) {
+                    for (const [nbr] of side || []) {
+                      if (nbr?.dataset?.id) ids.push(nbr.dataset.id);
+                    }
+                  }
+                  return ids;
+                });
+                await waitForPendingSymbolOps(allPendingIds);
+                resetPendingSnapState();
+                for (const sym of singleSymbols) {
+                  markLocalSymbolMutation(sym, 1200);
+                  detachSymbolLocal(sym);
+                  applySymbolRotationLocal(sym, 90);
+                  if (sym.isDynamic && sym.dot) updateDotPositionLocal(sym.dot);
+                }
+                window._sfxRotate?.();
+                updateExpressionGroupFramesFromSelection(chatCanvas());
+                for (let i = 0; i < singleSymbols.length; i++) {
+                  resetPendingSnapState();
+                  await reconcileSymbolConnectivityAfterTurn(singleSymbols[i], true);
+                  await new Promise((resolve) => requestAnimationFrame(resolve));
+                  await reconcileSymbolConnectivityAfterTurn(singleSymbols[i], true);
+                  await persistSymbolVisualState(singleSymbols[i], true);
+                  await syncSymbolLinksRemote(singleSymbols[i], snapshots[i]);
+                }
+              }
+              if (eyeButton2?.isActivated) {
+                forceFreshInspectionLabels = true;
+                refreshChatInspectionOverlays();
+              }
+            } else {
+              const symbols = [...group];
+
+              // Snapshot connections and gather pending IDs for ALL symbols first,
+              // before any mutation so we don't observe partially-detached state.
+              const snapshots = symbols.map((sym) => snapshotSymbolConnections(sym));
+              const allPendingIds = symbols.flatMap((sym, i) => {
                 const ids = [sym.dataset?.id];
                 for (const side of snapshots[i]) {
                   for (const [nbr] of side || []) {
@@ -10085,9 +10573,14 @@
                 }
                 return ids;
               });
+
+              // Wait for every symbol's pending link ops before touching angles.
               await waitForPendingSymbolOps(allPendingIds);
+
+              // Apply ALL visual rotations synchronously so every symbol appears to
+              // rotate in the same frame, with no delays between them.
               resetPendingSnapState();
-              for (const sym of singleSymbols) {
+              for (const sym of symbols) {
                 markLocalSymbolMutation(sym, 1200);
                 detachSymbolLocal(sym);
                 applySymbolRotationLocal(sym, 90);
@@ -10095,67 +10588,24 @@
               }
               window._sfxRotate?.();
               updateExpressionGroupFramesFromSelection(chatCanvas());
-              for (let i = 0; i < singleSymbols.length; i++) {
+
+              // Reconcile and persist sequentially to avoid shared snap-state races
+              // (checkConnections/trySnapAndCommitSymbol write to global pendingSnapCandidates).
+              for (let i = 0; i < symbols.length; i++) {
                 resetPendingSnapState();
-                await reconcileSymbolConnectivityAfterTurn(singleSymbols[i], true);
+                await reconcileSymbolConnectivityAfterTurn(symbols[i], true);
                 await new Promise((resolve) => requestAnimationFrame(resolve));
-                await reconcileSymbolConnectivityAfterTurn(singleSymbols[i], true);
-                await persistSymbolVisualState(singleSymbols[i], true);
-                await syncSymbolLinksRemote(singleSymbols[i], snapshots[i]);
+                await reconcileSymbolConnectivityAfterTurn(symbols[i], true);
+                await persistSymbolVisualState(symbols[i], true);
+                await syncSymbolLinksRemote(symbols[i], snapshots[i]);
               }
-            }
-            if (eyeButton2?.isActivated) {
-              forceFreshInspectionLabels = true;
-              refreshChatInspectionOverlays();
-            }
-          } else {
-            const symbols = [...group];
 
-            // Snapshot connections and gather pending IDs for ALL symbols first,
-            // before any mutation so we don't observe partially-detached state.
-            const snapshots = symbols.map((sym) => snapshotSymbolConnections(sym));
-            const allPendingIds = symbols.flatMap((sym, i) => {
-              const ids = [sym.dataset?.id];
-              for (const side of snapshots[i]) {
-                for (const [nbr] of side || []) {
-                  if (nbr?.dataset?.id) ids.push(nbr.dataset.id);
-                }
+              if (eyeButton2?.isActivated) {
+                forceFreshInspectionLabels = true;
+                refreshChatInspectionOverlays();
               }
-              return ids;
-            });
-
-            // Wait for every symbol's pending link ops before touching angles.
-            await waitForPendingSymbolOps(allPendingIds);
-
-            // Apply ALL visual rotations synchronously so every symbol appears to
-            // rotate in the same frame, with no delays between them.
-            resetPendingSnapState();
-            for (const sym of symbols) {
-              markLocalSymbolMutation(sym, 1200);
-              detachSymbolLocal(sym);
-              applySymbolRotationLocal(sym, 90);
-              if (sym.isDynamic && sym.dot) updateDotPositionLocal(sym.dot);
-            }
-            window._sfxRotate?.();
-            updateExpressionGroupFramesFromSelection(chatCanvas());
-
-            // Reconcile and persist sequentially to avoid shared snap-state races
-            // (checkConnections/trySnapAndCommitSymbol write to global pendingSnapCandidates).
-            for (let i = 0; i < symbols.length; i++) {
-              resetPendingSnapState();
-              await reconcileSymbolConnectivityAfterTurn(symbols[i], true);
-              await new Promise((resolve) => requestAnimationFrame(resolve));
-              await reconcileSymbolConnectivityAfterTurn(symbols[i], true);
-              await persistSymbolVisualState(symbols[i], true);
-              await syncSymbolLinksRemote(symbols[i], snapshots[i]);
-            }
-
-            if (eyeButton2?.isActivated) {
-              forceFreshInspectionLabels = true;
-              refreshChatInspectionOverlays();
             }
           }
-        }
         } finally {
           _chatRotating = false;
         }
@@ -10217,54 +10667,54 @@
         }
         _chatDotting = true;
         try {
-        if (selectedSymbols.size !== 0) {
-          if (!Array.from(selectedSymbols).some(canEditElement)) {
-            showNoEditToast();
-          }
-          const pendingPersists = [];
-          let anyChanged = false;
+          if (selectedSymbols.size !== 0) {
+            if (!Array.from(selectedSymbols).some(canEditElement)) {
+              showNoEditToast();
+            }
+            const pendingPersists = [];
+            let anyChanged = false;
 
-          for (const selectedSymbol of selectedSymbols) {
-            if (!canEditElement(selectedSymbol)) continue;
-            selectedSymbol.isDynamic = !selectedSymbol.isDynamic;
-            anyChanged = true;
+            for (const selectedSymbol of selectedSymbols) {
+              if (!canEditElement(selectedSymbol)) continue;
+              selectedSymbol.isDynamic = !selectedSymbol.isDynamic;
+              anyChanged = true;
 
-            if (selectedSymbol.isDynamic) {
-              const dot = document.createElement('div');
-              dot.innerHTML = dotData;
-              dot.classList.add('dot');
-              selectedSymbol.dot = dot;
-              dot.parent = selectedSymbol;
-              updateDotPositionLocal(dot);
-              appendToChatCanvas(dot);
-              pendingPersists.push(persistDotPosition(dot));
-            } else {
-              selectedSymbol.dot?.remove();
-              selectedSymbol.dot = null;
-              // Suppress stale remote updates (e.g. a still-in-flight persistSymbolVisualState
-              // that carries old dotX/dotY) from flashing the dot back before our null write lands.
-              markLocalRoomObjMutation(selectedSymbol, 1600);
-              if (tabHeadersActivated[4]) {
-                pendingPersists.push(
-                  updateRoomObj(selectedSymbol.dataset.id, {
-                    'content.dotX': null,
-                    'content.dotY': null,
-                  }),
-                );
+              if (selectedSymbol.isDynamic) {
+                const dot = document.createElement('div');
+                dot.innerHTML = dotData;
+                dot.classList.add('dot');
+                selectedSymbol.dot = dot;
+                dot.parent = selectedSymbol;
+                updateDotPositionLocal(dot);
+                appendToChatCanvas(dot);
+                pendingPersists.push(persistDotPosition(dot));
+              } else {
+                selectedSymbol.dot?.remove();
+                selectedSymbol.dot = null;
+                // Suppress stale remote updates (e.g. a still-in-flight persistSymbolVisualState
+                // that carries old dotX/dotY) from flashing the dot back before our null write lands.
+                markLocalRoomObjMutation(selectedSymbol, 1600);
+                if (tabHeadersActivated[4]) {
+                  pendingPersists.push(
+                    updateRoomObj(selectedSymbol.dataset.id, {
+                      'content.dotX': null,
+                      'content.dotY': null,
+                    }),
+                  );
+                }
               }
             }
-          }
 
-          if (anyChanged) {
-            window._sfxPlink?.();
-            if (eyeButton2.isActivated) {
-              forceFreshInspectionLabels = true;
-              refreshChatInspectionOverlays();
+            if (anyChanged) {
+              window._sfxPlink?.();
+              if (eyeButton2.isActivated) {
+                forceFreshInspectionLabels = true;
+                refreshChatInspectionOverlays();
+              }
             }
-          }
 
-          await Promise.all(pendingPersists);
-        }
+            await Promise.all(pendingPersists);
+          }
         } finally {
           _chatDotting = false;
         }
@@ -10660,7 +11110,8 @@
           const translatedWhy = translated.explanation;
           // Snapshot originals before overwriting so revert can restore them.
           if (!card.dataset.originalWord) card.dataset.originalWord = titleEl.textContent;
-          if (!card.dataset.originalWhy) card.dataset.originalWhy = whyEl?.textContent ?? why ?? '';
+          if (!card.dataset.originalWhy)
+            card.dataset.originalWhy = whyEl?.textContent ?? why ?? '';
           titleEl.textContent = translatedWord;
           if (!whyEl && translatedWhy) {
             whyEl = document.createElement('div');
@@ -11002,6 +11453,8 @@
             if (!isOwnCard) {
               card.classList.add('other-user');
 
+              const cardAuthorUid = firstSym?.dataset?.exprAuthorUid || cardOwnerUid;
+
               const overlay = document.createElement('div');
               overlay.className = 'expr-mystery-overlay';
 
@@ -11028,8 +11481,165 @@
                 }, 260);
               }
 
+              function restoreOverlayDefault() {
+                overlay.className = 'expr-mystery-overlay';
+                overlay.innerHTML = '';
+                overlay.appendChild(glyph);
+                overlay.appendChild(label);
+              }
+
+              async function showJuxtaposition(interpText) {
+                const zh = currentLang === 'zh';
+                // Clear any explicit height from a prior resize so the card expands to fit
+                card.style.height = '';
+                card.style.minHeight = '';
+                const juxtaEl = document.createElement('div');
+                juxtaEl.className = 'expr-juxtapose';
+
+                const yourSec = document.createElement('div');
+                yourSec.className = 'expr-juxtapose-section';
+                const yourLbl = document.createElement('span');
+                yourLbl.className = 'expr-juxtapose-label';
+                yourLbl.textContent = zh ? '你的解读' : 'Your reading';
+                const yourTxt = document.createElement('p');
+                yourTxt.textContent = interpText;
+                yourSec.appendChild(yourLbl);
+                yourSec.appendChild(yourTxt);
+
+                const authSec = document.createElement('div');
+                authSec.className = 'expr-juxtapose-section expr-juxtapose-author';
+                const authLbl = document.createElement('span');
+                authLbl.className = 'expr-juxtapose-label';
+                authLbl.textContent = zh ? '作者的定义' : "Author's meaning";
+                const authTxt = document.createElement('p');
+                const wordStrong = document.createElement('strong');
+                wordStrong.textContent = word;
+                authTxt.appendChild(wordStrong);
+                if (why) authTxt.appendChild(document.createTextNode(' — ' + why));
+                authSec.appendChild(authLbl);
+                authSec.appendChild(authTxt);
+
+                juxtaEl.appendChild(yourSec);
+                juxtaEl.appendChild(authSec);
+
+                // Check for duplicate submission before showing send button
+                let alreadySent = false;
+                if (currentUser?.uid && gid) {
+                  try {
+                    const { data: dup } = await supabase
+                      .from('interpretations')
+                      .select('id')
+                      .eq('expr_group_id', gid)
+                      .eq('interpreter_uid', currentUser.uid)
+                      .maybeSingle();
+                    alreadySent = !!dup;
+                  } catch (_) {}
+                }
+
+                const sendBtn = document.createElement('button');
+                sendBtn.className = 'expr-anon-send';
+                if (alreadySent) {
+                  sendBtn.textContent = zh ? '已发送 ✓' : 'Already sent ✓';
+                  sendBtn.disabled = true;
+                  sendBtn.classList.add('sent');
+                } else {
+                  sendBtn.textContent = zh ? '匿名发送给作者' : 'Send this anonymously to author';
+                  let sent = false;
+                  sendBtn.addEventListener('click', async () => {
+                    if (sent) return;
+                    sent = true;
+                    sendBtn.disabled = true;
+                    sendBtn.textContent = zh ? '发送中…' : 'Sending…';
+                    try {
+                      const { error: insErr } = await supabase.from('interpretations').insert({
+                        expr_group_id: gid,
+                        expr_word: word,
+                        expr_author_uid: cardAuthorUid,
+                        interpreter_uid: currentUser.uid,
+                        interpretation_text: interpText,
+                        island_id: currentPresenceIslandId || '',
+                        room_id: currentRoomId || '',
+                      });
+                      if (insErr) throw insErr;
+                      sendBtn.textContent = zh ? '已发送 ✓' : 'Sent ✓';
+                      sendBtn.classList.add('sent');
+                      loadLibraryInterpretations().then(() => renderLibraryTreeView?.()).catch(() => {});
+                    } catch (_e) {
+                      console.error('interpretations insert error:', _e);
+                      sent = false;
+                      sendBtn.disabled = false;
+                      sendBtn.textContent = zh ? '发送失败，请重试' : 'Failed — tap to retry';
+                    }
+                  });
+                }
+
+                juxtaEl.appendChild(sendBtn);
+                card.appendChild(juxtaEl);
+              }
+
+              function showInterpretationStep() {
+                const zh = currentLang === 'zh';
+                overlay.className = 'expr-mystery-overlay expr-interp-mode';
+                overlay.innerHTML = '';
+
+                const panel = document.createElement('div');
+                panel.className = 'expr-interp-panel';
+
+                const prompt = document.createElement('p');
+                prompt.className = 'expr-interp-prompt';
+                prompt.textContent = zh
+                  ? '你认为这个表达式是什么意思？'
+                  : 'What do you think this expression means?';
+
+                const textarea = document.createElement('textarea');
+                textarea.className = 'expr-interp-textarea';
+                textarea.placeholder = zh ? '写下你的解读……' : 'Write your interpretation…';
+                textarea.rows = 3;
+
+                const btns = document.createElement('div');
+                btns.className = 'expr-interp-btns';
+
+                const submitBtn = document.createElement('button');
+                submitBtn.className = 'expr-interp-submit';
+                submitBtn.textContent = zh ? '提交解读并揭晓' : 'Submit interpretation and reveal';
+
+                const skipBtn = document.createElement('button');
+                skipBtn.className = 'expr-interp-skip';
+                skipBtn.textContent = zh ? '直接揭晓' : 'Reveal anyway';
+
+                btns.appendChild(submitBtn);
+                btns.appendChild(skipBtn);
+                panel.appendChild(prompt);
+                panel.appendChild(textarea);
+                panel.appendChild(btns);
+                overlay.appendChild(panel);
+
+                requestAnimationFrame(() => textarea.focus());
+
+                textarea.addEventListener('input', () => {
+                  textarea.classList.remove('expr-interp-error');
+                });
+
+                submitBtn.addEventListener('click', async () => {
+                  const interpText = textarea.value.trim();
+                  if (!interpText) {
+                    textarea.classList.add('expr-interp-error');
+                    return;
+                  }
+                  submitBtn.disabled = true;
+                  revealCard();
+                  await showJuxtaposition(interpText);
+                });
+
+                skipBtn.addEventListener('click', () => {
+                  revealCard();
+                });
+              }
+
               // Overlay handles both tap-to-reveal and drag-to-move-card.
               overlay.addEventListener('pointerdown', (e) => {
+                // In interpretation-input mode, let the panel's buttons handle events normally.
+                if (overlay.classList.contains('expr-interp-mode')) return;
                 if (e.button != null && e.button !== 0) return;
                 e.stopPropagation();
                 e.preventDefault();
@@ -11071,7 +11681,7 @@
                 function onUp() {
                   overlay.removeEventListener('pointermove', onMove);
                   overlay.removeEventListener('pointerup', onUp);
-                  if (!moved) revealCard();
+                  if (!moved) showInterpretationStep();
                 }
 
                 overlay.addEventListener('pointermove', onMove);
@@ -11082,6 +11692,9 @@
               hideBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 e.preventDefault();
+                // Remove juxtaposition panel if present
+                card.querySelector('.expr-juxtapose')?.remove();
+                restoreOverlayDefault();
                 overlay.style.display = '';
                 card.classList.remove('revealed');
                 requestAnimationFrame(() =>
@@ -11139,7 +11752,13 @@
 
         card.addEventListener('pointerdown', (e) => {
           if (e.button != null && e.button !== 0) return;
-          if (e.target?.closest?.('.spawned-expression-translate')) return;
+          // Let interactive children handle their own events
+          if (
+            e.target?.closest?.(
+              '.spawned-expression-translate, .expr-resize-handle, .expr-interp-panel, .expr-juxtapose, .expr-anon-send, textarea, button, input',
+            )
+          )
+            return;
           const canvas = chatCanvas();
           if (!canvas) return;
           const local = clientToLocal(canvas, e.clientX, e.clientY);
@@ -11190,6 +11809,43 @@
 
         card.addEventListener('pointerup', endDrag);
         card.addEventListener('pointercancel', endDrag);
+
+        // ── SE corner resize handle ─────────────────────────────────────────
+        const seHandle = document.createElement('div');
+        seHandle.className = 'expr-resize-handle';
+
+        seHandle.addEventListener('pointerdown', (e) => {
+          if (e.button != null && e.button !== 0) return;
+          e.stopPropagation();
+          e.preventDefault();
+          seHandle.setPointerCapture(e.pointerId);
+
+          const startX = e.clientX;
+          const startY = e.clientY;
+          const startW = card.offsetWidth;
+          const startH = card.offsetHeight;
+          const MIN_W = 120;
+          const MIN_H = card.scrollHeight; // never clip existing content
+
+          function onResizeMove(me) {
+            const canvas = chatCanvas();
+            const zoom = canvas ? (getCanvasZoom(canvas) || 1) : 1;
+            card.style.width = `${Math.max(MIN_W, startW + (me.clientX - startX) / zoom)}px`;
+            card.style.height = `${Math.max(MIN_H, startH + (me.clientY - startY) / zoom)}px`;
+            card.style.minHeight = '';
+            me.preventDefault();
+          }
+
+          function onResizeUp() {
+            seHandle.removeEventListener('pointermove', onResizeMove);
+            seHandle.removeEventListener('pointerup', onResizeUp);
+          }
+
+          seHandle.addEventListener('pointermove', onResizeMove);
+          seHandle.addEventListener('pointerup', onResizeUp);
+        });
+
+        card.appendChild(seHandle);
       }
 
       function updateSpawnedExpressionMetaCardsPosition() {
@@ -14993,21 +15649,31 @@
 
           if (usingChatCanvas) {
             pastedSymbol = await createSymbolCopy(
-              null, null,
-              snapshot.elemId, snapshot.elemIdTrue,
-              targetLeft, targetTop,
-              snapshot.color, snapshot.angle,
-              null, chatCanvas(),
+              null,
+              null,
+              snapshot.elemId,
+              snapshot.elemIdTrue,
+              targetLeft,
+              targetTop,
+              snapshot.color,
+              snapshot.angle,
+              null,
+              chatCanvas(),
             );
           } else {
             const clientX = canvasRect.left + targetLeft + (symbolWidth * symbolScale) / 2;
             const clientY = canvasRect.top + targetTop + (symbolHeight * symbolScale) / 2;
             pastedSymbol = await createSymbolCopy(
-              clientX, clientY,
-              snapshot.elemId, snapshot.elemIdTrue,
-              null, null,
-              snapshot.color, snapshot.angle,
-              null, craftCanvas(),
+              clientX,
+              clientY,
+              snapshot.elemId,
+              snapshot.elemIdTrue,
+              null,
+              null,
+              snapshot.color,
+              snapshot.angle,
+              null,
+              craftCanvas(),
             );
           }
 
@@ -16172,8 +16838,13 @@
           elemId = null;
         }
 
-        const spawnCanvas = targetCanvas
-          || (symbolX !== null ? chatCanvas() : tabHeadersActivated[4] ? chatCanvas() : craftCanvas());
+        const spawnCanvas =
+          targetCanvas ||
+          (symbolX !== null
+            ? chatCanvas()
+            : tabHeadersActivated[4]
+              ? chatCanvas()
+              : craftCanvas());
         const { x, y } = clientToLocal(spawnCanvas, mouseX, mouseY);
         let offsetX = (symbolWidth * symbolScale) / 2;
         let offsetY = (symbolHeight * symbolScale) / 2;
@@ -16429,7 +17100,9 @@
           if (tabHeadersActivated[4] || symbolX !== null) appendToChatCanvas(symbol);
         }
 
-        const isChatSymbol = targetCanvas ? targetCanvas === chatCanvas() : (tabHeadersActivated[4] || symbolX !== null);
+        const isChatSymbol = targetCanvas
+          ? targetCanvas === chatCanvas()
+          : tabHeadersActivated[4] || symbolX !== null;
         if (isChatSymbol && symbolX === null && !targetCanvas) {
           symbol.style.zIndex = '7';
         }
@@ -19522,6 +20195,108 @@
 
           card.appendChild(img);
           card.appendChild(textWrap);
+          // Received-interpretation section (Features 5 & 7)
+          const interps = libraryInterpretationsCache.get(word);
+          if (interps?.length) {
+            const zh = currentLang === 'zh';
+            const cnt = interps.length;
+
+            // Count badge on the word label
+            const badge = document.createElement('span');
+            badge.className = 'library-tree-interp-badge';
+            badge.textContent = String(cnt);
+            label.appendChild(badge);
+
+            // Toggle button (collapsed by default)
+            const toggle = document.createElement('button');
+            toggle.className = 'library-tree-interps-toggle';
+            const toggleTextCollapsed = () =>
+              zh ? `查看 ${cnt} 条解读` : `${cnt} interpretation${cnt > 1 ? 's' : ''} received`;
+            toggle.textContent = toggleTextCollapsed();
+
+            const interpsSection = document.createElement('div');
+            interpsSection.className = 'library-tree-interps';
+            interpsSection.style.display = 'none';
+
+            for (const interp of interps) {
+              const item = document.createElement('div');
+              item.className = 'library-tree-interp-item';
+              const dateEl = document.createElement('span');
+              dateEl.className = 'library-tree-interp-date';
+              dateEl.textContent = new Date(interp.created_at).toLocaleDateString(
+                zh ? 'zh-CN' : 'en-US',
+                { year: 'numeric', month: 'short', day: 'numeric' },
+              );
+              const txtEl = document.createElement('p');
+              txtEl.textContent = interp.interpretation_text;
+              item.appendChild(dateEl);
+              item.appendChild(txtEl);
+              interpsSection.appendChild(item);
+            }
+
+            // Pattern summary button shown when 10+ interpretations exist (Feature 7)
+            if (cnt >= 10) {
+              const summaryBtn = document.createElement('button');
+              summaryBtn.className = 'library-tree-interp-summary-btn';
+              summaryBtn.textContent = zh ? '生成解读模式摘要' : 'Generate pattern summary';
+              const summaryContainer = document.createElement('div');
+
+              summaryBtn.addEventListener('click', async () => {
+                if (summaryBtn.disabled) return;
+                summaryBtn.disabled = true;
+                summaryBtn.textContent = zh ? '生成中…' : 'Generating…';
+                summaryContainer.innerHTML = '';
+                try {
+                  const claims = await generateInterpretationSummary(word, interps);
+                  const summaryEl = document.createElement('div');
+                  summaryEl.className = 'library-tree-interp-summary';
+                  for (const { claim } of claims) {
+                    const claimP = document.createElement('p');
+                    claimP.className = 'library-tree-interp-summary-claim';
+                    claimP.textContent = '• ' + claim;
+                    summaryEl.appendChild(claimP);
+                  }
+                  const feedbackEl = document.createElement('div');
+                  feedbackEl.className = 'library-tree-interp-feedback';
+                  const fbLabels = zh
+                    ? ['感觉准确', '基本准确', '不太准确', '编辑']
+                    : ['This feels accurate', 'Somewhat', 'Not accurate', 'Edit'];
+                  for (const lbl of fbLabels) {
+                    const fbBtn = document.createElement('button');
+                    fbBtn.textContent = lbl;
+                    fbBtn.addEventListener('click', () => {
+                      feedbackEl
+                        .querySelectorAll('button')
+                        .forEach((b) => b.classList.remove('active'));
+                      fbBtn.classList.add('active');
+                    });
+                    feedbackEl.appendChild(fbBtn);
+                  }
+                  summaryEl.appendChild(feedbackEl);
+                  summaryContainer.appendChild(summaryEl);
+                  summaryBtn.textContent = zh ? '重新生成' : 'Regenerate';
+                  summaryBtn.disabled = false;
+                } catch (_err) {
+                  summaryBtn.textContent = zh ? '生成失败，重试？' : 'Failed — retry?';
+                  summaryBtn.disabled = false;
+                }
+              });
+
+              interpsSection.appendChild(summaryBtn);
+              interpsSection.appendChild(summaryContainer);
+            }
+
+            let interpOpen = false;
+            toggle.addEventListener('click', () => {
+              interpOpen = !interpOpen;
+              interpsSection.style.display = interpOpen ? 'flex' : 'none';
+              toggle.textContent = interpOpen ? (zh ? '收起' : 'Collapse') : toggleTextCollapsed();
+            });
+
+            textWrap.appendChild(toggle);
+            textWrap.appendChild(interpsSection);
+          }
+
           libraryTreeSurface.appendChild(card);
           attachLibraryTreeCardDrag(card, node.id, positions, sizes);
         }
