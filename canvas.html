@@ -1395,6 +1395,118 @@
         transform-origin: top left;
       }
 
+      #libraryReadingsView {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        display: none;
+        overflow-y: auto;
+        overflow-x: hidden;
+        background: transparent;
+        box-sizing: border-box;
+      }
+      .readings-panel {
+        padding: 168px 18px 48px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .readings-title {
+        font-size: 14px;
+        font-weight: 600;
+        margin: 0 0 1px;
+        line-height: 1.3;
+      }
+      .readings-subtitle {
+        font-size: 11.5px;
+        opacity: 0.5;
+        margin: 0 0 4px;
+      }
+      .readings-empty {
+        font-size: 12px;
+        opacity: 0.5;
+        line-height: 1.6;
+        margin: 0;
+      }
+      .readings-word-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+      .readings-word-label {
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        opacity: 0.45;
+        margin: 0;
+      }
+      .readings-interp-item {
+        font-size: 12.5px;
+        line-height: 1.55;
+        padding: 6px 10px;
+        background: rgba(128,128,128,0.07);
+        border-radius: 6px;
+        margin: 0;
+      }
+      .readings-divider {
+        border: none;
+        border-top: 1px solid rgba(128,128,128,0.15);
+        margin: 4px 0;
+      }
+      .readings-pattern-section {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .readings-pattern-label {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        opacity: 0.45;
+        margin: 0;
+      }
+      .readings-generate-btn {
+        align-self: flex-start;
+        padding: 6px 16px;
+        border-radius: 20px;
+        border: 1.5px solid rgba(91,79,207,0.5);
+        background: transparent;
+        color: inherit;
+        font-size: 12px;
+        cursor: pointer;
+        transition: opacity 0.15s;
+      }
+      .readings-generate-btn:hover { opacity: 0.7; }
+      .readings-generate-btn:disabled { opacity: 0.35; cursor: default; }
+      .readings-claims {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+      }
+      .readings-claim {
+        font-size: 12.5px;
+        line-height: 1.55;
+        padding: 7px 10px;
+        background: rgba(91,79,207,0.06);
+        border-radius: 6px;
+        border-left: 2px solid rgba(91,79,207,0.28);
+        margin: 0;
+      }
+      .readings-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .readings-meta-line {
+        font-size: 11px;
+        opacity: 0.4;
+        margin: 0;
+      }
+
       #libraryTreeSurface {
         position: relative;
         min-width: 100%;
@@ -8062,6 +8174,175 @@
         }
       }
 
+      // Interpretations SENT by the current user (for readings view)
+      let sentInterpretationsList = []; // [{id, expr_word, interpretation_text, created_at}]
+
+      async function loadSentInterpretations() {
+        if (!currentUser?.uid) return;
+        const { data, error } = await supabase
+          .from('interpretations')
+          .select('id, expr_word, interpretation_text, created_at')
+          .eq('interpreter_uid', currentUser.uid)
+          .order('created_at', { ascending: false });
+        if (error || !data) return;
+        sentInterpretationsList = data;
+      }
+
+      async function generateReadingsPatternSummary() {
+        const interpTexts = sentInterpretationsList.map((i) => i.interpretation_text);
+        const response = await fetch('https://hooks.ukiriz.com/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'interpretation-summary',
+            uid: currentUser?.uid || null,
+            word: 'my readings',
+            interpretations: interpTexts,
+          }),
+        });
+        const data = await response.json();
+        if (!data.ok) throw new Error(data.message || 'Pattern generation failed');
+        if (!Array.isArray(data.summary)) throw new Error('Invalid summary format');
+        return data.summary;
+      }
+
+      function renderReadingsView() {
+        if (!libraryReadingsView) return;
+        const zh = currentLang === 'zh';
+        const total = sentInterpretationsList.length;
+
+        let cached = null;
+        try { cached = JSON.parse(localStorage.getItem(LIBRARY_PATTERNS_KEY) || 'null'); } catch {}
+
+        libraryReadingsView.innerHTML = '';
+        const panel = document.createElement('div');
+        panel.className = 'readings-panel';
+
+        // Header
+        const title = document.createElement('p');
+        title.className = 'readings-title';
+        title.textContent = zh ? '我的解读中涌现的模式' : 'Patterns emerging in my readings';
+        panel.appendChild(title);
+
+        const subtitle = document.createElement('p');
+        subtitle.className = 'readings-subtitle';
+        subtitle.textContent = zh
+          ? `基于你发送的 ${total} 条解读`
+          : `Based on ${total} interpretation${total !== 1 ? 's' : ''} you've sent`;
+        panel.appendChild(subtitle);
+
+        if (total === 0) {
+          const empty = document.createElement('p');
+          empty.className = 'readings-empty';
+          empty.textContent = zh
+            ? '你还没有发送过解读。在聊天中解读他人的表达，便可在这里发现你的阅读模式。'
+            : "You haven't sent any interpretations yet. Interpret other people's expressions in chat to discover patterns in how you read.";
+          panel.appendChild(empty);
+          libraryReadingsView.appendChild(panel);
+          return;
+        }
+
+        // Interpretations list grouped by word
+        const byWord = new Map();
+        for (const item of sentInterpretationsList) {
+          const w = item.expr_word || '?';
+          if (!byWord.has(w)) byWord.set(w, []);
+          byWord.get(w).push(item);
+        }
+        for (const [word, items] of byWord) {
+          const group = document.createElement('div');
+          group.className = 'readings-word-group';
+          const label = document.createElement('p');
+          label.className = 'readings-word-label';
+          label.textContent = word;
+          group.appendChild(label);
+          for (const item of items) {
+            const p = document.createElement('p');
+            p.className = 'readings-interp-item';
+            p.textContent = item.interpretation_text;
+            group.appendChild(p);
+          }
+          panel.appendChild(group);
+        }
+
+        // Divider before pattern section
+        panel.appendChild(Object.assign(document.createElement('hr'), { className: 'readings-divider' }));
+
+        // Pattern section
+        const patternSection = document.createElement('div');
+        patternSection.className = 'readings-pattern-section';
+
+        const patternLabel = document.createElement('p');
+        patternLabel.className = 'readings-pattern-label';
+        patternLabel.textContent = zh ? '模式' : 'Patterns';
+        patternSection.appendChild(patternLabel);
+
+        if (cached?.claims?.length) {
+          const claimsEl = document.createElement('div');
+          claimsEl.className = 'readings-claims';
+          for (const { claim } of cached.claims) {
+            const p = document.createElement('p');
+            p.className = 'readings-claim';
+            p.textContent = claim;
+            claimsEl.appendChild(p);
+          }
+          patternSection.appendChild(claimsEl);
+
+          const meta = document.createElement('div');
+          meta.className = 'readings-meta';
+          const dateStr = new Date(cached.generatedAt).toLocaleDateString(zh ? 'zh-CN' : 'en-US', {
+            year: 'numeric', month: 'long', day: 'numeric',
+          });
+          const line1 = document.createElement('p');
+          line1.className = 'readings-meta-line';
+          line1.textContent = (zh ? '上次生成：' : 'Last generated: ') + dateStr;
+          meta.appendChild(line1);
+          const newSince = Math.max(0, total - (cached.countAtGeneration || 0));
+          if (newSince > 0) {
+            const line2 = document.createElement('p');
+            line2.className = 'readings-meta-line';
+            line2.textContent = zh
+              ? `此后新增 ${newSince} 条解读`
+              : `${newSince} new interpretation${newSince !== 1 ? 's' : ''} since then`;
+            meta.appendChild(line2);
+          }
+          patternSection.appendChild(meta);
+        }
+
+        if (total >= 3) {
+          const btn = document.createElement('button');
+          btn.className = 'readings-generate-btn';
+          btn.textContent = cached?.claims?.length
+            ? (zh ? '重新生成' : 'Regenerate')
+            : (zh ? '发现模式' : 'Discover patterns');
+          btn.addEventListener('click', async () => {
+            if (btn.disabled) return;
+            btn.disabled = true;
+            btn.textContent = zh ? '生成中…' : 'Finding patterns…';
+            try {
+              const summary = await generateReadingsPatternSummary();
+              const record = { claims: summary, generatedAt: new Date().toISOString(), countAtGeneration: total };
+              try { localStorage.setItem(LIBRARY_PATTERNS_KEY, JSON.stringify(record)); } catch {}
+              renderReadingsView();
+            } catch (_) {
+              btn.disabled = false;
+              btn.textContent = zh ? '生成失败，请重试' : 'Failed — tap to retry';
+            }
+          });
+          patternSection.appendChild(btn);
+        } else {
+          const hint = document.createElement('p');
+          hint.className = 'readings-empty';
+          hint.textContent = zh
+            ? `再发送 ${3 - total} 条解读即可生成模式`
+            : `Send ${3 - total} more interpretation${3 - total !== 1 ? 's' : ''} to unlock pattern discovery`;
+          patternSection.appendChild(hint);
+        }
+
+        panel.appendChild(patternSection);
+        libraryReadingsView.appendChild(panel);
+      }
+
       async function checkInterpretationNotifications() {
         if (!currentUser?.uid) return;
         const { data, error } = await supabase
@@ -8106,6 +8387,16 @@
       }
 
       async function generateInterpretationSummary(word, interps) {
+        const interpTexts = interps.map((i) => i.interpretation_text);
+        const inputChars = word.length + interpTexts.reduce((s, t) => s + t.length, 0);
+        const estInputTokens = Math.ceil(inputChars / 4);
+        console.log(
+          '[summary] sending request — word:', word,
+          '| interpretations:', interpTexts.length,
+          '| est. input chars:', inputChars,
+          '| rough input token estimate:', estInputTokens,
+        );
+
         const response = await fetch('https://hooks.ukiriz.com/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -8113,16 +8404,28 @@
             type: 'interpretation-summary',
             uid: currentUser?.uid || null,
             word,
-            interpretations: interps.map((i) => i.interpretation_text),
+            interpretations: interpTexts,
           }),
         });
         const data = await response.json();
+        console.log('[summary] raw response:', data);
+        if (data.usage) {
+          const { input_tokens, output_tokens } = data.usage;
+          console.log(
+            '[summary] token usage — input:', input_tokens,
+            '| output:', output_tokens,
+            '| total:', (input_tokens ?? 0) + (output_tokens ?? 0),
+          );
+        } else {
+          console.log('[summary] no usage field in response (backend may not expose it yet)');
+        }
+
         if (!data.ok) throw new Error(data.message || 'Summary generation failed');
         if (!Array.isArray(data.summary)) throw new Error('Invalid summary format');
         for (const item of data.summary) {
           if (typeof item.claim !== 'string') throw new Error('Invalid claim in summary');
-          if (!Array.isArray(item.support) || item.support.length < 3)
-            throw new Error('Each claim needs at least 3 supporting interpretations');
+          if (!Array.isArray(item.support) || item.support.length < 1)
+            throw new Error('Each claim needs at least 1 supporting interpretation');
         }
         return data.summary;
       }
@@ -12154,6 +12457,14 @@
           // 2) Remove from in-memory library (semantic layer)
           if (node.word) {
             library.delete(node.word);
+            libraryInterpretationsCache.delete(node.word);
+            if (currentUser?.uid) {
+              supabase.from('interpretations')
+                .delete()
+                .eq('expr_word', node.word)
+                .eq('expr_author_uid', currentUser.uid)
+                .then(({ error }) => { if (error) console.error('[interpretations] delete error:', error); });
+            }
           }
 
           // 3) Remove connected edges (visual + data layer)
@@ -17936,8 +18247,10 @@
       let basicNodeIds = new Set();
       let basicNodeIdByElemIdTrue = new Map();
       const LIBRARY_VIEW_MODE_KEY = 'libraryViewMode';
+      const LIBRARY_PATTERNS_KEY = 'libraryReadingsPatterns';
       let libraryViewMode = 'network';
       let libraryTreeView = null;
+      let libraryReadingsView = null;
       let libraryTreeSurface = null;
       let libraryTreeSvg = null;
       let libraryTreeContextMenu = null;
@@ -18000,6 +18313,7 @@
       const LIBRARY_NETWORK_ICON = "url('./icons/network.png')";
       const LIBRARY_TREE_ICON = "url('./icons/techtree.png')";
       const LIBRARY_ARRANGE_ICON = "url('./icons/organize.png')";
+      const LIBRARY_READINGS_ICON = "url('./icons/star_needle.png')";
 
       function loadSavedLibraryViewMode() {
         try {
@@ -18021,9 +18335,13 @@
       function setLibraryModeButtonIcon() {
         if (!modeNodeButton) return;
         modeNodeButton.style.backgroundImage =
-          libraryViewMode === 'network' ? LIBRARY_NETWORK_ICON : LIBRARY_TREE_ICON;
+          libraryViewMode === 'network' ? LIBRARY_NETWORK_ICON :
+          libraryViewMode === 'tree' ? LIBRARY_TREE_ICON :
+          LIBRARY_READINGS_ICON;
         modeNodeButton.title =
-          libraryViewMode === 'network' ? 'Switch to tree view' : 'Switch to network view';
+          libraryViewMode === 'network' ? 'Switch to tree view' :
+          libraryViewMode === 'tree' ? 'Patterns in my readings' :
+          'Switch to network view';
       }
 
       function computeLibraryTreeLevels() {
@@ -20299,8 +20617,8 @@
               interpsSection.appendChild(item);
             }
 
-            // Pattern summary button shown when 10+ interpretations exist (Feature 7)
-            if (cnt >= 10) {
+            // Pattern summary button shown when 3+ interpretations exist (lowered from 10 for debugging)
+            if (cnt >= 3) {
               const summaryBtn = document.createElement('button');
               summaryBtn.className = 'library-tree-interp-summary-btn';
               summaryBtn.textContent = zh ? '生成解读模式摘要' : 'Generate pattern summary';
@@ -20641,15 +20959,21 @@
       libraryTreeView.appendChild(libraryTreeSurface);
       tab2.appendChild(libraryTreeView);
 
+      libraryReadingsView = document.createElement('div');
+      libraryReadingsView.id = 'libraryReadingsView';
+      tab2.appendChild(libraryReadingsView);
+
       function setLibraryViewMode(mode) {
-        libraryViewMode = mode === 'tree' ? 'tree' : 'network';
+        libraryViewMode = mode === 'tree' ? 'tree' : mode === 'readings' ? 'readings' : 'network';
         saveLibraryViewMode();
         setLibraryModeButtonIcon();
 
         const showTree = libraryViewMode === 'tree';
-        container.style.display = showTree ? 'none' : 'block';
+        const showReadings = libraryViewMode === 'readings';
+        container.style.display = (showTree || showReadings) ? 'none' : 'block';
         libraryTreeView.style.display = showTree ? 'block' : 'none';
-        organizeNodeButton.style.display = showTree ? 'none' : 'block';
+        if (libraryReadingsView) libraryReadingsView.style.display = showReadings ? 'block' : 'none';
+        organizeNodeButton.style.display = (showTree || showReadings) ? 'none' : 'block';
         if (!showTree && libraryTreeSurface) libraryTreeSurface.style.zoom = '1';
 
         if (showTree) {
@@ -20661,6 +20985,8 @@
             requestAnimationFrame(() => refreshLibraryViewport?.());
           }
           emitTutorialEvent?.('library_tree_view');
+        } else if (showReadings) {
+          loadSentInterpretations().then(() => renderReadingsView()).catch(console.error);
         } else if (network) {
           setTimeout(() => {
             refreshLibraryViewport?.();
@@ -20673,7 +20999,8 @@
         e.stopPropagation();
         e.preventDefault();
         if (isTutorialLibraryModeToggleLocked?.()) return;
-        setLibraryViewMode(libraryViewMode === 'network' ? 'tree' : 'network');
+        const next = libraryViewMode === 'network' ? 'tree' : 'network';
+        setLibraryViewMode(next);
       });
       setLibraryModeButtonIcon();
 
