@@ -12448,6 +12448,7 @@
         }
 
         window._sfxDeletion?.();
+        const canvasSymbolIdsToDelete = [];
         for (const nodeId of deletable) {
           const node = nodes.get(nodeId);
           if (!node) continue;
@@ -12463,8 +12464,23 @@
                 .delete()
                 .eq('expr_word', node.word)
                 .eq('expr_author_uid', currentUser.uid)
-                .then(({ error }) => { if (error) console.error('[interpretations] delete error:', error); });
+                .select('id')
+                .then(({ data, error }) => {
+                  if (error) console.error('[interpretations] delete error:', error);
+                  else console.log('[interpretations] deleted for word "' + node.word + '":', data?.length ?? 0, 'rows', data);
+                });
             }
+          }
+
+          // 2b) Remove all canvas placements of this expression
+          for (const symbol of symbolById.values()) {
+            if (symbol.dataset.exprNodeId !== String(nodeId)) continue;
+            const sid = symbol.dataset.id;
+            if (sid) {
+              canvasSymbolIdsToDelete.push(sid);
+              _pendingDeleteSymbolIds.add(sid);
+            }
+            removeChatSymbolElement(symbol);
           }
 
           // 3) Remove connected edges (visual + data layer)
@@ -12475,6 +12491,11 @@
 
           // 4) Remove node from vis dataset
           nodes.remove(nodeId);
+        }
+
+        if (canvasSymbolIdsToDelete.length) {
+          deleteChatSelectionBatch(currentRoomId, canvasSymbolIdsToDelete, []).catch(console.error);
+          updateExpressionGroupFramesFromSelection(chatCanvas());
         }
 
         // 6) Clear selection after deletion
