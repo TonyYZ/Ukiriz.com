@@ -6560,12 +6560,12 @@
         const lang = getLang();
         const minWidth = lang === 'zh' ? 300 : 320;
         const maxCap = lang === 'zh' ? 760 : 620;
-        const sideReserve = lang === 'zh' ? 420 : 1180;
         box.style.bottom = lang === 'zh' ? '80px' : '64px';
-        const maxWidth = Math.max(
-          minWidth,
-          Math.min(maxCap, window.innerWidth - sidebarWidth - sideReserve),
-        );
+
+        // Keep the box left of the minimap (210px wide, anchored at sidebar+44px from right).
+        const minimapReserve = 210 + 44 + 16; // minimap width + sidebar gap + padding
+        const safeContentWidth = window.innerWidth - sidebarWidth - minimapReserve;
+        const maxWidth = Math.max(minWidth, Math.min(maxCap, safeContentWidth - 800));
 
         const measureCanvas =
           updateChatQuestionPrompt._measureCanvas ||
@@ -6581,10 +6581,13 @@
         ctx.font = textFont;
         const textWidth = Math.ceil(ctx.measureText(el.textContent || '').width);
 
-        box.style.maxWidth = `${maxWidth}px`;
         el.style.whiteSpace = 'normal';
         const oneLineWidth = labelWidth + textWidth + 64;
         const finalWidth = Math.max(minWidth, Math.min(maxWidth, oneLineWidth));
+        // On smaller screens, slide the box left so its right edge stays clear of the minimap.
+        const boxLeft = Math.min(800, Math.max(20, safeContentWidth - finalWidth));
+        box.style.left = `${boxLeft}px`;
+        box.style.maxWidth = `${maxWidth}px`;
         box.style.width = `${finalWidth}px`;
       }
 
