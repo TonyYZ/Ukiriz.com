@@ -10804,35 +10804,99 @@
 
         // Kun (elemId 0) uses a CSS flip transform at 180° (scaleY(-1)) and 270°
         // (scaleX(-1) rotate(90deg)) instead of a pure rotation. This displaces its
-        // visual junctions from where the geometric pivot placed them. Shift each
-        // internally-connected neighbor to close the resulting gap.
-        for (const symbol of group) {
-          if (symbol.elemId !== 0) continue;
-          if (symbol.angle !== 180 && symbol.angle !== 270) continue;
-          const kunJunctions = getAbsJunctions(symbol);
-          const conns = currentGraph.getSymbolConnections(symbol) || [];
-          for (let kunSide = 0; kunSide < 4; kunSide++) {
-            for (const [neighbor, neighborSide] of conns[kunSide] || []) {
-              if (!groupSet.has(neighbor)) continue;
-              if (neighborSide >= 4) continue;
-              const nj = getAbsJunctions(neighbor)[neighborSide];
-              const kj = kunJunctions[kunSide];
-              const dx = kj.x - nj.x;
-              const dy = kj.y - nj.y;
-              if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) continue;
-              neighbor.style.left = `${(parseFloat(neighbor.style.left) || 0) + dx}px`;
-              neighbor.style.top = `${(parseFloat(neighbor.style.top) || 0) + dy}px`;
-              if (neighbor.isDynamic && neighbor.dot) updateDotPositionLocal(neighbor.dot);
+        // visual junctions from where the geometric pivot placed them, causing gaps
+        // in internal connections.
+        //
+        // Fix: BFS re-anchor. Non-kun symbols are correctly placed by the geometric
+        // pivot and serve as anchors. We walk the internal connection graph and shift
+        // each unvisited symbol so its junction matches its already-anchored neighbor.
+        // This handles arbitrary topologies (two kuns sharing one qian, or two qians
+        // sharing one kun, or chains) without any symbol fighting another.
+        if (group.some((sym) => sym.elemId === 0)) {
+          // Build internal adjacency (both directions) for sides 0–3 only.
+          const internalAdj = new Map(group.map((sym) => [sym, []]));
+          for (const sym of group) {
+            const conns = currentGraph.getSymbolConnections(sym) || [];
+            for (let side = 0; side < 4; side++) {
+              for (const [neighbor, neighborSide] of conns[side] || []) {
+                if (!groupSet.has(neighbor) || neighborSide >= 4) continue;
+                internalAdj.get(sym).push({ side, neighbor, neighborSide });
+              }
+            }
+          }
+
+          // BFS starting from non-kun symbols first (they are the correct anchors).
+          const flipVisited = new Set();
+          const bfsRoots = [...group].sort((a, b) => (a.elemId === 0 ? 1 : 0) - (b.elemId === 0 ? 1 : 0));
+          for (const startSym of bfsRoots) {
+            if (flipVisited.has(startSym)) continue;
+            flipVisited.add(startSym);
+            const queue = [startSym];
+            while (queue.length > 0) {
+              const sym = queue.shift();
+              const symJunctions = getAbsJunctions(sym);
+              for (const { side, neighbor, neighborSide } of internalAdj.get(sym) || []) {
+                if (flipVisited.has(neighbor)) continue;
+                flipVisited.add(neighbor);
+                const targetPos = symJunctions[side];
+                const currentNJ = getAbsJunctions(neighbor)[neighborSide];
+                const dx = targetPos.x - currentNJ.x;
+                const dy = targetPos.y - currentNJ.y;
+                if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+                  neighbor.style.left = `${(parseFloat(neighbor.style.left) || 0) + dx}px`;
+                  neighbor.style.top = `${(parseFloat(neighbor.style.top) || 0) + dy}px`;
+                  if (neighbor.isDynamic && neighbor.dot) updateDotPositionLocal(neighbor.dot);
+                  if (inChat) {
+                    const _rid = neighbor.dataset?.id;
+                    if (_rid) {
+                      const _rex = roomObjDataById.get(_rid);
+                      if (_rex) {
+                        roomObjDataById.set(_rid, {
+                          ..._rex,
+                          x: parseFloat(neighbor.style.left),
+                          y: parseFloat(neighbor.style.top),
+                          content: { ..._rex.content, angle: neighbor.angle, elemId: neighbor.elemId },
+                        });
+                      }
+                    }
+                  }
+                }
+                queue.push(neighbor);
+              }
+            }
+          }
+        }
+
+        // After BFS corrections the group centroid may have drifted. Restore it to
+        // the pre-rotation pivot so repeated turns don't accumulate vertical/horizontal
+        // displacement.
+        {
+          const ss = symbolScale;
+          let newCX = 0;
+          let newCY = 0;
+          for (const sym of group) {
+            newCX += (parseFloat(sym.style.left) || 0) + (symbolWidth * ss) / 2;
+            newCY += (parseFloat(sym.style.top) || 0) + (symbolHeight * ss) / 2;
+          }
+          newCX /= group.length;
+          newCY /= group.length;
+          const driftX = pivotX - newCX;
+          const driftY = pivotY - newCY;
+          if (Math.abs(driftX) > 0.5 || Math.abs(driftY) > 0.5) {
+            for (const sym of group) {
+              sym.style.left = `${(parseFloat(sym.style.left) || 0) + driftX}px`;
+              sym.style.top = `${(parseFloat(sym.style.top) || 0) + driftY}px`;
+              if (sym.isDynamic && sym.dot) updateDotPositionLocal(sym.dot);
               if (inChat) {
-                const _nrid = neighbor.dataset?.id;
-                if (_nrid) {
-                  const _nrex = roomObjDataById.get(_nrid);
-                  if (_nrex) {
-                    roomObjDataById.set(_nrid, {
-                      ..._nrex,
-                      x: parseFloat(neighbor.style.left),
-                      y: parseFloat(neighbor.style.top),
-                      content: { ..._nrex.content, angle: neighbor.angle, elemId: neighbor.elemId },
+                const _drid = sym.dataset?.id;
+                if (_drid) {
+                  const _drex = roomObjDataById.get(_drid);
+                  if (_drex) {
+                    roomObjDataById.set(_drid, {
+                      ..._drex,
+                      x: parseFloat(sym.style.left),
+                      y: parseFloat(sym.style.top),
+                      content: { ..._drex.content, angle: sym.angle, elemId: sym.elemId },
                     });
                   }
                 }
