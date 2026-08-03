@@ -8880,7 +8880,12 @@
           symbol = symbolById.get(symbolOrId);
         }
         if (!symbol) return;
-        symbol._suppressRemoteUntil = Date.now() + durationMs;
+        // Only extend the window, never shrink it — a shorter mark from a concurrent
+        // persistLink/removeLink call must not override a longer mark set by rotation.
+        const newUntil = Date.now() + durationMs;
+        if (newUntil > (symbol._suppressRemoteUntil || 0)) {
+          symbol._suppressRemoteUntil = newUntil;
+        }
       }
 
       function markLocalRoomObjMutation(elemOrId, durationMs = 700) {
@@ -9323,8 +9328,14 @@
             shouldSuppressRemoteVisualUpdate(existingSymbol, data.ownerUid || '')
           ) {
             const prev = roomObjDataById.get(docId) || {};
+            // While the local-mutation guard is active the local state is authoritative.
+            // Preserve local x/y/content so that concurrent writes (dot toggle, link ops)
+            // merge against the correct post-rotation values, not stale DB data.
             roomObjDataById.set(docId, {
               ...data,
+              x: prev.x ?? data.x,
+              y: prev.y ?? data.y,
+              content: prev.content ?? data.content,
               links: prev.links ?? data.links ?? [],
             });
           } else {
@@ -9891,6 +9902,8 @@
           }
         }
 
+        const edgeCount = g.adj.reduce((sum, sides) => sum + sides.reduce((s, l) => s + l.length, 0), 0) / 2;
+        console.log('[snapshot] nodes:', g.nodes.length, 'edges:', edgeCount, 'adj:', g.adj.map(s => s.map(l => l.length)));
         return g;
       }
 
@@ -10022,10 +10035,18 @@
               for (let si = 0; si < n; si++) {
                 const piOfSi = selToPat[si];
                 if (piOfSi === -1) continue;
+                // Skip reverse check for pattern nodes that have no edges —
+                // they were saved without snap info, so extra selection edges are tolerated.
+                const patNodeHasEdges = pattern.adj[piOfSi].some((list) => list.length > 0);
+                if (!patNodeHasEdges) continue;
                 for (let side = 0; side < 6; side++) {
                   for (const [sj, sjSide] of selAdj[si][side]) {
                     const piOfSj = selToPat[sj];
                     if (piOfSj === -1) continue;
+                    // Also skip if the target pattern node is isolated — edges arriving
+                    // at an unsnapped node are similarly tolerated.
+                    const patTargetHasEdges = pattern.adj[piOfSj].some((list) => list.length > 0);
+                    if (!patTargetHasEdges) continue;
                     if (
                       !pattern.adj[piOfSi][side].some(
                         ([pj, pjSide]) => pj === piOfSj && pjSide === sjSide,
@@ -10739,6 +10760,12 @@
           cutConnectionsOutside(symbol, groupSet);
         }
 
+        // Mark before any position changes so realtime echoes from a prior rotation
+        // can't overwrite local state while the async persistence loop is in flight.
+        if (inChat) {
+          for (const symbol of group) markLocalSymbolMutation(symbol, 2500);
+        }
+
         for (const { symbol, x, y } of centers) {
           const dx = x - pivotX;
           const dy = y - pivotY;
@@ -10749,12 +10776,71 @@
           symbol.style.top = `${nextCenterY - (symbolHeight * symbolScale) / 2}px`;
           applySymbolRotationLocal(symbol, addAngle);
 
+          // Eagerly sync roomObjDataById with the new angle/position so that any
+          // concurrent updateRoomObj call (e.g. dot-button persistDotPosition) reads
+          // the correct angle when it builds its merged content write, preventing a
+          // last-write-wins race that would reset the DB angle back to the old value.
+          if (inChat) {
+            const _rid = symbol.dataset?.id;
+            if (_rid) {
+              const _rexisting = roomObjDataById.get(_rid);
+              if (_rexisting) {
+                roomObjDataById.set(_rid, {
+                  ..._rexisting,
+                  x: parseFloat(symbol.style.left),
+                  y: parseFloat(symbol.style.top),
+                  content: { ..._rexisting.content, angle: symbol.angle, elemId: symbol.elemId },
+                });
+              }
+            }
+          }
+
           if (symbol.isDynamic && symbol.dot) {
             updateDotPositionLocal(symbol.dot);
           }
         }
 
         remapRotatedGroupInternalLinks(group, oldInternalLinks, oldAngleBySymbol, addAngle);
+
+        // Kun (elemId 0) uses a CSS flip transform at 180° (scaleY(-1)) and 270°
+        // (scaleX(-1) rotate(90deg)) instead of a pure rotation. This displaces its
+        // visual junctions from where the geometric pivot placed them. Shift each
+        // internally-connected neighbor to close the resulting gap.
+        for (const symbol of group) {
+          if (symbol.elemId !== 0) continue;
+          if (symbol.angle !== 180 && symbol.angle !== 270) continue;
+          const kunJunctions = getAbsJunctions(symbol);
+          const conns = currentGraph.getSymbolConnections(symbol) || [];
+          for (let kunSide = 0; kunSide < 4; kunSide++) {
+            for (const [neighbor, neighborSide] of conns[kunSide] || []) {
+              if (!groupSet.has(neighbor)) continue;
+              if (neighborSide >= 4) continue;
+              const nj = getAbsJunctions(neighbor)[neighborSide];
+              const kj = kunJunctions[kunSide];
+              const dx = kj.x - nj.x;
+              const dy = kj.y - nj.y;
+              if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) continue;
+              neighbor.style.left = `${(parseFloat(neighbor.style.left) || 0) + dx}px`;
+              neighbor.style.top = `${(parseFloat(neighbor.style.top) || 0) + dy}px`;
+              if (neighbor.isDynamic && neighbor.dot) updateDotPositionLocal(neighbor.dot);
+              if (inChat) {
+                const _nrid = neighbor.dataset?.id;
+                if (_nrid) {
+                  const _nrex = roomObjDataById.get(_nrid);
+                  if (_nrex) {
+                    roomObjDataById.set(_nrid, {
+                      ..._nrex,
+                      x: parseFloat(neighbor.style.left),
+                      y: parseFloat(neighbor.style.top),
+                      content: { ..._nrex.content, angle: neighbor.angle, elemId: neighbor.elemId },
+                    });
+                  }
+                }
+              }
+            }
+          }
+        }
+
         window._sfxRotate?.();
         if (inChat) updateExpressionGroupFramesFromSelection(chatCanvas());
 
@@ -10789,16 +10875,40 @@
         dragGroupSet = null;
         pendingSnapDelta = null;
         resetPendingSnapState();
+
+        // Snapshot every symbol's final post-rotation position RIGHT NOW (synchronously)
+        // before any async gap. refreshRoomSnapshot runs concurrently and can apply stale
+        // DB positions to DOM symbols that haven't been persisted yet; without this capture
+        // persistSymbolVisualState would read those reverted values and write P1 back to DB.
+        const rotationCapture = inChat
+          ? new Map(group.map((sym) => ({
+              symbol: sym,
+              left: parseFloat(sym.style.left),
+              top: parseFloat(sym.style.top),
+              angle: sym.angle,
+              elemId: sym.elemId,
+            })).map((e) => [e.symbol, e]))
+          : null;
+
         // Full refresh after local state settled, before network persistence.
         if (inChat && eyeButton2?.isActivated) {
           forceFreshInspectionLabels = true;
           refreshChatInspectionOverlays();
         }
         if (inChat) {
-          // Guard each symbol against late realtime echoes from previous rotations
-          // arriving during the async persistence loop and reverting local state.
-          for (const symbol of group) markLocalSymbolMutation(symbol, 2500);
-          for (const symbol of group) {
+          for (let i = 0; i < group.length; i++) {
+            const symbol = group[i];
+            // Re-apply captured position to DOM — a concurrent refreshRoomSnapshot may have
+            // reverted it to the stale DB value while we were persisting earlier symbols.
+            const cap = rotationCapture?.get(symbol);
+            if (cap) {
+              symbol.style.left = `${cap.left}px`;
+              symbol.style.top = `${cap.top}px`;
+              symbol.angle = cap.angle;
+              symbol.style.transform = getSymbolTransform(symbol.elemId, symbol.angle);
+            }
+            // Keep all remaining symbols' guards alive through the rest of the loop.
+            for (let j = i; j < group.length; j++) markLocalSymbolMutation(group[j], 3000);
             await persistSymbolVisualState(symbol, true);
             await syncSymbolLinksRemote(symbol, previousSnapshotsBySymbol.get(symbol) || []);
           }
@@ -10899,7 +11009,28 @@
             } else if (group.size > 1) {
               // Multiple disconnected components: rotate each connected component as a unit
               // so that expressions keep their shape instead of each symbol spinning in place.
-              const components = getConnectedComponentsInSelection(group, currentGraph);
+              let components = getConnectedComponentsInSelection(group, currentGraph);
+              // Merge components that share an expression group ID so that a made-up
+              // expression whose graph links are momentarily stale still rotates as one unit.
+              components = (() => {
+                const merged = [];
+                const used = new Set();
+                for (let i = 0; i < components.length; i++) {
+                  if (used.has(i)) continue;
+                  let m = new Set(components[i]);
+                  const gids = new Set([...components[i]].map((s) => s._expressionGroupId).filter(Boolean));
+                  for (let j = i + 1; j < components.length; j++) {
+                    if (used.has(j)) continue;
+                    if ([...components[j]].some((s) => s._expressionGroupId && gids.has(s._expressionGroupId))) {
+                      for (const s of components[j]) { m.add(s); if (s._expressionGroupId) gids.add(s._expressionGroupId); }
+                      used.add(j);
+                    }
+                  }
+                  merged.push(m);
+                  used.add(i);
+                }
+                return merged;
+              })();
               const singleSymbols = [];
               for (const component of components) {
                 if (component.size > 1) {
@@ -10923,20 +11054,55 @@
                 await waitForPendingSymbolOps(allPendingIds);
                 resetPendingSnapState();
                 for (const sym of singleSymbols) {
-                  markLocalSymbolMutation(sym, 1200);
+                  markLocalSymbolMutation(sym, 4000);
                   detachSymbolLocal(sym);
                   applySymbolRotationLocal(sym, 90);
+                  // Eagerly sync roomObjDataById so concurrent dot/link writes use correct angle.
+                  const _srid = sym.dataset?.id;
+                  if (_srid) {
+                    const _srex = roomObjDataById.get(_srid);
+                    if (_srex) {
+                      roomObjDataById.set(_srid, {
+                        ..._srex,
+                        x: parseFloat(sym.style.left),
+                        y: parseFloat(sym.style.top),
+                        content: { ..._srex.content, angle: sym.angle, elemId: sym.elemId },
+                      });
+                    }
+                  }
                   if (sym.isDynamic && sym.dot) updateDotPositionLocal(sym.dot);
                 }
                 window._sfxRotate?.();
                 updateExpressionGroupFramesFromSelection(chatCanvas());
-                for (let i = 0; i < singleSymbols.length; i++) {
-                  resetPendingSnapState();
-                  await reconcileSymbolConnectivityAfterTurn(singleSymbols[i], true);
-                  await new Promise((resolve) => requestAnimationFrame(resolve));
-                  await reconcileSymbolConnectivityAfterTurn(singleSymbols[i], true);
-                  await persistSymbolVisualState(singleSymbols[i], true);
-                  await syncSymbolLinksRemote(singleSymbols[i], snapshots[i]);
+                // Snapshot post-rotation angles synchronously before any async gap.
+                // Also register in _pendingWrites so refreshRoomSnapshot can never revert
+                // angle or position during the reconcile/persist chain below.
+                const singleAngleCapture = new Map(singleSymbols.map((sym) => [sym, sym.angle]));
+                const singleWriteIds = singleSymbols.map((sym) => sym.dataset?.id).filter(Boolean);
+                for (const id of singleWriteIds) _pendingWrites.add(id);
+                try {
+                  for (let i = 0; i < singleSymbols.length; i++) {
+                    // Rolling guard keeps every remaining symbol's time-based window alive.
+                    for (let j = i; j < singleSymbols.length; j++) {
+                      markLocalSymbolMutation(singleSymbols[j], 3000);
+                    }
+                    resetPendingSnapState();
+                    await reconcileSymbolConnectivityAfterTurn(singleSymbols[i], true);
+                    await new Promise((resolve) => requestAnimationFrame(resolve));
+                    await reconcileSymbolConnectivityAfterTurn(singleSymbols[i], true);
+                    // Re-apply the captured angle — reconcile does not change angles but a
+                    // now-expired time guard could let a refresh revert it before _pendingWrites
+                    // was added; belt-and-suspenders to guarantee the correct angle is persisted.
+                    const capturedAngle = singleAngleCapture.get(singleSymbols[i]);
+                    if (capturedAngle !== undefined) {
+                      singleSymbols[i].angle = capturedAngle;
+                      singleSymbols[i].style.transform = getSymbolTransform(singleSymbols[i].elemId, capturedAngle);
+                    }
+                    await persistSymbolVisualState(singleSymbols[i], true);
+                    await syncSymbolLinksRemote(singleSymbols[i], snapshots[i]);
+                  }
+                } finally {
+                  for (const id of singleWriteIds) _pendingWrites.delete(id);
                 }
               }
               if (eyeButton2?.isActivated) {
@@ -10966,23 +11132,55 @@
               // rotate in the same frame, with no delays between them.
               resetPendingSnapState();
               for (const sym of symbols) {
-                markLocalSymbolMutation(sym, 1200);
+                markLocalSymbolMutation(sym, 4000);
                 detachSymbolLocal(sym);
                 applySymbolRotationLocal(sym, 90);
+                // Eagerly sync roomObjDataById so concurrent dot/link writes use correct angle.
+                const _erid = sym.dataset?.id;
+                if (_erid) {
+                  const _erex = roomObjDataById.get(_erid);
+                  if (_erex) {
+                    roomObjDataById.set(_erid, {
+                      ..._erex,
+                      x: parseFloat(sym.style.left),
+                      y: parseFloat(sym.style.top),
+                      content: { ..._erex.content, angle: sym.angle, elemId: sym.elemId },
+                    });
+                  }
+                }
                 if (sym.isDynamic && sym.dot) updateDotPositionLocal(sym.dot);
               }
               window._sfxRotate?.();
               updateExpressionGroupFramesFromSelection(chatCanvas());
 
+              // Snapshot post-rotation angles and protect against refreshRoomSnapshot
+              // reverts for the entire reconcile/persist chain.
+              const elseAngleCapture = new Map(symbols.map((sym) => [sym, sym.angle]));
+              const elseWriteIds = symbols.map((sym) => sym.dataset?.id).filter(Boolean);
+              for (const id of elseWriteIds) _pendingWrites.add(id);
               // Reconcile and persist sequentially to avoid shared snap-state races
               // (checkConnections/trySnapAndCommitSymbol write to global pendingSnapCandidates).
-              for (let i = 0; i < symbols.length; i++) {
-                resetPendingSnapState();
-                await reconcileSymbolConnectivityAfterTurn(symbols[i], true);
-                await new Promise((resolve) => requestAnimationFrame(resolve));
-                await reconcileSymbolConnectivityAfterTurn(symbols[i], true);
-                await persistSymbolVisualState(symbols[i], true);
-                await syncSymbolLinksRemote(symbols[i], snapshots[i]);
+              try {
+                for (let i = 0; i < symbols.length; i++) {
+                  // Rolling guard so every remaining symbol's time-based window stays alive.
+                  for (let j = i; j < symbols.length; j++) {
+                    markLocalSymbolMutation(symbols[j], 3000);
+                  }
+                  resetPendingSnapState();
+                  await reconcileSymbolConnectivityAfterTurn(symbols[i], true);
+                  await new Promise((resolve) => requestAnimationFrame(resolve));
+                  await reconcileSymbolConnectivityAfterTurn(symbols[i], true);
+                  // Re-apply captured angle before persist.
+                  const capturedAngle = elseAngleCapture.get(symbols[i]);
+                  if (capturedAngle !== undefined) {
+                    symbols[i].angle = capturedAngle;
+                    symbols[i].style.transform = getSymbolTransform(symbols[i].elemId, capturedAngle);
+                  }
+                  await persistSymbolVisualState(symbols[i], true);
+                  await syncSymbolLinksRemote(symbols[i], snapshots[i]);
+                }
+              } finally {
+                for (const id of elseWriteIds) _pendingWrites.delete(id);
               }
 
               if (eyeButton2?.isActivated) {
@@ -11649,39 +11847,97 @@
           }
 
           function findManualExpressionMeta(component) {
-            if (!component || component.size < 1) return null;
+            if (!component || component.size < 1) return [];
+
+            // Phase 1: collect all candidate matches without stamping anything yet.
+            const candidates = [];
             for (const [storedWord, entry] of library) {
               const storedId = entry?.[0];
               const storedGraph = entry?.[1];
               if (!storedId || !storedGraph?.nodes?.length) continue;
-              if (storedGraph.nodes.length !== component.size) continue;
-              // Skip multi-symbol patterns with no edge data (old format without topology info).
-              // Without edges, any connection topology would match, causing false positives.
-              if (storedGraph.nodes.length > 1) {
-                const hasEdges =
-                  Array.isArray(storedGraph.adj) &&
-                  storedGraph.adj.some(
-                    (sides) => Array.isArray(sides) && sides.some((list) => list?.length > 0),
-                  );
-                if (!hasEdges) continue;
-              }
-              const matched = matchPatternOnSelection(component, storedGraph);
-              if (!matched || !areSetsEqual(matched, component)) continue;
+              if (storedGraph.nodes.length > component.size) continue;
 
-              const libNode = typeof nodes?.get === 'function' ? nodes.get(storedId) : null;
-              const rawTitle = String(libNode?.title || '');
-              const why = rawTitle.includes('. ') ? rawTitle.split(/\. (.+)/)[1] || '' : rawTitle;
-              const word = String(libNode?.word || storedWord || '').trim();
-              return {
-                key: makeManualExpressionKey(component, storedId),
-                group: component,
+              const allMatches = matchAllPatternsOnSelection(component, storedGraph);
+              for (const matched of allMatches) {
+                // Already handled by the first (expressionGroups) loop — skip.
+                if ([...matched].every((s) => s._expressionGroupId)) continue;
+
+                const libNode = typeof nodes?.get === 'function' ? nodes.get(storedId) : null;
+                const rawTitle = String(libNode?.title || '');
+                const why = rawTitle.includes('. ') ? rawTitle.split(/\. (.+)/)[1] || '' : rawTitle;
+                const word = String(libNode?.word || storedWord || '').trim();
+                const exprLang = getExpressionSourceLang(String(libNode?.lang || ''), word, why);
+                candidates.push({ matched, word, why, exprLang, storedId });
+              }
+            }
+
+            // Phase 2: keep only maximal matches — drop any candidate whose symbol
+            // set is a strict subset of a larger candidate's symbol set. This ensures
+            // the retroactive stamp (phase 3) is only applied to the biggest match
+            // and that sub-expressions don't produce their own cards or Supabase entries.
+            const maximal = candidates.filter((cA) => {
+              for (const cB of candidates) {
+                if (cA === cB || cA.matched.size >= cB.matched.size) continue;
+                let isSubset = true;
+                for (const sym of cA.matched) {
+                  if (!cB.matched.has(sym)) { isSubset = false; break; }
+                }
+                if (isSubset) return false;
+              }
+              return true;
+            });
+
+            // Phase 3: retroactively stamp maximal matches and build result list.
+            const results = [];
+            for (const { matched, word, why, exprLang, storedId } of maximal) {
+              const allOwned = [...matched].every(
+                (s) => !s.dataset.ownerUid || s.dataset.ownerUid === currentUser?.uid,
+              );
+              if (allOwned && canvas === chatCanvas() && currentUser?.uid) {
+                const symIds = [...matched].map((s) => s.dataset?.id || '').filter(Boolean).sort();
+                if (symIds.length === matched.size) {
+                  const groupId = `manual_${symIds.join('_')}`;
+                  // Skip only if every symbol is already correctly stamped with this exact group.
+                  // A partial or stale stamp (e.g. sub-expression ID from an old session) must
+                  // be overwritten so other users see the correct largest-expression card.
+                  const alreadyCorrect = [...matched].every((s) => s._expressionGroupId === groupId);
+                  if (alreadyCorrect) { results.push({ key: makeManualExpressionKey(matched, storedId), group: matched, word, why, exprLang, nodeId: String(storedId) }); continue; }
+                  const retroPayload = {
+                    exprGroupId: groupId,
+                    exprWord: word,
+                    exprWhy: why,
+                    exprLang,
+                    exprNodeId: String(storedId),
+                    exprAuthorUid: currentUser.uid,
+                  };
+                  for (const sym of matched) {
+                    sym._expressionGroupId = groupId;
+                    sym.dataset.exprWord = retroPayload.exprWord;
+                    sym.dataset.exprWhy = retroPayload.exprWhy;
+                    sym.dataset.exprLang = retroPayload.exprLang;
+                    sym.dataset.exprNodeId = retroPayload.exprNodeId;
+                    sym.dataset.exprAuthorUid = retroPayload.exprAuthorUid;
+                  }
+                  if (!expressionGroups.has(groupId)) expressionGroups.set(groupId, new Set());
+                  for (const sym of matched) expressionGroups.get(groupId).add(sym);
+                  Promise.allSettled([...matched].map(async (sym) => {
+                    const symId = sym.dataset?.id || await sym._pendingIdPromise?.catch(() => null);
+                    if (!symId) return;
+                    await updateRoomObj(symId, retroPayload).catch(console.warn);
+                  }));
+                }
+              }
+
+              results.push({
+                key: makeManualExpressionKey(matched, storedId),
+                group: matched,
                 word,
                 why,
-                exprLang: getExpressionSourceLang(String(libNode?.lang || ''), word, why),
+                exprLang,
                 nodeId: String(storedId),
-              };
+              });
             }
-            return null;
+            return results;
           }
 
           // Determine which expression groups/components are fully selected (even if selection includes other symbols).
@@ -11711,9 +11967,13 @@
               const libraryEntry = storedWord ? library.get(storedWord) : null;
               if (libraryEntry) {
                 const [, storedGraph] = libraryEntry;
-                const stillMatches =
-                  storedGraph?.nodes?.length === grp.size &&
-                  !!matchPatternOnSelection(grp, storedGraph);
+                let stillMatches = storedGraph?.nodes?.length === grp.size;
+                if (stillMatches) {
+                  const storedHasEdges = storedGraph?.adj?.some((s) => s?.some((l) => l?.length > 0));
+                  if (storedHasEdges) {
+                    stillMatches = !!matchPatternOnSelection(grp, storedGraph);
+                  }
+                }
                 if (!stillMatches) continue;
               }
 
@@ -11739,8 +11999,24 @@
               }
             }
             if (alreadyCovered) continue;
-            const meta = findManualExpressionMeta(component);
-            if (meta) wanted.set(meta.key, meta);
+            const metas = findManualExpressionMeta(component);
+            for (const meta of metas) {
+              if (!wanted.has(meta.key)) wanted.set(meta.key, meta);
+            }
+          }
+
+          // When a smaller expression's symbols are fully contained in a larger one,
+          // show only the larger expression (same behaviour as spawned expressions).
+          for (const [gidA, metaA] of [...wanted.entries()]) {
+            if (!wanted.has(gidA)) continue;
+            for (const [gidB, metaB] of wanted.entries()) {
+              if (gidA === gidB || metaA.group.size >= metaB.group.size) continue;
+              let isSubset = true;
+              for (const sym of metaA.group) {
+                if (!metaB.group.has(sym)) { isSubset = false; break; }
+              }
+              if (isSubset) { wanted.delete(gidA); break; }
+            }
           }
 
           // Remove stale cards
@@ -12276,24 +12552,6 @@
           card.style.left = `${x}px`;
           card.style.top = `${y}px`;
 
-          if (card._manualOffset) continue;
-
-          // Avoid card-on-card overlap in the right margin.
-          for (let tries = 0; tries < 12; tries++) {
-            const box = {
-              left: x,
-              top: y,
-              right: x + (card.offsetWidth || 0),
-              bottom: y + (card.offsetHeight || 0),
-            };
-            const overlaps = occupied.some((o) => boxesOverlap(box, o, 10));
-            if (!overlaps) {
-              occupied.push(box);
-              break;
-            }
-            y = y + (card.offsetHeight || 0) + 10;
-            card.style.top = `${y}px`;
-          }
         }
       }
 
@@ -12457,6 +12715,18 @@
           await deleteChatSelectionBatch(currentRoomId, symbolIdsToDelete, emojiIdsToDelete);
         }
 
+        // Delete own annotations anchored to any removed symbol (fire-and-forget).
+        if (symbolIdsToDelete.length && currentUser?.uid && currentRoomId) {
+          supabase
+            .from('room_objs')
+            .delete()
+            .eq('room_id', currentRoomId)
+            .eq('is_annotation', true)
+            .eq('owner_uid', currentUser.uid)
+            .in('anno_root_symbol_id', symbolIdsToDelete)
+            .then(({ error }) => { if (error) console.error('[annotations] delete error:', error); });
+        }
+
         scheduleChatMiniMapUpdate?.();
         clearExpressionGroupFrame();
 
@@ -12559,6 +12829,22 @@
 
         if (canvasSymbolIdsToDelete.length) {
           deleteChatSelectionBatch(currentRoomId, canvasSymbolIdsToDelete, []).catch(console.error);
+          // Delete annotations anchored to the removed expression symbols.
+          if (currentUser?.uid && currentRoomId) {
+            console.log('[annotations] attempting delete for symbol ids:', canvasSymbolIdsToDelete, 'uid:', currentUser.uid);
+            supabase
+              .from('room_objs')
+              .delete()
+              .eq('room_id', currentRoomId)
+              .eq('is_annotation', true)
+              .eq('owner_uid', currentUser.uid)
+              .in('anno_root_symbol_id', canvasSymbolIdsToDelete)
+              .select('id')
+              .then(({ data, error }) => {
+                if (error) console.error('[annotations] delete error:', error);
+                else console.log('[annotations] deleted rows:', data?.length ?? 0, data);
+              });
+          }
           updateExpressionGroupFramesFromSelection(chatCanvas());
         }
 
@@ -14475,6 +14761,44 @@
           if (!dragGroupStarted) {
             dragGroupStarted = true;
             dragGroupSet = new Set(dragGroup.keys()); // 当前被拖动的所有元素（symbol+emoji）
+
+            // Detect expression groups that are being split by this drag.
+            // If some members are in the drag but not all, the group breaks.
+            const brokenGroupIds = new Set();
+            for (const el of dragGroupSet) {
+              if (!el.classList?.contains('symbol')) continue;
+              const gid = el._expressionGroupId;
+              if (!gid) continue;
+              const grp = expressionGroups.get(gid);
+              if (!grp || grp.size <= 1) continue;
+              const allInDrag = [...grp].every((s) => dragGroupSet.has(s));
+              if (!allInDrag) brokenGroupIds.add(gid);
+            }
+            if (brokenGroupIds.size && currentRoomId) {
+              for (const gid of brokenGroupIds) {
+                const grp = expressionGroups.get(gid);
+                if (!grp) continue;
+                const rootId = [...grp].map((s) => s.dataset?.id || '').filter(Boolean).sort()[0];
+                if (!rootId) continue;
+                // Remove annotation bubbles from DOM.
+                document.querySelectorAll('.annotation-bubble').forEach((annoEl) => {
+                  if (annoEl.dataset?.annoRootSymbolId === rootId) {
+                    emojiById.delete(annoEl.dataset?.id || '');
+                    annoEl.remove();
+                  }
+                });
+                // Delete from Supabase (fire-and-forget).
+                supabase
+                  .from('room_objs')
+                  .delete()
+                  .eq('room_id', currentRoomId)
+                  .eq('is_annotation', true)
+                  .eq('anno_root_symbol_id', rootId)
+                  .then(({ error }) => {
+                    if (error) console.error('[annotations] break cleanup:', error);
+                  });
+              }
+            }
 
             for (const el of dragGroupSet) {
               if (el.classList?.contains('symbol')) {
@@ -16424,10 +16748,49 @@
         const [foundIds, elimBasic, representatives, hasDuplicateExpression] =
           analyzeSelectionSet(selectedSymbols);
 
+        // Bubbles for fully-selected stamped expression groups (spawned expressions are
+        // graph-disconnected so they can't be matched by the library loop below).
+        const stampCoveredGroupWords = new Map(); // groupId → word
+        for (const sym of selectedSymbols) {
+          const gid = sym?._expressionGroupId;
+          if (!gid || stampCoveredGroupWords.has(gid)) continue;
+          const grp = expressionGroups.get(gid);
+          if (!grp || grp.size < 1) continue;
+          if (![...grp].every((s) => selectedSymbols.has(s))) continue;
+          const word = String(sym.dataset?.exprWord || '').trim();
+          if (!word) continue;
+          // Meaning bubbles only reflect the viewer's own library.
+          // Cross-user expressions are revealed via the mystery card instead.
+          const authorUid = String(sym.dataset?.exprAuthorUid || '').trim();
+          if (authorUid && authorUid !== currentUser?.uid) continue;
+          // Revalidate against the stored library pattern so that rotating or
+          // toggling a dot on a group member removes the label if the new
+          // configuration no longer matches what was originally defined.
+          const grpLibEntry = library.get(word);
+          if (grpLibEntry) {
+            const [, grpStoredGraph] = grpLibEntry;
+            if ((grpStoredGraph?.nodes?.length ?? 0) !== grp.size) continue;
+            const grpHasEdges = grpStoredGraph?.adj?.some((r) => r?.some((l) => l?.length > 0));
+            if (grpHasEdges && !matchPatternOnSelection(grp, grpStoredGraph)) continue;
+          }
+          stampCoveredGroupWords.set(gid, word);
+          let avgX = 0, avgY = 0, lastSym = sym;
+          for (const s of grp) {
+            avgX += (parseFloat(s.style.left) || 0) + s.offsetWidth / 2;
+            avgY += (parseFloat(s.style.top) || 0) + s.offsetHeight / 2;
+            lastSym = s;
+          }
+          avgX /= grp.size;
+          avgY /= grp.size;
+          labelData.push([word, avgX, avgY, lastSym, true]);
+        }
+
         for (const [storedWord, [storedId, storedGraph]] of library) {
           const matches = [];
           for (const component of getConnectedSymbolComponents(selectedSymbols, currentGraph)) {
             if (component.size < storedGraph.nodes.length) continue;
+            // Skip components already covered by stamps for this same word (avoids duplicates).
+            if ([...component].some((s) => stampCoveredGroupWords.get(s._expressionGroupId) === storedWord)) continue;
             matches.push(...matchAllPatternsOnSelection(component, storedGraph));
           }
 
@@ -16657,6 +17020,12 @@
         hasDuplicateExpression,
         componentSymbols = selectedSymbols,
       ) {
+        // Snapshot topology now, while currentGraph matches componentSymbols.
+        // Dragging a symbol after the box opens would mutate currentGraph and
+        // lose edges before the done-click fires.
+        const frozenPattern = snapshotSelectionAsPattern(currentGraph, componentSymbols);
+        const frozenLayout = snapshotSelectionAsLayout(currentGraph, componentSymbols);
+
         function computeSelectionBoundsLocal() {
           const first = componentSymbols.values().next().value;
           if (!first) return null;
@@ -16878,9 +17247,6 @@
             showFeedback(message, true);
             return;
           }
-          console.warn('[submit] library size =', library?.size);
-          console.warn('[submit] library has word?', word, library?.has(word));
-          console.warn('[submit] library keys =', [...(library?.keys?.() || [])]);
           if (library.has(word)) {
             showFeedback(t.wordAlreadyDefined, true);
             return;
@@ -17113,8 +17479,8 @@
                   tabHeaders[2].classList.toggle('tab-active');
                 }, 1000); // Adjust timing as needed (1s cycle: 0.5s fade in, 0.5s fade out)
 
-                const pattern = snapshotSelectionAsPattern(currentGraph, componentSymbols);
-                const layout = snapshotSelectionAsLayout(currentGraph, componentSymbols);
+                const pattern = frozenPattern;
+                const layout = frozenLayout;
                 let id = await synthNode(
                   componentSymbols,
                   word,
@@ -17124,6 +17490,45 @@
                   pattern,
                 );
                 library.set(word, [id, pattern, layout]);
+
+                // Stamp expression metadata on the made-up symbols so other users
+                // see a mystery card (and the stamp bubble is skipped for them).
+                // Use sorted symbol DB IDs so two instances of the same pattern
+                // get different group IDs (node ID alone would collide).
+                const _madeUpSymIds = await Promise.all(
+                  [...componentSymbols].map(async (sym) =>
+                    sym.dataset?.id || (await sym._pendingIdPromise?.catch(() => null)) || '',
+                  ),
+                );
+                const madeUpGroupId = `manual_${_madeUpSymIds.filter(Boolean).sort().join('_')}`;
+                const madeUpExprLang = getExpressionSourceLang('', word, justification);
+                const madeUpPayload = {
+                  exprGroupId: madeUpGroupId,
+                  exprWord: word,
+                  exprWhy: justification,
+                  exprLang: madeUpExprLang,
+                  exprNodeId: String(id),
+                  exprAuthorUid: currentUser?.uid || '',
+                };
+                for (const sym of componentSymbols) {
+                  sym._expressionGroupId = madeUpGroupId;
+                  sym.dataset.exprWord = madeUpPayload.exprWord;
+                  sym.dataset.exprWhy = madeUpPayload.exprWhy;
+                  sym.dataset.exprLang = madeUpPayload.exprLang;
+                  sym.dataset.exprNodeId = madeUpPayload.exprNodeId;
+                  sym.dataset.exprAuthorUid = madeUpPayload.exprAuthorUid;
+                }
+                if (!expressionGroups.has(madeUpGroupId)) expressionGroups.set(madeUpGroupId, new Set());
+                for (const sym of componentSymbols) expressionGroups.get(madeUpGroupId).add(sym);
+                if (canvas === chatCanvas()) {
+                  updateExpressionGroupFrame([...componentSymbols], canvas);
+                  Promise.allSettled([...componentSymbols].map(async (sym) => {
+                    const symId = sym.dataset?.id || await sym._pendingIdPromise?.catch(() => null);
+                    if (!symId) return;
+                    await updateRoomObj(symId, madeUpPayload).catch((e) =>
+                      console.warn('made-up expr persist failed:', e));
+                  }));
+                }
                 tutorialRecordDefinedWordGroup?.(
                   getTutorialStepsSafe?.()?.[tutorialStepIndex]?.requiredWordKey,
                   componentSymbols,
@@ -21456,10 +21861,7 @@
         });
 
         if (!hasDuplicate) {
-          const serializedPattern = serializePatternGraph(pattern);
-          const serializedLayout = serializeSelectionLayout(
-            snapshotSelectionAsLayout(currentGraph, components),
-          );
+          const snapshotLayout = snapshotSelectionAsLayout(currentGraph, components);
           let newNode = {
             id: id,
             shape: 'circularImage',
@@ -21468,8 +21870,12 @@
             title: capitalizeFirstLetter(word) + '. ' + capitalizeFirstLetter(justification),
             lang: currentLang,
             _svg: svgString,
-            pattern: serializedPattern,
-            layout: serializedLayout,
+            // Store PatternGraph instance (not pre-serialized). exportGraphState calls
+            // serializePatternGraph(n.pattern) which reads .adj — double-serializing
+            // a {nodes,edges} plain object would silently drop all edges because
+            // serializePatternGraph reads .adj (only on PatternGraph), not .edges.
+            pattern: pattern,
+            layout: snapshotLayout,
           };
 
           nodes.add(newNode); // Add node to dataset
