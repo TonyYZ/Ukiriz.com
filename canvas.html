@@ -613,9 +613,9 @@
         touch-action: none;
         /* Faint visual cue — three diagonal dots */
         background:
-          radial-gradient(circle, rgba(53,40,168,0.35) 1.5px, transparent 1.5px) 4px 10px,
-          radial-gradient(circle, rgba(53,40,168,0.35) 1.5px, transparent 1.5px) 8px  6px,
-          radial-gradient(circle, rgba(53,40,168,0.35) 1.5px, transparent 1.5px) 12px 2px;
+          radial-gradient(circle, rgba(53, 40, 168, 0.35) 1.5px, transparent 1.5px) 4px 10px,
+          radial-gradient(circle, rgba(53, 40, 168, 0.35) 1.5px, transparent 1.5px) 8px 6px,
+          radial-gradient(circle, rgba(53, 40, 168, 0.35) 1.5px, transparent 1.5px) 12px 2px;
         background-repeat: no-repeat;
       }
 
@@ -1476,13 +1476,13 @@
         font-size: 12.5px;
         line-height: 1.55;
         padding: 6px 10px;
-        background: rgba(128,128,128,0.07);
+        background: rgba(128, 128, 128, 0.07);
         border-radius: 6px;
         margin: 0;
       }
       .readings-divider {
         border: none;
-        border-top: 1px solid rgba(128,128,128,0.15);
+        border-top: 1px solid rgba(128, 128, 128, 0.15);
         margin: 4px 0;
       }
       .readings-pattern-section {
@@ -1502,15 +1502,20 @@
         align-self: flex-start;
         padding: 6px 16px;
         border-radius: 20px;
-        border: 1.5px solid rgba(91,79,207,0.5);
+        border: 1.5px solid rgba(91, 79, 207, 0.5);
         background: transparent;
         color: inherit;
         font-size: 12px;
         cursor: pointer;
         transition: opacity 0.15s;
       }
-      .readings-generate-btn:hover { opacity: 0.7; }
-      .readings-generate-btn:disabled { opacity: 0.35; cursor: default; }
+      .readings-generate-btn:hover {
+        opacity: 0.7;
+      }
+      .readings-generate-btn:disabled {
+        opacity: 0.35;
+        cursor: default;
+      }
       .readings-claims {
         display: flex;
         flex-direction: column;
@@ -1520,9 +1525,9 @@
         font-size: 12.5px;
         line-height: 1.55;
         padding: 7px 10px;
-        background: rgba(91,79,207,0.06);
+        background: rgba(91, 79, 207, 0.06);
         border-radius: 6px;
-        border-left: 2px solid rgba(91,79,207,0.28);
+        border-left: 2px solid rgba(91, 79, 207, 0.28);
         margin: 0;
       }
       .readings-meta {
@@ -5666,7 +5671,9 @@
           minimapToggleBtn.textContent = collapsed ? '▼' : '▲';
           minimapToggleBtn.title = collapsed ? 'Expand map' : 'Collapse map';
         }
-        try { localStorage.setItem('chatMinimapCollapsed', String(collapsed)); } catch {}
+        try {
+          localStorage.setItem('chatMinimapCollapsed', String(collapsed));
+        } catch {}
         if (!collapsed) {
           // Redraw after the CSS height transition finishes (0.15s)
           setTimeout(() => scheduleChatMiniMapUpdate?.(), 160);
@@ -8276,7 +8283,9 @@
         const total = sentInterpretationsList.length;
 
         let cached = null;
-        try { cached = JSON.parse(localStorage.getItem(LIBRARY_PATTERNS_KEY) || 'null'); } catch {}
+        try {
+          cached = JSON.parse(localStorage.getItem(LIBRARY_PATTERNS_KEY) || 'null');
+        } catch {}
 
         libraryReadingsView.innerHTML = '';
         const panel = document.createElement('div');
@@ -8330,7 +8339,9 @@
         }
 
         // Divider before pattern section
-        panel.appendChild(Object.assign(document.createElement('hr'), { className: 'readings-divider' }));
+        panel.appendChild(
+          Object.assign(document.createElement('hr'), { className: 'readings-divider' }),
+        );
 
         // Pattern section
         const patternSection = document.createElement('div');
@@ -8355,7 +8366,9 @@
           const meta = document.createElement('div');
           meta.className = 'readings-meta';
           const dateStr = new Date(cached.generatedAt).toLocaleDateString(zh ? 'zh-CN' : 'en-US', {
-            year: 'numeric', month: 'long', day: 'numeric',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
           });
           const line1 = document.createElement('p');
           line1.className = 'readings-meta-line';
@@ -8377,16 +8390,26 @@
           const btn = document.createElement('button');
           btn.className = 'readings-generate-btn';
           btn.textContent = cached?.claims?.length
-            ? (zh ? '重新生成' : 'Regenerate')
-            : (zh ? '发现模式' : 'Discover patterns');
+            ? zh
+              ? '重新生成'
+              : 'Regenerate'
+            : zh
+              ? '发现模式'
+              : 'Discover patterns';
           btn.addEventListener('click', async () => {
             if (btn.disabled) return;
             btn.disabled = true;
             btn.textContent = zh ? '生成中…' : 'Finding patterns…';
             try {
               const summary = await generateReadingsPatternSummary();
-              const record = { claims: summary, generatedAt: new Date().toISOString(), countAtGeneration: total };
-              try { localStorage.setItem(LIBRARY_PATTERNS_KEY, JSON.stringify(record)); } catch {}
+              const record = {
+                claims: summary,
+                generatedAt: new Date().toISOString(),
+                countAtGeneration: total,
+              };
+              try {
+                localStorage.setItem(LIBRARY_PATTERNS_KEY, JSON.stringify(record));
+              } catch {}
               renderReadingsView();
             } catch (_) {
               btn.disabled = false;
@@ -8455,10 +8478,14 @@
         const inputChars = word.length + interpTexts.reduce((s, t) => s + t.length, 0);
         const estInputTokens = Math.ceil(inputChars / 4);
         console.log(
-          '[summary] sending request — word:', word,
-          '| interpretations:', interpTexts.length,
-          '| est. input chars:', inputChars,
-          '| rough input token estimate:', estInputTokens,
+          '[summary] sending request — word:',
+          word,
+          '| interpretations:',
+          interpTexts.length,
+          '| est. input chars:',
+          inputChars,
+          '| rough input token estimate:',
+          estInputTokens,
         );
 
         const response = await fetch('https://hooks.ukiriz.com/', {
@@ -8476,9 +8503,12 @@
         if (data.usage) {
           const { input_tokens, output_tokens } = data.usage;
           console.log(
-            '[summary] token usage — input:', input_tokens,
-            '| output:', output_tokens,
-            '| total:', (input_tokens ?? 0) + (output_tokens ?? 0),
+            '[summary] token usage — input:',
+            input_tokens,
+            '| output:',
+            output_tokens,
+            '| total:',
+            (input_tokens ?? 0) + (output_tokens ?? 0),
           );
         } else {
           console.log('[summary] no usage field in response (backend may not expose it yet)');
@@ -8526,7 +8556,10 @@
 
         // Load received interpretations (non-blocking; also triggers notification toast)
         loadLibraryInterpretations()
-          .then(() => { renderLibraryTreeView?.(); return checkInterpretationNotifications(); })
+          .then(() => {
+            renderLibraryTreeView?.();
+            return checkInterpretationNotifications();
+          })
           .catch(console.error);
 
         // Restore the room the user was in before the last refresh
@@ -9902,8 +9935,16 @@
           }
         }
 
-        const edgeCount = g.adj.reduce((sum, sides) => sum + sides.reduce((s, l) => s + l.length, 0), 0) / 2;
-        console.log('[snapshot] nodes:', g.nodes.length, 'edges:', edgeCount, 'adj:', g.adj.map(s => s.map(l => l.length)));
+        const edgeCount =
+          g.adj.reduce((sum, sides) => sum + sides.reduce((s, l) => s + l.length, 0), 0) / 2;
+        console.log(
+          '[snapshot] nodes:',
+          g.nodes.length,
+          'edges:',
+          edgeCount,
+          'adj:',
+          g.adj.map((s) => s.map((l) => l.length)),
+        );
         return g;
       }
 
@@ -10132,7 +10173,7 @@
       const symbolWidth = 156;
       const symbolHeight = 67;
 
-      const calX = 1;
+      const calX = 4;
       const calY = 6.7 * symbolScale;
       const calInvY = 7 * symbolScale;
       const calCan1 = 4 * symbolScale;
@@ -10317,15 +10358,15 @@
 
       // Symbol data (position on circle)
       const symbolData = [
-        `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000;stroke-width:1.02897" d="M15.362 16.96v-1.28H49.92v2.56H15.362Z"></path><path d="M0 5.371v-1.28h34.56v2.56H0z" style="fill:#000"></path></svg>`,
-        `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M0 16.96v-1.28h38.08V4.48h2.56v13.76H0Z"></path></svg>`,
-        `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M0 16.96v-1.28h23.68V4.48h2.56v11.2h23.68v2.56H0Z"></path></svg>`,
-        `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><a transform="translate(0 -12)"><path style="fill:#000" d="M0 31.52c0-1.28 0-1.28 16.31-1.28 8.438 0 12.956-.003 14.768.024 1.676.024.91-.928.319-1.77-6.312-9.011 4.424-20.08 13.641-14.065 5.795 3.782 5.914 12.549.223 16.464-2.752 1.894-2.823 1.899-25.021 1.903C0 32.8 0 32.8 0 31.52m43.461-2.46c6.384-3.947 3.578-13.7-3.941-13.7-8.426 0-10.362 11.492-2.437 14.458 1.796.672 4.604.338 6.378-.759"></path><path d="M-.007 31.517v-1.28h16.31s20.052 2.554 3.93 2.557l-20.24.003z" style="fill:#000"></path></a></svg>`,
-        `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M9.28 11.36V4.48h2.56v11.2h38.08v2.56H9.28Z"></path></svg>`,
-        `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M9.28 11.36V4.48h2.56v11.2h26.24V4.48h2.56v13.76H9.28z"></path></svg>`,
-        `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M49.915 19.513c0-1.28 0-1.28-16.31-1.28-8.438 0-12.955-.003-14.768.023-1.675.025-.909-.927-.318-1.77 6.312-9.01-4.424-20.08-13.642-14.065-5.795 3.782-5.913 12.55-.223 16.465 2.752 1.893 2.824 1.899 25.021 1.903 20.24.004 20.24.004 20.24-1.276M6.454 17.052c-6.384-3.947-3.578-13.7 3.941-13.7 8.426 0 10.363 11.493 2.437 14.459-1.796.672-4.604.338-6.378-.76"></path><path d="M49.922 19.51v-1.28h-16.31s-20.052 2.553-3.93 2.556l20.24.004z" style="fill:#000"></path></svg>`,
-        `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path class="qian-center-circle" style="fill:#000" d="M24.96.48a10.24 10.24 0 1 1 0 20.48 10.24 10.24 0 0 1 0-20.48Zm0 2.56a7.68 7.68 0 1 0 0 15.36 7.68 7.68 0 0 0 0-15.36Z"></path><g class="qian-outer-lines" opacity="0"><rect x="0" y="10.184" width="16.8" height="2.56" fill="#000"></rect><rect x="33.12" y="10.184" width="16.8" height="2.56" fill="#000"></rect></g></svg>`,
-        `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M0 16.96v-1.28h49.92v2.56H0Zm8-11.2V4.48h33.92v2.56H8Z"></path></svg>`,
+        `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><rect x="15.362" y="15.68" width="34.558" height="2.56" rx="1.28" style="fill:#000"/><rect x="0" y="4.091" width="34.56" height="2.56" rx="1.28" style="fill:#000"/></svg>`,
+        `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="15.68" width="40.64" height="2.56" rx="1.28" style="fill:#000"/><rect x="38.08" y="4.48" width="2.56" height="13.76" rx="1.28" style="fill:#000"/></svg>`,
+        `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="15.68" width="49.92" height="2.56" rx="1.28" style="fill:#000"/><rect x="23.68" y="4.48" width="2.56" height="12.48" rx="1.28" style="fill:#000"/></svg>`,
+        `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><a transform="translate(0 -12)"><path style="fill:#000" d="M0 31.52c0-1.28 0-1.28 16.31-1.28 8.438 0 12.956-.003 14.768.024 1.676.024.91-.928.319-1.77-6.312-9.011 4.424-20.08 13.641-14.065 5.795 3.782 5.914 12.549.223 16.464-2.752 1.894-2.823 1.899-25.021 1.903C0 32.8 0 32.8 0 31.52m43.461-2.46c6.384-3.947 3.578-13.7-3.941-13.7-8.426 0-10.362 11.492-2.437 14.458 1.796.672 4.604.338 6.378-.759"></path></a><rect x="0" y="18.24" width="16.31" height="2.56" rx="1.28" style="fill:#000"/></svg>`,
+        `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><rect x="9.28" y="15.68" width="40.64" height="2.56" rx="1.28" style="fill:#000"/><rect x="9.28" y="4.48" width="2.56" height="13.76" rx="1.28" style="fill:#000"/></svg>`,
+        `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><rect x="9.28" y="15.68" width="31.36" height="2.56" rx="1.28" style="fill:#000"/><rect x="9.28" y="4.48" width="2.56" height="13.76" rx="1.28" style="fill:#000"/><rect x="38.08" y="4.48" width="2.56" height="13.76" rx="1.28" style="fill:#000"/></svg>`,
+        `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M49.915 19.513c0-1.28 0-1.28-16.31-1.28-8.438 0-12.955-.003-14.768.023-1.675.025-.909-.927-.318-1.77 6.312-9.01-4.424-20.08-13.642-14.065-5.795 3.782-5.913 12.55-.223 16.465 2.752 1.893 2.824 1.899 25.021 1.903 20.24.004 20.24.004 20.24-1.276M6.454 17.052c-6.384-3.947-3.578-13.7 3.941-13.7 8.426 0 10.363 11.493 2.437 14.459-1.796.672-4.604.338-6.378-.76"></path><rect x="33.61" y="18.24" width="16.31" height="2.56" rx="1.28" style="fill:#000"/></svg>`,
+        `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path class="qian-center-circle" style="fill:#000" d="M24.96.48a10.24 10.24 0 1 1 0 20.48 10.24 10.24 0 0 1 0-20.48Zm0 2.56a7.68 7.68 0 1 0 0 15.36 7.68 7.68 0 0 0 0-15.36Z"></path><g class="qian-outer-lines" opacity="0"><rect x="0" y="10.184" width="16.8" height="2.56" rx="1.28" fill="#000"></rect><rect x="33.12" y="10.184" width="16.8" height="2.56" rx="1.28" fill="#000"></rect></g></svg>`,
+        `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="15.68" width="49.92" height="2.56" rx="1.28" style="fill:#000"/><rect x="8" y="4.48" width="33.92" height="2.56" rx="1.28" style="fill:#000"/></svg>`,
       ];
 
       const dotData = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><circle cx="5" cy="5" r="5" fill="#d00000"/></svg>`;
@@ -10827,7 +10868,9 @@
 
           // BFS starting from non-kun symbols first (they are the correct anchors).
           const flipVisited = new Set();
-          const bfsRoots = [...group].sort((a, b) => (a.elemId === 0 ? 1 : 0) - (b.elemId === 0 ? 1 : 0));
+          const bfsRoots = [...group].sort(
+            (a, b) => (a.elemId === 0 ? 1 : 0) - (b.elemId === 0 ? 1 : 0),
+          );
           for (const startSym of bfsRoots) {
             if (flipVisited.has(startSym)) continue;
             flipVisited.add(startSym);
@@ -10855,7 +10898,11 @@
                           ..._rex,
                           x: parseFloat(neighbor.style.left),
                           y: parseFloat(neighbor.style.top),
-                          content: { ..._rex.content, angle: neighbor.angle, elemId: neighbor.elemId },
+                          content: {
+                            ..._rex.content,
+                            angle: neighbor.angle,
+                            elemId: neighbor.elemId,
+                          },
                         });
                       }
                     }
@@ -10945,13 +10992,17 @@
         // DB positions to DOM symbols that haven't been persisted yet; without this capture
         // persistSymbolVisualState would read those reverted values and write P1 back to DB.
         const rotationCapture = inChat
-          ? new Map(group.map((sym) => ({
-              symbol: sym,
-              left: parseFloat(sym.style.left),
-              top: parseFloat(sym.style.top),
-              angle: sym.angle,
-              elemId: sym.elemId,
-            })).map((e) => [e.symbol, e]))
+          ? new Map(
+              group
+                .map((sym) => ({
+                  symbol: sym,
+                  left: parseFloat(sym.style.left),
+                  top: parseFloat(sym.style.top),
+                  angle: sym.angle,
+                  elemId: sym.elemId,
+                }))
+                .map((e) => [e.symbol, e]),
+            )
           : null;
 
         // Full refresh after local state settled, before network persistence.
@@ -11020,9 +11071,9 @@
       const turnButton = document.createElement('div');
       turnButton.classList.add('button');
       turnButton.id = 'turn-button';
-      turnButton.style.width = `149px`;
-      turnButton.style.height = `142px`;
-      turnButton.style.backgroundImage = "url('./icons/turn.png')";
+      turnButton.style.width = `141px`;
+      turnButton.style.height = `135px`;
+      turnButton.style.backgroundImage = "url('./icons/turn_round.png')";
       turnButton.style.left = `40px`;
       turnButton.style.top = `30px`;
 
@@ -11082,11 +11133,20 @@
                 for (let i = 0; i < components.length; i++) {
                   if (used.has(i)) continue;
                   let m = new Set(components[i]);
-                  const gids = new Set([...components[i]].map((s) => s._expressionGroupId).filter(Boolean));
+                  const gids = new Set(
+                    [...components[i]].map((s) => s._expressionGroupId).filter(Boolean),
+                  );
                   for (let j = i + 1; j < components.length; j++) {
                     if (used.has(j)) continue;
-                    if ([...components[j]].some((s) => s._expressionGroupId && gids.has(s._expressionGroupId))) {
-                      for (const s of components[j]) { m.add(s); if (s._expressionGroupId) gids.add(s._expressionGroupId); }
+                    if (
+                      [...components[j]].some(
+                        (s) => s._expressionGroupId && gids.has(s._expressionGroupId),
+                      )
+                    ) {
+                      for (const s of components[j]) {
+                        m.add(s);
+                        if (s._expressionGroupId) gids.add(s._expressionGroupId);
+                      }
                       used.add(j);
                     }
                   }
@@ -11160,7 +11220,10 @@
                     const capturedAngle = singleAngleCapture.get(singleSymbols[i]);
                     if (capturedAngle !== undefined) {
                       singleSymbols[i].angle = capturedAngle;
-                      singleSymbols[i].style.transform = getSymbolTransform(singleSymbols[i].elemId, capturedAngle);
+                      singleSymbols[i].style.transform = getSymbolTransform(
+                        singleSymbols[i].elemId,
+                        capturedAngle,
+                      );
                     }
                     await persistSymbolVisualState(singleSymbols[i], true);
                     await syncSymbolLinksRemote(singleSymbols[i], snapshots[i]);
@@ -11238,7 +11301,10 @@
                   const capturedAngle = elseAngleCapture.get(symbols[i]);
                   if (capturedAngle !== undefined) {
                     symbols[i].angle = capturedAngle;
-                    symbols[i].style.transform = getSymbolTransform(symbols[i].elemId, capturedAngle);
+                    symbols[i].style.transform = getSymbolTransform(
+                      symbols[i].elemId,
+                      capturedAngle,
+                    );
                   }
                   await persistSymbolVisualState(symbols[i], true);
                   await syncSymbolLinksRemote(symbols[i], snapshots[i]);
@@ -11262,9 +11328,9 @@
       const dotButton = document.createElement('div');
       dotButton.classList.add('button');
       dotButton.id = 'dot-button';
-      dotButton.style.width = `143px`;
-      dotButton.style.height = `94px`;
-      dotButton.style.backgroundImage = "url('./icons/dot.png')";
+      dotButton.style.width = `136px`;
+      dotButton.style.height = `90px`;
+      dotButton.style.backgroundImage = "url('./icons/dot_round.png')";
       dotButton.style.left = `200px`;
       dotButton.style.top = `55px`;
 
@@ -11928,7 +11994,9 @@
 
                 const libNode = typeof nodes?.get === 'function' ? nodes.get(storedId) : null;
                 const rawTitle = String(libNode?.title || '');
-                const why = rawTitle.includes('. ') ? rawTitle.split(/\. (.+)/)[1] || '' : rawTitle;
+                const why = rawTitle.includes('. ')
+                  ? rawTitle.split(/\. (.+)/)[1] || ''
+                  : rawTitle;
                 const word = String(libNode?.word || storedWord || '').trim();
                 const exprLang = getExpressionSourceLang(String(libNode?.lang || ''), word, why);
                 candidates.push({ matched, word, why, exprLang, storedId });
@@ -11944,7 +12012,10 @@
                 if (cA === cB || cA.matched.size >= cB.matched.size) continue;
                 let isSubset = true;
                 for (const sym of cA.matched) {
-                  if (!cB.matched.has(sym)) { isSubset = false; break; }
+                  if (!cB.matched.has(sym)) {
+                    isSubset = false;
+                    break;
+                  }
                 }
                 if (isSubset) return false;
               }
@@ -11958,14 +12029,29 @@
                 (s) => !s.dataset.ownerUid || s.dataset.ownerUid === currentUser?.uid,
               );
               if (allOwned && canvas === chatCanvas() && currentUser?.uid) {
-                const symIds = [...matched].map((s) => s.dataset?.id || '').filter(Boolean).sort();
+                const symIds = [...matched]
+                  .map((s) => s.dataset?.id || '')
+                  .filter(Boolean)
+                  .sort();
                 if (symIds.length === matched.size) {
                   const groupId = `manual_${symIds.join('_')}`;
                   // Skip only if every symbol is already correctly stamped with this exact group.
                   // A partial or stale stamp (e.g. sub-expression ID from an old session) must
                   // be overwritten so other users see the correct largest-expression card.
-                  const alreadyCorrect = [...matched].every((s) => s._expressionGroupId === groupId);
-                  if (alreadyCorrect) { results.push({ key: makeManualExpressionKey(matched, storedId), group: matched, word, why, exprLang, nodeId: String(storedId) }); continue; }
+                  const alreadyCorrect = [...matched].every(
+                    (s) => s._expressionGroupId === groupId,
+                  );
+                  if (alreadyCorrect) {
+                    results.push({
+                      key: makeManualExpressionKey(matched, storedId),
+                      group: matched,
+                      word,
+                      why,
+                      exprLang,
+                      nodeId: String(storedId),
+                    });
+                    continue;
+                  }
                   const retroPayload = {
                     exprGroupId: groupId,
                     exprWord: word,
@@ -11984,11 +12070,14 @@
                   }
                   if (!expressionGroups.has(groupId)) expressionGroups.set(groupId, new Set());
                   for (const sym of matched) expressionGroups.get(groupId).add(sym);
-                  Promise.allSettled([...matched].map(async (sym) => {
-                    const symId = sym.dataset?.id || await sym._pendingIdPromise?.catch(() => null);
-                    if (!symId) return;
-                    await updateRoomObj(symId, retroPayload).catch(console.warn);
-                  }));
+                  Promise.allSettled(
+                    [...matched].map(async (sym) => {
+                      const symId =
+                        sym.dataset?.id || (await sym._pendingIdPromise?.catch(() => null));
+                      if (!symId) return;
+                      await updateRoomObj(symId, retroPayload).catch(console.warn);
+                    }),
+                  );
                 }
               }
 
@@ -12033,7 +12122,9 @@
                 const [, storedGraph] = libraryEntry;
                 let stillMatches = storedGraph?.nodes?.length === grp.size;
                 if (stillMatches) {
-                  const storedHasEdges = storedGraph?.adj?.some((s) => s?.some((l) => l?.length > 0));
+                  const storedHasEdges = storedGraph?.adj?.some((s) =>
+                    s?.some((l) => l?.length > 0),
+                  );
                   if (storedHasEdges) {
                     stillMatches = !!matchPatternOnSelection(grp, storedGraph);
                   }
@@ -12077,9 +12168,15 @@
               if (gidA === gidB || metaA.group.size >= metaB.group.size) continue;
               let isSubset = true;
               for (const sym of metaA.group) {
-                if (!metaB.group.has(sym)) { isSubset = false; break; }
+                if (!metaB.group.has(sym)) {
+                  isSubset = false;
+                  break;
+                }
               }
-              if (isSubset) { wanted.delete(gidA); break; }
+              if (isSubset) {
+                wanted.delete(gidA);
+                break;
+              }
             }
           }
 
@@ -12274,7 +12371,9 @@
                       if (insErr) throw insErr;
                       sendBtn.textContent = zh ? '已发送 ✓' : 'Sent ✓';
                       sendBtn.classList.add('sent');
-                      loadLibraryInterpretations().then(() => renderLibraryTreeView?.()).catch(() => {});
+                      loadLibraryInterpretations()
+                        .then(() => renderLibraryTreeView?.())
+                        .catch(() => {});
                     } catch (_e) {
                       console.error('interpretations insert error:', _e);
                       sent = false;
@@ -12384,7 +12483,10 @@
                     const bounds = getSymbolGroupBounds(grpNow);
                     if (bounds) {
                       card._manualOffset = { x: x - bounds.centerX, y: y - bounds.centerY };
-                      spawnedExpressionMetaCardOffsets.set(card.dataset.exprGroupId, card._manualOffset);
+                      spawnedExpressionMetaCardOffsets.set(
+                        card.dataset.exprGroupId,
+                        card._manualOffset,
+                      );
                     }
                     scheduleChatMiniMapUpdate?.();
                   }
@@ -12545,7 +12647,7 @@
 
           function onResizeMove(me) {
             const canvas = chatCanvas();
-            const zoom = canvas ? (getCanvasZoom(canvas) || 1) : 1;
+            const zoom = canvas ? getCanvasZoom(canvas) || 1 : 1;
             card.style.width = `${Math.max(MIN_W, startW + (me.clientX - startX) / zoom)}px`;
             card.style.height = `${Math.max(MIN_H, startH + (me.clientY - startY) / zoom)}px`;
             card.style.minHeight = '';
@@ -12615,7 +12717,6 @@
           }
           card.style.left = `${x}px`;
           card.style.top = `${y}px`;
-
         }
       }
 
@@ -12726,7 +12827,10 @@
               annoLinkById.delete(linkDocId);
             }
           }
-          if (annotationLinkFrame) { cancelAnimationFrame(annotationLinkFrame); annotationLinkFrame = 0; }
+          if (annotationLinkFrame) {
+            cancelAnimationFrame(annotationLinkFrame);
+            annotationLinkFrame = 0;
+          }
           renderAnnotationLinks();
 
           await deleteChatSelectionBatch(currentRoomId, [], annoIds.concat(linkDocIdsToDelete));
@@ -12788,7 +12892,9 @@
             .eq('is_annotation', true)
             .eq('owner_uid', currentUser.uid)
             .in('anno_root_symbol_id', symbolIdsToDelete)
-            .then(({ error }) => { if (error) console.error('[annotations] delete error:', error); });
+            .then(({ error }) => {
+              if (error) console.error('[annotations] delete error:', error);
+            });
         }
 
         scheduleChatMiniMapUpdate?.();
@@ -12858,14 +12964,21 @@
             library.delete(node.word);
             libraryInterpretationsCache.delete(node.word);
             if (currentUser?.uid) {
-              supabase.from('interpretations')
+              supabase
+                .from('interpretations')
                 .delete()
                 .eq('expr_word', node.word)
                 .eq('expr_author_uid', currentUser.uid)
                 .select('id')
                 .then(({ data, error }) => {
                   if (error) console.error('[interpretations] delete error:', error);
-                  else console.log('[interpretations] deleted for word "' + node.word + '":', data?.length ?? 0, 'rows', data);
+                  else
+                    console.log(
+                      '[interpretations] deleted for word "' + node.word + '":',
+                      data?.length ?? 0,
+                      'rows',
+                      data,
+                    );
                 });
             }
           }
@@ -12892,10 +13005,17 @@
         }
 
         if (canvasSymbolIdsToDelete.length) {
-          deleteChatSelectionBatch(currentRoomId, canvasSymbolIdsToDelete, []).catch(console.error);
+          deleteChatSelectionBatch(currentRoomId, canvasSymbolIdsToDelete, []).catch(
+            console.error,
+          );
           // Delete annotations anchored to the removed expression symbols.
           if (currentUser?.uid && currentRoomId) {
-            console.log('[annotations] attempting delete for symbol ids:', canvasSymbolIdsToDelete, 'uid:', currentUser.uid);
+            console.log(
+              '[annotations] attempting delete for symbol ids:',
+              canvasSymbolIdsToDelete,
+              'uid:',
+              currentUser.uid,
+            );
             supabase
               .from('room_objs')
               .delete()
@@ -12942,7 +13062,7 @@
       function dyeColor(symbol, color) {
         const svgElement = symbol.querySelector('svg');
         if (!svgElement) return;
-        const shapes = svgElement.querySelectorAll('path, rect'); // Get the shapes inside the SVG
+        const shapes = svgElement.querySelectorAll('path, rect, circle'); // Get the shapes inside the SVG
         shapes.forEach((shape) => {
           shape.style.fill = color; // Preserve per-shape opacity while changing color.
         });
@@ -12989,7 +13109,10 @@
       document.addEventListener('pointerup', refreshPaletteForbiddenState);
       // Clean up any long-press ring when the browser cancels the pointer (e.g. when the
       // OS gesture recognizer or scroll detection absorbs the touch before mouseup fires).
-      document.addEventListener('pointercancel', () => endLongPress(true));
+      document.addEventListener('pointercancel', () => {
+        endLongPress(true);
+        cancelDraggingState();
+      });
 
       const wheel = document.createElement('div'); // Your wheel sprite
       wheel.classList.add('wheel');
@@ -13030,8 +13153,11 @@
 
         if (distance < wheelHit.radius) {
           wheel.style.backgroundImage = `url(./icons/wheel/wheel8.png)`;
-          const symbol = createSymbolCopy(mouseX, mouseY, 8);
-          beginWheelSpawnDrag(symbol, mouseX, mouseY);
+          if (!isGenerating) {
+            isGenerating = true;
+            const symbol = createSymbolCopy(mouseX, mouseY, 8);
+            beginWheelSpawnDrag(symbol, mouseX, mouseY);
+          }
           return; // Center circle detected
         }
 
@@ -13078,8 +13204,11 @@
 
         if (distance < wheelHit.radius) {
           wheel2.style.backgroundImage = `url(./icons/wheel/wheel8.png)`;
-          const symbol = createSymbolCopy(mouseX, mouseY, 8);
-          beginWheelSpawnDrag(symbol, mouseX, mouseY);
+          if (!isGenerating) {
+            isGenerating = true;
+            const symbol = createSymbolCopy(mouseX, mouseY, 8);
+            beginWheelSpawnDrag(symbol, mouseX, mouseY);
+          }
           return; // Center circle detected
         }
 
@@ -13165,9 +13294,9 @@
             // Find mystery card for the selected expression and spawn annotation away from it
             let mysteryCardForGroup = null;
             for (const [gid, metaCard] of spawnedExpressionMetaCardEls) {
-              if (!metaCard || !metaCard.isConnected || metaCard.style.display === 'none') continue;
-              const grp =
-                spawnedExpressionMetaCardGroups.get(gid) || expressionGroups.get(gid);
+              if (!metaCard || !metaCard.isConnected || metaCard.style.display === 'none')
+                continue;
+              const grp = spawnedExpressionMetaCardGroups.get(gid) || expressionGroups.get(gid);
               if (grp && Array.from(selectedSymbols).some((s) => grp.has(s))) {
                 mysteryCardForGroup = metaCard;
                 break;
@@ -13265,7 +13394,10 @@
         // → line endpoints land at the bubble's top-left corner for one frame.
         void document.querySelector('.annotation-bubble.annotation-visible')?.offsetWidth;
         // Render lines in the same frame as bubble visibility — no rAF gap.
-        if (annotationLinkFrame) { cancelAnimationFrame(annotationLinkFrame); annotationLinkFrame = 0; }
+        if (annotationLinkFrame) {
+          cancelAnimationFrame(annotationLinkFrame);
+          annotationLinkFrame = 0;
+        }
         renderAnnotationLinks();
       }
 
@@ -13427,8 +13559,11 @@
 
         return {
           left:
-            (container?.scrollLeft || 0) / zoom + Math.max(80, (container?.clientWidth || 800) * 0.32 / zoom),
-          top: (container?.scrollTop || 0) / zoom + Math.max(80, (container?.clientHeight || 600) * 0.28 / zoom),
+            (container?.scrollLeft || 0) / zoom +
+            Math.max(80, ((container?.clientWidth || 800) * 0.32) / zoom),
+          top:
+            (container?.scrollTop || 0) / zoom +
+            Math.max(80, ((container?.clientHeight || 600) * 0.28) / zoom),
         };
       }
 
@@ -14709,6 +14844,7 @@
         });
         updateQianSymbolAppearance(qianToRestore);
         qianGroupToRestore.forEach((el) => updateQianSymbolAppearance(el));
+        isGenerating = false;
       }
 
       function setSymbolDragUiPassThrough(on) {
@@ -14842,7 +14978,10 @@
               for (const gid of brokenGroupIds) {
                 const grp = expressionGroups.get(gid);
                 if (!grp) continue;
-                const rootId = [...grp].map((s) => s.dataset?.id || '').filter(Boolean).sort()[0];
+                const rootId = [...grp]
+                  .map((s) => s.dataset?.id || '')
+                  .filter(Boolean)
+                  .sort()[0];
                 if (!rootId) continue;
                 // Remove annotation bubbles from DOM.
                 document.querySelectorAll('.annotation-bubble').forEach((annoEl) => {
@@ -16838,7 +16977,9 @@
             if (grpHasEdges && !matchPatternOnSelection(grp, grpStoredGraph)) continue;
           }
           stampCoveredGroupWords.set(gid, word);
-          let avgX = 0, avgY = 0, lastSym = sym;
+          let avgX = 0,
+            avgY = 0,
+            lastSym = sym;
           for (const s of grp) {
             avgX += (parseFloat(s.style.left) || 0) + s.offsetWidth / 2;
             avgY += (parseFloat(s.style.top) || 0) + s.offsetHeight / 2;
@@ -16854,7 +16995,12 @@
           for (const component of getConnectedSymbolComponents(selectedSymbols, currentGraph)) {
             if (component.size < storedGraph.nodes.length) continue;
             // Skip components already covered by stamps for this same word (avoids duplicates).
-            if ([...component].some((s) => stampCoveredGroupWords.get(s._expressionGroupId) === storedWord)) continue;
+            if (
+              [...component].some(
+                (s) => stampCoveredGroupWords.get(s._expressionGroupId) === storedWord,
+              )
+            )
+              continue;
             matches.push(...matchAllPatternsOnSelection(component, storedGraph));
           }
 
@@ -17560,8 +17706,9 @@
                 // Use sorted symbol DB IDs so two instances of the same pattern
                 // get different group IDs (node ID alone would collide).
                 const _madeUpSymIds = await Promise.all(
-                  [...componentSymbols].map(async (sym) =>
-                    sym.dataset?.id || (await sym._pendingIdPromise?.catch(() => null)) || '',
+                  [...componentSymbols].map(
+                    async (sym) =>
+                      sym.dataset?.id || (await sym._pendingIdPromise?.catch(() => null)) || '',
                   ),
                 );
                 const madeUpGroupId = `manual_${_madeUpSymIds.filter(Boolean).sort().join('_')}`;
@@ -17582,16 +17729,21 @@
                   sym.dataset.exprNodeId = madeUpPayload.exprNodeId;
                   sym.dataset.exprAuthorUid = madeUpPayload.exprAuthorUid;
                 }
-                if (!expressionGroups.has(madeUpGroupId)) expressionGroups.set(madeUpGroupId, new Set());
+                if (!expressionGroups.has(madeUpGroupId))
+                  expressionGroups.set(madeUpGroupId, new Set());
                 for (const sym of componentSymbols) expressionGroups.get(madeUpGroupId).add(sym);
                 if (canvas === chatCanvas()) {
                   updateExpressionGroupFrame([...componentSymbols], canvas);
-                  Promise.allSettled([...componentSymbols].map(async (sym) => {
-                    const symId = sym.dataset?.id || await sym._pendingIdPromise?.catch(() => null);
-                    if (!symId) return;
-                    await updateRoomObj(symId, madeUpPayload).catch((e) =>
-                      console.warn('made-up expr persist failed:', e));
-                  }));
+                  Promise.allSettled(
+                    [...componentSymbols].map(async (sym) => {
+                      const symId =
+                        sym.dataset?.id || (await sym._pendingIdPromise?.catch(() => null));
+                      if (!symId) return;
+                      await updateRoomObj(symId, madeUpPayload).catch((e) =>
+                        console.warn('made-up expr persist failed:', e),
+                      );
+                    }),
+                  );
                 }
                 tutorialRecordDefinedWordGroup?.(
                   getTutorialStepsSafe?.()?.[tutorialStepIndex]?.requiredWordKey,
@@ -18486,7 +18638,7 @@
         switch (symbol.elemId) {
           case 0:
             junctions = [
-              { x: 1, y: 13 },
+              { x: calX, y: 13 },
               { x: symbolWidth - calX, y: 49 },
               { x: symbolWidth / 2, y: 13 },
               { x: symbolWidth / 2, y: 56 },
@@ -18494,7 +18646,7 @@
             break;
           case 1:
             junctions = [
-              { x: 1, y: 49 },
+              { x: calX, y: 49 },
               { x: symbolWidth - calX, y: 49 },
               { x: symbolWidth / 2, y: 50 },
               { x: symbolWidth / 2, y: 56 },
@@ -18502,15 +18654,15 @@
             break;
           case 2:
             junctions = [
-              { x: 1, y: 49 },
+              { x: calX, y: 49 },
               { x: symbolWidth - calX, y: 49 },
-              { x: symbolWidth / 2, y: 14 },
-              { x: symbolWidth / 2, y: 56 },
+              { x: symbolWidth / 2, y: 18 },
+              { x: symbolWidth / 2, y: 52 },
             ];
             break;
           case 3:
             junctions = [
-              { x: 1, y: 57 },
+              { x: calX, y: 57 },
               { x: symbolWidth - calX, y: 57 },
               { x: symbolWidth / 2, y: 56 },
               { x: symbolWidth / 2, y: 64 },
@@ -18518,7 +18670,7 @@
             break;
           case 4:
             junctions = [
-              { x: 1, y: 49 },
+              { x: calX, y: 49 },
               { x: symbolWidth - calX, y: 49 },
               { x: symbolWidth / 2, y: 50 },
               { x: symbolWidth / 2, y: 56 },
@@ -18526,7 +18678,7 @@
             break;
           case 5:
             junctions = [
-              { x: 1, y: 49 },
+              { x: calX, y: 49 },
               { x: symbolWidth - calX, y: 49 },
               { x: symbolWidth / 2, y: 50 },
               { x: symbolWidth / 2, y: 56 },
@@ -18534,7 +18686,7 @@
             break;
           case 6:
             junctions = [
-              { x: 1, y: 57 },
+              { x: calX, y: 57 },
               { x: symbolWidth - calX, y: 57 },
               { x: symbolWidth / 2, y: 56 },
               { x: symbolWidth / 2, y: 64 },
@@ -18542,7 +18694,7 @@
             break;
           case 7:
             junctions = [
-              { x: 1, y: 32 },
+              { x: calX, y: 32 },
               { x: symbolWidth - calX, y: 32 },
               { x: symbolWidth / 2, y: 3 },
               { x: symbolWidth / 2, y: 64 },
@@ -18550,7 +18702,7 @@
             break;
           case 8:
             junctions = [
-              { x: 1, y: 49 },
+              { x: calX, y: 49 },
               { x: symbolWidth - calX, y: 49 },
               { x: symbolWidth / 2, y: 13 },
               { x: symbolWidth / 2, y: 56 },
@@ -18890,13 +19042,17 @@
       function setLibraryModeButtonIcon() {
         if (!modeNodeButton) return;
         modeNodeButton.style.backgroundImage =
-          libraryViewMode === 'network' ? LIBRARY_NETWORK_ICON :
-          libraryViewMode === 'tree' ? LIBRARY_TREE_ICON :
-          LIBRARY_READINGS_ICON;
+          libraryViewMode === 'network'
+            ? LIBRARY_NETWORK_ICON
+            : libraryViewMode === 'tree'
+              ? LIBRARY_TREE_ICON
+              : LIBRARY_READINGS_ICON;
         modeNodeButton.title =
-          libraryViewMode === 'network' ? 'Switch to tree view' :
-          libraryViewMode === 'tree' ? 'Patterns in my readings' :
-          'Switch to network view';
+          libraryViewMode === 'network'
+            ? 'Switch to tree view'
+            : libraryViewMode === 'tree'
+              ? 'Patterns in my readings'
+              : 'Switch to network view';
       }
 
       function computeLibraryTreeLevels() {
@@ -21232,8 +21388,12 @@
               if (interpOpen && currentUser?.uid) {
                 const ids = interps.map((i) => i.id);
                 (async () => {
-                  try { await supabase.from('interpretations').update({ seen_by_author: true }).in('id', ids); }
-                  catch (_) {}
+                  try {
+                    await supabase
+                      .from('interpretations')
+                      .update({ seen_by_author: true })
+                      .in('id', ids);
+                  } catch (_) {}
                 })();
               }
             });
@@ -21525,10 +21685,11 @@
 
         const showTree = libraryViewMode === 'tree';
         const showReadings = libraryViewMode === 'readings';
-        container.style.display = (showTree || showReadings) ? 'none' : 'block';
+        container.style.display = showTree || showReadings ? 'none' : 'block';
         libraryTreeView.style.display = showTree ? 'block' : 'none';
-        if (libraryReadingsView) libraryReadingsView.style.display = showReadings ? 'block' : 'none';
-        organizeNodeButton.style.display = (showTree || showReadings) ? 'none' : 'block';
+        if (libraryReadingsView)
+          libraryReadingsView.style.display = showReadings ? 'block' : 'none';
+        organizeNodeButton.style.display = showTree || showReadings ? 'none' : 'block';
         if (!showTree && libraryTreeSurface) libraryTreeSurface.style.zoom = '1';
 
         if (showTree) {
@@ -21541,7 +21702,9 @@
           }
           emitTutorialEvent?.('library_tree_view');
         } else if (showReadings) {
-          loadSentInterpretations().then(() => renderReadingsView()).catch(console.error);
+          loadSentInterpretations()
+            .then(() => renderReadingsView())
+            .catch(console.error);
         } else if (network) {
           setTimeout(() => {
             refreshLibraryViewport?.();
@@ -23655,7 +23818,10 @@
         window._sfxRustle = async function () {
           if (!(await _sfxEnsureRunning())) return;
           const nodes = [];
-          const track = (...ns) => { nodes.push(...ns); return ns; };
+          const track = (...ns) => {
+            nodes.push(...ns);
+            return ns;
+          };
           const rev = new Tone.Reverb({ decay: 0.22 });
           rev.wet.value = 0.1;
           await rev.ready;
@@ -23672,18 +23838,34 @@
           const dur = 0.075;
           const [n1, env1, g1] = track(
             new Tone.Noise('pink'),
-            new Tone.AmplitudeEnvelope({ attack: 0.004, decay: dur * 0.65, sustain: 0, release: 0.028 }),
+            new Tone.AmplitudeEnvelope({
+              attack: 0.004,
+              decay: dur * 0.65,
+              sustain: 0,
+              release: 0.028,
+            }),
             new Tone.Gain(0.65),
           );
-          n1.connect(env1); env1.connect(g1); g1.connect(bpf1);
-          n1.start(now); env1.triggerAttackRelease(dur * 0.65, now);
+          n1.connect(env1);
+          env1.connect(g1);
+          g1.connect(bpf1);
+          n1.start(now);
+          env1.triggerAttackRelease(dur * 0.65, now);
           const [n2, env2, g2] = track(
             new Tone.Noise('pink'),
-            new Tone.AmplitudeEnvelope({ attack: 0.002, decay: dur * 0.45, sustain: 0, release: 0.018 }),
+            new Tone.AmplitudeEnvelope({
+              attack: 0.002,
+              decay: dur * 0.45,
+              sustain: 0,
+              release: 0.018,
+            }),
             new Tone.Gain(0.35),
           );
-          n2.connect(env2); env2.connect(g2); g2.connect(bpf2);
-          n2.start(now); env2.triggerAttackRelease(dur * 0.45, now);
+          n2.connect(env2);
+          env2.connect(g2);
+          g2.connect(bpf2);
+          n2.start(now);
+          env2.triggerAttackRelease(dur * 0.45, now);
           setTimeout(() => _dispose(nodes), 900);
         };
       })();
