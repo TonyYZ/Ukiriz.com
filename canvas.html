@@ -8158,16 +8158,12 @@
       function generateColor(uid) {
         const h = hash32(uid);
 
-        // Use a stable "index" from hash (0..65535)
-        const idx = h & 0xffff;
+        // Map the full 32-bit hash uniformly onto [0, 360).
+        // Using only the low 16 bits (old approach) left some hue ranges underrepresented.
+        const hue = (h >>> 0) * (360 / 4294967296);
 
-        // Golden angle spread
-        const GOLDEN_ANGLE = 137.50776405003785;
-        const hue = (idx * GOLDEN_ANGLE) % 360;
-
-        // Optional: vary sat/light a bit to further separate close hues
-        const sat = 62 + ((h >>> 16) % 18); // 62..79
-        const light = 48 + ((h >>> 24) % 18); // 48..65
+        const sat = 62 + ((h >>> 16) % 18); // 62..79%
+        const light = 48 + ((h >>> 24) % 12); // 48..59%
 
         return `hsl(${hue.toFixed(0)}, ${sat}%, ${light}%)`;
       }
