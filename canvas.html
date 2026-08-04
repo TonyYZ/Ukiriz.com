@@ -1588,6 +1588,7 @@
       .library-tree-card.selected {
         box-shadow: inset 0 0 0 2px #000;
         border-color: #000;
+        z-index: 1;
       }
 
       .library-tree-card.basic {
@@ -5890,16 +5891,11 @@
       function updateChatGridAlignment() {
         const canvas = chatCanvas();
         if (!canvas) return;
-        const dpr = window.devicePixelRatio || 1;
-        const zoom = chatCanvasZoom || 1;
-        // Round the small grid to the nearest whole device pixel, then derive the large
-        // grid as exactly 5× so both layers always land on the same device-pixel boundary.
-        const smallDp = Math.round(80 * zoom * dpr);
-        const smallCss = smallDp / dpr / zoom; // in the element's pre-zoom coordinate space
-        const largeCss = smallCss * 5;
-        canvas.style.backgroundSize =
-          `${smallCss}px ${smallCss}px, ${smallCss}px ${smallCss}px, ` +
-          `${largeCss}px ${largeCss}px, ${largeCss}px ${largeCss}px`;
+        // The grid background is on the same element that CSS zoom is applied to,
+        // so background-size and symbol positions share the same coordinate space.
+        // Using exact values keeps grid lines at integer CSS px, aligned with symbols
+        // at all zoom levels. DPR-rounding shifts grid lines off 80px boundaries.
+        canvas.style.backgroundSize = '80px 80px, 80px 80px, 400px 400px, 400px 400px';
       }
 
       function updateCraftGridAlignment() {
