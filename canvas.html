@@ -5056,8 +5056,8 @@
           zh: '哪些符号是所有人都应该用的？',
         },
         Habataku: {
-          en: 'How would you express "growing"?',
-          zh: '你会怎么表达“生长”？',
+          en: 'What are you becoming?',
+          zh: '你正在成为什么？',
         },
         Phong: {
           en: 'What are you keeping to yourself right now?',
@@ -5068,8 +5068,8 @@
           zh: '“雨”给你什么感觉？',
         },
         Lilit: {
-          en: 'How would you express "lying"?',
-          zh: '你会怎么表达“说谎”？',
+          en: 'What would you rather believe, even if it were not true?',
+          zh: '即使不是真的，你也更愿意相信什么？',
         },
         Jwala: {
           en: 'What feels urgent right now?',
@@ -5080,8 +5080,8 @@
           zh: '什么让你感到安全？',
         },
         Iztli: {
-          en: 'Express "power" using as few symbols as possible',
-          zh: '用尽量少的符号表达“力量”',
+          en: 'What gives you strength?',
+          zh: '什么赋予你力量？',
         },
         Zvono: {
           en: 'What are you not saying?',
@@ -5096,8 +5096,8 @@
           zh: '你在想念什么？',
         },
         Merkez: {
-          en: 'How would you express "home"?',
-          zh: '你会怎么表达“家”？',
+          en: 'Where do you feel you belong?',
+          zh: '什么地方让你觉得自己有所归属？',
         },
       };
 
@@ -17855,6 +17855,17 @@
         let results = getMolecule(symbol, new Set([]), (representatives = representatives));
         selectedSymbols.clear();
         results.visited.forEach((s) => selectedSymbols.add(s));
+
+        // Pull in remaining stamped-group members even if they're not graph-connected,
+        // so the group is never split by a long-press drag.
+        for (const s of [...selectedSymbols]) {
+          const gid = s._expressionGroupId;
+          if (gid) {
+            const grp = expressionGroups.get(gid);
+            if (grp) grp.forEach((m) => selectedSymbols.add(m));
+          }
+        }
+
         if (results.leftStr !== '') moleculeString += results.leftStr + ' - ';
         moleculeString += results.centerStrs.join(' & ');
         if (results.rightStr !== '') moleculeString += ' - ' + results.rightStr;
@@ -17863,6 +17874,56 @@
           selectedSymbol.selected = true;
           selectedSymbol.classList.add('framed');
         });
+
+        // Convert single-drag (activeSymbol) to group drag so all selected symbols move
+        // together. Without this, only activeSymbol would move and break out of the group.
+        if (activeSymbol && selectedSymbols.size > 1) {
+          const canvas = getCanvasForElem(symbol);
+          const localPt =
+            latestPointerClientX !== null
+              ? clientToLocal(canvas, latestPointerClientX, latestPointerClientY)
+              : null;
+          if (localPt && canvas) {
+            dragLeader = symbol;
+            dragGroup = new Map();
+            dragGroupStarted = false;
+            dragGroupSet = null;
+            dragGroupIncludesUnselected = false;
+            dragSnapLock = null;
+            pendingSnapDelta = null;
+            resetPendingSnapState();
+            if (canvas === chatCanvas()) {
+              dragGroupIncludesUnselected = addAnnotationSubtreesForDraggedSymbols(
+                new Set(selectedSymbols),
+              );
+            }
+            for (const sel of selectedSymbols) {
+              if (!canEditElement(sel)) continue;
+              const left = parseFloat(sel.style.left) || 0;
+              const top = parseFloat(sel.style.top) || 0;
+              dragGroup.set(sel, {
+                dx: left - localPt.x,
+                dy: top - localPt.y,
+                dx0: left - localPt.x,
+                dy0: top - localPt.y,
+              });
+              updateQianSymbolAppearance(sel, { dragging: true });
+            }
+            // Include the long-press ring so it follows the group during drag.
+            if (ring && ring.isConnected) {
+              const ringLeft = parseFloat(ring.style.left) || 0;
+              const ringTop = parseFloat(ring.style.top) || 0;
+              dragGroup.set(ring, {
+                dx: ringLeft - localPt.x,
+                dy: ringTop - localPt.y,
+                dx0: ringLeft - localPt.x,
+                dy0: ringTop - localPt.y,
+              });
+              dragGroupIncludesUnselected = true;
+            }
+            activeSymbol = null;
+          }
+        }
 
         // Tutorial: advance after the user successfully long-pressed a connected component in craft.
         try {
