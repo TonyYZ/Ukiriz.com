@@ -19532,20 +19532,6 @@
         };
       }
 
-      function normalizeLibraryV2FuseauOrientation(branches) {
-        const stem = branches[0]?.children.find((child) => child.type === 'element');
-        const orientation = stem?.orientation || 0;
-        if (!orientation) return 0;
-        branches.forEach((branch) => {
-          branch.children.forEach((child) => {
-            if (child.type === 'element') {
-              child.orientation = (child.orientation - orientation + 2) % 2;
-            }
-          });
-        });
-        return orientation;
-      }
-
       function buildLibraryV2Series(node) {
         const graph = getLibraryV2Graph(node);
         if (!graph) return null;
@@ -19640,7 +19626,6 @@
           }));
           children.push({
             type: 'parallel',
-            orientation: normalizeLibraryV2FuseauOrientation(branches),
             branches,
           });
         }
@@ -19845,7 +19830,7 @@
       }
 
       function canUseLibraryV2SimpleMarker(parallel) {
-        if (parallel.orientation || parallel.branches.length !== 2) return false;
+        if (parallel.branches.length !== 2) return false;
         const elements = [];
         const valid = parallel.branches.every((branch) => {
           if (branch.children.length !== 1 || branch.children[0].type !== 'element') {
@@ -19878,9 +19863,8 @@
           const compact = branches.map((branch, index) =>
             serializeLibraryV2CompactSeries(branch, index === 1),
           );
-          const firstIsOriented =
-            Boolean(parallel.orientation) || libraryV2OrientedFirstElement(branches[0]);
-          if (!parallel.orientation && libraryV2OrientedFirstElement(branches[0])) {
+          const firstIsOriented = libraryV2OrientedFirstElement(branches[0]);
+          if (firstIsOriented) {
             compact[0] = serializeLibraryV2CompactSeries(branches[0], false, 'á', 1);
           }
           const middle =
@@ -19897,9 +19881,8 @@
           const safelyCompact = branches.every((branch) =>
             branch.children.every((child) => child.type === 'element'),
           );
-          const firstIsOriented =
-            Boolean(parallel.orientation) || libraryV2OrientedFirstElement(branches[0]);
-          if (!parallel.orientation && libraryV2OrientedFirstElement(branches[0])) {
+          const firstIsOriented = libraryV2OrientedFirstElement(branches[0]);
+          if (firstIsOriented) {
             compact[0] = serializeLibraryV2CompactSeries(branches[0], false, 'á', 1);
           }
           const opening =
@@ -19922,12 +19905,8 @@
           return `${opening}${compact[0]}${compact[1]}${separator}${compact[2]}${closing}`;
         }
         const rendered = branches.map((branch) => serializeLibraryV2Series(branch, true));
-        let opening = parallel.orientation ? 'é' : 'e';
-        if (
-          !parallel.orientation &&
-          libraryV2OrientedFirstElement(branches[0]) &&
-          rendered[0].startsWith('á')
-        ) {
+        let opening = 'e';
+        if (libraryV2OrientedFirstElement(branches[0]) && rendered[0].startsWith('á')) {
           opening = 'é';
           rendered[0] = rendered[0].slice(1);
         }
