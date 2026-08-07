@@ -5386,6 +5386,28 @@
       function keepFocusedCanvasInputVisible() {
         if (!shouldUseMobileKeyboardMode()) return;
         const active = document.activeElement;
+
+        // Interpretation textarea: scroll the chat canvas to keep the parent card above the keyboard.
+        if (active?.matches?.('.expr-interp-textarea')) {
+          const card = active.closest?.('.spawned-expression-meta');
+          if (card && tab4) {
+            requestAnimationFrame(() => {
+              const rect = card.getBoundingClientRect();
+              const vv = window.visualViewport;
+              const visibleTop = vv?.offsetTop || 0;
+              const visibleBottom = visibleTop + (vv?.height || window.innerHeight);
+              const pad = 16;
+              if (rect.bottom > visibleBottom - pad) {
+                tab4.scrollTop += rect.bottom - (visibleBottom - pad);
+              } else if (rect.top < visibleTop + pad) {
+                tab4.scrollTop -= visibleTop + pad - rect.top;
+              }
+              scheduleChatMiniMapUpdate?.();
+            });
+          }
+          return;
+        }
+
         if (!isDefinitionTextTarget(active)) return;
         const container = active.closest?.('#craftCanvas')
           ? tab1
