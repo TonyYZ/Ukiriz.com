@@ -2634,16 +2634,15 @@
         }
 
         body.mobile-keyboard-open .content {
-          position: fixed !important;
-          top: 0 !important;
-          left: 0 !important;
-          right: 0 !important;
-          width: 100vw !important;
           height: var(--vvh, 100dvh) !important;
           padding-bottom: 0;
         }
 
-        /* Interpretation textarea: hide other lower-half UI but keep the tab bar visible. */
+        /* Interpretation textarea: hide other lower-half UI but keep the tab bar visible.
+           Shrink content by the tab-bar height so the bar sits below the canvas. */
+        body.mobile-keyboard-open.interp-textarea-active .content {
+          height: calc(var(--vvh, 100dvh) - 76px) !important;
+        }
         body.mobile-keyboard-open.interp-textarea-active .vertical-bar {
           display: flex !important;
         }
