@@ -2660,6 +2660,18 @@
           border-radius: 10px;
         }
 
+        body.mobile-keyboard-open .expr-mystery-overlay.expr-interp-mode {
+          position: fixed !important;
+          inset: auto !important;
+          left: 10px !important;
+          right: 10px !important;
+          top: 8px !important;
+          bottom: calc(100dvh - var(--mobile-keyboard-input-top, 44vh) - 44px) !important;
+          border-radius: 12px !important;
+          z-index: 100002 !important;
+          overflow-y: auto !important;
+        }
+
         .typing-effect p {
           font-size: 13px !important;
           line-height: 1.35 !important;
