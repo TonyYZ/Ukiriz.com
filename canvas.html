@@ -2682,6 +2682,47 @@
       type="text/javascript"
       src="https://cdn.jsdelivr.net/npm/vis-network/standalone/umd/vis-network.min.js"
     ></script>
+    <style>
+      /* ── Playground mode (?playground in URL) ── */
+      body.playground-mode .vertical-bar,
+      body.playground-mode #top-right-ui,
+      body.playground-mode #tutorialOverlay,
+      body.playground-mode #craftMinimap {
+        display: none !important;
+      }
+      body.playground-mode .content {
+        margin-right: 0 !important;
+        padding: 0 !important;
+      }
+      body.playground-mode #craftCanvas {
+        background-image: none !important;
+        background-color: var(--pg-bg, #f4f4f9);
+      }
+      #playground-picker {
+        display: none;
+        position: fixed;
+        top: 14px;
+        right: 14px;
+        z-index: 99999;
+        background: rgba(255, 255, 255, 0.92);
+        border-radius: 10px;
+        padding: 7px 12px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        font-family: sans-serif;
+        backdrop-filter: blur(4px);
+      }
+      body.playground-mode #playground-picker { display: flex; }
+      #playground-picker label { color: #444; user-select: none; }
+      #playground-picker input[type=color] {
+        width: 28px; height: 28px;
+        border: none; padding: 0;
+        border-radius: 5px; cursor: pointer;
+        background: none;
+      }
+    </style>
   </head>
   <body>
     <div id="top-right-ui">
@@ -12320,6 +12361,26 @@
               const overlay = document.createElement('div');
               overlay.className = 'expr-mystery-overlay';
 
+              // Prefetch whether the current user already sent an interpretation.
+              // '' = checked, none found; non-empty string = found text; null = pending/unchecked.
+              let _myPreviousInterp = null;
+              if (currentUser?.uid && gid) {
+                supabase
+                  .from('interpretations')
+                  .select('interpretation_text')
+                  .eq('expr_group_id', gid)
+                  .eq('interpreter_uid', currentUser.uid)
+                  .maybeSingle()
+                  .then(({ data }) => {
+                    _myPreviousInterp = data?.interpretation_text || '';
+                  })
+                  .catch(() => {
+                    _myPreviousInterp = '';
+                  });
+              } else {
+                _myPreviousInterp = '';
+              }
+
               const glyph = document.createElement('div');
               glyph.className = 'expr-mystery-glyph';
               glyph.textContent = '✦';
@@ -12350,7 +12411,7 @@
                 overlay.appendChild(label);
               }
 
-              async function showJuxtaposition(interpText) {
+              async function showJuxtaposition(interpText, { alreadySent: knownSent = false } = {}) {
                 const zh = currentLang === 'zh';
                 // Clear any explicit height from a prior resize so the card expands to fit
                 card.style.height = '';
@@ -12362,7 +12423,7 @@
                 yourSec.className = 'expr-juxtapose-section';
                 const yourLbl = document.createElement('span');
                 yourLbl.className = 'expr-juxtapose-label';
-                yourLbl.textContent = zh ? '你的解读' : 'Your reading';
+                yourLbl.textContent = zh ? '我的解读' : 'My interpretation';
                 const yourTxt = document.createElement('p');
                 yourTxt.textContent = interpText;
                 yourSec.appendChild(yourLbl);
@@ -12371,8 +12432,8 @@
                 juxtaEl.appendChild(yourSec);
 
                 // Check for duplicate submission before showing send button
-                let alreadySent = false;
-                if (currentUser?.uid && gid) {
+                let alreadySent = knownSent;
+                if (!alreadySent && currentUser?.uid && gid) {
                   try {
                     const { data: dup } = await supabase
                       .from('interpretations')
@@ -12536,7 +12597,14 @@
                 function onUp() {
                   overlay.removeEventListener('pointermove', onMove);
                   overlay.removeEventListener('pointerup', onUp);
-                  if (!moved) showInterpretationStep();
+                  if (!moved) {
+                    if (_myPreviousInterp) {
+                      revealCard();
+                      showJuxtaposition(_myPreviousInterp, { alreadySent: true });
+                    } else {
+                      showInterpretationStep();
+                    }
+                  }
                 }
 
                 overlay.addEventListener('pointermove', onMove);
@@ -23948,6 +24016,33 @@
           env2.triggerAttackRelease(dur * 0.45, now);
           setTimeout(() => _dispose(nodes), 900);
         };
+      })();
+    </script>
+
+    <!-- Playground mode: activated by ?playground in the URL -->
+    <div id="playground-picker">
+      <label for="pg-color-input">Background</label>
+      <input type="color" id="pg-color-input" value="#f4f4f9" />
+    </div>
+    <script>
+      (function () {
+        if (!new URLSearchParams(location.search).has('playground')) return;
+        document.body.classList.add('playground-mode');
+        // Switch to craft canvas tab and lock navigation there
+        window.addEventListener('load', function () {
+          window.showTab?.(1);
+          const orig = window.showTab;
+          window.showTab = function (i) { if (i === 1) orig(1); };
+        });
+        // Wire color picker to canvas background
+        const input = document.getElementById('pg-color-input');
+        const canvas = document.getElementById('craftCanvas');
+        const saved = localStorage.getItem('pg-bg');
+        if (saved) { input.value = saved; canvas.style.setProperty('--pg-bg', saved); }
+        input.addEventListener('input', function () {
+          canvas.style.setProperty('--pg-bg', input.value);
+          localStorage.setItem('pg-bg', input.value);
+        });
       })();
     </script>
   </body>
