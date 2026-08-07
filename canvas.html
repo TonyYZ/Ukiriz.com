@@ -5311,7 +5311,7 @@
 
       function isMobileKeyboardTextTarget(target) {
         return !!target?.matches?.(
-          '.label-input, .label-textarea, #symbol-message-input, #message-input, #chatCoordInput, .expr-interp-textarea',
+          '.label-input, .label-textarea, #symbol-message-input, #message-input, #chatCoordInput',
         );
       }
 
@@ -5340,6 +5340,20 @@
         );
       }
 
+      function applyMobileKeyboardContentHeight() {
+        // On iOS Safari 100dvh doesn't shrink when the keyboard opens, leaving a gray
+        // body-background gap. Drive the content height from visualViewport.height instead.
+        if (!shouldUseMobileKeyboardMode()) return;
+        const content = document.querySelector('.content');
+        if (!content) return;
+        if (document.body.classList.contains('mobile-keyboard-open')) {
+          const vvh = window.visualViewport?.height || window.innerHeight;
+          content.style.height = `${vvh}px`;
+        } else {
+          content.style.height = '';
+        }
+      }
+
       function setMobileKeyboardMode(on) {
         if (!shouldUseMobileKeyboardMode()) return;
         if (on) {
@@ -5351,6 +5365,7 @@
           );
         }
         document.body.classList.toggle('mobile-keyboard-open', !!on);
+        applyMobileKeyboardContentHeight();
         if (!on) {
           document.documentElement.style.removeProperty('--mobile-keyboard-input-top');
           if (isMobileKeyboardTextTarget(document.activeElement)) {
@@ -5449,6 +5464,18 @@
         true,
       );
 
+      // Interpretation textarea: scroll the chat canvas to keep the card visible when
+      // the keyboard appears, without hiding the bottom tab bar.
+      document.addEventListener(
+        'focusin',
+        (e) => {
+          if (!e.target?.matches?.('.expr-interp-textarea')) return;
+          window.setTimeout(keepFocusedCanvasInputVisible, 300);
+          window.setTimeout(keepFocusedCanvasInputVisible, 600);
+        },
+        true,
+      );
+
       document.addEventListener(
         'focusout',
         (e) => {
@@ -5490,6 +5517,7 @@
         if (!shouldUseMobileKeyboardMode()) return;
         if (!document.body.classList.contains('mobile-keyboard-open')) return;
         updateMobileKeyboardInputTop();
+        applyMobileKeyboardContentHeight();
         const viewportHeight = window.visualViewport?.height || window.innerHeight;
         const baseline = Math.max(mobileKeyboardBaselineHeight || 0, window.innerHeight || 0);
         if (viewportHeight > baseline * 0.88) {
