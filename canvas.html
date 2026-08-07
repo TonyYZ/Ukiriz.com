@@ -2167,6 +2167,7 @@
           --sidebar-w: 0px;
         }
 
+        html,
         body {
           display: block;
           width: 100vw;
@@ -5351,11 +5352,14 @@
 
       function applyMobileKeyboardContentHeight() {
         // On iOS Safari, 100dvh doesn't shrink when the keyboard opens, leaving a gap.
-        // Drive the content height via a CSS variable so position:fixed fills exactly
-        // the visual viewport with no gray strip.
+        // Also, iOS auto-scrolls the layout viewport (offsetTop > 0) to bring the
+        // focused element into view, shifting the visual viewport down in layout coords.
+        // Content must reach layout y = offsetTop + vv.height to fill the visual viewport
+        // bottom exactly, with no plain-body-background strip showing above the keyboard.
         if (!shouldUseMobileKeyboardMode()) return;
         if (document.body.classList.contains('mobile-keyboard-open')) {
-          const vvh = window.visualViewport?.height || window.innerHeight;
+          const vv = window.visualViewport;
+          const vvh = vv ? (vv.offsetTop + vv.height) : window.innerHeight;
           document.documentElement.style.setProperty('--vvh', `${vvh}px`);
         } else {
           document.documentElement.style.removeProperty('--vvh');
