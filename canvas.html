@@ -2634,8 +2634,18 @@
         }
 
         body.mobile-keyboard-open .content {
-          height: 100dvh;
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          width: 100vw !important;
+          height: var(--vvh, 100dvh) !important;
           padding-bottom: 0;
+        }
+
+        /* Interpretation textarea: hide other lower-half UI but keep the tab bar visible. */
+        body.mobile-keyboard-open.interp-textarea-active .vertical-bar {
+          display: flex !important;
         }
 
         body.mobile-keyboard-open #chatControls input:not(:focus):not(.mobile-keyboard-pending) {
@@ -5311,7 +5321,7 @@
 
       function isMobileKeyboardTextTarget(target) {
         return !!target?.matches?.(
-          '.label-input, .label-textarea, #symbol-message-input, #message-input, #chatCoordInput',
+          '.label-input, .label-textarea, #symbol-message-input, #message-input, #chatCoordInput, .expr-interp-textarea',
         );
       }
 
@@ -5341,16 +5351,15 @@
       }
 
       function applyMobileKeyboardContentHeight() {
-        // On iOS Safari 100dvh doesn't shrink when the keyboard opens, leaving a gray
-        // body-background gap. Drive the content height from visualViewport.height instead.
+        // On iOS Safari, 100dvh doesn't shrink when the keyboard opens, leaving a gap.
+        // Drive the content height via a CSS variable so position:fixed fills exactly
+        // the visual viewport with no gray strip.
         if (!shouldUseMobileKeyboardMode()) return;
-        const content = document.querySelector('.content');
-        if (!content) return;
         if (document.body.classList.contains('mobile-keyboard-open')) {
           const vvh = window.visualViewport?.height || window.innerHeight;
-          content.style.height = `${vvh}px`;
+          document.documentElement.style.setProperty('--vvh', `${vvh}px`);
         } else {
-          content.style.height = '';
+          document.documentElement.style.removeProperty('--vvh');
         }
       }
 
@@ -5464,14 +5473,14 @@
         true,
       );
 
-      // Interpretation textarea: scroll the chat canvas to keep the card visible when
-      // the keyboard appears, without hiding the bottom tab bar.
+      // Track interpretation textarea focus to keep the tab bar visible while hiding
+      // other lower-half UI (wheel, minimap, question, etc.) via mobile-keyboard-open.
       document.addEventListener(
         'focusin',
         (e) => {
-          if (!e.target?.matches?.('.expr-interp-textarea')) return;
-          window.setTimeout(keepFocusedCanvasInputVisible, 300);
-          window.setTimeout(keepFocusedCanvasInputVisible, 600);
+          if (e.target?.matches?.('.expr-interp-textarea')) {
+            document.body.classList.add('interp-textarea-active');
+          }
         },
         true,
       );
@@ -5481,6 +5490,9 @@
         (e) => {
           if (!shouldUseMobileKeyboardMode()) return;
           if (!isMobileKeyboardTextTarget(e.target)) return;
+          if (e.target?.matches?.('.expr-interp-textarea')) {
+            document.body.classList.remove('interp-textarea-active');
+          }
           setTimeout(() => {
             clearMobileKeyboardModeIfDone();
           }, 120);
