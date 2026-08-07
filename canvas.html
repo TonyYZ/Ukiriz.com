@@ -8784,9 +8784,10 @@
             .slice()
             .sort((a, b) => a.uid.localeCompare(b.uid))
             .slice(0, 24)
-            .forEach((user) => {
+            .forEach((user, idx) => {
               const seed = hash32(`${islandId}:${user.uid}`);
-              const block = blocks.length > 0 ? blocks[seed % blocks.length] : { x: 0, y: 0 };
+              // Use sorted index (not seed %) to spread users across distinct blocks.
+              const block = blocks.length > 0 ? blocks[idx % blocks.length] : { x: 0, y: 0 };
               const jitterX = (((seed >>> 8) % 900) / 900 - 0.5) * 9;
               const jitterY = (((seed >>> 18) % 900) / 900 - 0.5) * 7;
               const x = blocks.length
