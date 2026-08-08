@@ -1370,7 +1370,8 @@
         overflow-wrap: anywhere;
       }
 
-      #symbol-message-input {
+      #symbol-message-input,
+      #craft-symbol-message-input {
         position: absolute;
         bottom: 110px;
         left: 350px;
@@ -1382,7 +1383,8 @@
         color: black;
       }
 
-      #symbol-message-input::placeholder {
+      #symbol-message-input::placeholder,
+      #craft-symbol-message-input::placeholder {
         font-style: italic;
         color: gray;
       }
@@ -2502,7 +2504,8 @@
         }
 
         #message-input,
-        #symbol-message-input {
+        #symbol-message-input,
+        #craft-symbol-message-input {
           left: 8px !important;
           width: calc(100vw - 150px) !important;
           max-width: calc(100vw - 150px) !important;
@@ -2511,7 +2514,8 @@
           font-size: 16px !important;
         }
 
-        #symbol-message-input {
+        #symbol-message-input,
+        #craft-symbol-message-input {
           bottom: 242px !important;
         }
 
@@ -2648,12 +2652,14 @@
           display: flex !important;
         }
 
-        body.mobile-keyboard-open #chatControls input:not(:focus):not(.mobile-keyboard-pending) {
+        body.mobile-keyboard-open #chatControls input:not(.mobile-kbd-input):not(.mobile-keyboard-pending),
+        body.mobile-keyboard-open #craftControls input:not(.mobile-kbd-input):not(.mobile-keyboard-pending) {
           visibility: hidden !important;
         }
 
-        body.mobile-keyboard-open #symbol-message-input:focus,
-        body.mobile-keyboard-open #message-input:focus {
+        body.mobile-keyboard-open #symbol-message-input.mobile-kbd-input,
+        body.mobile-keyboard-open #message-input.mobile-kbd-input,
+        body.mobile-keyboard-open #craft-symbol-message-input.mobile-kbd-input {
           position: fixed !important;
           left: 10px !important;
           right: 10px !important;
@@ -2665,9 +2671,9 @@
           opacity: 1 !important;
           visibility: visible !important;
           display: block !important;
-          background: rgba(255, 255, 255, 0.94);
-          border: 2px solid rgba(0, 0, 0, 0.22);
-          border-radius: 10px;
+          background: rgba(255, 255, 255, 0.94) !important;
+          border: 2px solid rgba(0, 0, 0, 0.22) !important;
+          border-radius: 10px !important;
         }
 
 
@@ -2802,6 +2808,12 @@
             <div class="color" style="background-color: white"></div>
             <div class="color" style="background-color: black"></div>
           </div>
+          <input
+            type="text"
+            id="craft-symbol-message-input"
+            placeholder="Spell a word you've created..."
+            maxlength="32"
+          />
         </div>
       </div>
       <div class="tab-content" id="tab2">
@@ -3193,6 +3205,10 @@
         const symbolMessageInput = document.getElementById('symbol-message-input');
         if (symbolMessageInput) {
           symbolMessageInput.placeholder = I18N[currentLang].symbolMessagePlaceholder;
+        }
+        const craftSymbolMessageInput = document.getElementById('craft-symbol-message-input');
+        if (craftSymbolMessageInput) {
+          craftSymbolMessageInput.placeholder = I18N[currentLang].symbolMessagePlaceholder;
         }
         const annotationInput = document.getElementById('message-input');
         if (annotationInput) {
@@ -5321,7 +5337,7 @@
 
       function isMobileKeyboardTextTarget(target) {
         return !!target?.matches?.(
-          '.label-input, .label-textarea, #symbol-message-input, #message-input, #chatCoordInput, .expr-interp-textarea',
+          '.label-input, .label-textarea, #symbol-message-input, #craft-symbol-message-input, #message-input, #chatCoordInput, .expr-interp-textarea',
         );
       }
 
@@ -5342,7 +5358,10 @@
         const vv = window.visualViewport;
         const visibleBottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
         const inputHeight = 44;
-        const safeTop = window.innerHeight * 0.44;
+        // Use the baseline height (captured before keyboard opens) so the safeTop cap
+        // is correct on Edge/Chrome iOS where window.innerHeight shrinks with the keyboard.
+        const baseline = mobileKeyboardBaselineHeight || window.innerHeight;
+        const safeTop = baseline * 0.44;
         const requestedTop = visibleBottom - inputHeight - 10;
         document.documentElement.style.setProperty(
           '--mobile-keyboard-input-top',
@@ -5377,6 +5396,8 @@
         applyMobileKeyboardContentHeight();
         if (!on) {
           document.documentElement.style.removeProperty('--mobile-keyboard-input-top');
+          document.querySelectorAll('.mobile-kbd-input')
+            .forEach(el => el.classList.remove('mobile-kbd-input'));
           if (isMobileKeyboardTextTarget(document.activeElement)) {
             document.activeElement.blur();
           }
@@ -5401,7 +5422,7 @@
       function settleMobileKeyboardUi() {
         updateMobileKeyboardInputTop();
         const active = document.activeElement;
-        if (active?.matches?.('#symbol-message-input, #message-input')) {
+        if (active?.matches?.('#symbol-message-input, #message-input, #craft-symbol-message-input')) {
           active.scrollIntoView?.({ block: 'center', inline: 'nearest' });
         }
         keepFocusedCanvasInputVisible();
@@ -5463,6 +5484,13 @@
           if (!shouldUseMobileKeyboardMode()) return;
           if (isMobileKeyboardTextTarget(e.target) && !e.target.readOnly && !e.target.disabled) {
             markMobileKeyboardPending(e.target);
+            // Mark canvas spell/annotation inputs with a JS class — :focus is unreliable
+            // on Edge/Chrome iOS during keyboard animation, so CSS can't depend on it.
+            if (e.target.matches('#symbol-message-input, #message-input, #craft-symbol-message-input')) {
+              document.querySelectorAll('.mobile-kbd-input')
+                .forEach(el => el.classList.remove('mobile-kbd-input'));
+              e.target.classList.add('mobile-kbd-input');
+            }
             setMobileKeyboardMode(true);
             updateMobileKeyboardInputTop();
             keepFocusedCanvasInputVisible();
@@ -13868,7 +13896,7 @@
         return links;
       }
 
-      function enableDynamicDotForSpawnedSymbol(symbol) {
+      function enableDynamicDotForSpawnedSymbol(symbol, targetCanvas = null) {
         // Poka-yoke: when spawning a library expression, we want the whole expression to
         // appear "atomically" (no per-symbol pauses). Persist dot positions later in one batch.
         symbol.isDynamic = true;
@@ -13878,7 +13906,8 @@
         dot.parent = symbol;
         symbol.dot = dot;
         updateDotPositionLocal(dot);
-        appendToChatCanvas(dot);
+        if (targetCanvas === craftCanvas()) appendToCraftCanvas(dot);
+        else appendToChatCanvas(dot);
       }
 
       function alignSpawnedSymbols(
@@ -14335,6 +14364,273 @@
             handleSymbolMessage();
           }
         });
+
+      document
+        .getElementById('craft-symbol-message-input')
+        .addEventListener('keydown', function (event) {
+          if (event.key === 'Enter') {
+            handleCraftSymbolMessage();
+          }
+        });
+
+      async function handleCraftSymbolMessage() {
+        const messageBox = document.getElementById('craft-symbol-message-input');
+        const userInput = messageBox.value.trim();
+        if (userInput === '') return;
+        messageBox.value = '';
+        try {
+          await spawnPatternOnCraftCanvas(userInput);
+          emitTutorialEvent?.('craft_symbol_message');
+        } catch (error) {
+          console.error(error);
+          showToast(
+            currentLang === 'zh'
+              ? '符号渲染失败，请重试。'
+              : 'Symbol rendering failed. Please try again.',
+          );
+        }
+      }
+
+      async function spawnPatternOnCraftCanvas(word) {
+        const found = findLibraryEntry(word);
+        if (!found) {
+          showFeedback?.(`No saved symbol expression found for "${word}".`, true);
+          return;
+        }
+
+        const pattern = found.entry?.[1];
+        const layout = found.entry?.[2] || null;
+        if (!pattern?.nodes?.length) {
+          showFeedback?.(`"${found.word}" does not have a saved symbol expression yet.`, true);
+          return;
+        }
+
+        const canvas = craftCanvas();
+        const container = tab1 || document.getElementById('tab1');
+        const zoom = getCanvasZoom(canvas) || 1;
+        const origin = {
+          left:
+            (container?.scrollLeft || 0) / zoom +
+            Math.max(80, ((container?.clientWidth || 800) * 0.32) / zoom),
+          top:
+            (container?.scrollTop || 0) / zoom +
+            Math.max(80, ((container?.clientHeight || 600) * 0.28) / zoom),
+        };
+
+        const sourceNodes =
+          layout?.nodes?.length === pattern.nodes.length ? layout.nodes : pattern.nodes;
+        const sourceLinks = layout?.links?.length ? layout.links : collectPatternLinks(pattern);
+        const placed = new Array(sourceNodes.length);
+        const occupiedRects = Array.from(canvas?.querySelectorAll('.symbol') || []).map(
+          (s) => getSymbolRectOnCanvas(s),
+        );
+        const hasSavedLayout = pattern.nodes.every(
+          (node) => Number.isFinite(node?.relLeft) && Number.isFinite(node?.relTop),
+        );
+
+        clearAllSymbolSelection();
+        clearAllEmojiSelection();
+
+        if (layout?.nodes?.length === pattern.nodes.length) {
+          const minLeft = Math.min(...layout.nodes.map((node) => node.left ?? 0));
+          const minTop = Math.min(...layout.nodes.map((node) => node.top ?? 0));
+          for (let i = 0; i < layout.nodes.length; i++) {
+            const node = layout.nodes[i];
+            placed[i] = createSymbolCopy(
+              null, null,
+              node.elemId ?? node.elemIdTrue, node.elemIdTrue,
+              origin.left + ((node.left ?? 0) - minLeft),
+              origin.top + ((node.top ?? 0) - minTop),
+              node.color ?? null, node.angle ?? 0, null, canvas,
+            );
+            if (node.isDynamic) enableDynamicDotForSpawnedSymbol(placed[i], canvas);
+          }
+        } else if (hasSavedLayout) {
+          for (let i = 0; i < pattern.nodes.length; i++) {
+            const node = pattern.nodes[i];
+            placed[i] = createSymbolCopy(
+              null, null,
+              node.elemIdTrue, node.elemIdTrue,
+              origin.left + node.relLeft, origin.top + node.relTop,
+              null, node.angle ?? 0, null, canvas,
+            );
+            if (node.isDynamic) enableDynamicDotForSpawnedSymbol(placed[i], canvas);
+          }
+        } else {
+          const rootInfo = {
+            elemId: pattern.nodes[0].elemIdTrue,
+            elemIdTrue: pattern.nodes[0].elemIdTrue,
+            angle: pattern.nodes[0].angle ?? 0,
+            isDynamic: !!pattern.nodes[0].isDynamic,
+          };
+          placed[0] = createSymbolCopy(
+            null, null,
+            rootInfo.elemId, rootInfo.elemIdTrue,
+            origin.left, origin.top,
+            null, rootInfo.angle, null, canvas,
+          );
+          if (rootInfo.isDynamic) enableDynamicDotForSpawnedSymbol(placed[0], canvas);
+
+          const queue = [0];
+          const seenNodes = new Set([0]);
+          while (queue.length > 0) {
+            const currentIndex = queue.shift();
+            const currentSymbol = placed[currentIndex];
+            const currentInfo = {
+              elemId: pattern.nodes[currentIndex].elemIdTrue,
+              elemIdTrue: pattern.nodes[currentIndex].elemIdTrue,
+              angle: pattern.nodes[currentIndex].angle ?? 0,
+              isDynamic: !!pattern.nodes[currentIndex].isDynamic,
+            };
+            for (let currentSide = 0; currentSide < 6; currentSide++) {
+              for (const [neighborIndex, neighborSide] of
+                pattern.adj[currentIndex][currentSide] || []) {
+                if (placed[neighborIndex]) continue;
+                const neighborInfo = {
+                  elemId: pattern.nodes[neighborIndex].elemIdTrue,
+                  elemIdTrue: pattern.nodes[neighborIndex].elemIdTrue,
+                  angle: pattern.nodes[neighborIndex].angle ?? 0,
+                  isDynamic: !!pattern.nodes[neighborIndex].isDynamic,
+                };
+                placed[neighborIndex] = createSymbolCopy(
+                  null, null,
+                  neighborInfo.elemId, neighborInfo.elemIdTrue,
+                  origin.left + 40, origin.top + 40,
+                  null, neighborInfo.angle, null, canvas,
+                );
+                if (neighborInfo.isDynamic) enableDynamicDotForSpawnedSymbol(placed[neighborIndex], canvas);
+                alignSpawnedSymbols(
+                  currentSymbol, currentInfo, currentSide,
+                  placed[neighborIndex], neighborInfo, neighborSide,
+                );
+                if (!seenNodes.has(neighborIndex)) {
+                  seenNodes.add(neighborIndex);
+                  queue.push(neighborIndex);
+                }
+              }
+            }
+          }
+
+          for (let i = 0; i < sourceNodes.length; i++) {
+            if (placed[i]) continue;
+            const fallbackInfo = sourceNodes[i];
+            placed[i] = createSymbolCopy(
+              null, null,
+              fallbackInfo.elemId ?? fallbackInfo.elemIdTrue, fallbackInfo.elemIdTrue,
+              origin.left + i * 35, origin.top + i * 35,
+              fallbackInfo.color ?? null, fallbackInfo.angle, null, canvas,
+            );
+            if (fallbackInfo.isDynamic) enableDynamicDotForSpawnedSymbol(placed[i], canvas);
+          }
+        }
+
+        const placedSymbols = placed.filter(Boolean);
+        let shift = findNonOverlappingShift(placedSymbols, occupiedRects);
+        if (!shift.found && occupiedRects.length && placedSymbols.length) {
+          const occupiedBounds = getRectBounds(occupiedRects);
+          const placedBounds = getRectBounds(placedSymbols.map((s) => getSymbolRectOnCanvas(s)));
+          if (occupiedBounds && placedBounds) {
+            shift = {
+              dx: occupiedBounds.right + 220 - placedBounds.left,
+              dy: occupiedBounds.top - placedBounds.top,
+              found: true,
+            };
+          }
+        }
+        shiftSpawnedSymbols(placedSymbols, shift.dx, shift.dy);
+
+        placedSymbols.forEach((symbol) => markLocalSymbolMutation(symbol, 2500));
+
+        for (const link of sourceLinks) {
+          const fromSymbol = placed[link.from];
+          const toSymbol = placed[link.to];
+          if (!fromSymbol || !toSymbol) continue;
+          commitLink(fromSymbol, link.fromSide, toSymbol, link.toSide);
+        }
+
+        const groupId = `eg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const groupSet = new Set(placedSymbols);
+        expressionGroups.set(groupId, groupSet);
+        for (const sym of placedSymbols) {
+          sym._expressionGroupId = groupId;
+          sym.selected = true;
+          selectedSymbols.add(sym);
+        }
+
+        const nodeId = found.entry?.[0] || null;
+        const libNode = nodeId && typeof nodes?.get === 'function' ? nodes.get(nodeId) : null;
+        const rawTitle = String(libNode?.title || '');
+        const why = rawTitle.includes('. ') ? rawTitle.split(/\. (.+)/)[1] || '' : rawTitle;
+        const exprLang = getExpressionSourceLang(
+          String(libNode?.lang || ''),
+          libNode?.word || found.word || '',
+          why,
+        );
+        const payload = {
+          exprGroupId: groupId,
+          exprWord: String(libNode?.word || found.word || ''),
+          exprWhy: String(why || ''),
+          exprLang,
+          exprNodeId: nodeId ? String(nodeId) : '',
+          exprAuthorUid: currentUser?.uid || '',
+        };
+        for (const sym of placedSymbols) {
+          sym.dataset.exprWord = payload.exprWord;
+          sym.dataset.exprWhy = payload.exprWhy;
+          sym.dataset.exprLang = payload.exprLang;
+          sym.dataset.exprNodeId = payload.exprNodeId;
+          sym.dataset.exprAuthorUid = payload.exprAuthorUid;
+        }
+
+        updateExpressionGroupFrame(placedSymbols, canvas);
+        window._sfxPlacement?.();
+
+        (async () => {
+          try {
+            await Promise.all(
+              placedSymbols.map(async (sym) => {
+                if (!sym?.dataset?.id && sym?._pendingIdPromise) await sym._pendingIdPromise;
+              }),
+            );
+            const linkTasks = [];
+            for (const link of sourceLinks) {
+              const fromSymbol = placed[link.from];
+              const toSymbol = placed[link.to];
+              if (!fromSymbol || !toSymbol) continue;
+              const fromId = fromSymbol.dataset?.id;
+              const toId = toSymbol.dataset?.id;
+              if (!fromId || !toId) continue;
+              linkTasks.push(persistLink(fromId, link.fromSide, toId, link.toSide));
+            }
+            if (linkTasks.length) await Promise.all(linkTasks);
+            if (shift.dx || shift.dy) {
+              await Promise.all(
+                placedSymbols.map(async (symbol) => {
+                  const id = symbol.dataset?.id;
+                  if (!id) return;
+                  const x = parseFloat(symbol.style.left) || 0;
+                  const y = parseFloat(symbol.style.top) || 0;
+                  await updateObjPosition(id, x, y);
+                }),
+              );
+            }
+            await persistDynamicDotsForSymbols(placedSymbols);
+            await Promise.all(
+              placedSymbols.map(async (sym) => {
+                const id = sym.dataset?.id;
+                if (!id) return;
+                await updateRoomObj(id, payload).catch((error) => {
+                  console.warn('spawned expression meta persist failed:', error);
+                });
+              }),
+            );
+          } catch (e) {
+            console.warn('spawnPatternOnCraftCanvas async persist failed:', e);
+          }
+        })();
+
+        activeSymbol = null;
+      }
 
       function floatLabel(label) {
         const maxDistance = 20; // Maximum distance from the original position
@@ -15594,6 +15890,11 @@
           for (let i = lst.length - 1; i >= 0; i--) {
             const [nbr, nbrSide] = lst[i];
             if (!nbr) continue;
+
+            // Never prune connections within the same expression group — they were explicitly
+            // set up as a unit and should survive drag regardless of floating-point drift.
+            if (symbol._expressionGroupId && symbol._expressionGroupId === nbr._expressionGroupId)
+              continue;
 
             const aJ = getAbsJunctions(symbol)?.[side];
             const bJ = getAbsJunctions(nbr)?.[nbrSide];
@@ -18430,7 +18731,7 @@
         symbol.offsetX = offsetX;
         symbol.offsetY = offsetY;
 
-        if (tabHeadersActivated[4] || symbolX !== null) {
+        if (isChatSymbol) {
           const packetElemId = Number(symbol.elemId);
           if (!Number.isInteger(packetElemId) || !symbolData[packetElemId]) {
             console.warn(`Not saving chat symbol with invalid elemId: ${symbol.elemId}`);
