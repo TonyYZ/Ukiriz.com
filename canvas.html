@@ -5342,12 +5342,15 @@
         const vv = window.visualViewport;
         const visibleBottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
         const inputHeight = 44;
-        const safeTop = window.innerHeight * 0.44;
         const requestedTop = visibleBottom - inputHeight - 10;
-        document.documentElement.style.setProperty(
-          '--mobile-keyboard-input-top',
-          `${Math.max(8, Math.round(Math.min(requestedTop, safeTop)))}px`,
-        );
+        // Before the keyboard finishes opening, mobileKeyboardBaselineHeight is not yet set.
+        // Cap to 44% of the ORIGINAL (pre-keyboard) screen height so the input doesn't land
+        // off-screen during the opening animation. After the keyboard is fully open, use
+        // requestedTop directly (just above the keyboard) to minimise the empty-canvas gap.
+        const top = mobileKeyboardBaselineHeight
+          ? Math.max(8, Math.round(requestedTop))
+          : Math.max(8, Math.round(Math.min(requestedTop, window.innerHeight * 0.44)));
+        document.documentElement.style.setProperty('--mobile-keyboard-input-top', `${top}px`);
       }
 
       function applyMobileKeyboardContentHeight() {
