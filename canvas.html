@@ -1601,7 +1601,7 @@
       .library-tree-card {
         position: absolute;
         min-width: 180px;
-        min-height: 74px;
+        min-height: 92px;
         padding: 12px 14px;
         border: 3px solid black;
         border-radius: 10px;
@@ -1638,8 +1638,8 @@
       }
 
       .library-tree-card-image {
-        width: 42px;
-        height: 42px;
+        width: 60px;
+        height: 60px;
         flex: 0 0 auto;
         object-fit: contain;
         box-sizing: border-box;
@@ -18268,11 +18268,6 @@
                   pattern,
                 );
                 library.set(word, [id, pattern, layout]);
-                showToast(
-                  currentLang === 'zh'
-                    ? `「${word}」已保存到词库`
-                    : `"${word}" saved to library`,
-                );
 
                 // Stamp expression metadata on the made-up symbols so other users
                 // see a mystery card (and the stamp bubble is skipped for them).
@@ -20502,21 +20497,24 @@
       function appendLibraryTreeSerialization(container, serialization) {
         if (!container || !serialization) return;
 
-        const line = document.createElement('div');
-        line.className = 'library-tree-card-serialization';
-        line.append(document.createTextNode(currentLang === 'zh' ? '写作：' : 'Written as '));
-
+        const writtenLine = document.createElement('div');
+        writtenLine.className = 'library-tree-card-serialization';
+        writtenLine.append(document.createTextNode(currentLang === 'zh' ? '写作：' : 'Written as '));
         const written = document.createElement('em');
         written.textContent = serialization.written;
-        line.appendChild(written);
-        line.append(
+        writtenLine.appendChild(written);
+        container.appendChild(writtenLine);
+
+        const ipaLine = document.createElement('div');
+        ipaLine.className = 'library-tree-card-serialization';
+        ipaLine.append(
           document.createTextNode(
             currentLang === 'zh'
-              ? `，读作：/${serialization.ipa}/`
-              : `, pronounced as /${serialization.ipa}/`,
+              ? `读作：/${serialization.ipa}/`
+              : `Pronounced as /${serialization.ipa}/`,
           ),
         );
-        container.appendChild(line);
+        container.appendChild(ipaLine);
       }
 
       function computeLibraryNetworkArrangePositions() {
@@ -20957,8 +20955,10 @@
 
       async function copyLibraryTreeCardText(card) {
         if (!card) return false;
-        const wordEl = card.querySelector('.library-tree-card-word');
-        const word = (wordEl?.dataset?.word ?? wordEl?.textContent)?.trim() || '';
+        const _wordEl0 = card.querySelector('.library-tree-card-word');
+        const _wordClone0 = _wordEl0?.cloneNode(true);
+        _wordClone0?.querySelectorAll('.library-tree-interp-badge').forEach(b => b.remove());
+        const word = _wordClone0?.textContent?.trim() || '';
         const definition =
           card.querySelector('.library-tree-card-definition')?.textContent?.trim() || '';
         const serializationLines = Array.from(
@@ -20978,8 +20978,10 @@
       }
 
       function getLibraryTreeCardShareFilename(card) {
-        const el = card?.querySelector?.('.library-tree-card-word');
-        const word = (el?.dataset?.word ?? el?.textContent)?.trim() || 'word';
+        const _wordEl1 = card?.querySelector?.('.library-tree-card-word');
+        const _wordClone1 = _wordEl1?.cloneNode(true);
+        _wordClone1?.querySelectorAll('.library-tree-interp-badge').forEach(b => b.remove());
+        const word = _wordClone1?.textContent?.trim() || 'word';
         const safeWord = word
           .replace(/[\\/:*?"<>|]+/g, '-')
           .replace(/\s+/g, '-')
@@ -21031,7 +21033,7 @@
         ctx.stroke();
 
         const imageEl = card.querySelector('.library-tree-card-image');
-        const imageBox = { x: 14, y: Math.max(12, (height - 42) / 2), size: 42 };
+        const imageBox = { x: 14, y: Math.max(12, (height - 60) / 2), size: 60 };
         if (imageEl?.src) {
           try {
             const img = new Image();
@@ -21048,14 +21050,15 @@
         }
 
         const fontFamily =
-          "'LXGW WenKai', 'Sarasa UI SC', 'Source Han Serif SC', Consolas, monospace";
-        const textX = 68;
+          getComputedStyle(card.querySelector('.library-tree-card-word') || card).fontFamily ||
+          "'UkirizSarasaUiSC', 'Sarasa UI SC', Consolas, monospace";
+        const textX = 86;
         const textWidth = Math.max(40, width - textX - 14);
         let y = 20;
 
         function wrapCanvasText(text, maxWidth, font) {
           ctx.font = font;
-          const tokens = String(text || '').match(/[\u4e00-\u9fff]|[^\s]+|\s+/gu) || [];
+          const tokens = String(text || '').match(/[\u3000-\u9fff\uff00-\uffef]|[^\s]+|\s+/gu) || [];
           const lines = [];
           let line = '';
           for (const token of tokens) {
@@ -21086,8 +21089,10 @@
           }
         }
 
-        const wordEl = card.querySelector('.library-tree-card-word');
-        const word = (wordEl?.dataset?.word ?? wordEl?.textContent)?.trim() || '';
+        const _wordEl2 = card.querySelector('.library-tree-card-word');
+        const _wordClone2 = _wordEl2?.cloneNode(true);
+        _wordClone2?.querySelectorAll('.library-tree-interp-badge').forEach(b => b.remove());
+        const word = _wordClone2?.textContent?.trim() || '';
         const definition =
           card.querySelector('.library-tree-card-definition')?.textContent?.trim() || '';
         const serializationLines = Array.from(
@@ -21885,7 +21890,6 @@
 
           const label = document.createElement('div');
           label.className = 'library-tree-card-word';
-          label.dataset.word = word;
           label.textContent = word;
 
           textWrap.appendChild(label);
@@ -21896,10 +21900,17 @@
             textWrap.appendChild(definitionEl);
           }
           if (primitiveSpeech) {
-            const primitiveSpeechEl = document.createElement('div');
-            primitiveSpeechEl.className = 'library-tree-card-serialization';
-            primitiveSpeechEl.textContent = primitiveSpeech;
-            textWrap.appendChild(primitiveSpeechEl);
+            const phonemeMarker = currentLang === 'zh' ? '音：' : 'Phoneme:';
+            const phoneStart = primitiveSpeech.indexOf(phonemeMarker);
+            const graphemePart = phoneStart >= 0 ? primitiveSpeech.slice(0, phoneStart).trim() : primitiveSpeech;
+            const phonemePart = phoneStart >= 0 ? primitiveSpeech.slice(phoneStart).trim() : '';
+            [graphemePart, phonemePart].forEach((part) => {
+              if (!part) return;
+              const el = document.createElement('div');
+              el.className = 'library-tree-card-serialization';
+              el.textContent = part;
+              textWrap.appendChild(el);
+            });
           }
           appendLibraryTreeSerialization(textWrap, serialization);
 
@@ -22565,7 +22576,6 @@
       }
 
       function scaleSVG(svgString, targetSize = 40) {
-        // Parse SVG string
         let parser = new DOMParser();
         let doc = parser.parseFromString(svgString, 'image/svg+xml');
         let svg = doc.documentElement;
@@ -22575,33 +22585,30 @@
         let height = parseFloat(svg.getAttribute('height'));
 
         if (viewBox) {
-          let [x, y, w, h] = viewBox.split(' ').map(parseFloat);
+          let [, , w, h] = viewBox.split(' ').map(parseFloat);
           width = w;
           height = h;
         }
 
-        if (!width || !height) return svgString; // Fallback: return original SVG
+        if (!width || !height) return svgString;
 
-        // Calculate scale factor
-        let scale = (targetSize * 0.6) / Math.max(width, height);
+        // 5-unit padding on each side gives dotDataMini circles room to breathe
+        // (circle at cx=2,cy=2,r=2 can extend ~4 units past the anchor point).
+        // Output is always a square so ctx.drawImage and vis.js circularImage
+        // both receive an undistorted image.
+        const pad = 5;
+        const scale = (targetSize - 2 * pad) / Math.max(width, height);
+        const translateX = (targetSize - width * scale) / 2;
+        const translateY = (targetSize - height * scale) / 2;
 
-        // Calculate translation to center the scaled content
-        let translateX = (targetSize - width * scale) / 2;
-        let translateY = (targetSize - height * scale) / 2;
-
-        // Apply transform
-        let transform = `translate(${translateX}, ${translateY}) scale(${scale})`;
-
-        // Wrap everything inside a group <g> element to apply transformations
-        let group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        group.setAttribute('transform', transform);
+        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        group.setAttribute('transform', `translate(${translateX}, ${translateY}) scale(${scale})`);
         while (svg.firstChild) {
           group.appendChild(svg.firstChild);
         }
-        svg.innerHTML = ''; // Clear original SVG
+        svg.innerHTML = '';
         svg.appendChild(group);
 
-        // Set viewBox to match the target circle size
         svg.setAttribute('width', targetSize);
         svg.setAttribute('height', targetSize);
         svg.setAttribute('viewBox', `0 0 ${targetSize} ${targetSize}`);
@@ -22617,6 +22624,7 @@
         let bottomMost = -document.documentElement.scrollHeight;
         let rect;
         let svgString = '';
+        const ratio = 49.92 / (symbolWidth * symbolScale);
         components.forEach((symbol) => {
           rect = symbol.getBoundingClientRect();
           if (rect.left < leftMost) leftMost = rect.left;
@@ -22627,12 +22635,15 @@
           if (symbol.dot != null) {
             rect = symbol.dot.getBoundingClientRect();
             if (rect.left < leftMost) leftMost = rect.left;
-            if (rect.right > rightMost) rightMost = rect.right;
             if (rect.top < topMost) topMost = rect.top;
-            if (rect.bottom > bottomMost) bottomMost = rect.bottom;
+            // dotDataMini is a 10×10 SVG-unit element placed at rect.left/top;
+            // use its full screen-space extent so the viewBox contains the whole dot.
+            const dotR = rect.left + 10 / ratio;
+            const dotB = rect.top + 10 / ratio;
+            if (dotR > rightMost) rightMost = dotR;
+            if (dotB > bottomMost) bottomMost = dotB;
           }
         });
-        const ratio = 49.92 / (symbolWidth * symbolScale);
 
         components.forEach((symbol) => {
           rect = symbol.getBoundingClientRect();
