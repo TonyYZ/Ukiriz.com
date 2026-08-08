@@ -5703,6 +5703,7 @@
           enableWorldPanning();
           renderWorld();
           enableIslandSelection();
+          subscribeToWorldPresence();
           // Restore the previously-selected island if nothing is already selected.
           // This handles page refresh: the stickman presence is restored but the
           // visual island selection is lost until the world tab is first opened.
@@ -8931,7 +8932,6 @@
       }
 
       async function refreshWorldPresence() {
-        if (!currentUser) return;
         const { data, error } = await supabase.from('world_presence').select('*');
         if (error) {
           console.warn('World presence refresh failed:', error);
