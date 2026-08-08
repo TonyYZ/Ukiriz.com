@@ -20957,7 +20957,8 @@
 
       async function copyLibraryTreeCardText(card) {
         if (!card) return false;
-        const word = card.querySelector('.library-tree-card-word')?.textContent?.trim() || '';
+        const wordEl = card.querySelector('.library-tree-card-word');
+        const word = (wordEl?.dataset?.word ?? wordEl?.textContent)?.trim() || '';
         const definition =
           card.querySelector('.library-tree-card-definition')?.textContent?.trim() || '';
         const serializationLines = Array.from(
@@ -20977,8 +20978,8 @@
       }
 
       function getLibraryTreeCardShareFilename(card) {
-        const word =
-          card?.querySelector?.('.library-tree-card-word')?.textContent?.trim() || 'word';
+        const el = card?.querySelector?.('.library-tree-card-word');
+        const word = (el?.dataset?.word ?? el?.textContent)?.trim() || 'word';
         const safeWord = word
           .replace(/[\\/:*?"<>|]+/g, '-')
           .replace(/\s+/g, '-')
@@ -21085,7 +21086,8 @@
           }
         }
 
-        const word = card.querySelector('.library-tree-card-word')?.textContent?.trim() || '';
+        const wordEl = card.querySelector('.library-tree-card-word');
+        const word = (wordEl?.dataset?.word ?? wordEl?.textContent)?.trim() || '';
         const definition =
           card.querySelector('.library-tree-card-definition')?.textContent?.trim() || '';
         const serializationLines = Array.from(
@@ -21883,6 +21885,7 @@
 
           const label = document.createElement('div');
           label.className = 'library-tree-card-word';
+          label.dataset.word = word;
           label.textContent = word;
 
           textWrap.appendChild(label);
