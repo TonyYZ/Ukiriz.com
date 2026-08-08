@@ -8972,7 +8972,11 @@
       }
 
       async function updateWorldPresence(islandId) {
-        if (!currentUser?.uid || !islandId) return;
+        if (!islandId) return;
+        if (!currentUser?.uid) {
+          try { await waitForAuth(); } catch { return; }
+        }
+        if (!currentUser?.uid) return;
         currentPresenceIslandId = String(islandId);
         const color =
           cachedUserColor ||
