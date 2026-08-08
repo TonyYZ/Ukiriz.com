@@ -528,8 +528,12 @@
         }
       }
       @keyframes mysteryStripeScroll {
-        from { transform: translate(0, 0); }
-        to   { transform: translate(18.385px, 18.385px); }
+        from {
+          transform: translate(0, 0);
+        }
+        to {
+          transform: translate(18.385px, 18.385px);
+        }
       }
       .expr-mystery-overlay {
         position: absolute;
@@ -1324,8 +1328,13 @@
       }
 
       @keyframes thinkingPulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.25; }
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.25;
+        }
       }
       .thinking-indicator {
         position: absolute;
@@ -2666,8 +2675,12 @@
           display: flex !important;
         }
 
-        body.mobile-keyboard-open #chatControls input:not(.mobile-kbd-input):not(.mobile-keyboard-pending),
-        body.mobile-keyboard-open #craftControls input:not(.mobile-kbd-input):not(.mobile-keyboard-pending) {
+        body.mobile-keyboard-open
+          #chatControls
+          input:not(.mobile-kbd-input):not(.mobile-keyboard-pending),
+        body.mobile-keyboard-open
+          #craftControls
+          input:not(.mobile-kbd-input):not(.mobile-keyboard-pending) {
           visibility: hidden !important;
         }
 
@@ -2689,7 +2702,6 @@
           border: 2px solid rgba(0, 0, 0, 0.22) !important;
           border-radius: 10px !important;
         }
-
 
         .typing-effect p {
           font-size: 13px !important;
@@ -2745,12 +2757,20 @@
         font-family: sans-serif;
         backdrop-filter: blur(4px);
       }
-      body.playground-mode #playground-picker { display: flex; }
-      #playground-picker label { color: #444; user-select: none; }
-      #playground-picker input[type=color] {
-        width: 28px; height: 28px;
-        border: none; padding: 0;
-        border-radius: 5px; cursor: pointer;
+      body.playground-mode #playground-picker {
+        display: flex;
+      }
+      #playground-picker label {
+        color: #444;
+        user-select: none;
+      }
+      #playground-picker input[type='color'] {
+        width: 28px;
+        height: 28px;
+        border: none;
+        padding: 0;
+        border-radius: 5px;
+        cursor: pointer;
         background: none;
       }
     </style>
@@ -2825,7 +2845,7 @@
           <input
             type="text"
             id="craft-symbol-message-input"
-            placeholder="Spell a word you've created..."
+            placeholder="Render a word you've created before..."
             maxlength="32"
           />
         </div>
@@ -2902,7 +2922,7 @@
           <input
             type="text"
             id="symbol-message-input"
-            placeholder="Spell a word you've created..."
+            placeholder="Render a word you've created before..."
             maxlength="32"
           />
           <input
@@ -3051,7 +3071,7 @@
           validationFailed: 'Validation failed.',
           whatWordIsThis: 'What word is this?',
           whyPrompt: 'Why?',
-          symbolMessagePlaceholder: "Spell a word you've created...",
+          symbolMessagePlaceholder: "Render a word you've created before...",
           annotationPlaceholder: 'Make an annotation...',
         },
         zh: {
@@ -3164,7 +3184,7 @@
           validationFailed: '验证失败。',
           whatWordIsThis: '这是什么词？',
           whyPrompt: '为什么？',
-          symbolMessagePlaceholder: '写一个你造的词……',
+          symbolMessagePlaceholder: '渲染一个你曾经造的词……',
           annotationPlaceholder: '添加注释……',
         },
       };
@@ -3771,7 +3791,7 @@
         const uiTerms =
           currentLang === 'zh'
             ? [
-                '写一个你造的词……',
+                '渲染一个你曾经造的词……',
                 '岛屿标签页',
                 '聊天画布',
                 '网络',
@@ -3789,7 +3809,7 @@
                 '移除',
               ]
             : [
-                "Spell a word you've created...",
+                "Render a word you've created before...",
                 'network/tree toggle',
                 'dynamic dot button',
                 'symbol wheel',
@@ -4620,8 +4640,8 @@
             target: () => document.getElementById('symbol-message-input'),
             title: zh ? '第 3 关 · 10/12 发布表达' : 'Level 3 · 10/12 Post the Expression',
             body: zh
-              ? '在“写一个你造的词……”里输入你定义的词（例如 冰淇淋），按回车把表达发布到聊天画布。'
-              : "In “Spell a word you've created...”, enter your word (for example, ice cream) and press Enter to post it.",
+              ? '在“渲染一个你曾经造的词……”里输入你定义的词（例如 冰淇淋），按回车把表达发布到聊天画布。'
+              : "In “Render a word you've created before...”, enter your word (for example, ice cream) and press Enter to post it.",
             completedBody: zh
               ? '你的词已经以符号表达的形式发布到聊天画布。'
               : 'Your word has been posted to the chat canvas as a symbol expression.',
@@ -5410,8 +5430,9 @@
         applyMobileKeyboardContentHeight();
         if (!on) {
           document.documentElement.style.removeProperty('--mobile-keyboard-input-top');
-          document.querySelectorAll('.mobile-kbd-input')
-            .forEach(el => el.classList.remove('mobile-kbd-input'));
+          document
+            .querySelectorAll('.mobile-kbd-input')
+            .forEach((el) => el.classList.remove('mobile-kbd-input'));
           if (isMobileKeyboardTextTarget(document.activeElement)) {
             document.activeElement.blur();
           }
@@ -5436,7 +5457,9 @@
       function settleMobileKeyboardUi() {
         updateMobileKeyboardInputTop();
         const active = document.activeElement;
-        if (active?.matches?.('#symbol-message-input, #message-input, #craft-symbol-message-input')) {
+        if (
+          active?.matches?.('#symbol-message-input, #message-input, #craft-symbol-message-input')
+        ) {
           active.scrollIntoView?.({ block: 'center', inline: 'nearest' });
         }
         keepFocusedCanvasInputVisible();
@@ -5500,9 +5523,14 @@
             markMobileKeyboardPending(e.target);
             // Mark canvas spell/annotation inputs with a JS class — :focus is unreliable
             // on Edge/Chrome iOS during keyboard animation, so CSS can't depend on it.
-            if (e.target.matches('#symbol-message-input, #message-input, #craft-symbol-message-input')) {
-              document.querySelectorAll('.mobile-kbd-input')
-                .forEach(el => el.classList.remove('mobile-kbd-input'));
+            if (
+              e.target.matches(
+                '#symbol-message-input, #message-input, #craft-symbol-message-input',
+              )
+            ) {
+              document
+                .querySelectorAll('.mobile-kbd-input')
+                .forEach((el) => el.classList.remove('mobile-kbd-input'));
               e.target.classList.add('mobile-kbd-input');
             }
             setMobileKeyboardMode(true);
@@ -12517,7 +12545,10 @@
                 overlay.appendChild(label);
               }
 
-              async function showJuxtaposition(interpText, { alreadySent: knownSent = false } = {}) {
+              async function showJuxtaposition(
+                interpText,
+                { alreadySent: knownSent = false } = {},
+              ) {
                 const zh = currentLang === 'zh';
                 // Clear any explicit height from a prior resize so the card expands to fit
                 card.style.height = '';
@@ -14435,8 +14466,8 @@
           layout?.nodes?.length === pattern.nodes.length ? layout.nodes : pattern.nodes;
         const sourceLinks = layout?.links?.length ? layout.links : collectPatternLinks(pattern);
         const placed = new Array(sourceNodes.length);
-        const occupiedRects = Array.from(canvas?.querySelectorAll('.symbol') || []).map(
-          (s) => getSymbolRectOnCanvas(s),
+        const occupiedRects = Array.from(canvas?.querySelectorAll('.symbol') || []).map((s) =>
+          getSymbolRectOnCanvas(s),
         );
         const hasSavedLayout = pattern.nodes.every(
           (node) => Number.isFinite(node?.relLeft) && Number.isFinite(node?.relTop),
@@ -14451,11 +14482,16 @@
           for (let i = 0; i < layout.nodes.length; i++) {
             const node = layout.nodes[i];
             placed[i] = createSymbolCopy(
-              null, null,
-              node.elemId ?? node.elemIdTrue, node.elemIdTrue,
+              null,
+              null,
+              node.elemId ?? node.elemIdTrue,
+              node.elemIdTrue,
               origin.left + ((node.left ?? 0) - minLeft),
               origin.top + ((node.top ?? 0) - minTop),
-              node.color ?? null, node.angle ?? 0, null, canvas,
+              node.color ?? null,
+              node.angle ?? 0,
+              null,
+              canvas,
             );
             if (node.isDynamic) enableDynamicDotForSpawnedSymbol(placed[i], canvas);
           }
@@ -14463,10 +14499,16 @@
           for (let i = 0; i < pattern.nodes.length; i++) {
             const node = pattern.nodes[i];
             placed[i] = createSymbolCopy(
-              null, null,
-              node.elemIdTrue, node.elemIdTrue,
-              origin.left + node.relLeft, origin.top + node.relTop,
-              null, node.angle ?? 0, null, canvas,
+              null,
+              null,
+              node.elemIdTrue,
+              node.elemIdTrue,
+              origin.left + node.relLeft,
+              origin.top + node.relTop,
+              null,
+              node.angle ?? 0,
+              null,
+              canvas,
             );
             if (node.isDynamic) enableDynamicDotForSpawnedSymbol(placed[i], canvas);
           }
@@ -14478,10 +14520,16 @@
             isDynamic: !!pattern.nodes[0].isDynamic,
           };
           placed[0] = createSymbolCopy(
-            null, null,
-            rootInfo.elemId, rootInfo.elemIdTrue,
-            origin.left, origin.top,
-            null, rootInfo.angle, null, canvas,
+            null,
+            null,
+            rootInfo.elemId,
+            rootInfo.elemIdTrue,
+            origin.left,
+            origin.top,
+            null,
+            rootInfo.angle,
+            null,
+            canvas,
           );
           if (rootInfo.isDynamic) enableDynamicDotForSpawnedSymbol(placed[0], canvas);
 
@@ -14497,8 +14545,8 @@
               isDynamic: !!pattern.nodes[currentIndex].isDynamic,
             };
             for (let currentSide = 0; currentSide < 6; currentSide++) {
-              for (const [neighborIndex, neighborSide] of
-                pattern.adj[currentIndex][currentSide] || []) {
+              for (const [neighborIndex, neighborSide] of pattern.adj[currentIndex][currentSide] ||
+                []) {
                 if (placed[neighborIndex]) continue;
                 const neighborInfo = {
                   elemId: pattern.nodes[neighborIndex].elemIdTrue,
@@ -14507,15 +14555,26 @@
                   isDynamic: !!pattern.nodes[neighborIndex].isDynamic,
                 };
                 placed[neighborIndex] = createSymbolCopy(
-                  null, null,
-                  neighborInfo.elemId, neighborInfo.elemIdTrue,
-                  origin.left + 40, origin.top + 40,
-                  null, neighborInfo.angle, null, canvas,
+                  null,
+                  null,
+                  neighborInfo.elemId,
+                  neighborInfo.elemIdTrue,
+                  origin.left + 40,
+                  origin.top + 40,
+                  null,
+                  neighborInfo.angle,
+                  null,
+                  canvas,
                 );
-                if (neighborInfo.isDynamic) enableDynamicDotForSpawnedSymbol(placed[neighborIndex], canvas);
+                if (neighborInfo.isDynamic)
+                  enableDynamicDotForSpawnedSymbol(placed[neighborIndex], canvas);
                 alignSpawnedSymbols(
-                  currentSymbol, currentInfo, currentSide,
-                  placed[neighborIndex], neighborInfo, neighborSide,
+                  currentSymbol,
+                  currentInfo,
+                  currentSide,
+                  placed[neighborIndex],
+                  neighborInfo,
+                  neighborSide,
                 );
                 if (!seenNodes.has(neighborIndex)) {
                   seenNodes.add(neighborIndex);
@@ -14529,10 +14588,16 @@
             if (placed[i]) continue;
             const fallbackInfo = sourceNodes[i];
             placed[i] = createSymbolCopy(
-              null, null,
-              fallbackInfo.elemId ?? fallbackInfo.elemIdTrue, fallbackInfo.elemIdTrue,
-              origin.left + i * 35, origin.top + i * 35,
-              fallbackInfo.color ?? null, fallbackInfo.angle, null, canvas,
+              null,
+              null,
+              fallbackInfo.elemId ?? fallbackInfo.elemIdTrue,
+              fallbackInfo.elemIdTrue,
+              origin.left + i * 35,
+              origin.top + i * 35,
+              fallbackInfo.color ?? null,
+              fallbackInfo.angle,
+              null,
+              canvas,
             );
             if (fallbackInfo.isDynamic) enableDynamicDotForSpawnedSymbol(placed[i], canvas);
           }
@@ -24427,13 +24492,18 @@
         window.addEventListener('load', function () {
           window.showTab?.(1);
           const orig = window.showTab;
-          window.showTab = function (i) { if (i === 1) orig(1); };
+          window.showTab = function (i) {
+            if (i === 1) orig(1);
+          };
         });
         // Wire color picker to canvas background
         const input = document.getElementById('pg-color-input');
         const canvas = document.getElementById('craftCanvas');
         const saved = localStorage.getItem('pg-bg');
-        if (saved) { input.value = saved; canvas.style.setProperty('--pg-bg', saved); }
+        if (saved) {
+          input.value = saved;
+          canvas.style.setProperty('--pg-bg', saved);
+        }
         input.addEventListener('input', function () {
           canvas.style.setProperty('--pg-bg', input.value);
           localStorage.setItem('pg-bg', input.value);
