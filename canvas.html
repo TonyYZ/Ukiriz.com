@@ -2845,7 +2845,7 @@
           <input
             type="text"
             id="craft-symbol-message-input"
-            placeholder="Render a word you've created before..."
+            placeholder="Render a word you've created..."
             maxlength="32"
           />
         </div>
@@ -2922,7 +2922,7 @@
           <input
             type="text"
             id="symbol-message-input"
-            placeholder="Render a word you've created before..."
+            placeholder="Render a word you've created..."
             maxlength="32"
           />
           <input
@@ -3071,7 +3071,7 @@
           validationFailed: 'Validation failed.',
           whatWordIsThis: 'What word is this?',
           whyPrompt: 'Why?',
-          symbolMessagePlaceholder: "Render a word you've created before...",
+          symbolMessagePlaceholder: "Render a word you've created...",
           annotationPlaceholder: 'Make an annotation...',
         },
         zh: {
@@ -3809,7 +3809,7 @@
                 '移除',
               ]
             : [
-                "Render a word you've created before...",
+                "Render a word you've created...",
                 'network/tree toggle',
                 'dynamic dot button',
                 'symbol wheel',
@@ -4641,7 +4641,7 @@
             title: zh ? '第 3 关 · 10/12 发布表达' : 'Level 3 · 10/12 Post the Expression',
             body: zh
               ? '在“渲染一个你曾经造的词……”里输入你定义的词（例如 冰淇淋），按回车把表达发布到聊天画布。'
-              : "In “Render a word you've created before...”, enter your word (for example, ice cream) and press Enter to post it.",
+              : "In “Render a word you've created...”, enter your word (for example, ice cream) and press Enter to post it.",
             completedBody: zh
               ? '你的词已经以符号表达的形式发布到聊天画布。'
               : 'Your word has been posted to the chat canvas as a symbol expression.',
@@ -5521,7 +5521,7 @@
           if (!shouldUseMobileKeyboardMode()) return;
           if (isMobileKeyboardTextTarget(e.target) && !e.target.readOnly && !e.target.disabled) {
             markMobileKeyboardPending(e.target);
-            // Mark canvas spell/annotation inputs with a JS class — :focus is unreliable
+            // Mark canvas render/annotation inputs with a JS class — :focus is unreliable
             // on Edge/Chrome iOS during keyboard animation, so CSS can't depend on it.
             if (
               e.target.matches(
@@ -14321,8 +14321,8 @@
           console.error(error);
           showToast(
             currentLang === 'zh'
-              ? '符号渲染失败，请重试。'
-              : 'Symbol rendering failed. Please try again.',
+              ? '符号渲染失败！确保你输的词已经被存入词库'
+              : 'Symbol rendering failed! Make sure the word you entered is already in the library',
           );
         }
       }
@@ -14430,8 +14430,8 @@
           console.error(error);
           showToast(
             currentLang === 'zh'
-              ? '符号渲染失败，请重试。'
-              : 'Symbol rendering failed. Please try again.',
+              ? '符号渲染失败！确保你输的词已经被存入词库'
+              : 'Symbol rendering failed! Make sure the word you entered is already in the library',
           );
         }
       }
@@ -18268,6 +18268,11 @@
                   pattern,
                 );
                 library.set(word, [id, pattern, layout]);
+                showToast(
+                  currentLang === 'zh'
+                    ? `「${word}」已保存到词库`
+                    : `"${word}" saved to library`,
+                );
 
                 // Stamp expression metadata on the made-up symbols so other users
                 // see a mystery card (and the stamp bubble is skipped for them).
