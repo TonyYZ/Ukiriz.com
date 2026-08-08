@@ -2652,8 +2652,8 @@
           visibility: hidden !important;
         }
 
-        body.mobile-keyboard-open #symbol-message-input:focus,
-        body.mobile-keyboard-open #message-input:focus {
+        body.mobile-keyboard-open #symbol-message-input.mobile-kbd-input,
+        body.mobile-keyboard-open #message-input.mobile-kbd-input {
           position: fixed !important;
           left: 10px !important;
           right: 10px !important;
@@ -5383,6 +5383,8 @@
         applyMobileKeyboardContentHeight();
         if (!on) {
           document.documentElement.style.removeProperty('--mobile-keyboard-input-top');
+          document.querySelectorAll('.mobile-kbd-input')
+            .forEach(el => el.classList.remove('mobile-kbd-input'));
           if (isMobileKeyboardTextTarget(document.activeElement)) {
             document.activeElement.blur();
           }
@@ -5469,6 +5471,13 @@
           if (!shouldUseMobileKeyboardMode()) return;
           if (isMobileKeyboardTextTarget(e.target) && !e.target.readOnly && !e.target.disabled) {
             markMobileKeyboardPending(e.target);
+            // Mark the canvas text inputs with a class so CSS positioning doesn't rely on
+            // the unreliable :focus pseudo-class on Edge/Chrome iOS.
+            if (e.target.matches('#symbol-message-input, #message-input')) {
+              document.querySelectorAll('.mobile-kbd-input')
+                .forEach(el => el.classList.remove('mobile-kbd-input'));
+              e.target.classList.add('mobile-kbd-input');
+            }
             setMobileKeyboardMode(true);
             updateMobileKeyboardInputTop();
             keepFocusedCanvasInputVisible();
@@ -5570,14 +5579,18 @@
           const vvh = getComputedStyle(document.documentElement).getPropertyValue('--vvh');
           dbg.style.display = kbOpen ? 'block' : 'none';
           const inputTop = getComputedStyle(document.documentElement).getPropertyValue('--mobile-keyboard-input-top');
+          const kbdInput = document.querySelector('.mobile-kbd-input');
+          const kbdInputBCR = kbdInput?.getBoundingClientRect();
           dbg.innerHTML = [
-            `<b style="color:#ff0">v2 2026-08-08</b>`,
+            `<b style="color:#ff0">v3 2026-08-08</b>`,
             `kb-open: ${kbOpen}`,
             `vv.height: ${vv?.height?.toFixed(1)}`,
             `vv.offsetTop: ${vv?.offsetTop?.toFixed(1)}`,
             `win.innerHeight: ${window.innerHeight}`,
             `--vvh: ${vvh || '(not set)'}`,
             `--input-top: ${inputTop || '(not set)'}`,
+            `mobile-kbd-input: ${kbdInput ? kbdInput.id : 'none'}`,
+            `input BCR: t=${kbdInputBCR?.top?.toFixed(1)} b=${kbdInputBCR?.bottom?.toFixed(1)}`,
             `content BCR: t=${cr?.top?.toFixed(1)} b=${cr?.bottom?.toFixed(1)} h=${cr?.height?.toFixed(1)}`,
             `html.scrollTop: ${document.documentElement.scrollTop}`,
           ].join('<br>');
