@@ -5545,6 +5545,48 @@
       window.visualViewport?.addEventListener('resize', handleMobileViewportMaybeRestored);
       window.visualViewport?.addEventListener('scroll', handleMobileViewportMaybeRestored);
 
+      // ---- TEMPORARY DEBUG OVERLAY (remove after diagnosing gray-strip bug) ----
+      (function () {
+        if (!/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) return;
+        const dbg = document.createElement('div');
+        dbg.id = 'kbd-debug';
+        Object.assign(dbg.style, {
+          position: 'fixed', top: '4px', left: '4px', right: '4px',
+          background: 'rgba(0,0,0,0.78)', color: '#0f0', fontSize: '11px',
+          fontFamily: 'monospace', padding: '6px 8px', zIndex: '2147483647',
+          borderRadius: '6px', lineHeight: '1.55', pointerEvents: 'none',
+          display: 'none',
+        });
+        document.body.appendChild(dbg);
+
+        function updateDebug() {
+          const vv = window.visualViewport;
+          const content = document.querySelector('.content');
+          const cr = content?.getBoundingClientRect();
+          const kbOpen = document.body.classList.contains('mobile-keyboard-open');
+          const vvh = getComputedStyle(document.documentElement).getPropertyValue('--vvh');
+          dbg.style.display = kbOpen ? 'block' : 'none';
+          dbg.innerHTML = [
+            `kb-open: ${kbOpen}`,
+            `vv.height: ${vv?.height?.toFixed(1)}`,
+            `vv.offsetTop: ${vv?.offsetTop?.toFixed(1)}`,
+            `vv.offsetLeft: ${vv?.offsetLeft?.toFixed(1)}`,
+            `win.innerHeight: ${window.innerHeight}`,
+            `--vvh: ${vvh || '(not set)'}`,
+            `content BCR: t=${cr?.top?.toFixed(1)} b=${cr?.bottom?.toFixed(1)} h=${cr?.height?.toFixed(1)}`,
+            `html.scrollTop: ${document.documentElement.scrollTop}`,
+            `body.scrollTop: ${document.body.scrollTop}`,
+          ].join('<br>');
+        }
+
+        window.visualViewport?.addEventListener('resize', updateDebug);
+        window.visualViewport?.addEventListener('scroll', updateDebug);
+        document.body.addEventListener('transitionend', updateDebug);
+        document.addEventListener('focusin', () => setTimeout(updateDebug, 300));
+        document.addEventListener('focusout', () => setTimeout(updateDebug, 300));
+      })();
+      // ---- END TEMPORARY DEBUG OVERLAY ----
+
       document.addEventListener('keydown', async (e) => {
         if (!(e.ctrlKey || e.metaKey)) return;
         if (e.altKey) return;
