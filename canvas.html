@@ -5569,16 +5569,17 @@
           const kbOpen = document.body.classList.contains('mobile-keyboard-open');
           const vvh = getComputedStyle(document.documentElement).getPropertyValue('--vvh');
           dbg.style.display = kbOpen ? 'block' : 'none';
+          const inputTop = getComputedStyle(document.documentElement).getPropertyValue('--mobile-keyboard-input-top');
           dbg.innerHTML = [
+            `<b style="color:#ff0">v2 2026-08-08</b>`,
             `kb-open: ${kbOpen}`,
             `vv.height: ${vv?.height?.toFixed(1)}`,
             `vv.offsetTop: ${vv?.offsetTop?.toFixed(1)}`,
-            `vv.offsetLeft: ${vv?.offsetLeft?.toFixed(1)}`,
             `win.innerHeight: ${window.innerHeight}`,
             `--vvh: ${vvh || '(not set)'}`,
+            `--input-top: ${inputTop || '(not set)'}`,
             `content BCR: t=${cr?.top?.toFixed(1)} b=${cr?.bottom?.toFixed(1)} h=${cr?.height?.toFixed(1)}`,
             `html.scrollTop: ${document.documentElement.scrollTop}`,
-            `body.scrollTop: ${document.body.scrollTop}`,
           ].join('<br>');
         }
 
