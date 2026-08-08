@@ -2167,7 +2167,6 @@
           --sidebar-w: 0px;
         }
 
-        html,
         body {
           display: block;
           width: 100vw;
@@ -2635,25 +2634,26 @@
         }
 
         body.mobile-keyboard-open .content {
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          width: 100vw !important;
           height: var(--vvh, 100dvh) !important;
           padding-bottom: 0;
         }
 
-        /* Interpretation textarea: hide other lower-half UI but keep the tab bar visible.
-           Shrink content by the tab-bar height so the bar sits below the canvas. */
-        body.mobile-keyboard-open.interp-textarea-active .content {
-          height: calc(var(--vvh, 100dvh) - 76px) !important;
-        }
+        /* Interpretation textarea: hide other lower-half UI but keep the tab bar visible. */
         body.mobile-keyboard-open.interp-textarea-active .vertical-bar {
           display: flex !important;
         }
 
-        body.mobile-keyboard-open #chatControls input:not(:focus):not(.mobile-keyboard-pending):not(.mobile-kbd-input) {
+        body.mobile-keyboard-open #chatControls input:not(:focus):not(.mobile-keyboard-pending) {
           visibility: hidden !important;
         }
 
-        body.mobile-keyboard-open #symbol-message-input.mobile-kbd-input,
-        body.mobile-keyboard-open #message-input.mobile-kbd-input {
+        body.mobile-keyboard-open #symbol-message-input:focus,
+        body.mobile-keyboard-open #message-input:focus {
           position: fixed !important;
           left: 10px !important;
           right: 10px !important;
@@ -2665,9 +2665,9 @@
           opacity: 1 !important;
           visibility: visible !important;
           display: block !important;
-          background: rgba(255, 255, 255, 0.94) !important;
-          border: 2px solid rgba(0, 0, 0, 0.22) !important;
-          border-radius: 10px !important;
+          background: rgba(255, 255, 255, 0.94);
+          border: 2px solid rgba(0, 0, 0, 0.22);
+          border-radius: 10px;
         }
 
 
@@ -5342,27 +5342,21 @@
         const vv = window.visualViewport;
         const visibleBottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
         const inputHeight = 44;
+        const safeTop = window.innerHeight * 0.44;
         const requestedTop = visibleBottom - inputHeight - 10;
-        // Before the keyboard finishes opening, mobileKeyboardBaselineHeight is not yet set.
-        // Cap to 44% of the ORIGINAL (pre-keyboard) screen height so the input doesn't land
-        // off-screen during the opening animation. After the keyboard is fully open, use
-        // requestedTop directly (just above the keyboard) to minimise the empty-canvas gap.
-        const top = mobileKeyboardBaselineHeight
-          ? Math.max(8, Math.round(requestedTop))
-          : Math.max(8, Math.round(Math.min(requestedTop, window.innerHeight * 0.44)));
-        document.documentElement.style.setProperty('--mobile-keyboard-input-top', `${top}px`);
+        document.documentElement.style.setProperty(
+          '--mobile-keyboard-input-top',
+          `${Math.max(8, Math.round(Math.min(requestedTop, safeTop)))}px`,
+        );
       }
 
       function applyMobileKeyboardContentHeight() {
         // On iOS Safari, 100dvh doesn't shrink when the keyboard opens, leaving a gap.
-        // Also, iOS auto-scrolls the layout viewport (offsetTop > 0) to bring the
-        // focused element into view, shifting the visual viewport down in layout coords.
-        // Content must reach layout y = offsetTop + vv.height to fill the visual viewport
-        // bottom exactly, with no plain-body-background strip showing above the keyboard.
+        // Drive the content height via a CSS variable so position:fixed fills exactly
+        // the visual viewport with no gray strip.
         if (!shouldUseMobileKeyboardMode()) return;
         if (document.body.classList.contains('mobile-keyboard-open')) {
-          const vv = window.visualViewport;
-          const vvh = vv ? (vv.offsetTop + vv.height) : window.innerHeight;
+          const vvh = window.visualViewport?.height || window.innerHeight;
           document.documentElement.style.setProperty('--vvh', `${vvh}px`);
         } else {
           document.documentElement.style.removeProperty('--vvh');
@@ -5383,8 +5377,6 @@
         applyMobileKeyboardContentHeight();
         if (!on) {
           document.documentElement.style.removeProperty('--mobile-keyboard-input-top');
-          document.querySelectorAll('.mobile-kbd-input')
-            .forEach(el => el.classList.remove('mobile-kbd-input'));
           if (isMobileKeyboardTextTarget(document.activeElement)) {
             document.activeElement.blur();
           }
@@ -5471,13 +5463,6 @@
           if (!shouldUseMobileKeyboardMode()) return;
           if (isMobileKeyboardTextTarget(e.target) && !e.target.readOnly && !e.target.disabled) {
             markMobileKeyboardPending(e.target);
-            // Mark the canvas text inputs with a class so CSS positioning doesn't rely on
-            // the unreliable :focus pseudo-class on Edge/Chrome iOS.
-            if (e.target.matches('#symbol-message-input, #message-input')) {
-              document.querySelectorAll('.mobile-kbd-input')
-                .forEach(el => el.classList.remove('mobile-kbd-input'));
-              e.target.classList.add('mobile-kbd-input');
-            }
             setMobileKeyboardMode(true);
             updateMobileKeyboardInputTop();
             keepFocusedCanvasInputVisible();
@@ -5556,53 +5541,6 @@
 
       window.visualViewport?.addEventListener('resize', handleMobileViewportMaybeRestored);
       window.visualViewport?.addEventListener('scroll', handleMobileViewportMaybeRestored);
-
-      // ---- TEMPORARY DEBUG OVERLAY (remove after diagnosing gray-strip bug) ----
-      (function () {
-        if (!/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) return;
-        const dbg = document.createElement('div');
-        dbg.id = 'kbd-debug';
-        Object.assign(dbg.style, {
-          position: 'fixed', top: '4px', left: '4px', right: '4px',
-          background: 'rgba(0,0,0,0.78)', color: '#0f0', fontSize: '11px',
-          fontFamily: 'monospace', padding: '6px 8px', zIndex: '2147483647',
-          borderRadius: '6px', lineHeight: '1.55', pointerEvents: 'none',
-          display: 'none',
-        });
-        document.body.appendChild(dbg);
-
-        function updateDebug() {
-          const vv = window.visualViewport;
-          const content = document.querySelector('.content');
-          const cr = content?.getBoundingClientRect();
-          const kbOpen = document.body.classList.contains('mobile-keyboard-open');
-          const vvh = getComputedStyle(document.documentElement).getPropertyValue('--vvh');
-          dbg.style.display = kbOpen ? 'block' : 'none';
-          const inputTop = getComputedStyle(document.documentElement).getPropertyValue('--mobile-keyboard-input-top');
-          const kbdInput = document.querySelector('.mobile-kbd-input');
-          const kbdInputBCR = kbdInput?.getBoundingClientRect();
-          dbg.innerHTML = [
-            `<b style="color:#ff0">v3 2026-08-08</b>`,
-            `kb-open: ${kbOpen}`,
-            `vv.height: ${vv?.height?.toFixed(1)}`,
-            `vv.offsetTop: ${vv?.offsetTop?.toFixed(1)}`,
-            `win.innerHeight: ${window.innerHeight}`,
-            `--vvh: ${vvh || '(not set)'}`,
-            `--input-top: ${inputTop || '(not set)'}`,
-            `mobile-kbd-input: ${kbdInput ? kbdInput.id : 'none'}`,
-            `input BCR: t=${kbdInputBCR?.top?.toFixed(1)} b=${kbdInputBCR?.bottom?.toFixed(1)}`,
-            `content BCR: t=${cr?.top?.toFixed(1)} b=${cr?.bottom?.toFixed(1)} h=${cr?.height?.toFixed(1)}`,
-            `html.scrollTop: ${document.documentElement.scrollTop}`,
-          ].join('<br>');
-        }
-
-        window.visualViewport?.addEventListener('resize', updateDebug);
-        window.visualViewport?.addEventListener('scroll', updateDebug);
-        document.body.addEventListener('transitionend', updateDebug);
-        document.addEventListener('focusin', () => setTimeout(updateDebug, 300));
-        document.addEventListener('focusout', () => setTimeout(updateDebug, 300));
-      })();
-      // ---- END TEMPORARY DEBUG OVERLAY ----
 
       document.addEventListener('keydown', async (e) => {
         if (!(e.ctrlKey || e.metaKey)) return;
