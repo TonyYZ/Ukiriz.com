@@ -1342,6 +1342,7 @@
         color: #888;
         z-index: 42;
         pointer-events: none;
+        white-space: pre-wrap;
         animation: thinkingPulse 1.4s ease-in-out infinite;
       }
 
@@ -18032,7 +18033,10 @@
             const { canvas, rightMost } = bounds;
             const el = document.createElement('p');
             el.classList.add('thinking-indicator');
-            el.textContent = currentLang === 'zh' ? '正在思考中……' : 'Thinking....';
+            el.textContent =
+              currentLang === 'zh'
+                ? '正在验证你的取象，请稍候……'
+                : 'Validating your reading\nof the symbols, please\nwait....';
             el.style.left = `${rightMost + 5}px`;
             el.style.top = `${parseFloat(textarea.style.top) - 10 + textarea.scrollHeight}px`;
             if (canvas === craftCanvas()) appendToCraftCanvas(el);
