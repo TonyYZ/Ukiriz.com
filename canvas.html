@@ -21010,11 +21010,14 @@
         const savedSectionDisplay = interpsSection ? interpsSection.style.display : null;
         const savedToggleDisplay = interpsToggle ? interpsToggle.style.display : null;
 
+        // Normalize BCR values against the CSS zoom applied to the card surface
+        const cssZoom = libraryContentZoom || 1;
+
         // Always hide interps first to measure content-only height (for image centering)
         if (interpsSection) interpsSection.style.display = 'none';
         if (interpsToggle) interpsToggle.style.display = 'none';
         const contentRect = card.getBoundingClientRect();
-        const contentHeight = Math.max(1, Math.ceil(contentRect.height));
+        const contentHeight = Math.max(1, Math.ceil(contentRect.height / cssZoom));
 
         // If including interps, show the section and measure full height + section start offset
         const INTERP_HEADER_H = 40; // space for separator line + label above items
@@ -21023,12 +21026,12 @@
           interpsSection.style.display = 'flex';
           const cardRectFull = card.getBoundingClientRect();
           const sectionRect = interpsSection.getBoundingClientRect();
-          interpsOffsetY = Math.round(sectionRect.top - cardRectFull.top) + INTERP_HEADER_H;
+          interpsOffsetY = Math.round((sectionRect.top - cardRectFull.top) / cssZoom) + INTERP_HEADER_H;
         }
         const rect = includeInterps && interpsSection ? card.getBoundingClientRect() : contentRect;
-        const width = Math.max(1, Math.ceil(rect.width));
+        const width = Math.max(1, Math.ceil(rect.width / cssZoom));
         const height =
-          Math.max(1, Math.ceil(rect.height)) +
+          Math.max(1, Math.ceil(rect.height / cssZoom)) +
           (includeInterps && interpsSection ? INTERP_HEADER_H : 0);
 
         // Restore DOM state
