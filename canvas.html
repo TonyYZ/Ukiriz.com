@@ -847,9 +847,8 @@
         gap: 4px;
       }
       .library-tree-interp-item {
-        background: rgba(53, 40, 168, 0.05);
-        border-left: 2px solid rgba(53, 40, 168, 0.28);
-        border-radius: 0 4px 4px 0;
+        background: rgba(53, 40, 168, 0.07);
+        border-radius: 6px;
         padding: 4px 6px;
       }
       .library-tree-interp-date {
@@ -21014,7 +21013,7 @@
         const contentHeight = Math.max(1, Math.ceil(contentRect.height));
 
         // If including interps, show the section and measure full height + section start offset
-        const INTERP_HEADER_H = 30; // space for separator line + label above items
+        const INTERP_HEADER_H = 40; // space for separator line + label above items
         let interpsOffsetY = contentHeight;
         if (includeInterps && interpsSection) {
           interpsSection.style.display = 'flex';
@@ -21152,7 +21151,7 @@
           );
           if (interpItems.length) {
             // Separator line + label anchored below content area
-            const sepY = contentHeight - 15;
+            const sepY = contentHeight - 10;
             ctx.strokeStyle = 'rgba(0,0,0,0.12)';
             ctx.lineWidth = 0.5;
             ctx.beginPath();
@@ -21186,11 +21185,9 @@
               const gap = dateLines.length && bodyLines.length ? 2 : 0;
               const itemH = 4 + dateH + gap + bodyH + 4;
 
-              ctx.fillStyle = 'rgba(53,40,168,0.05)';
-              roundRectPath(itemX, iy, itemW, itemH, 4);
+              ctx.fillStyle = 'rgba(53,40,168,0.07)';
+              roundRectPath(itemX, iy, itemW, itemH, 6);
               ctx.fill();
-              ctx.fillStyle = 'rgba(53,40,168,0.28)';
-              ctx.fillRect(itemX, iy, 2, itemH);
 
               let ty = iy + 4;
               ctx.textBaseline = 'top';
