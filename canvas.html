@@ -8446,7 +8446,7 @@
         if (!currentUser?.uid) return;
         const { data, error } = await supabase
           .from('interpretations')
-          .select('id, expr_word, interpretation_text, created_at')
+          .select('id, expr_word, interpretation_text, created_at, island_id')
           .eq('expr_author_uid', currentUser.uid)
           .order('created_at', { ascending: false });
         if (error || !data) return;
@@ -22105,10 +22105,12 @@
               item.className = 'library-tree-interp-item';
               const dateEl = document.createElement('span');
               dateEl.className = 'library-tree-interp-date';
-              dateEl.textContent = new Date(interp.created_at).toLocaleDateString(
+              const dateStr = new Date(interp.created_at).toLocaleDateString(
                 zh ? 'zh-CN' : 'en-US',
                 { year: 'numeric', month: 'short', day: 'numeric' },
               );
+              const islandStr = interp.island_id || '';
+              dateEl.textContent = islandStr ? `${dateStr} · ${islandStr}` : dateStr;
               const txtEl = document.createElement('p');
               txtEl.textContent = interp.interpretation_text;
               item.appendChild(dateEl);
