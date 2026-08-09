@@ -8974,7 +8974,11 @@
       async function updateWorldPresence(islandId) {
         if (!islandId) return;
         if (!currentUser?.uid) {
-          try { await waitForAuth(); } catch { return; }
+          try {
+            await waitForAuth();
+          } catch {
+            return;
+          }
         }
         if (!currentUser?.uid) return;
         currentPresenceIslandId = String(islandId);
@@ -20503,7 +20507,9 @@
 
         const writtenLine = document.createElement('div');
         writtenLine.className = 'library-tree-card-serialization';
-        writtenLine.append(document.createTextNode(currentLang === 'zh' ? '写作：' : 'Written as '));
+        writtenLine.append(
+          document.createTextNode(currentLang === 'zh' ? '写作：' : 'Written as '),
+        );
         const written = document.createElement('em');
         written.textContent = serialization.written;
         writtenLine.appendChild(written);
@@ -20961,7 +20967,7 @@
         if (!card) return false;
         const _wordEl0 = card.querySelector('.library-tree-card-word');
         const _wordClone0 = _wordEl0?.cloneNode(true);
-        _wordClone0?.querySelectorAll('.library-tree-interp-badge').forEach(b => b.remove());
+        _wordClone0?.querySelectorAll('.library-tree-interp-badge').forEach((b) => b.remove());
         const word = _wordClone0?.textContent?.trim() || '';
         const definition =
           card.querySelector('.library-tree-card-definition')?.textContent?.trim() || '';
@@ -20984,7 +20990,7 @@
       function getLibraryTreeCardShareFilename(card) {
         const _wordEl1 = card?.querySelector?.('.library-tree-card-word');
         const _wordClone1 = _wordEl1?.cloneNode(true);
-        _wordClone1?.querySelectorAll('.library-tree-interp-badge').forEach(b => b.remove());
+        _wordClone1?.querySelectorAll('.library-tree-interp-badge').forEach((b) => b.remove());
         const word = _wordClone1?.textContent?.trim() || 'word';
         const safeWord = word
           .replace(/[\\/:*?"<>|]+/g, '-')
@@ -20993,11 +20999,39 @@
         return `${safeWord || 'word'}-card.png`;
       }
 
-      async function renderLibraryTreeCardToPngBlob(card) {
+      async function renderLibraryTreeCardToPngBlob(card, { includeInterps = false } = {}) {
         if (!card) return null;
-        const rect = card.getBoundingClientRect();
+
+        const interpsSection = card.querySelector('.library-tree-interps');
+        const interpsToggle = card.querySelector('.library-tree-interps-toggle');
+        const savedSectionDisplay = interpsSection ? interpsSection.style.display : null;
+        const savedToggleDisplay = interpsToggle ? interpsToggle.style.display : null;
+
+        // Always hide interps first to measure content-only height (for image centering)
+        if (interpsSection) interpsSection.style.display = 'none';
+        if (interpsToggle) interpsToggle.style.display = 'none';
+        const contentRect = card.getBoundingClientRect();
+        const contentHeight = Math.max(1, Math.ceil(contentRect.height));
+
+        // If including interps, show the section and measure full height + section start offset
+        const INTERP_HEADER_H = 30; // space for separator line + label above items
+        let interpsOffsetY = contentHeight;
+        if (includeInterps && interpsSection) {
+          interpsSection.style.display = 'flex';
+          const cardRectFull = card.getBoundingClientRect();
+          const sectionRect = interpsSection.getBoundingClientRect();
+          interpsOffsetY = Math.round(sectionRect.top - cardRectFull.top) + INTERP_HEADER_H;
+        }
+        const rect = includeInterps && interpsSection ? card.getBoundingClientRect() : contentRect;
         const width = Math.max(1, Math.ceil(rect.width));
-        const height = Math.max(1, Math.ceil(rect.height));
+        const height =
+          Math.max(1, Math.ceil(rect.height)) +
+          (includeInterps && interpsSection ? INTERP_HEADER_H : 0);
+
+        // Restore DOM state
+        if (interpsSection) interpsSection.style.display = savedSectionDisplay;
+        if (interpsToggle) interpsToggle.style.display = savedToggleDisplay;
+
         await document.fonts?.ready?.catch?.(() => {});
 
         const exportScale = 4;
@@ -21037,7 +21071,7 @@
         ctx.stroke();
 
         const imageEl = card.querySelector('.library-tree-card-image');
-        const imageBox = { x: 14, y: Math.max(12, (height - 60) / 2), size: 60 };
+        const imageBox = { x: 14, y: Math.max(12, (contentHeight - 60) / 2), size: 60 };
         if (imageEl?.src) {
           try {
             const img = new Image();
@@ -21062,7 +21096,8 @@
 
         function wrapCanvasText(text, maxWidth, font) {
           ctx.font = font;
-          const tokens = String(text || '').match(/[\u3000-\u9fff\uff00-\uffef]|[^\s]+|\s+/gu) || [];
+          const tokens =
+            String(text || '').match(/[\u3000-\u9fff\uff00-\uffef]|[^\s]+|\s+/gu) || [];
           const lines = [];
           let line = '';
           for (const token of tokens) {
@@ -21095,7 +21130,7 @@
 
         const _wordEl2 = card.querySelector('.library-tree-card-word');
         const _wordClone2 = _wordEl2?.cloneNode(true);
-        _wordClone2?.querySelectorAll('.library-tree-interp-badge').forEach(b => b.remove());
+        _wordClone2?.querySelectorAll('.library-tree-interp-badge').forEach((b) => b.remove());
         const word = _wordClone2?.textContent?.trim() || '';
         const definition =
           card.querySelector('.library-tree-card-definition')?.textContent?.trim() || '';
@@ -21110,6 +21145,76 @@
         serializationLines.forEach((line) =>
           drawWrappedText(line, `400 12px ${fontFamily}`, 'rgba(0,0,0,0.82)', 15.5, 5),
         );
+
+        if (includeInterps && interpsSection) {
+          const interpItems = Array.from(
+            interpsSection.querySelectorAll('.library-tree-interp-item'),
+          );
+          if (interpItems.length) {
+            // Separator line + label anchored below content area
+            const sepY = contentHeight - 15;
+            ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(14, sepY);
+            ctx.lineTo(width - 14, sepY);
+            ctx.stroke();
+            const label = currentLang === 'zh' ? '解读' : 'Interpretations';
+            ctx.font = `400 9px ${fontFamily}`;
+            ctx.fillStyle = 'rgba(0,0,0,0.36)';
+            ctx.textBaseline = 'top';
+            ctx.fillText(label, 14, sepY + 3);
+
+            // Use DOM-measured start position so items land exactly where the section appears
+            let iy = interpsOffsetY;
+
+            const itemX = 14;
+            const itemW = width - 28;
+            const innerX = itemX + 9;
+            const innerW = itemW - 12;
+
+            for (const item of interpItems) {
+              const dateText =
+                item.querySelector('.library-tree-interp-date')?.textContent?.trim() || '';
+              const bodyText = item.querySelector('p')?.textContent?.trim() || '';
+              const dateFont = `400 9px ${fontFamily}`;
+              const bodyFont = `400 11px ${fontFamily}`;
+              const dateLines = dateText ? wrapCanvasText(dateText, innerW, dateFont) : [];
+              const bodyLines = bodyText ? wrapCanvasText(bodyText, innerW, bodyFont) : [];
+              const dateH = dateLines.length * 11;
+              const bodyH = bodyLines.length * 15.4;
+              const gap = dateLines.length && bodyLines.length ? 2 : 0;
+              const itemH = 4 + dateH + gap + bodyH + 4;
+
+              ctx.fillStyle = 'rgba(53,40,168,0.05)';
+              roundRectPath(itemX, iy, itemW, itemH, 4);
+              ctx.fill();
+              ctx.fillStyle = 'rgba(53,40,168,0.28)';
+              ctx.fillRect(itemX, iy, 2, itemH);
+
+              let ty = iy + 4;
+              ctx.textBaseline = 'top';
+              if (dateLines.length) {
+                ctx.font = dateFont;
+                ctx.fillStyle = 'rgba(0,0,0,0.36)';
+                for (const l of dateLines) {
+                  ctx.fillText(l, innerX, ty);
+                  ty += 11;
+                }
+                ty += gap;
+              }
+              if (bodyLines.length) {
+                ctx.font = bodyFont;
+                ctx.fillStyle = 'rgba(0,0,0,0.68)';
+                for (const l of bodyLines) {
+                  ctx.fillText(l, innerX, ty);
+                  ty += 15.4;
+                }
+              }
+              iy += itemH + 4;
+            }
+          }
+        }
 
         return await new Promise((resolve) => out.toBlob(resolve, 'image/png'));
       }
@@ -21153,11 +21258,52 @@
           e.stopPropagation();
           const target = libraryTreeContextMenuTarget;
           hideLibraryTreeContextMenu();
-          await downloadLibraryTreeCardImage(target?.card || null);
+          const blob = await renderLibraryTreeCardToPngBlob(target?.card || null, {
+            includeInterps: false,
+          });
+          if (!blob) return;
+          const filename = getLibraryTreeCardShareFilename(target?.card || null);
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }, 1000);
+        });
+
+        const shareWithInterpsButton = document.createElement('button');
+        shareWithInterpsButton.type = 'button';
+        shareWithInterpsButton.textContent =
+          currentLang === 'zh' ? '下载图片（含解读）' : 'Download with interpretations';
+        shareWithInterpsButton.addEventListener('click', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const target = libraryTreeContextMenuTarget;
+          hideLibraryTreeContextMenu();
+          const blob = await renderLibraryTreeCardToPngBlob(target?.card || null, {
+            includeInterps: true,
+          });
+          if (!blob) return;
+          const filename = getLibraryTreeCardShareFilename(target?.card || null);
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }, 1000);
         });
 
         menu.appendChild(copyButton);
         menu.appendChild(shareButton);
+        menu.appendChild(shareWithInterpsButton);
         document.body.appendChild(menu);
         libraryTreeContextMenu = menu;
         return menu;
@@ -21177,6 +21323,12 @@
         if (buttons[0]) buttons[0].textContent = currentLang === 'zh' ? '复制' : 'Copy';
         if (buttons[1])
           buttons[1].textContent = currentLang === 'zh' ? '下载图片' : 'Download image';
+        if (buttons[2]) {
+          buttons[2].textContent =
+            currentLang === 'zh' ? '下载图片（含解读）' : 'Download with interpretations';
+          const hasInterps = !!(card && card.querySelector('.library-tree-interp-item'));
+          buttons[2].style.display = hasInterps ? '' : 'none';
+        }
         libraryTreeContextMenuTarget = { card, nodeId };
         menu.classList.add('open');
         menu.style.left = '0px';
@@ -21906,7 +22058,8 @@
           if (primitiveSpeech) {
             const phonemeMarker = currentLang === 'zh' ? '音：' : 'Phoneme:';
             const phoneStart = primitiveSpeech.indexOf(phonemeMarker);
-            const graphemePart = phoneStart >= 0 ? primitiveSpeech.slice(0, phoneStart).trim() : primitiveSpeech;
+            const graphemePart =
+              phoneStart >= 0 ? primitiveSpeech.slice(0, phoneStart).trim() : primitiveSpeech;
             const phonemePart = phoneStart >= 0 ? primitiveSpeech.slice(phoneStart).trim() : '';
             [graphemePart, phonemePart].forEach((part) => {
               if (!part) return;
