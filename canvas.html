@@ -1287,6 +1287,36 @@
         opacity: 1;
       }
 
+      .inspect-serialization {
+        position: absolute;
+        width: 192px;
+        background: white;
+        border: none;
+        border-radius: 0;
+        padding: 5px 8px;
+        z-index: 42;
+        pointer-events: auto;
+        line-height: 1.35;
+        overflow-wrap: break-word;
+        word-break: break-all;
+      }
+      .inspect-seriz-written {
+        font-size: 18px;
+        font-weight: 600;
+        color: rgba(0, 0, 0, 0.88);
+        letter-spacing: 0.02em;
+        user-select: text;
+        cursor: text;
+      }
+      .inspect-seriz-ipa {
+        font-size: 13px;
+        color: rgba(0, 0, 0, 0.58);
+        font-family: 'Courier New', monospace;
+        margin-top: 2px;
+        user-select: text;
+        cursor: text;
+      }
+
       /* Style the submit button */
       .submit-button {
         position: absolute;
@@ -4199,7 +4229,7 @@
             targetRect: () => getTutorialCraftSelectionRect?.() || null,
             title: zh ? '第 1 关 · 7/9 命名它' : 'Level 1 · 7/9 Define It',
             body: zh
-              ? '把看到的意义泡泡联想到任意概念，在“这个词是什么？”和“为什么？”中写下定义，然后提交。'
+              ? '把看到的意义泡泡联想到任意概念，在“这是什么词？”和“为什么？”中写下定义，然后提交。'
               : 'Associate the bubbles with any concept you can think of. Fill “What word is this?” and “Why?”, then submit.',
             completedBody: zh
               ? '很好，你已经把这个符号和一个自己的概念连接起来了。'
@@ -13374,7 +13404,9 @@
       wheel.style.width = `290.67px`;
       wheel.style.height = `292.33px`;
       wheel.style.backgroundImage = "url('./icons/wheel/wheel.png')";
-      for (let _wi = 0; _wi <= 8; _wi++) { new Image().src = `./icons/wheel/wheel${_wi}.png`; }
+      for (let _wi = 0; _wi <= 8; _wi++) {
+        new Image().src = `./icons/wheel/wheel${_wi}.png`;
+      }
       let wheelCenterX = parseFloat(wheel.style.left) + parseFloat(wheel.style.width) / 2; // right x
       let wheelCenterY =
         window.innerHeight - parseFloat(wheel.style.bottom) - parseFloat(wheel.style.height) / 2;
@@ -15186,6 +15218,8 @@
         outputBoxes.forEach((outputBox) => outputBox.remove());
         const metaCards = document.querySelectorAll('.spawned-expression-meta.removable');
         metaCards.forEach((el) => el.remove());
+        const serizDivs = document.querySelectorAll('.inspect-serialization.removable');
+        serizDivs.forEach((el) => el.remove());
         spawnedExpressionMetaCardEls.clear();
 
         for (const symbol of currentGraph?.adjList?.keys?.() || []) {
@@ -15667,6 +15701,10 @@
                 label.style.top = `${y + label.offsetY}px`;
               });
             }
+            if (el.serizDiv) {
+              el.serizDiv.style.left = `${x + el.serizDiv.offsetX}px`;
+              el.serizDiv.style.top = `${y + el.serizDiv.offsetY}px`;
+            }
             if (el.input) {
               el.input.style.left = `${x + el.input.offsetX}px`;
               el.input.style.top = `${y + el.input.offsetY}px`;
@@ -15723,6 +15761,10 @@
                 label.style.left = `${x + label.offsetX}px`;
                 label.style.top = `${y + label.offsetY}px`;
               });
+            }
+            if (activeSymbol.serizDiv) {
+              activeSymbol.serizDiv.style.left = `${x + activeSymbol.serizDiv.offsetX}px`;
+              activeSymbol.serizDiv.style.top = `${y + activeSymbol.serizDiv.offsetY}px`;
             }
             if (activeSymbol.input) {
               activeSymbol.input.style.left = `${x + activeSymbol.input.offsetX}px`;
@@ -15874,6 +15916,10 @@
               label.style.left = `${x + label.offsetX}px`;
               label.style.top = `${y + label.offsetY}px`;
             });
+          }
+          if (activeSymbol.serizDiv) {
+            activeSymbol.serizDiv.style.left = `${x + activeSymbol.serizDiv.offsetX}px`;
+            activeSymbol.serizDiv.style.top = `${y + activeSymbol.serizDiv.offsetY}px`;
           }
           if (activeSymbol.input) {
             activeSymbol.input.style.left = `${x + activeSymbol.input.offsetX}px`;
@@ -17796,6 +17842,10 @@
         // lose edges before the done-click fires.
         const frozenPattern = snapshotSelectionAsPattern(currentGraph, componentSymbols);
         const frozenLayout = snapshotSelectionAsLayout(currentGraph, componentSymbols);
+        const serialization = getLibraryTreeSerialization({ layout: frozenLayout });
+
+        let serizDiv = null;
+        let serizH = 0;
 
         function computeSelectionBoundsLocal() {
           const first = componentSymbols.values().next().value;
@@ -17845,7 +17895,7 @@
           );
           const dx = nextX - input.x;
           const dy = nextInputY - input.y;
-          const controls = [input, textarea, submitButton, cancelButton].filter(Boolean);
+          const controls = [serizDiv, input, textarea, submitButton, cancelButton].filter(Boolean);
           controls.forEach((el) => {
             el.x = (el.x || 0) + dx;
             el.y = (el.y || 0) + dy;
@@ -17868,6 +17918,37 @@
 
         const { canvas, rightMost, topMost } = bounds;
 
+        if (serialization) {
+          serizDiv = document.createElement('div');
+          serizDiv.classList.add('inspect-serialization', 'removable');
+          serizDiv.dataset.definitionComponentId = definitionComponentId;
+
+          const writtenEl = document.createElement('div');
+          writtenEl.className = 'inspect-seriz-written';
+          writtenEl.textContent = serialization.written;
+          serizDiv.appendChild(writtenEl);
+
+          const ipaEl = document.createElement('div');
+          ipaEl.className = 'inspect-seriz-ipa';
+          ipaEl.textContent = `/${serialization.ipa}/`;
+          serizDiv.appendChild(ipaEl);
+
+          serizDiv.x = rightMost + 7;
+          serizDiv.y = topMost - 2;
+          serizDiv.offsetX = serizDiv.x - parentLeft;
+          serizDiv.offsetY = serizDiv.y - parentTop;
+          serizDiv.style.position = 'absolute';
+          serizDiv.style.left = `${serizDiv.x}px`;
+          serizDiv.style.top = `${serizDiv.y}px`;
+
+          serizDiv.addEventListener('mousedown', (e) => e.stopPropagation());
+          serizDiv.addEventListener('pointerdown', (e) => e.stopPropagation());
+          serizDiv.addEventListener('contextmenu', (e) => e.stopPropagation());
+          appendToCraftCanvas(serizDiv);
+          serizH = (serizDiv.offsetHeight || 38) + 6;
+          inputParent.serizDiv = serizDiv;
+        }
+
         const input = document.createElement('input');
         input.classList.add('label-input', 'removable');
         input.dataset.definitionComponentId = definitionComponentId;
@@ -17877,7 +17958,7 @@
 
         // locate input in the canvas-local coordinate system
         input.x = rightMost + 5;
-        input.y = topMost - 2;
+        input.y = topMost + 0 + serizH;
 
         input.offsetX = input.x - parentLeft;
         input.offsetY = input.y - parentTop;
@@ -17899,7 +17980,7 @@
 
         // Position the textarea near the symbol
         textarea.x = rightMost + 5;
-        textarea.y = topMost + 35;
+        textarea.y = topMost + 37 + serizH;
 
         textarea.offsetX = textarea.x - parentLeft;
         textarea.offsetY = textarea.y - parentTop;
@@ -17929,7 +18010,7 @@
         submitButton.innerHTML = '✔'; // Check mark icon
 
         submitButton.x = rightMost + 5;
-        submitButton.y = topMost + 43 + textarea.scrollHeight;
+        submitButton.y = topMost + 45 + textarea.scrollHeight + serizH;
 
         submitButton.offsetX = submitButton.x - parentLeft;
         submitButton.offsetY = submitButton.y - parentTop;
@@ -17947,7 +18028,7 @@
         cancelButton.innerHTML = '✘'; // X mark icon
 
         cancelButton.x = rightMost + 40;
-        cancelButton.y = topMost + 43 + textarea.scrollHeight;
+        cancelButton.y = topMost + 45 + textarea.scrollHeight + serizH;
 
         cancelButton.offsetX = cancelButton.x - parentLeft;
         cancelButton.offsetY = cancelButton.y - parentTop;
@@ -20091,13 +20172,24 @@
         parallelGroups.forEach((group, groupIndex) => {
           group.nodes.forEach((nodeIndex) => groupByNode.set(nodeIndex, groupIndex));
         });
-        const serialGroupLinks = graph.links
+        const serialGroupLinks = [];
+        const seenSerialGroupLinks = new Set();
+        graph.links
           .filter((link) => !isLibraryV2ParallelLink(link))
-          .map((link) => ({
-            from: groupByNode.get(link.from),
-            to: groupByNode.get(link.to),
-          }))
-          .filter((link) => link.from != null && link.to != null && link.from !== link.to);
+          .forEach((link) => {
+            const from = groupByNode.get(link.from);
+            const to = groupByNode.get(link.to);
+            if (from == null || to == null || from === to) return;
+
+            // Several physical symbols in one fuseau may touch the same serial
+            // neighbour.  After the parallel symbols are collapsed, those
+            // contacts are one logical series edge.  Keeping duplicates inflates
+            // the endpoint degree and can make the walk start at the right end.
+            const key = from < to ? `${from}|${to}` : `${to}|${from}`;
+            if (seenSerialGroupLinks.has(key)) return;
+            seenSerialGroupLinks.add(key);
+            serialGroupLinks.push({ from, to });
+          });
         const compareGroups = (leftIndex, rightIndex) => {
           const leftFirst = [...parallelGroups[leftIndex].nodes].sort((a, b) =>
             compareLibraryV2SpatialNodes(a, b, graph.nodes),
@@ -21027,7 +21119,8 @@
           interpsSection.style.display = 'flex';
           const cardRectFull = card.getBoundingClientRect();
           const sectionRect = interpsSection.getBoundingClientRect();
-          interpsOffsetY = Math.round((sectionRect.top - cardRectFull.top) / cssZoom) + INTERP_HEADER_H;
+          interpsOffsetY =
+            Math.round((sectionRect.top - cardRectFull.top) / cssZoom) + INTERP_HEADER_H;
         }
         const rect = includeInterps && interpsSection ? card.getBoundingClientRect() : contentRect;
         const width = Math.max(1, Math.ceil(rect.width / cssZoom));
