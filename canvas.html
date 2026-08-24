@@ -13374,6 +13374,7 @@
       wheel.style.width = `290.67px`;
       wheel.style.height = `292.33px`;
       wheel.style.backgroundImage = "url('./icons/wheel/wheel.png')";
+      for (let _wi = 0; _wi <= 8; _wi++) { new Image().src = `./icons/wheel/wheel${_wi}.png`; }
       let wheelCenterX = parseFloat(wheel.style.left) + parseFloat(wheel.style.width) / 2; // right x
       let wheelCenterY =
         window.innerHeight - parseFloat(wheel.style.bottom) - parseFloat(wheel.style.height) / 2;
