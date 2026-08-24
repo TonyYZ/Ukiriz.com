@@ -3997,18 +3997,8 @@
               for (const [nbr, nbrSide] of conns[side] || []) {
                 if (!syms.has(nbr)) continue;
                 kinds.any = true;
-                const isSerial =
-                  (side === Side.START && nbrSide === Side.END) ||
-                  (side === Side.END && nbrSide === Side.START) ||
-                  (side === Side.START && nbrSide === Side.START) ||
-                  (side === Side.END && nbrSide === Side.END);
-                const isParallel =
-                  side === Side.PAR_TOP ||
-                  side === Side.PAR_BOT ||
-                  nbrSide === Side.PAR_TOP ||
-                  nbrSide === Side.PAR_BOT;
-                if (isSerial) kinds.serial = true;
-                if (isParallel) kinds.parallel = true;
+                const kind = getCanvasConnectionKind(side, nbrSide);
+                if (kind) kinds[kind] = true;
               }
             }
           }
@@ -4055,12 +4045,7 @@
             for (let side = 0; side < conns.length; side++) {
               for (const [nbr, nbrSide] of conns[side] || []) {
                 if (!b.has(nbr)) continue;
-                if (
-                  side === Side.PAR_TOP ||
-                  side === Side.PAR_BOT ||
-                  nbrSide === Side.PAR_TOP ||
-                  nbrSide === Side.PAR_BOT
-                ) {
+                if (isFuseauConnection(side, nbrSide)) {
                   return true;
                 }
               }
@@ -4070,25 +4055,9 @@
         return false;
       }
 
-      function getTutorialConnectionKind(aSide, bSide) {
-        const isSerial =
-          (aSide === Side.START && bSide === Side.END) ||
-          (aSide === Side.END && bSide === Side.START) ||
-          (aSide === Side.START && bSide === Side.START) ||
-          (aSide === Side.END && bSide === Side.END);
-        const isParallel =
-          aSide === Side.PAR_TOP ||
-          aSide === Side.PAR_BOT ||
-          bSide === Side.PAR_TOP ||
-          bSide === Side.PAR_BOT;
-        if (isSerial) return 'serial';
-        if (isParallel) return 'parallel';
-        return '';
-      }
-
       function registerTutorialCraftConnection(aSide, bSide) {
         if (tutorialStepIndex < 0 || tutorialLevel !== 2 || tutorialCompletedStep) return;
-        const kind = getTutorialConnectionKind(aSide, bSide);
+        const kind = getCanvasConnectionKind(aSide, bSide);
         if (!kind) return;
         tutorialLevel2SeenConnections = {
           ...tutorialLevel2SeenConnections,
@@ -18605,6 +18574,22 @@
         PAR_BOT: 5, // bottom parallel
       };
 
+      function isFuseauConnection(aSide, bSide) {
+        return aSide > Side.END || bSide > Side.END;
+      }
+
+      function getCanvasConnectionKind(aSide, bSide) {
+        if (isFuseauConnection(aSide, bSide)) return 'parallel';
+        if (aSide <= Side.END && bSide <= Side.END) return 'serial';
+        return '';
+      }
+
+      function getFuseauStemEndpoint(aSide, bSide) {
+        const aIsStem = aSide === Side.MID_TOP || aSide === Side.MID_BOT;
+        const bIsStem = bSide === Side.MID_TOP || bSide === Side.MID_BOT;
+        return aIsStem === bIsStem ? null : aIsStem ? 0 : 1;
+      }
+
       const SINGLE_OCCUPANCY = new Set([Side.MID_TOP, Side.MID_BOT, Side.PAR_TOP, Side.PAR_BOT]);
 
       const MULTI_OCCUPANCY = new Set([Side.START, Side.END]);
@@ -19010,7 +18995,7 @@
                 graph,
               );
               visited = results.visited;
-              if (entry[1] > 1 || i > 1) {
+              if (isFuseauConnection(i, entry[1])) {
                 if (leftStr !== '' && results.leftStr !== '') {
                   leftStr = '(' + leftStr + ') & (' + results.leftStr + ')';
                 } else if (leftStr == '') {
@@ -20000,15 +19985,6 @@
         return { nodes: symbolNodes, links };
       }
 
-      function isLibraryV2ParallelLink(link) {
-        return (
-          link.fromSide === Side.PAR_TOP ||
-          link.fromSide === Side.PAR_BOT ||
-          link.toSide === Side.PAR_TOP ||
-          link.toSide === Side.PAR_BOT
-        );
-      }
-
       function getLibraryV2Components(size, links, includeLink) {
         const adjacency = Array.from({ length: size }, () => []);
         links.forEach((link) => {
@@ -20100,7 +20076,12 @@
         return ordered;
       }
 
-      function orderLibraryV2FuseauComponents(componentIndices, serialComponents, symbolNodes) {
+      function orderLibraryV2FuseauComponents(
+        componentIndices,
+        serialComponents,
+        symbolNodes,
+        preferredStemNode = null,
+      ) {
         const entries = componentIndices.map((componentIndex) => {
           const component = serialComponents[componentIndex];
           const position = getLibraryV2ComponentPosition(component, symbolNodes);
@@ -20137,7 +20118,37 @@
           if (center - distance >= 0) ordered.push(entries[center - distance]);
           if (center + distance < entries.length) ordered.push(entries[center + distance]);
         }
-        return ordered.map((entry) => entry.componentIndex);
+        const result = ordered.map((entry) => entry.componentIndex);
+        if (preferredStemNode != null) {
+          const stemPosition = result.findIndex((componentIndex) =>
+            serialComponents[componentIndex].nodes.includes(preferredStemNode),
+          );
+          if (stemPosition > 0) {
+            result.unshift(result.splice(stemPosition, 1)[0]);
+          }
+        }
+        return result;
+      }
+
+      function getLibraryV2FuseauStemNode(group, graph) {
+        const members = new Set(group.nodes);
+        const scores = new Map(group.nodes.map((index) => [index, 0]));
+        graph.links
+          .filter((link) => isFuseauConnection(link.fromSide, link.toSide))
+          .forEach((link) => {
+            if (!members.has(link.from) || !members.has(link.to)) return;
+            const endpoint = getFuseauStemEndpoint(link.fromSide, link.toSide);
+            const stem = endpoint === 0 ? link.from : endpoint === 1 ? link.to : null;
+            if (stem != null) scores.set(stem, (scores.get(stem) || 0) + 1);
+          });
+        const ranked = [...scores.entries()]
+          .filter(([, score]) => score > 0)
+          .sort(
+            ([leftIndex, leftScore], [rightIndex, rightScore]) =>
+              rightScore - leftScore ||
+              compareLibraryV2SpatialNodes(leftIndex, rightIndex, graph.nodes),
+          );
+        return ranked[0]?.[0] ?? null;
       }
 
       function libraryV2Element(symbol, index) {
@@ -20165,7 +20176,7 @@
         const parallelGroups = getLibraryV2Components(
           graph.nodes.length,
           graph.links,
-          isLibraryV2ParallelLink,
+          (link) => isFuseauConnection(link.fromSide, link.toSide),
         );
 
         const groupByNode = new Map();
@@ -20175,7 +20186,7 @@
         const serialGroupLinks = [];
         const seenSerialGroupLinks = new Set();
         graph.links
-          .filter((link) => !isLibraryV2ParallelLink(link))
+          .filter((link) => !isFuseauConnection(link.fromSide, link.toSide))
           .forEach((link) => {
             const from = groupByNode.get(link.from);
             const to = groupByNode.get(link.to);
@@ -20249,6 +20260,7 @@
             branchComponents.map((_, index) => index),
             branchComponents,
             graph.nodes,
+            getLibraryV2FuseauStemNode(group, graph),
           );
           const branches = orderedComponents.map((componentIndex) => ({
             type: 'series',
