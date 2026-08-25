@@ -356,6 +356,18 @@
         border-color: var(--accent);
         background: var(--accent);
       }
+      #colorful-mode[aria-pressed='true'] {
+        color: #342f3e;
+        border-color: #8baec1;
+        background: linear-gradient(
+          100deg,
+          #9bc9e3 0 22%,
+          #efb2ce 22% 44%,
+          #9fd2b7 44% 66%,
+          #ead27a 66% 82%,
+          #b9afe5 82% 100%
+        );
+      }
 
       dialog {
         width: min(680px, calc(100vw - 28px));
@@ -754,6 +766,14 @@
               title="Collision avoidance is on; click to use the unadjusted layout"
             >
               Maze
+            </button>
+            <button
+              type="button"
+              id="colorful-mode"
+              aria-pressed="false"
+              title="Color each stroke with a rotating pastel palette"
+            >
+              Color
             </button>
             <button type="button" id="fit">Fit</button>
             <button type="button" id="download">Save SVG</button>
@@ -1302,6 +1322,7 @@
         const dimensionModeButton = document.querySelector('#dimension-mode');
         const threeDHint = document.querySelector('#three-d-hint');
         const mazeButton = document.querySelector('#maze-mode');
+        const colorfulModeButton = document.querySelector('#colorful-mode');
         const drawerPanel = document.querySelector('.drawer');
         const randomSettingsDialog = document.querySelector('#random-settings-dialog');
         const randomSettingsForm = document.querySelector('#random-settings-form');
@@ -1320,6 +1341,20 @@
         const consonants = new Set(Array.from('çşzspbtdmnfvlrcghğ'));
         const fixedFacingConsonants = new Set(Array.from('tdszfvcg'));
         const fuseauBranchMarks = new Set(['y', 'w']);
+        const pastelStrokePalette = Object.freeze([
+          '#68a7cf',
+          '#d982aa',
+          '#70b89a',
+          '#d4ad45',
+          '#9086cf',
+          '#5fb7bd',
+          '#e28e78',
+          '#87ad58',
+        ]);
+        let colorfulMode = false;
+        function pastelStrokeColor(index) {
+          return pastelStrokePalette[index % pastelStrokePalette.length];
+        }
         let drawingDimensions = 2;
         function setDrawingDimensions(dimensions) {
           if (![2, 3].includes(dimensions)) throw new RangeError('Dimensions must be 2 or 3');
@@ -2644,9 +2679,9 @@
         }
 
         function fuseauOrnamentFacesBack(char, alter) {
-          // The offset circles of s/z/f/v occupy the opposite fuseau side
-          // from the legacy hook-like primitives at the same alternation.
-          return 'szfv'.includes(char) ? alter === 1 : alter === -1;
+          // Fixed-facing consonants keep the same ornament side even while
+          // fuseau branches alternate. Keep spacing in sync with drawing.
+          return fixedFacingConsonants.has(char) ? alter === 1 : alter === -1;
         }
 
         function isChevronBranch(branch) {
@@ -3822,6 +3857,24 @@
           make('polygon', { points, class: 'turtle-cursor', 'aria-hidden': 'true' }, artwork);
         }
 
+        function applyColorfulStrokes2D() {
+          let colorIndex = 0;
+          artwork.querySelectorAll('path, circle, polygon').forEach((primitive) => {
+            primitive.style.removeProperty('stroke');
+            primitive.style.removeProperty('fill');
+            if (!colorfulMode || primitive.classList.contains('collision-extension')) return;
+            const color = pastelStrokeColor(colorIndex++);
+            if (
+              primitive.matches('.node-dot, .turtle-cursor') ||
+              primitive.localName === 'polygon'
+            ) {
+              primitive.style.fill = color;
+            } else {
+              primitive.style.stroke = color;
+            }
+          });
+        }
+
         const AXES_3D = [
           { x: 1, y: 0, z: 0 },
           { x: 0, y: 1, z: 0 },
@@ -3839,6 +3892,7 @@
           anchors: new Map(),
           points: [],
           elementCount: 0,
+          colorIndex: 0,
         };
         const view3d = {
           yaw: -0.68,
@@ -3891,7 +3945,14 @@
           points.forEach((point) => scene3d.points.push(point));
         }
         function add3dPolyline(points, role = 'ink', closed = false, width = 1) {
-          const command = { type: 'polyline', points, role, closed, width };
+          const command = {
+            type: 'polyline',
+            points,
+            role,
+            closed,
+            width,
+            paletteIndex: scene3d.colorIndex++,
+          };
           scene3d.commands.push(command);
           remember3dPoints(points);
           return command;
@@ -3913,11 +3974,23 @@
           return add3dPolyline(points, role, true);
         }
         function add3dDot(center, radius = 4.5, role = 'ink') {
-          scene3d.commands.push({ type: 'dot', center, radius, role });
+          scene3d.commands.push({
+            type: 'dot',
+            center,
+            radius,
+            role,
+            paletteIndex: scene3d.colorIndex++,
+          });
           remember3dPoints([center]);
         }
         function add3dSphere(center, radius, role = 'sphere') {
-          scene3d.commands.push({ type: 'sphere', center, radius, role });
+          scene3d.commands.push({
+            type: 'sphere',
+            center,
+            radius,
+            role,
+            paletteIndex: scene3d.colorIndex++,
+          });
           remember3dPoints([center]);
         }
         function add3dFace(points, color, role = 'solid') {
@@ -3933,6 +4006,9 @@
           const shaftRadius = 2.4;
           const headLength = 14;
           const headRadius = 6.5;
+          const arrowColor = colorfulMode
+            ? pastelStrokeColor(scene3d.colorIndex++)
+            : null;
           const shaftEnd = add3(origin, scale3(forward, shaftLength));
           const tip = add3(shaftEnd, scale3(forward, headLength));
           const ring = (center, radius) =>
@@ -3951,12 +4027,23 @@
           const headRing = ring(shaftEnd, headRadius);
           const facetColor = (index, dark = false) => {
             const light = (Math.cos((index / segments) * Math.PI * 2 - 0.8) + 1) / 2;
+            if (arrowColor) {
+              const adjustment = (dark ? -0.42 : -0.24) + light * (dark ? 0.34 : 0.52);
+              return mixColor3D(
+                arrowColor,
+                adjustment < 0 ? [0, 0, 0] : [255, 255, 255],
+                Math.abs(adjustment),
+              );
+            }
             const value = Math.round((dark ? 4 : 8) + light * (dark ? 18 : 30));
             const channel = value.toString(16).padStart(2, '0');
             return `#${channel}${channel}${channel}`;
           };
 
-          add3dFace([...tailRing].reverse(), '#050505');
+          add3dFace(
+            [...tailRing].reverse(),
+            arrowColor ? mixColor3D(arrowColor, [0, 0, 0], 0.58) : '#050505',
+          );
           for (let index = 0; index < segments; index++) {
             const next = (index + 1) % segments;
             add3dFace(
@@ -3968,7 +4055,10 @@
               facetColor(index),
             );
           }
-          add3dFace([...headRing].reverse(), '#080808');
+          add3dFace(
+            [...headRing].reverse(),
+            arrowColor ? mixColor3D(arrowColor, [0, 0, 0], 0.52) : '#080808',
+          );
         }
 
         function tubeRadius3D(command) {
@@ -4153,6 +4243,43 @@
           return rgb ? rgb.slice(1, 4).map(Number) : [48, 43, 32];
         }
 
+        function mixColor3D(color, target, amount) {
+          const source = parseColor3D(color);
+          const mixed = source.map((channel, index) =>
+            Math.round(channel + (target[index] - channel) * amount),
+          );
+          return `rgb(${mixed[0]}, ${mixed[1]}, ${mixed[2]})`;
+        }
+
+        function sphereGradientStops3D(color) {
+          return [
+            ['0%', mixColor3D(color, [255, 255, 255], 0.78)],
+            ['16%', mixColor3D(color, [255, 255, 255], 0.34)],
+            ['58%', mixColor3D(color, [0, 0, 0], 0.12)],
+            ['100%', mixColor3D(color, [0, 0, 0], 0.58)],
+          ];
+        }
+
+        function addSphereGradient3D(parent, id, color) {
+          const gradient = make(
+            'radialGradient',
+            { id, cx: '31%', cy: '27%', r: '72%' },
+            parent,
+          );
+          sphereGradientStops3D(color).forEach(([offset, stopColor]) => {
+            make('stop', { offset, 'stop-color': stopColor }, gradient);
+          });
+        }
+
+        function sphereGradientMarkup3D(id, color) {
+          const stops = sphereGradientStops3D(color)
+            .map(([offset, stopColor]) =>
+              `<stop offset="${offset}" stop-color="${stopColor}"/>`,
+            )
+            .join('');
+          return `<radialGradient id="${id}" cx="31%" cy="27%" r="72%">${stops}</radialGradient>`;
+        }
+
         function shadeTubeColor3D(color, normal) {
           const rotatedNormal = normalize3(
             subtract3(
@@ -4176,6 +4303,9 @@
         function commandColor3D(command, colors) {
           return (
             command.color ||
+            (colorfulMode && Number.isInteger(command.paletteIndex)
+              ? pastelStrokeColor(command.paletteIndex)
+              : null) ||
             (command.role === 'gate' || command.role === 'depth'
               ? colors.accent
               : colors.ink)
@@ -4493,6 +4623,7 @@
           scene3d.points.length = 0;
           scene3d.anchors.clear();
           scene3d.elementCount = 0;
+          scene3d.colorIndex = 0;
           let sentenceOrigin = point3(0, 0, 0);
           let lastEnd = sentenceOrigin;
           const state = { direction: 0, normalDir: 1, alter: 1, fuseauContext: null };
@@ -4563,6 +4694,8 @@
           artwork3d.replaceChildren();
           axes3d.replaceChildren();
           const colors = palette3D();
+          const colorfulSphereDefs = colorfulMode ? make('defs', {}, artwork3d) : null;
+          let colorfulSphereIndex = 0;
           const projectedCommands = expanded3DCommands(colors).map((command) => {
             const points =
               command.type === 'dot' || command.type === 'sphere'
@@ -4580,16 +4713,23 @@
                 2.4,
                 command.radius * view3d.zoom * points[0].perspective,
               );
+              let fill = color;
+              if (command.type === 'sphere') {
+                if (colorfulSphereDefs) {
+                  const gradientId = `ete-color-sphere-gradient-${colorfulSphereIndex++}`;
+                  addSphereGradient3D(colorfulSphereDefs, gradientId, color);
+                  fill = `url(#${gradientId})`;
+                } else {
+                  fill = 'url(#ete-sphere-gradient)';
+                }
+              }
               make(
                 'circle',
                 {
                   cx: points[0].x,
                   cy: points[0].y,
                   r: radius,
-                  fill:
-                    command.type === 'sphere'
-                      ? 'url(#ete-sphere-gradient)'
-                      : color,
+                  fill,
                 },
                 artwork3d,
               );
@@ -4731,12 +4871,24 @@
           const minY = Math.min(...coordinates.map((point) => point.y)) - pad;
           const maxX = Math.max(...coordinates.map((point) => point.x)) + pad;
           const maxY = Math.max(...coordinates.map((point) => point.y)) + pad;
+          const colorfulSphereDefinitions = [];
+          let colorfulSphereIndex = 0;
           const body = projected
             .map(({ command, points }) => {
               const color = commandColor3D(command, colors);
               if (command.type === 'dot' || command.type === 'sphere') {
-                const fill =
-                  command.type === 'sphere' ? 'url(#ete-export-sphere-gradient)' : color;
+                let fill = color;
+                if (command.type === 'sphere') {
+                  if (colorfulMode) {
+                    const gradientId = `ete-export-color-sphere-${colorfulSphereIndex++}`;
+                    colorfulSphereDefinitions.push(
+                      sphereGradientMarkup3D(gradientId, color),
+                    );
+                    fill = `url(#${gradientId})`;
+                  } else {
+                    fill = 'url(#ete-export-sphere-gradient)';
+                  }
+                }
                 return `<circle cx="${points[0].x}" cy="${points[0].y}" ` +
                   `r="${command.radius * points[0].perspective}" fill="${fill}"/>`;
               }
@@ -4759,7 +4911,7 @@
             '<stop offset="15%" stop-color="#292825"/>' +
             '<stop offset="55%" stop-color="#090909"/>' +
             '<stop offset="100%" stop-color="#000000"/>' +
-            '</radialGradient></defs>';
+            `</radialGradient>${colorfulSphereDefinitions.join('')}</defs>`;
           const svgText =
             `<svg xmlns="${NS}" viewBox="${minX} ${minY} ${maxX - minX} ${maxY - minY}" ` +
             `width="${Math.ceil(maxX - minX)}" height="${Math.ceil(maxY - minY)}">` +
@@ -4833,6 +4985,7 @@
               make('path', attributes);
             });
             if (elements) drawTurtleCursor(turtle);
+            applyColorfulStrokes2D();
             status.textContent = elements ? 'Live' : 'Ready';
             count.textContent = `${elements} element${elements === 1 ? '' : 's'}`;
             requestAnimationFrame(fitDrawing);
@@ -4840,6 +4993,7 @@
             status.textContent = error.message;
             status.classList.add('error');
             count.textContent = `${anchors.size} elements`;
+            applyColorfulStrokes2D();
             if (artwork.childNodes.length) requestAnimationFrame(fitDrawing);
           }
         }
@@ -5195,6 +5349,15 @@
           mazeMode = !mazeMode;
           event.currentTarget.setAttribute('aria-pressed', String(mazeMode));
           draw();
+        });
+        colorfulModeButton.addEventListener('click', () => {
+          colorfulMode = !colorfulMode;
+          colorfulModeButton.setAttribute('aria-pressed', String(colorfulMode));
+          colorfulModeButton.title = colorfulMode
+            ? 'Return every stroke to the ordinary ink color'
+            : 'Color each stroke with a rotating pastel palette';
+          if (drawingDimensions === 3) draw3D(false);
+          else applyColorfulStrokes2D();
         });
         gateStyleSelect.addEventListener('change', (event) => {
           const nextStyle = event.target.value;
