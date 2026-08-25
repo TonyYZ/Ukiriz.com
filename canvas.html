@@ -5634,6 +5634,10 @@
         }
 
         if (key === 'c') {
+          // If the user has text selected (e.g. in the serialization div), let
+          // the browser copy it natively instead of copying canvas symbols.
+          if (window.getSelection()?.toString().length > 0) return;
+
           const clipboard = getSelectedSymbolClipboard();
           if (clipboard.symbols.length === 0) return;
 
