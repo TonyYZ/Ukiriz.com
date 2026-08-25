@@ -2665,23 +2665,26 @@
           return mirror * parentMirror === -1 ? 1 : 0;
         }
 
-        function elementNormalDir(char, requestedNormalDir) {
-          // These directional primitives keep their absolute facing. A
-          // vertical form therefore points upward even while the surrounding
-          // route is travelling downward.
-          return fixedFacingConsonants.has(char) ? 0 : requestedNormalDir;
+        function elementNormalDir(char, orientation, requestedNormalDir) {
+          // Directional vertical forms always face upward. Horizontal forms
+          // instead face along the route, so left-to-right writing is not
+          // mirrored by the vertical fixed-facing safeguard.
+          return fixedFacingConsonants.has(char) && orientation === 1
+            ? 0
+            : requestedNormalDir;
         }
 
         function elementAlter(char, requestedAlter) {
-          // Fuseau branches alternate sides, but that placement must not
-          // mirror an asymmetric primitive's own canonical facing.
-          return fixedFacingConsonants.has(char) ? 1 : requestedAlter;
+          // Every successive symbol alternates its perpendicular ornament
+          // side. Longitudinal fixed-facing behavior is handled separately
+          // by elementNormalDir and must not suppress this alternation.
+          return requestedAlter;
         }
 
         function fuseauOrnamentFacesBack(char, alter) {
-          // Fixed-facing consonants keep the same ornament side even while
-          // fuseau branches alternate. Keep spacing in sync with drawing.
-          return fixedFacingConsonants.has(char) ? alter === 1 : alter === -1;
+          // The offset circles of s/z/f/v occupy the opposite side from the
+          // hook-like ornaments at the same alternation.
+          return 'szfv'.includes(char) ? alter === 1 : alter === -1;
         }
 
         function isChevronBranch(branch) {
@@ -3349,7 +3352,11 @@
                   state.fuseauContext.parentNormalDir,
                 )
               : state.normalDir;
-            const normalDir = elementNormalDir(node.char, requestedNormalDir);
+            const normalDir = elementNormalDir(
+              node.char,
+              node.orientation,
+              requestedNormalDir,
+            );
             const drawAlter = elementAlter(node.char, state.alter);
             const facesAgainstRoute = normalDir !== requestedNormalDir;
             let routeEnd = null;
@@ -4389,7 +4396,11 @@
                 state.fuseauContext.parentNormalDir,
               )
             : state.normalDir;
-          const normalDir = elementNormalDir(node.char, requestedNormalDir);
+          const normalDir = elementNormalDir(
+            node.char,
+            node.orientation,
+            requestedNormalDir,
+          );
           const drawAlter = elementAlter(node.char, state.alter);
           const facesAgainstRoute = normalDir !== requestedNormalDir;
           const turtle = new GeometryTurtle(0, 0, 0);
