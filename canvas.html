@@ -14014,8 +14014,11 @@
 
         const left = parseFloat(nextSymbol.style.left) || 0;
         const top = parseFloat(nextSymbol.style.top) || 0;
-        nextSymbol.style.left = `${left + anchorPoint.x - nextPoint.x}px`;
-        nextSymbol.style.top = `${top + anchorPoint.y - nextPoint.y}px`;
+        const newLeft = left + anchorPoint.x - nextPoint.x;
+        const newTop = top + anchorPoint.y - nextPoint.y;
+        console.log(`[snap] anchor(e${anchorSymbol.elemId}a${anchorSymbol.angle}) side${anchorSide} aP.y=${anchorPoint.y.toFixed(2)} | next(e${nextSymbol.elemId}a${nextSymbol.angle}) side${nextSide} nP.y=${nextPoint.y.toFixed(2)} | anchor.top=${parseFloat(anchorSymbol.style.top).toFixed(2)} next.top: ${top.toFixed(2)}->${newTop.toFixed(2)}`);
+        nextSymbol.style.left = `${newLeft}px`;
+        nextSymbol.style.top = `${newTop}px`;
 
         if (nextSymbol.dot) {
           updateDotPositionLocal(nextSymbol.dot);
@@ -19086,6 +19089,7 @@
           const activeJunctions = getAbsJunctions(active);
           const targetJunctions = getAbsJunctions(target);
           const calYRendered = calY;
+          const calXRendered = calX * symbolScale;
 
           targetJunctions.forEach((targetCoord, index) => {
             switch (index) {
@@ -19101,6 +19105,7 @@
                     targetCoord.y,
                     Side.END,
                     Side.START,
+                    '末始',
                   );
                 } else {
                   const [first, second, , fourth] = activeJunctions; // valid coordinates for connecting
@@ -19109,8 +19114,8 @@
                     target,
                     first.x,
                     first.y,
-                    targetCoord.x,
-                    targetCoord.y,
+                    getDir(active) === 1 ? targetCoord.x + calXRendered : targetCoord.x - calXRendered,
+                    getDir(active) === 1 ? targetCoord.y + calXRendered : targetCoord.y - calXRendered,
                     Side.START,
                     Side.START,
                     '始',
@@ -19122,8 +19127,8 @@
                       target,
                       second.x,
                       second.y,
-                      targetCoord.x,
-                      targetCoord.y,
+                      targetCoord.x - calXRendered,
+                      targetCoord.y - calYRendered,
                       Side.END,
                       Side.START,
                       '始',
@@ -19134,11 +19139,11 @@
                       target,
                       second.x,
                       second.y,
-                      targetCoord.x,
-                      targetCoord.y + calYRendered,
+                      targetCoord.x + (active.angle === 270 ? calInvY - calXRendered : calXRendered),
+                      targetCoord.y + calXRendered,
                       Side.END,
                       Side.START,
-                      'heihei',
+                      '末↑',
                     );
                   }
                   snapToSymbol(
@@ -19146,8 +19151,12 @@
                     target,
                     fourth.x,
                     fourth.y,
-                    targetCoord.x,
-                    targetCoord.y,
+                    getDir(active) === 0
+                      ? active.angle === 0
+                        ? (target.angle === 270 ? targetCoord.x + calInvY : targetCoord.x)
+                        : (target.angle === 270 ? targetCoord.x + calCan2 + (calInvY - calXRendered) : targetCoord.x - (calCan1 - calCan2))
+                      : targetCoord.x,
+                    getDir(active) === 1 ? targetCoord.y + (calXRendered - calCan2) : targetCoord.y,
                     Side.MID_BOT,
                     Side.START,
                     '始',
@@ -19165,7 +19174,7 @@
                     targetCoord.y,
                     Side.START,
                     Side.END,
-                    'snap to the right',
+                    '始末',
                   );
                 } else {
                   const [first, second, third] = activeJunctions.slice(0, 3); // valid coordinates for connecting
@@ -19175,8 +19184,8 @@
                       target,
                       first.x,
                       first.y,
-                      targetCoord.x,
-                      targetCoord.y,
+                      targetCoord.x + calXRendered,
+                      getDir(active) === 1 ? targetCoord.y + calXRendered : targetCoord.y + calYRendered,
                       Side.START,
                       Side.END,
                       '末',
@@ -19187,11 +19196,11 @@
                       target,
                       first.x,
                       first.y,
-                      targetCoord.x,
-                      targetCoord.y - calYRendered,
+                      targetCoord.x - (target.angle === 270 ? calInvY - calXRendered : calXRendered),
+                      targetCoord.y - calXRendered,
                       Side.START,
                       Side.END,
-                      'meimei',
+                      '始↑',
                     );
                   }
                   snapToSymbol(
@@ -19199,8 +19208,10 @@
                     target,
                     second.x,
                     second.y,
-                    targetCoord.x,
-                    targetCoord.y,
+                    getDir(active) === 1
+                      ? targetCoord.x + calXRendered
+                      : targetCoord.x - calXRendered,
+                    getDir(active) === 1 ? targetCoord.y + calXRendered : targetCoord.y - calXRendered,
                     Side.END,
                     Side.END,
                     '末',
@@ -19255,8 +19266,12 @@
                     target,
                     activeJunctions[0].x,
                     activeJunctions[0].y,
-                    targetCoord.x,
-                    targetCoord.y,
+                    getDir(active) === 1
+                      ? active.angle === 270
+                        ? targetCoord.x - (target.angle === 180 ? calCan2 : calCan1) - (calInvY - calXRendered)
+                        : targetCoord.x + calCan1 - (target.angle === 180 ? calCan2 : calCan1)
+                      : targetCoord.x,
+                    getDir(active) === 0 ? targetCoord.y - (calXRendered - calCan2) : targetCoord.y,
                     Side.START,
                     Side.MID_BOT,
                     '下',
@@ -19522,6 +19537,8 @@
           if (symbol.angle === 270) {
             absJunctions[2].y -= calCan1;
             absJunctions[3].y -= calCan1;
+            absJunctions[0].x += symbolScale;
+            absJunctions[1].x += symbolScale;
           }
           if (symbol.angle === 90) {
             absJunctions[2].y -= calCan2;
@@ -19636,6 +19653,7 @@
           return;
         }
 
+        console.log(`[snap] ${msg} active(e${active.elemId}a${active.angle}) side${activeSide} aX=${activeX.toFixed(1)} aY=${activeY.toFixed(1)} | target(e${target.elemId}a${target.angle}) side${targetSide} tX=${targetX.toFixed(1)} tY=${targetY.toFixed(1)} | dx=${dx.toFixed(1)} dy=${dy.toFixed(1)}`);
         registerPendingSnapCandidate({
           active,
           target,
