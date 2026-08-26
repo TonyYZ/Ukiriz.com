@@ -15921,6 +15921,10 @@
             activeSymbol.pElement.style.left = `${x + activeSymbol.pElement.offsetX}px`;
             activeSymbol.pElement.style.top = `${parseFloat(activeSymbol.textarea.style.top) - 10 + activeSymbol.textarea.scrollHeight}px`;
           }
+          if (activeSymbol.thinkingEl) {
+            activeSymbol.thinkingEl.style.left = `${x + activeSymbol.thinkingEl.offsetX}px`;
+            activeSymbol.thinkingEl.style.top = `${parseFloat(activeSymbol.textarea.style.top) - 10 + activeSymbol.textarea.scrollHeight}px`;
+          }
           if (activeSymbol.doneButton) {
             const pLeft = parseFloat(activeSymbol.pElement?.style?.left || '');
             const pTop = parseFloat(activeSymbol.pElement?.style?.top || '');
@@ -18101,6 +18105,8 @@
                 : 'Validating your reading\nof the symbols, please\nwait....';
             el.style.left = `${rightMost + 5}px`;
             el.style.top = `${parseFloat(textarea.style.top) - 10 + textarea.scrollHeight}px`;
+            el.offsetX = (rightMost + 5) - parentLeft;
+            inputParent.thinkingEl = el;
             if (canvas === craftCanvas()) appendToCraftCanvas(el);
             else appendToChatCanvas(el);
             return el;
@@ -18122,6 +18128,7 @@
 
             const data = await response.json();
             thinkingEl?.remove();
+            if (inputParent.thinkingEl === thinkingEl) inputParent.thinkingEl = null;
 
             console.warn('[client] provider:', data.provider, 'usage:', data.usage);
 
@@ -18147,6 +18154,7 @@
             showFeedback(data.result || data.error || 'No response', false);
           } catch (error) {
             thinkingEl?.remove();
+            if (inputParent.thinkingEl === thinkingEl) inputParent.thinkingEl = null;
             console.error(error);
             showToast(
               currentLang === 'zh'
@@ -18176,13 +18184,19 @@
 
           const { canvas, rightMost } = bounds; // 你这里只用 rightMost 也行
 
+          // Use the current symbol position to compute offsets, not the stale parentLeft/parentTop
+          // captured at form-open time. If the user dragged during validation the delta would
+          // otherwise be baked into offsetX and every subsequent drag would be misaligned.
+          const currentParentLeft = parseFloat(inputParent.style.left) || 0;
+          const currentParentTop = parseFloat(inputParent.style.top) || 0;
+
           // Create the p element
           const pElement = document.createElement('p');
           pElement.x = rightMost + 5;
           pElement.y = parseFloat(textarea.style.top) - 10 + textarea.scrollHeight;
 
-          pElement.offsetX = pElement.x - parentLeft;
-          pElement.offsetY = pElement.y - parentTop;
+          pElement.offsetX = pElement.x - currentParentLeft;
+          pElement.offsetY = pElement.y - currentParentTop;
           pElement.style.left = `${pElement.x}px`; // Position to the right of the textbox
           pElement.style.top = `${pElement.y}px`;
           const approxCharPx = currentLang === 'zh' ? 18 : 9.2;
@@ -18298,8 +18312,8 @@
             doneButton.answerHeight = textHeight + 22; // small gap
             doneButton.y = pTop + doneButton.answerHeight;
 
-            doneButton.offsetX = doneButton.x - parentLeft;
-            doneButton.offsetY = doneButton.y - parentTop;
+            doneButton.offsetX = doneButton.x - currentParentLeft;
+            doneButton.offsetY = doneButton.y - currentParentTop;
             doneButton.style.left = `${doneButton.x}px`; // Position to the right of the textbox
             doneButton.style.top = `${doneButton.y}px`;
 
