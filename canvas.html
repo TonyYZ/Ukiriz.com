@@ -12307,6 +12307,10 @@
                 }
               }
 
+              // Only show library matches for symbols the current user owns.
+              // Another user's symbols get their card via the expressionGroups loop.
+              if (!allOwned) continue;
+
               results.push({
                 key: makeManualExpressionKey(matched, storedId),
                 group: matched,
