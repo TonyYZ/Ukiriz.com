@@ -18361,10 +18361,16 @@
                 // Use sorted symbol DB IDs so two instances of the same pattern
                 // get different group IDs (node ID alone would collide).
                 const _madeUpSymIds = await Promise.all(
-                  [...componentSymbols].map(
-                    async (sym) =>
-                      sym.dataset?.id || (await sym._pendingIdPromise?.catch(() => null)) || '',
-                  ),
+                  [...componentSymbols].map(async (sym) => {
+                    if (sym.dataset?.id) return sym.dataset.id;
+                    const pending = await sym._pendingIdPromise?.catch(() => null);
+                    if (pending) return pending;
+                    // Craft canvas symbols may never get a DB id; assign a stable local id
+                    // so each separately-defined group gets a unique madeUpGroupId.
+                    if (!sym._localId)
+                      sym._localId = `local_${Math.random().toString(36).slice(2, 11)}`;
+                    return sym._localId;
+                  }),
                 );
                 const madeUpGroupId = `manual_${_madeUpSymIds.filter(Boolean).sort().join('_')}`;
                 const madeUpExprLang = getExpressionSourceLang('', word, justification);
