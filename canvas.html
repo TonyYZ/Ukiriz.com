@@ -12513,8 +12513,9 @@
               // Prefetch whether the current user already sent an interpretation.
               // '' = checked, none found; non-empty string = found text; null = pending/unchecked.
               let _myPreviousInterp = null;
+              let _myPreviousInterpPromise;
               if (currentUser?.uid && gid) {
-                supabase
+                _myPreviousInterpPromise = supabase
                   .from('interpretations')
                   .select('interpretation_text')
                   .eq('expr_group_id', gid)
@@ -12522,12 +12523,15 @@
                   .maybeSingle()
                   .then(({ data }) => {
                     _myPreviousInterp = data?.interpretation_text || '';
+                    return _myPreviousInterp;
                   })
                   .catch(() => {
                     _myPreviousInterp = '';
+                    return '';
                   });
               } else {
                 _myPreviousInterp = '';
+                _myPreviousInterpPromise = Promise.resolve('');
               }
 
               const glyph = document.createElement('div');
@@ -12622,6 +12626,8 @@
                         room_id: currentRoomId || '',
                       });
                       if (insErr) throw insErr;
+                      _myPreviousInterp = interpText;
+                      _myPreviousInterpPromise = Promise.resolve(interpText);
                       sendBtn.textContent = zh ? '已发送 ✓' : 'Sent ✓';
                       sendBtn.classList.add('sent');
                       loadLibraryInterpretations()
@@ -12746,13 +12752,18 @@
                   me.preventDefault();
                 }
 
-                function onUp() {
+                async function onUp() {
                   overlay.removeEventListener('pointermove', onMove);
                   overlay.removeEventListener('pointerup', onUp);
                   if (!moved) {
-                    if (_myPreviousInterp) {
+                    // Await the prefetch so a quick tap never races against the DB query.
+                    const interp =
+                      _myPreviousInterp !== null
+                        ? _myPreviousInterp
+                        : await _myPreviousInterpPromise;
+                    if (interp) {
                       revealCard();
-                      showJuxtaposition(_myPreviousInterp, { alreadySent: true });
+                      showJuxtaposition(interp, { alreadySent: true });
                     } else {
                       showInterpretationStep();
                     }
