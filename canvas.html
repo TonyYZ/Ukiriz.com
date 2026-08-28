@@ -12469,6 +12469,13 @@
             textWrap.appendChild(titleEl);
             if (why || cachedTranslation?.explanation) textWrap.appendChild(whyEl);
 
+            // Phonetic lines (写作 / 读作) derived from the symbol group's layout.
+            try {
+              const _grpLayout = snapshotSelectionAsLayout(currentGraph, grp);
+              const _grpSeriz = getLibraryTreeSerialization({ layout: _grpLayout });
+              appendLibraryTreeSerialization(textWrap, _grpSeriz);
+            } catch (_) {}
+
             if (shouldOfferExpressionTranslation(sourceLang)) {
               const translateButton = createLightTranslateButton();
               if (cachedTranslation) {
@@ -12494,6 +12501,73 @@
               });
               card.appendChild(translateButton);
             }
+
+            // Snapshot the expression group SVG for use in downloaded images only
+            // (not added to the DOM — the live card appearance is unchanged)
+            try {
+              const _imgSyms = [...grp].filter((s) => s?.isConnected && s.querySelector?.('svg'));
+              if (_imgSyms.length) {
+                const _ir = 49.92 / (symbolWidth * symbolScale);
+                let _lx = Infinity, _rx = -Infinity, _ity = Infinity, _iby = -Infinity;
+                for (const s of _imgSyms) {
+                  const r = s.getBoundingClientRect();
+                  if (r.left < _lx) _lx = r.left;
+                  if (r.right > _rx) _rx = r.right;
+                  if (r.top < _ity) _ity = r.top;
+                  if (r.bottom > _iby) _iby = r.bottom;
+                  if (s.dot) {
+                    const dr = s.dot.getBoundingClientRect();
+                    if (dr.left < _lx) _lx = dr.left;
+                    if (dr.top < _ity) _ity = dr.top;
+                    if (dr.left + 10 / _ir > _rx) _rx = dr.left + 10 / _ir;
+                    if (dr.top + 10 / _ir > _iby) _iby = dr.top + 10 / _ir;
+                  }
+                }
+                // SVG filter for symbols that rely on CSS drop-shadow for their black outline
+                const _hasOutline = _imgSyms.some((s) => s.classList.contains('white-fill-outline'));
+                const _defs = _hasOutline
+                  ? '<defs><filter id="wo" color-interpolation-filters="sRGB">' +
+                    '<feMorphology in="SourceAlpha" operator="dilate" radius="1" result="d"/>' +
+                    '<feFlood flood-color="#000" result="c"/>' +
+                    '<feComposite in="c" in2="d" operator="in" result="o"/>' +
+                    '<feMerge><feMergeNode in="o"/><feMergeNode in="SourceGraphic"/></feMerge>' +
+                    '</filter></defs>'
+                  : '';
+                let _svgi = '';
+                for (const s of _imgSyms) {
+                  const r = s.getBoundingClientRect();
+                  let _stx, _sty;
+                  switch (s.angle) {
+                    case 0: _stx = r.left; _sty = r.top; break;
+                    case 90: _stx = r.right; _sty = r.top; break;
+                    case 180: _stx = r.right; _sty = r.bottom; break;
+                    case 270: _stx = r.left; _sty = r.bottom; break;
+                    default: _stx = r.left; _sty = r.top;
+                  }
+                  const _flt = s.classList.contains('white-fill-outline') ? ' filter="url(#wo)"' : '';
+                  _svgi +=
+                    `<g${_flt} transform="translate(${(_stx - _lx) * _ir},${(_sty - _ity) * _ir}) rotate(${s.angle})">` +
+                    s.querySelector('svg').innerHTML +
+                    '</g>';
+                  if (s.dot) {
+                    const dr = s.dot.getBoundingClientRect();
+                    _svgi +=
+                      `<g transform="translate(${(dr.left - _lx) * _ir},${(dr.top - _ity) * _ir})">` +
+                      dotDataMini +
+                      '</g>';
+                  }
+                }
+                const _iw = (_rx - _lx) * _ir, _ih = (_iby - _ity) * _ir;
+                const _rawSvg =
+                  `<svg width="${_iw}" height="${_ih}" viewBox="0 0 ${_iw} ${_ih}" xmlns="http://www.w3.org/2000/svg">` +
+                  _defs +
+                  _svgi +
+                  '</svg>';
+                // scaleSVG normalises to a square, preventing distortion when drawn into the image box
+                card._exprSvgSrc =
+                  'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(scaleSVG(_rawSvg));
+              }
+            } catch (_) {}
 
             card.appendChild(textWrap);
 
@@ -12790,6 +12864,13 @@
 
               card.appendChild(overlay);
               card.appendChild(hideBtn);
+
+              card.addEventListener('contextmenu', (e) => {
+                if (!card.classList.contains('revealed')) return;
+                e.preventDefault();
+                e.stopPropagation();
+                showLibraryTreeContextMenu(e.clientX, e.clientY, card, null);
+              });
             }
 
             makeSpawnedExpressionMetaCardDraggable(card);
@@ -20401,6 +20482,7 @@
             insideBranch,
             !insideBranch && mayOmitOpening,
             !insideBranch && mayOmitClosing,
+            following?.type === 'parallel',
           );
           if (insideBranch) text = `'${text}'`;
           return text;
@@ -20436,13 +20518,14 @@
           const followingIsPlain =
             index + 1 < series.children.length && series.children[index + 1].type !== 'parallel';
           if (previousIsPlain) {
-            if (!text || !'eéèē'.includes(text[0])) {
+            const openingSize = text.startsWith('áé') ? 2 : 1;
+            if (!text || (openingSize === 1 && !'eéèē'.includes(text[0]))) {
               throw new Error('Missing V2 fuseau opening');
             }
-            current += text[0];
+            current += text.slice(0, openingSize);
             segments.push(current);
             current = '';
-            text = text.slice(1);
+            text = text.slice(openingSize);
           }
           if (followingIsPlain) {
             if (!text || !'oóòō'.includes(text.at(-1))) {
@@ -20530,6 +20613,17 @@
         );
       }
 
+      function foldLibraryV2BranchOrientation(vowel, branch, rendered) {
+        const first = branch.children[0];
+        const orientation = first?.type === 'element' ? first.orientation : 0;
+        if (![1, 2].includes(orientation) || !rendered.startsWith('á'.repeat(orientation))) {
+          return [vowel, rendered];
+        }
+        const consumed = vowel === 'o' ? orientation : 1;
+        const accented = vowel === 'e' ? 'é' : 'ó';
+        return [`${'á'.repeat(consumed - 1)}${accented}`, rendered.slice(consumed)];
+      }
+
       function canUseLibraryV2SimpleMarker(parallel) {
         if (parallel.branches.length !== 2) return false;
         const elements = [];
@@ -20548,6 +20642,7 @@
         framed = false,
         omitOpening = false,
         omitClosing = false,
+        followedByFuseau = false,
       ) {
         const branches = parallel.branches;
         if (branches.length < 2) throw new Error('A V2 fuseau needs at least two branches');
@@ -20564,15 +20659,18 @@
           const compact = branches.map((branch, index) =>
             serializeLibraryV2CompactSeries(branch, index === 1),
           );
-          const firstIsOriented = libraryV2OrientedFirstElement(branches[0]);
-          if (firstIsOriented) {
-            compact[0] = serializeLibraryV2CompactSeries(branches[0], false, 'á', 1);
-          }
-          const middle =
-            compact[0].endsWith("'") && compact[1].startsWith("'")
-              ? compact[0] + compact[1].slice(1)
-              : compact[0] + compact[1];
-          return `${firstIsOriented ? 'é' : 'e'}${middle}o`;
+          const [opening, firstBranch] = foldLibraryV2BranchOrientation(
+            'e', branches[0], compact[0],
+          );
+          compact[0] = firstBranch;
+          const sharesNestedBoundary =
+            compact[0].endsWith("'") && compact[1].startsWith("'");
+          const middle = sharesNestedBoundary
+            ? compact[0] + compact[1].slice(1)
+            : compact[0] + compact[1];
+          const closing =
+            omitClosing && !framed && !followedByFuseau && !sharesNestedBoundary ? '' : 'o';
+          return `${opening}${middle}${closing}`;
         }
 
         const compact = branches.map((branch, index) =>
@@ -20583,39 +20681,54 @@
             branch.children.every((child) => child.type === 'element'),
           );
           const firstIsOriented = libraryV2OrientedFirstElement(branches[0]);
-          if (firstIsOriented) {
-            compact[0] = serializeLibraryV2CompactSeries(branches[0], false, 'á', 1);
-          }
+          const [structuralOpening, firstBranch] = foldLibraryV2BranchOrientation(
+            'e', branches[0], compact[0],
+          );
+          compact[0] = firstBranch;
           const opening =
             omitOpening && !framed && safelyCompact && !firstIsOriented
               ? ''
-              : firstIsOriented
-                ? 'é'
-                : 'e';
+              : structuralOpening;
           const closing = omitClosing && !framed && safelyCompact ? '' : 'o';
-          let separator = 'o';
-          const thirdFirst = branches[2].children[0];
-          if (
-            thirdFirst?.type === 'element' &&
-            thirdFirst.orientation === 2 &&
-            compact[2].startsWith('áá')
-          ) {
-            separator = 'áó';
-            compact[2] = compact[2].slice(2);
-          }
+          const [separator, thirdBranch] = foldLibraryV2BranchOrientation(
+            'o', branches[2], compact[2],
+          );
+          compact[2] = thirdBranch;
           return `${opening}${compact[0]}${compact[1]}${separator}${compact[2]}${closing}`;
         }
         const rendered = branches.map((branch) => serializeLibraryV2Series(branch, true));
-        let opening = 'e';
-        if (libraryV2OrientedFirstElement(branches[0]) && rendered[0].startsWith('á')) {
-          opening = 'é';
-          rendered[0] = rendered[0].slice(1);
+        const safelyCompact = branches.every((branch) =>
+          branch.children.every((child) => child.type === 'element'),
+        );
+        const firstIsOriented = libraryV2OrientedFirstElement(branches[0]);
+        const [structuralOpening, firstBranch] = foldLibraryV2BranchOrientation(
+          'e', branches[0], rendered[0],
+        );
+        const opening =
+          omitOpening && !framed && safelyCompact && !firstIsOriented
+            ? ''
+            : structuralOpening;
+        rendered[0] = firstBranch;
+        const middle = [];
+        for (let index = 1; index < branches.length - 2; index += 1) {
+          const [branchOpening, branchText] = foldLibraryV2BranchOrientation(
+            'e', branches[index], rendered[index],
+          );
+          rendered[index] = branchText;
+          middle.push(branchOpening, branchText, 'o');
         }
-        const middle = rendered
-          .slice(1, -2)
-          .map((branch) => `e${branch}o`)
-          .join('');
-        return `${opening}${rendered[0]}${middle}${rendered.at(-2)}o${rendered.at(-1)}o`;
+        const [penultimateSeparator, penultimateBranch] = foldLibraryV2BranchOrientation(
+          'o', branches.at(-2), rendered.at(-2),
+        );
+        middle[middle.length - 1] = penultimateSeparator;
+        rendered[rendered.length - 2] = penultimateBranch;
+        const [finalSeparator, finalBranch] = foldLibraryV2BranchOrientation(
+          'o', branches.at(-1), rendered.at(-1),
+        );
+        const closing =
+          omitOpening && omitClosing && !followedByFuseau && !framed && safelyCompact ? '' : 'o';
+        return `${opening}${rendered[0]}${middle.join('')}`
+          + `${penultimateBranch}${finalSeparator}${finalBranch}${closing}`;
       }
 
       function serializeLibraryV2Node(node) {
@@ -21171,13 +21284,55 @@
         const interpsToggle = card.querySelector('.library-tree-interps-toggle');
         const savedSectionDisplay = interpsSection ? interpsSection.style.display : null;
         const savedToggleDisplay = interpsToggle ? interpsToggle.style.display : null;
+        // Mystery cards use .expr-juxtapose instead of .library-tree-interps
+        const juxtaSection = !interpsSection ? card.querySelector('.expr-juxtapose') : null;
+        const savedJuxtaDisplay = juxtaSection ? juxtaSection.style.display : null;
 
-        // Normalize BCR values against the CSS zoom applied to the card surface
-        const cssZoom = libraryContentZoom || 1;
+        // Spawned expression cards live inside the chat canvas which has its own CSS zoom
+        const cssZoom = card.classList.contains('spawned-expression-meta')
+          ? chatCanvasZoom || 1
+          : libraryContentZoom || 1;
+
+        // updateSpawnedExpressionMetaCardsPosition sets display:'block' to show/hide cards,
+        // overriding the CSS display:flex. Restore flex during measurement so the image and
+        // text columns sit side-by-side rather than stacking vertically.
+        const _savedDisplay = card.classList.contains('spawned-expression-meta')
+          ? card.style.display
+          : null;
+        if (_savedDisplay !== null) card.style.display = 'flex';
+
+        // Spawned expression cards have no fixed width; give them the same width the library
+        // card estimator would compute so the PNG matches the techtree card proportions.
+        let _savedCardWidth = null;
+        if (card.classList.contains('spawned-expression-meta')) {
+          const _wt = card.querySelector('.library-tree-card-word')?.textContent?.trim() || '';
+          const _dt = card.querySelector('.library-tree-card-definition')?.textContent?.trim() || '';
+          const _st = Array.from(card.querySelectorAll('.library-tree-card-serialization'))
+            .map((el) => el.textContent?.replace(/\s+/g, ' ').trim())
+            .join(' ');
+          const _longest = Math.max(_wt.length, _dt.length, _st.length);
+          const _targetW = Math.min(420, Math.max(200, 200 + Math.max(0, _longest - 14) * 5.5));
+          _savedCardWidth = card.style.width || '';
+          card.style.width = `${_targetW}px`;
+        }
+
+        // For spawned expression cards the text column narrows when the image is present in the
+        // PNG but not in the DOM.  Temporarily inject an invisible image element so getBCR
+        // measures the correct layout height (prevents the second serialisation line from being
+        // clipped at the bottom of the canvas).
+        let _tempExprImg = null;
+        if (card._exprSvgSrc && !card.querySelector('.library-tree-card-image')) {
+          _tempExprImg = document.createElement('img');
+          _tempExprImg.className = 'library-tree-card-image';
+          _tempExprImg.style.visibility = 'hidden';
+          _tempExprImg.src = card._exprSvgSrc;
+          card.prepend(_tempExprImg);
+        }
 
         // Always hide interps first to measure content-only height (for image centering)
         if (interpsSection) interpsSection.style.display = 'none';
         if (interpsToggle) interpsToggle.style.display = 'none';
+        if (juxtaSection) juxtaSection.style.display = 'none';
         const contentRect = card.getBoundingClientRect();
         const contentHeight = Math.max(1, Math.ceil(contentRect.height / cssZoom));
 
@@ -21190,16 +21345,29 @@
           const sectionRect = interpsSection.getBoundingClientRect();
           interpsOffsetY =
             Math.round((sectionRect.top - cardRectFull.top) / cssZoom) + INTERP_HEADER_H;
+        } else if (includeInterps && juxtaSection) {
+          juxtaSection.style.display = savedJuxtaDisplay ?? '';
+          const cardRectFull = card.getBoundingClientRect();
+          const sectionRect = juxtaSection.getBoundingClientRect();
+          interpsOffsetY =
+            Math.round((sectionRect.top - cardRectFull.top) / cssZoom) + INTERP_HEADER_H;
         }
-        const rect = includeInterps && interpsSection ? card.getBoundingClientRect() : contentRect;
+        const rect =
+          includeInterps && (interpsSection || juxtaSection)
+            ? card.getBoundingClientRect()
+            : contentRect;
         const width = Math.max(1, Math.ceil(rect.width / cssZoom));
         const height =
           Math.max(1, Math.ceil(rect.height / cssZoom)) +
-          (includeInterps && interpsSection ? INTERP_HEADER_H : 0);
+          (includeInterps && (interpsSection || juxtaSection) ? INTERP_HEADER_H : 0);
 
         // Restore DOM state
         if (interpsSection) interpsSection.style.display = savedSectionDisplay;
         if (interpsToggle) interpsToggle.style.display = savedToggleDisplay;
+        if (juxtaSection) juxtaSection.style.display = savedJuxtaDisplay;
+        if (_tempExprImg) { _tempExprImg.remove(); _tempExprImg = null; }
+        if (_savedCardWidth !== null) { card.style.width = _savedCardWidth; _savedCardWidth = null; }
+        if (_savedDisplay !== null) { card.style.display = _savedDisplay; }
 
         await document.fonts?.ready?.catch?.(() => {});
 
@@ -21240,15 +21408,16 @@
         ctx.stroke();
 
         const imageEl = card.querySelector('.library-tree-card-image');
+        const imageSrc = imageEl?.src || card._exprSvgSrc || null;
         const imageBox = { x: 14, y: Math.max(12, (contentHeight - 60) / 2), size: 60 };
-        if (imageEl?.src) {
+        if (imageSrc) {
           try {
             const img = new Image();
             img.decoding = 'async';
             await new Promise((resolve, reject) => {
               img.onload = resolve;
               img.onerror = reject;
-              img.src = imageEl.src;
+              img.src = imageSrc;
             });
             ctx.drawImage(img, imageBox.x, imageBox.y, imageBox.size, imageBox.size);
           } catch (error) {
@@ -21349,6 +21518,71 @@
               const dateFont = `400 9px ${fontFamily}`;
               const bodyFont = `400 11px ${fontFamily}`;
               const dateLines = dateText ? wrapCanvasText(dateText, innerW, dateFont) : [];
+              const bodyLines = bodyText ? wrapCanvasText(bodyText, innerW, bodyFont) : [];
+              const dateH = dateLines.length * 11;
+              const bodyH = bodyLines.length * 15.4;
+              const gap = dateLines.length && bodyLines.length ? 2 : 0;
+              const itemH = 4 + dateH + gap + bodyH + 4;
+
+              ctx.fillStyle = 'rgba(53,40,168,0.07)';
+              roundRectPath(itemX, iy, itemW, itemH, 6);
+              ctx.fill();
+
+              let ty = iy + 4;
+              ctx.textBaseline = 'top';
+              if (dateLines.length) {
+                ctx.font = dateFont;
+                ctx.fillStyle = 'rgba(0,0,0,0.36)';
+                for (const l of dateLines) {
+                  ctx.fillText(l, innerX, ty);
+                  ty += 11;
+                }
+                ty += gap;
+              }
+              if (bodyLines.length) {
+                ctx.font = bodyFont;
+                ctx.fillStyle = 'rgba(0,0,0,0.68)';
+                for (const l of bodyLines) {
+                  ctx.fillText(l, innerX, ty);
+                  ty += 15.4;
+                }
+              }
+              iy += itemH + 4;
+            }
+          }
+        }
+
+        if (includeInterps && juxtaSection) {
+          const juxtaSections = Array.from(
+            juxtaSection.querySelectorAll('.expr-juxtapose-section'),
+          );
+          if (juxtaSections.length) {
+            const sepY = contentHeight - 10;
+            ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(14, sepY);
+            ctx.lineTo(width - 14, sepY);
+            ctx.stroke();
+            const juxtaLabel = currentLang === 'zh' ? '解读' : 'Interpretations';
+            ctx.font = `400 9px ${fontFamily}`;
+            ctx.fillStyle = 'rgba(0,0,0,0.36)';
+            ctx.textBaseline = 'top';
+            ctx.fillText(juxtaLabel, 14, sepY + 3);
+
+            let iy = interpsOffsetY;
+            const itemX = 14;
+            const itemW = width - 28;
+            const innerX = itemX + 9;
+            const innerW = itemW - 12;
+
+            for (const section of juxtaSections) {
+              const labelText =
+                section.querySelector('.expr-juxtapose-label')?.textContent?.trim() || '';
+              const bodyText = section.querySelector('p')?.textContent?.trim() || '';
+              const dateFont = `400 9px ${fontFamily}`;
+              const bodyFont = `400 11px ${fontFamily}`;
+              const dateLines = labelText ? wrapCanvasText(labelText, innerW, dateFont) : [];
               const bodyLines = bodyText ? wrapCanvasText(bodyText, innerW, bodyFont) : [];
               const dateH = dateLines.length * 11;
               const bodyH = bodyLines.length * 15.4;
@@ -21493,7 +21727,11 @@
         if (buttons[2]) {
           buttons[2].textContent =
             currentLang === 'zh' ? '下载图片（含解读）' : 'Download with interpretations';
-          const hasInterps = !!(card && card.querySelector('.library-tree-interp-item'));
+          const hasInterps = !!(
+            card &&
+            (card.querySelector('.library-tree-interp-item') ||
+              card.querySelector('.expr-juxtapose-section p')?.textContent?.trim())
+          );
           buttons[2].style.display = hasInterps ? '' : 'none';
         }
         libraryTreeContextMenuTarget = { card, nodeId };
@@ -22971,6 +23209,16 @@
           }
         });
 
+        const hasOutlineSymbol = [...components].some((s) => s.classList?.contains('white-fill-outline'));
+        const outlineDefs = hasOutlineSymbol
+          ? '<defs><filter id="wo" color-interpolation-filters="sRGB">' +
+            '<feMorphology in="SourceAlpha" operator="dilate" radius="1" result="d"/>' +
+            '<feFlood flood-color="#000" result="c"/>' +
+            '<feComposite in="c" in2="d" operator="in" result="o"/>' +
+            '<feMerge><feMergeNode in="o"/><feMergeNode in="SourceGraphic"/></feMerge>' +
+            '</filter></defs>\n'
+          : '';
+
         components.forEach((symbol) => {
           rect = symbol.getBoundingClientRect();
           let transX;
@@ -22993,8 +23241,11 @@
               transY = rect.bottom;
               break;
           }
+          const filterAttr = symbol.classList.contains('white-fill-outline')
+            ? ' filter="url(#wo)"'
+            : '';
           svgString +=
-            `<g transform="translate(` +
+            `<g${filterAttr} transform="translate(` +
             ((transX - leftMost) * ratio).toString() +
             `, ` +
             ((transY - topMost) * ratio).toString() +
@@ -23029,6 +23280,7 @@
           ` ` +
           heightStr +
           `" xmlns="http://www.w3.org/2000/svg">\n` +
+          outlineDefs +
           svgString +
           `</svg>`;
 
