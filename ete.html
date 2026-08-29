@@ -1312,6 +1312,7 @@
     </dialog>
 
     <script src="./ete-speech.js"></script>
+    <script src="./ete-game.js"></script>
     <script>
       (() => {
         'use strict';
@@ -2747,6 +2748,12 @@
           return 'szfv'.includes(char) ? -requestedAlter : requestedAlter;
         }
 
+        function elementDrawAlter(char, requestedAlter, inFuseau) {
+          // A fuseau branch side is already a physical mirror; applying the
+          // ordinary s/z/f/v normalization again turns its ornament inward.
+          return inFuseau ? requestedAlter : elementAlter(char, requestedAlter);
+        }
+
         function fuseauOrnamentFacesBack(char, alter) {
           // The offset circles of s/z/f/v occupy the opposite side from the
           // hook-like ornaments at the same alternation.
@@ -2796,6 +2803,10 @@
         }
 
         let drawingLayer = artwork;
+        let gameSceneRevision = 0;
+        function publishGameScene(detail) {
+          window.dispatchEvent(new CustomEvent('ete:game-scene', { detail }));
+        }
         const occupied = [];
         const MAZE_CHANCES = 4;
         const MAX_MAZE_BACKTRACK_ATTEMPTS = 20000;
@@ -3423,7 +3434,11 @@
               node.orientation,
               requestedNormalDir,
             );
-            const drawAlter = elementAlter(node.char, state.alter);
+            const drawAlter = elementDrawAlter(
+              node.char,
+              state.alter,
+              Boolean(state.fuseauContext),
+            );
             const facesAgainstRoute = normalDir !== requestedNormalDir;
             let routeEnd = null;
             if (facesAgainstRoute) {
@@ -4516,7 +4531,11 @@
             node.orientation,
             requestedNormalDir,
           );
-          const drawAlter = elementAlter(node.char, state.alter);
+          const drawAlter = elementDrawAlter(
+            node.char,
+            state.alter,
+            Boolean(state.fuseauContext),
+          );
           const facesAgainstRoute = normalDir !== requestedNormalDir;
           const turtle = new GeometryTurtle(0, 0, 0);
           let routeEnd = null;
@@ -5034,7 +5053,7 @@
         }
 
         function render3DCanvas() {
-          if (canvas3d.hidden) return;
+          if (canvas3d.hasAttribute('hidden')) return;
           const width = canvas3d.clientWidth || 1;
           const height = canvas3d.clientHeight || 1;
           canvas3d.setAttribute('viewBox', `0 0 ${width} ${height}`);
@@ -5101,6 +5120,24 @@
             make(command.fill ? 'polygon' : 'polyline', attributes, artwork3d);
           });
           drawAxes3D(width, height, colors);
+          publishGameScene({
+            dimensions: 3,
+            revision: gameSceneRevision,
+            svg: canvas3d,
+            start: project3D(point3(0, 0, 0), width, height),
+            tracks: scene3d.commands
+              .filter((command) =>
+                ['dot', 'sphere'].includes(command.type) ||
+                (
+                  command.type === 'polyline' &&
+                  (command.role !== 'gate' || gateStyle === 'dashed')
+                ))
+              .map((command) => ({
+                jump: command.role === 'gate',
+                points: (command.points || [command.center])
+                  .map((point) => project3D(point, width, height)),
+              })),
+          });
         }
 
         function drawAxes3D(width, height, colors) {
@@ -5173,6 +5210,7 @@
 
         function draw3D(fit = true) {
           status.classList.remove('error');
+          gameSceneRevision++;
           try {
             const documentTree = parse(source.value, 3);
             buildScene3D(documentTree);
@@ -5287,12 +5325,21 @@
 
         function fitDrawing() {
           const fitted = getArtworkViewBox();
-          if (!fitted) return;
-          viewBox = fitted;
-          svg.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
+          if (fitted) {
+            viewBox = fitted;
+            svg.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`);
+          }
+          publishGameScene({
+            dimensions: 2,
+            revision: gameSceneRevision,
+            svg,
+            root: artwork,
+            start: { x: 0, y: 0 },
+          });
         }
 
         function draw2D() {
+          gameSceneRevision++;
           artwork.replaceChildren();
           anchors.clear();
           status.classList.remove('error');
@@ -5565,8 +5612,9 @@
           rememberSourceState();
           source.value = generateRandomText(settings.seed, settings.options);
           source.setSelectionRange(source.value.length, source.value.length);
-          draw();
           source.focus();
+          window.dispatchEvent(new Event('ete:game-reset'));
+          draw();
         });
         document.querySelector('#random-settings').addEventListener('click', () => {
           randomSettingsError.textContent = '';
