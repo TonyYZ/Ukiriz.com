@@ -1100,7 +1100,7 @@
             <section class="help-card">
               <h3>Three special elements</h3>
               <p>
-                <code class="iti-form">ā</code> is a visible long line, not glue.
+                <code class="iti-form">ã</code> is a visible long line, not glue.
                 <code class="iti-form">y</code> and <code class="iti-form">w</code> are
                 side branches and therefore only belong inside a fuseau.
               </p>
@@ -1265,7 +1265,13 @@
                 <code>ch→<span class="iti-form">ç</span></code>
                 <code>gh→<span class="iti-form">ğ</span></code>. After a vowel,
                 <code>`</code> adds acute, <code>-</code> grave, and
-                <code>=</code> macron.
+                <code>=</code> macron. For <code>a</code>, the macron is written
+                <code class="iti-form">ã</code>; a second acute produces
+                <code class="iti-form">ả = á + á</code>.
+              </p>
+              <p>
+                The serializer ignores vowel order inside a registered combination and
+                always abbreviates it: <code class="iti-form">éá / áé → ẻ</code>.
               </p>
             </section>
             <section class="help-card">
@@ -1284,7 +1290,8 @@
                 Compound spellings retain both accents—for example,
                 <code class="iti-form">smỏt</code> uses
                 <code class="iti-form">ỏ = á + ó</code> to put
-                <code class="iti-form">t</code> on the third axis.
+                <code class="iti-form">t</code> on the third axis. When both accents
+                are acute, write the compact form <code class="iti-form">ả = á + á</code>.
               </p>
             </section>
           </div>
@@ -1372,7 +1379,8 @@
         );
         const accents = new Set(Array.from('áéíóúớ'));
         const compounds = {
-          ẻ: 'áé',
+          ả: 'áá',
+          ẻ: 'éá',
           ț: 'óé',
           ȟ: 'áóé',
           ỉ: 'éí',
@@ -1389,13 +1397,13 @@
           ư: 'eu',
           ũ: 'ou',
         };
-        const compoundSpellings = new Map([
-          ...Object.entries(compounds).map(([compound, expanded]) => [expanded, compound]),
-          ['oa', 'õ'],
-        ]);
-        const compactVowelSequences = Array.from(compoundSpellings.keys()).sort(
-          (left, right) => right.length - left.length,
+        const vowelSignature = (text) => Array.from(text).sort().join('');
+        const compoundSpellings = new Map(
+          Object.entries(compounds).map(([compound, expanded]) => [vowelSignature(expanded), compound]),
         );
+        const compactVowelLengths = Array.from(
+          new Set(Object.values(compounds).map((expanded) => expanded.length)),
+        ).sort((left, right) => right - left);
 
         class ParseError extends Error {}
 
@@ -1529,7 +1537,7 @@
                 if (!this.componentContinuesBranch) simpleLeftStart = children.length;
                 appendComponent(this.quoted());
                 this.componentContinuesBranch = false;
-              } else if (this.base() === 'e') {
+              } else if (this.base() === 'e' || this.orientedStructuralVowelAhead('e')) {
                 simpleLeftStart = children.length;
                 appendComponent(this.complex(stops));
                 this.componentContinuesBranch = false;
@@ -1708,7 +1716,10 @@
                     source.remaining !== snapshot.sources[index]?.remaining,
                 );
 
-              if (this.base() === 'e' && !firstChangedGates) {
+              if (
+                (this.base() === 'e' || this.orientedStructuralVowelAhead('e')) &&
+                !firstChangedGates
+              ) {
                 const explicitSnapshot = this.snapshot();
                 let explicitSuffixIsFuseau = false;
                 try {
@@ -1724,15 +1735,15 @@
                 }
 
                 const branches = [first];
-                while (this.base() === 'e') {
-                  this.takeVowel('e');
+                while (this.base() === 'e' || this.orientedStructuralVowelAhead('e')) {
+                  this.takeOptionalOrientedStructuralVowel('e');
                   const middle = this.series(new Set(['o']));
                   if (!middle.children.length) this.fail('Empty middle fuseau branch');
                   if (!this.takeOptionalOrientedStructuralVowel('o')) {
                     this.fail('Expected o after a middle fuseau branch');
                   }
                   branches.push(middle);
-                  if (this.base() !== 'e') break;
+                  if (this.base() !== 'e' && !this.orientedStructuralVowelAhead('e')) break;
                 }
                 const penultimate = this.series(new Set(['o']));
                 if (!penultimate.children.length)
@@ -1743,8 +1754,7 @@
                 const finalSnapshot = this.snapshot();
                 let final = this.series(new Set(['o', ...outerStops]));
                 let closingOmitted;
-                if (final.children.length && this.base() === 'o') {
-                  this.takeVowel('o');
+                if (final.children.length && this.takeOptionalOrientedStructuralVowel('o')) {
                   closingOmitted = false;
                 } else if (
                   final.children.length &&
@@ -1803,7 +1813,7 @@
           quoted() {
             const opening = this.pos;
             this.take("'");
-            if (this.base() !== 'e') {
+            if (this.base() !== 'e' && !this.orientedStructuralVowelAhead('e')) {
               this.pos = opening;
               this.fail('An apostrophe-delimited inner fuseau must begin with e');
             }
@@ -1816,7 +1826,9 @@
             return contents;
           }
           complex(outerStops = new Set(), requireFinalO = false) {
-            this.takeVowel('e');
+            if (!this.takeOptionalOrientedStructuralVowel('e')) {
+              this.fail('Complex fuseau must begin with e');
+            }
             const afterOpening = this.snapshot();
             const sharedNested = this.trySharedNestedBinary();
             if (sharedNested) return sharedNested;
@@ -1859,17 +1871,19 @@
 
             const first = this.series(new Set(['e', 'o']));
             if (!first.children.length) this.fail('Complex fuseau needs its first branch');
-            if (this.base() !== 'e') this.fail('Complex fuseau needs e before its middle branch');
+            if (this.base() !== 'e' && !this.orientedStructuralVowelAhead('e')) {
+              this.fail('Complex fuseau needs e before its middle branch');
+            }
             const branches = [first];
-            while (this.base() === 'e') {
-              this.takeVowel('e');
+            while (this.base() === 'e' || this.orientedStructuralVowelAhead('e')) {
+              this.takeOptionalOrientedStructuralVowel('e');
               const middle = this.series(new Set(['o']));
               if (!middle.children.length) this.fail('Empty fuseau branch');
               if (!this.takeOptionalOrientedStructuralVowel('o')) {
                 this.fail('Expected o after a middle fuseau branch');
               }
               branches.push(middle);
-              if (this.base() !== 'e') break;
+              if (this.base() !== 'e' && !this.orientedStructuralVowelAhead('e')) break;
             }
             const penultimate = this.series(new Set(['o']));
             if (!penultimate.children.length)
@@ -1880,8 +1894,7 @@
             const finalSnapshot = this.snapshot();
             let final = this.series(new Set(['o', ...outerStops]));
             let closingOmitted;
-            if (final.children.length && this.base() === 'o') {
-              this.takeVowel('o');
+            if (final.children.length && this.takeOptionalOrientedStructuralVowel('o')) {
               closingOmitted = false;
             } else if (
               final.children.length &&
@@ -1906,12 +1919,12 @@
             const snapshot = this.snapshot();
             try {
               this.take("'");
-              if (this.base() !== 'e') {
+              if (this.base() !== 'e' && !this.orientedStructuralVowelAhead('e')) {
                 this.fail('Shared nested fuseau needs an explicit left frame');
               }
               const left = this.complex(new Set(["'"]), true);
               this.take("'");
-              if (this.base() !== 'e') {
+              if (this.base() !== 'e' && !this.orientedStructuralVowelAhead('e')) {
                 this.fail('Shared nested fuseau needs an explicit right frame');
               }
               const right = this.complex(new Set(["'"]), true);
@@ -1987,7 +2000,7 @@
               if (!Object.hasOwn(vowelBase, following) && !allowFuseauMarkTerminal) {
                 this.fail(`${char} fuseau mark must be followed by a vowel`);
               }
-            } else if (!consonants.has(char) && char !== 'ā') {
+            } else if (!consonants.has(char) && char !== 'ã') {
               this.fail(`Expected an Ítí drawable element, found ${char || 'nothing'}`);
             }
             this.take();
@@ -2255,15 +2268,15 @@
           let result = '';
           let index = 0;
           while (index < text.length) {
-            const match = compactVowelSequences.find((sequence) =>
-              text.startsWith(sequence, index),
+            const length = compactVowelLengths.find((size) =>
+              compoundSpellings.has(vowelSignature(text.slice(index, index + size))),
             );
-            if (match === undefined) {
+            if (length === undefined) {
               result += text[index];
               index++;
             } else {
-              result += compoundSpellings.get(match);
-              index += match.length;
+              result += compoundSpellings.get(vowelSignature(text.slice(index, index + length)));
+              index += length;
             }
           }
           return result;
@@ -2467,7 +2480,7 @@
             const element = branch.children[0];
             elements.push(element);
             return (
-              element.char !== 'ā' &&
+              element.char !== 'ã' &&
               !(markers.outgoing.get(element.id) || 0) &&
               !(markers.incoming.get(element.id) || 0)
             );
@@ -2776,7 +2789,7 @@
 
           // DrawerV2 only explores the opposite side when the component
           // changes axis. Aligned components must keep travelling forward;
-          // otherwise repeated ā elements retrace the same line.
+          // otherwise repeated ã elements retrace the same line.
           return componentDirection === state.direction
             ? [state.normalDir]
             : [state.normalDir, 1 - state.normalDir];
@@ -2911,12 +2924,12 @@
         function calcDist(char, dotted = true) {
           if (!dotted) return 0;
           if ('şçszvf'.includes(char)) return (('şç'.includes(char) ? 1.5 : 2.5) * UNIT) / SCALE;
-          if ('ywā|-hğ'.includes(char)) return UNIT / SCALE;
+          if ('ywã|-hğ'.includes(char)) return UNIT / SCALE;
           if ('mn'.includes(char)) return (2 * UNIT) / SCALE;
           return (1.5 * UNIT) / SCALE;
         }
         function calcPos(char) {
-          if ('çşpbmnlrhğywā|-'.includes(char)) return UNIT / 2;
+          if ('çşpbmnlrhğywã|-'.includes(char)) return UNIT / 2;
           if ('zstd'.includes(char)) return UNIT - UNIT / SCALE;
           if ('fvcg'.includes(char)) return UNIT / SCALE;
           return 0;
@@ -3128,7 +3141,7 @@
             turtle.goto(end.x, end.y);
             turtle.pendown();
           }
-          if ('ā|-'.includes(char)) turtle.forward(UNIT);
+          if ('ã|-'.includes(char)) turtle.forward(UNIT);
 
           const forward = turtle.vector(1);
           const right = turtle.vector(1, turtle.heading - 90 * alter);
@@ -4011,7 +4024,7 @@
             role,
             closed,
             width,
-            paletteIndex: scene3d.colorIndex++,
+            paletteIndex: role === 'extension' ? null : scene3d.colorIndex++,
           };
           scene3d.commands.push(command);
           remember3dPoints(points);
@@ -4433,13 +4446,62 @@
           };
         }
 
+        function collisionBox3D(commands) {
+          const minimumThickness = UNIT / SCALE / 2;
+          const limits = ['x', 'y', 'z'].map((axis) => {
+            const values = [];
+            commands.forEach((command) => {
+              if (command.center) {
+                values.push(
+                  command.center[axis] - command.radius,
+                  command.center[axis] + command.radius,
+                );
+              } else {
+                command.points.forEach((point) => values.push(point[axis]));
+              }
+            });
+            let low = Math.min(...values);
+            let high = Math.max(...values);
+            if (high - low < minimumThickness) {
+              const middle = (low + high) / 2;
+              low = middle - minimumThickness / 2;
+              high = middle + minimumThickness / 2;
+            } else {
+              low += 1;
+              high -= 1;
+            }
+            return [low, high];
+          });
+          return {
+            x: limits[0][0],
+            y: limits[1][0],
+            z: limits[2][0],
+            width: limits[0][1] - limits[0][0],
+            height: limits[1][1] - limits[1][0],
+            depth: limits[2][1] - limits[2][0],
+          };
+        }
+
+        function boxesOverlap3D(first, second, threshold = 3) {
+          return (
+            Math.min(first.x + first.width, second.x + second.width) -
+                Math.max(first.x, second.x) > threshold &&
+            Math.min(first.y + first.height, second.y + second.height) -
+                Math.max(first.y, second.y) > threshold &&
+            Math.min(first.z + first.depth, second.z + second.depth) -
+                Math.max(first.z, second.z) > threshold
+          );
+        }
+
         function drawElement3D(
           node,
           start,
           state,
           boundaryStart = false,
           boundaryEnd = false,
+          componentBoxes = null,
         ) {
+          const commandStart = scene3d.commands.length;
           const periodCircle = boundaryEnd && 'şç'.includes(node.char);
           const requestedNormalDir = state.fuseauContext
             ? fuseauElementNormalDir(
@@ -4524,6 +4586,9 @@
           state.alter *= -1;
           state.direction = node.orientation;
           scene3d.elementCount++;
+          if (componentBoxes) {
+            componentBoxes.push(collisionBox3D(scene3d.commands.slice(commandStart)));
+          }
           return mapGlyphPoint3D(start, localEnd, node.orientation);
         }
 
@@ -4558,9 +4623,17 @@
           state = { direction: 0, normalDir: 1, alter: 1, fuseauContext: null },
           boundaryStart = false,
           boundaryEnd = false,
+          componentBoxes = null,
         ) {
           if (node.type === 'element') {
-            return drawElement3D(node, start, state, boundaryStart, boundaryEnd);
+            return drawElement3D(
+              node,
+              start,
+              state,
+              boundaryStart,
+              boundaryEnd,
+              componentBoxes,
+            );
           }
           if (node.type === 'series') {
             let cursor = start;
@@ -4571,6 +4644,7 @@
                 state,
                 boundaryStart || index > 0,
                 boundaryEnd || index < node.children.length - 1,
+                componentBoxes,
               );
             });
             return cursor;
@@ -4621,6 +4695,7 @@
               branchState,
               true,
               true,
+              componentBoxes,
             );
             side *= -1;
             return { branchStart, branchEnd };
@@ -4630,7 +4705,225 @@
           return placements[0]?.branchEnd || start;
         }
 
-        function addGates3D(documentTree) {
+        function routeVector3D(state) {
+          const turtle = new GeometryTurtle(0, 0, 0);
+          calibrate(turtle, state.direction, state.normalDir);
+          return normalize3(mapGlyphVector3D(turtle.vector(1), state.direction));
+        }
+
+        function mazeNormalDirections3D(node, state) {
+          let componentDirection = state.direction;
+          if (node.type === 'element') componentDirection = node.orientation;
+          else if (node.type === 'parallel') {
+            componentDirection = chooseFuseauDirection3D(node, state.direction);
+          }
+          return componentDirection === state.direction
+            ? [state.normalDir]
+            : [state.normalDir, 1 - state.normalDir];
+        }
+
+        function captureScene3DState(state) {
+          return {
+            commandCount: scene3d.commands.length,
+            pointCount: scene3d.points.length,
+            anchors: new Map(scene3d.anchors),
+            elementCount: scene3d.elementCount,
+            colorIndex: scene3d.colorIndex,
+            state: { ...state },
+          };
+        }
+
+        function restoreScene3DState(snapshot, state) {
+          scene3d.commands.length = snapshot.commandCount;
+          scene3d.points.length = snapshot.pointCount;
+          scene3d.anchors.clear();
+          snapshot.anchors.forEach((value, key) => scene3d.anchors.set(key, value));
+          scene3d.elementCount = snapshot.elementCount;
+          scene3d.colorIndex = snapshot.colorIndex;
+          Object.keys(state).forEach((key) => delete state[key]);
+          Object.assign(state, snapshot.state);
+        }
+
+        function runMazeCandidate3D(
+          node,
+          start,
+          state,
+          boundaryStart,
+          boundaryEnd,
+          spacingStep,
+          normalDir,
+          occupiedBoxes,
+        ) {
+          let cursor = start;
+          let extensionBox = null;
+          if (spacingStep) {
+            cursor = add3(
+              start,
+              scale3(routeVector3D(state), (UNIT / 2) * spacingStep),
+            );
+            extensionBox = collisionBox3D([{ points: [start, cursor] }]);
+            if (occupiedBoxes.some((box) => boxesOverlap3D(extensionBox, box))) {
+              return { collisions: 1 };
+            }
+            add3dLine(start, cursor, 'extension').color = '#c43b2f';
+          }
+
+          state.normalDir = normalDir;
+          const boxes = [];
+          const end = buildNode3D(
+            node,
+            cursor,
+            state,
+            boundaryStart,
+            boundaryEnd,
+            boxes,
+          );
+          const collisions = boxes.reduce(
+            (count, box) =>
+              count + occupiedBoxes.filter((other) => boxesOverlap3D(box, other)).length,
+            extensionBox && boxes.some((box) => boxesOverlap3D(extensionBox, box)) ? 1 : 0,
+          );
+          return {
+            boxes,
+            extensionBoxes: extensionBox ? [extensionBox] : [],
+            end,
+            collisions,
+            distance: length3(end),
+          };
+        }
+
+        function renderMazePassage3D(documentTree, start, state) {
+          const tasks = mazePassageTasks(documentTree);
+          const occupiedBoxes = [];
+          let attempts = 0;
+
+          function solve(taskIndex, cursor) {
+            if (taskIndex >= tasks.length) return cursor;
+            if (++attempts > MAX_MAZE_BACKTRACK_ATTEMPTS) {
+              throw new ParseError('3D maze search exceeded its backtracking limit');
+            }
+
+            const task = tasks[taskIndex];
+            const snapshot = captureScene3DState(state);
+            const occupiedCount = occupiedBoxes.length;
+            const restore = () => {
+              restoreScene3DState(snapshot, state);
+              occupiedBoxes.length = occupiedCount;
+            };
+
+            if (task.type === 'period') {
+              add3dDot(cursor, UNIT / SCALE / 4);
+              const result = solve(taskIndex + 1, cursor);
+              if (result) return result;
+              restore();
+              return null;
+            }
+            if (task.type === 'gap') {
+              const result = solve(
+                taskIndex + 1,
+                add3(cursor, scale3(routeVector3D(state), UNIT / SCALE)),
+              );
+              if (result) return result;
+              restore();
+              return null;
+            }
+
+            const directions = mazeNormalDirections3D(task.node, snapshot.state);
+            for (let spacingStep = 0; spacingStep < MAZE_CHANCES; spacingStep++) {
+              const routes = [];
+              for (const normalDir of directions) {
+                restore();
+                const candidate = runMazeCandidate3D(
+                  task.node,
+                  cursor,
+                  state,
+                  task.boundaryStart,
+                  task.boundaryEnd,
+                  spacingStep,
+                  normalDir,
+                  occupiedBoxes,
+                );
+                if (!candidate.collisions) routes.push({ normalDir, distance: candidate.distance });
+              }
+              routes.sort((first, second) => first.distance - second.distance);
+
+              for (const route of routes) {
+                restore();
+                const committed = runMazeCandidate3D(
+                  task.node,
+                  cursor,
+                  state,
+                  task.boundaryStart,
+                  task.boundaryEnd,
+                  spacingStep,
+                  route.normalDir,
+                  occupiedBoxes,
+                );
+                if (committed.collisions) continue;
+                occupiedBoxes.push(...committed.boxes, ...committed.extensionBoxes);
+                const result = solve(taskIndex + 1, committed.end);
+                if (result) return result;
+              }
+            }
+
+            restore();
+            return null;
+          }
+
+          const end = solve(0, start);
+          if (!end) throw new ParseError('No collision-free 3D maze direction was found');
+          return { end, occupiedBoxes };
+        }
+
+        function gateCurve3D(start, end, normal, lift) {
+          const route = subtract3(end, start);
+          const distance = length3(route);
+          const control1 = add3(
+            add3(start, scale3(route, 1 / 3)),
+            scale3(normal, lift),
+          );
+          const control2 = add3(
+            add3(start, scale3(route, 2 / 3)),
+            scale3(normal, lift),
+          );
+          const steps = Math.max(48, Math.ceil(distance / 1.5));
+          return Array.from({ length: steps + 1 }, (_, index) => {
+            const t = index / steps;
+            const one = 1 - t;
+            let point = add3(
+              add3(
+                scale3(start, one ** 3),
+                scale3(control1, 3 * one ** 2 * t),
+              ),
+              add3(
+                scale3(control2, 3 * one * t ** 2),
+                scale3(end, t ** 3),
+              ),
+            );
+            if (gateStyle === 'wavy') {
+              const wave =
+                (UNIT / SCALE / 4) *
+                Math.sin(Math.PI * t) *
+                Math.sin((2 * Math.PI * distance * t) / ((UNIT / SCALE) * 2.5));
+              point = add3(point, scale3(normal, wave));
+            }
+            return point;
+          });
+        }
+
+        function gateCurveCollides3D(points, occupiedBoxes) {
+          const margin = Math.max(2, Math.floor(points.length / 14));
+          return points
+            .slice(margin + 1, -margin)
+            .some((point, index) => {
+              const segment = collisionBox3D([
+                { points: [points[index + margin], point] },
+              ]);
+              return occupiedBoxes.some((box) => boxesOverlap3D(segment, box, 0));
+            });
+        }
+
+        function addGates3D(documentTree, occupiedBoxes = []) {
           documentTree.gates.forEach((gate) => {
             const sourceAnchor = scene3d.anchors.get(gate.source);
             const targetAnchor = scene3d.anchors.get(gate.target);
@@ -4643,41 +4936,24 @@
             if (length3(normal) < 0.1) normal = cross3(direction, AXES_3D[1]);
             normal = normalize3(normal);
             const distance = length3(route);
-            const lift = Math.max(
+            const baseLift = Math.max(
               (UNIT / SCALE) * 1.25,
               Math.min(UNIT * 0.45, distance * 0.1),
             );
-            const control1 = add3(
-              add3(start, scale3(route, 1 / 3)),
-              scale3(normal, lift),
+            const maxLift = Math.max(
+              baseLift,
+              Math.min(UNIT * 0.9, distance * 0.22),
             );
-            const control2 = add3(
-              add3(start, scale3(route, 2 / 3)),
-              scale3(normal, lift),
-            );
-            const steps = Math.max(48, Math.ceil(distance / 1.5));
-            const points = Array.from({ length: steps + 1 }, (_, index) => {
-              const t = index / steps;
-              const one = 1 - t;
-              let point = add3(
-                add3(
-                  scale3(start, one ** 3),
-                  scale3(control1, 3 * one ** 2 * t),
-                ),
-                add3(
-                  scale3(control2, 3 * one * t ** 2),
-                  scale3(end, t ** 3),
-                ),
-              );
-              if (gateStyle === 'wavy') {
-                const wave =
-                  (UNIT / SCALE / 4) *
-                  Math.sin(Math.PI * t) *
-                  Math.sin((2 * Math.PI * distance * t) / ((UNIT / SCALE) * 2.5));
-                point = add3(point, scale3(normal, wave));
+            let points = gateCurve3D(start, end, normal, baseLift);
+            if (mazeMode && occupiedBoxes.length) {
+              search: for (let attempt = 0; attempt < 8; attempt++) {
+                const lift = baseLift + ((maxLift - baseLift) * attempt) / 7;
+                for (const candidateNormal of [normal, scale3(normal, -1)]) {
+                  points = gateCurve3D(start, end, candidateNormal, lift);
+                  if (!gateCurveCollides3D(points, occupiedBoxes)) break search;
+                }
               }
-              return point;
-            });
+            }
             add3dPolyline(points, 'gate');
           });
         }
@@ -4690,14 +4966,21 @@
           scene3d.colorIndex = 0;
           let sentenceOrigin = point3(0, 0, 0);
           let lastEnd = sentenceOrigin;
+          let occupiedBoxes = [];
           const state = { direction: 0, normalDir: 1, alter: 1, fuseauContext: null };
-          documentTree.sentences.forEach((sentence, index) => {
-            const hasPeriod = documentTree.periods[index];
-            lastEnd = buildNode3D(sentence, sentenceOrigin, state, false, hasPeriod);
-            if (hasPeriod) add3dDot(lastEnd, UNIT / SCALE / 4);
-            sentenceOrigin = point3(0, sentenceOrigin.y - 150, 0);
-          });
-          addGates3D(documentTree);
+          if (mazeMode) {
+            const maze = renderMazePassage3D(documentTree, sentenceOrigin, state);
+            lastEnd = maze.end;
+            occupiedBoxes = maze.occupiedBoxes;
+          } else {
+            documentTree.sentences.forEach((sentence, index) => {
+              const hasPeriod = documentTree.periods[index];
+              lastEnd = buildNode3D(sentence, sentenceOrigin, state, false, hasPeriod);
+              if (hasPeriod) add3dDot(lastEnd, UNIT / SCALE / 4);
+              sentenceOrigin = point3(0, sentenceOrigin.y - 150, 0);
+            });
+          }
+          addGates3D(documentTree, occupiedBoxes);
           if (scene3d.elementCount) {
             const cursorTurtle = new GeometryTurtle(0, 0, 0);
             calibrate(cursorTurtle, state.direction, state.normalDir);
@@ -4894,7 +5177,9 @@
             const documentTree = parse(source.value, 3);
             buildScene3D(documentTree);
             const elements = scene3d.elementCount;
-            status.textContent = elements ? 'Live · 3D' : 'Ready';
+            status.textContent = elements
+              ? `Live · 3D${mazeMode ? ' · Maze' : ''}`
+              : 'Ready';
             count.textContent = `${elements} element${elements === 1 ? '' : 's'}`;
             requestAnimationFrame(fit ? fit3DScene : render3DCanvas);
           } catch (error) {
@@ -5068,6 +5353,7 @@
         }
 
         const typedCompounds = new Map([
+          ['áá', 'ả'],
           ['ae', 'ẽ'],
           ['ao', 'õ'],
           ['ei', 'ĩ'],
@@ -5098,6 +5384,7 @@
         const accentKeys = {
           '`': new Map([
             ['a', 'á'],
+            ['á', 'ả'],
             ['e', 'é'],
             ['i', 'í'],
             ['o', 'ó'],
@@ -5121,7 +5408,7 @@
             ['u', 'ù'],
           ]),
           '=': new Map([
-            ['a', 'ā'],
+            ['a', 'ã'],
             ['e', 'ē'],
             ['i', 'ī'],
             ['o', 'ō'],
@@ -5397,10 +5684,10 @@
           canvas3d.toggleAttribute('hidden', !threeDimensional);
           threeDHint.toggleAttribute('hidden', !threeDimensional);
           drawerTitle.textContent = threeDimensional ? 'Live drawing · 3D' : 'Live drawing';
-          mazeButton.disabled = threeDimensional;
-          mazeButton.title = threeDimensional
-            ? 'Maze routing applies only to the flat drawer'
-            : 'Collision avoidance is on; click to use the unadjusted layout';
+          mazeButton.disabled = false;
+          mazeButton.title = mazeMode
+            ? 'Collision avoidance is on; click to use the unadjusted layout'
+            : 'Collision avoidance is off; click to enable maze routing';
           draw();
         }
 
@@ -5409,9 +5696,11 @@
         });
 
         mazeButton.addEventListener('click', (event) => {
-          if (drawingDimensions === 3) return;
           mazeMode = !mazeMode;
           event.currentTarget.setAttribute('aria-pressed', String(mazeMode));
+          event.currentTarget.title = mazeMode
+            ? 'Collision avoidance is on; click to use the unadjusted layout'
+            : 'Collision avoidance is off; click to enable maze routing';
           draw();
         });
         colorfulModeButton.addEventListener('click', () => {

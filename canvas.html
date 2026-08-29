@@ -20055,6 +20055,7 @@
         ứ: ['ɯ', '˥'],
       };
 
+      const libraryV2VowelSignature = (text) => [...text].sort().join('');
       const LIBRARY_V2_COMPOUND_SPELLINGS = new Map([
         ['áóé', 'ȟ'],
         ['aoe', 'ȡ'],
@@ -20072,7 +20073,7 @@
         ['eu', 'ư'],
         ['ou', 'ũ'],
         ['oa', 'õ'],
-      ]);
+      ].map(([vowels, compound]) => [libraryV2VowelSignature(vowels), compound]));
 
       function getLibraryV2Graph(node) {
         const layoutNodes = Array.isArray(node?.layout?.nodes) ? node.layout.nodes : null;
@@ -20415,17 +20416,20 @@
       }
 
       function compactLibraryV2Vowels(text) {
-        const sequences = [...LIBRARY_V2_COMPOUND_SPELLINGS.keys()].sort(
-          (left, right) => right.length - left.length,
-        );
+        const lengths = [...new Set(
+          [...LIBRARY_V2_COMPOUND_SPELLINGS.keys()].map((vowels) => vowels.length),
+        )].sort((left, right) => right - left);
         let result = '';
         for (let index = 0; index < text.length; ) {
-          const match = sequences.find((sequence) => text.startsWith(sequence, index));
-          if (!match) {
+          const length = lengths.find((size) => LIBRARY_V2_COMPOUND_SPELLINGS.has(
+            libraryV2VowelSignature(text.slice(index, index + size)),
+          ));
+          if (!length) {
             result += text[index++];
           } else {
-            result += LIBRARY_V2_COMPOUND_SPELLINGS.get(match);
-            index += match.length;
+            const signature = libraryV2VowelSignature(text.slice(index, index + length));
+            result += LIBRARY_V2_COMPOUND_SPELLINGS.get(signature);
+            index += length;
           }
         }
         return result;
