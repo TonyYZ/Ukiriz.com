@@ -10403,7 +10403,7 @@
       const calY = 6.7 * symbolScale;
       const calInvY = 8 * symbolScale;
       const calCan1 = 4 * symbolScale;
-      const calCan2 = 3.5 * symbolScale;
+      const calCan2 = 4 * symbolScale;
 
       // Long press variables
       let progress = 0;
@@ -10589,7 +10589,7 @@
         `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="15.68" width="49.92" height="2.56" rx="1.28" style="fill:#000"/><rect x="23.68" y="4.48" width="2.56" height="12.48" rx="1.28" style="fill:#000"/></svg>`,
         `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><a transform="translate(0 -12)"><path style="fill:#000" d="M0 31.52c0-1.28 0-1.28 16.31-1.28 8.438 0 12.956-.003 14.768.024 1.676.024.91-.928.319-1.77-6.312-9.011 4.424-20.08 13.641-14.065 5.795 3.782 5.914 12.549.223 16.464-2.752 1.894-2.823 1.899-25.021 1.903C0 32.8 0 32.8 0 31.52m43.461-2.46c6.384-3.947 3.578-13.7-3.941-13.7-8.426 0-10.362 11.492-2.437 14.458 1.796.672 4.604.338 6.378-.759"></path></a><rect x="0" y="18.24" width="16.31" height="2.56" rx="1.28" style="fill:#000"/></svg>`,
         `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><rect x="9.28" y="15.68" width="40.64" height="2.56" rx="1.28" style="fill:#000"/><rect x="9.28" y="4.48" width="2.56" height="13.76" rx="1.28" style="fill:#000"/></svg>`,
-        `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><rect x="9.28" y="15.68" width="31.36" height="2.56" rx="1.28" style="fill:#000"/><rect x="9.28" y="4.48" width="2.56" height="13.76" rx="1.28" style="fill:#000"/><rect x="38.08" y="4.48" width="2.56" height="13.76" rx="1.28" style="fill:#000"/></svg>`,
+        `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg" overflow="visible"><rect x="0" y="15.68" width="48.64" height="2.56" rx="0" style="fill:#000"/><rect x="-0.43" y="4.48" width="2.56" height="13.76" rx="1.28" style="fill:#000"/><rect x="47.36" y="4.48" width="2.56" height="13.76" rx="1.28" style="fill:#000"/></svg>`,
         `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path style="fill:#000" d="M49.915 19.513c0-1.28 0-1.28-16.31-1.28-8.438 0-12.955-.003-14.768.023-1.675.025-.909-.927-.318-1.77 6.312-9.01-4.424-20.08-13.642-14.065-5.795 3.782-5.913 12.55-.223 16.465 2.752 1.893 2.824 1.899 25.021 1.903 20.24.004 20.24.004 20.24-1.276M6.454 17.052c-6.384-3.947-3.578-13.7 3.941-13.7 8.426 0 10.363 11.493 2.437 14.459-1.796.672-4.604.338-6.378-.76"></path><rect x="33.61" y="18.24" width="16.31" height="2.56" rx="1.28" style="fill:#000"/></svg>`,
         `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><path class="qian-center-circle" style="fill:#000" d="M24.96.48a10.24 10.24 0 1 1 0 20.48 10.24 10.24 0 0 1 0-20.48Zm0 2.56a7.68 7.68 0 1 0 0 15.36 7.68 7.68 0 0 0 0-15.36Z"></path><g class="qian-outer-lines" opacity="0"><rect x="0" y="10.184" width="16.8" height="2.56" rx="1.28" fill="#000"></rect><rect x="33.12" y="10.184" width="16.8" height="2.56" rx="1.28" fill="#000"></rect></g></svg>`,
         `<svg width="100%" height="100%" viewBox="0 0 49.92 21.44" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="15.68" width="49.92" height="2.56" rx="1.28" style="fill:#000"/><rect x="8" y="4.48" width="33.92" height="2.56" rx="1.28" style="fill:#000"/></svg>`,
@@ -19665,6 +19665,24 @@
             absJunctions[3].x += calCan2;
           }
         }
+        if (symbol.elemId === 5) {
+          if (symbol.angle === 0) {
+            absJunctions[2].x += calCan1;
+            absJunctions[3].x += calCan1;
+          }
+          if (symbol.angle === 180) {
+            absJunctions[2].x += calCan1;
+            absJunctions[3].x += calCan1;
+          }
+          if (symbol.angle === 90) {
+            absJunctions[2].y -= calCan1;
+            absJunctions[3].y -= calCan1;
+          }
+          if (symbol.angle === 270) {
+            absJunctions[2].y -= calCan1;
+            absJunctions[3].y -= calCan1;
+          }
+        }
 
         return absJunctions;
       }
@@ -20168,8 +20186,10 @@
         const left = getLibraryV2NodePosition(symbolNodes[leftIndex]);
         const right = getLibraryV2NodePosition(symbolNodes[rightIndex]);
         const horizontal = left.left - right.left;
-        if (Math.abs(horizontal) > 4) return horizontal;
-        return left.top - right.top || leftIndex - rightIndex;
+        const vertical = left.top - right.top;
+        // Read along the pair's dominant axis: left-to-right or top-to-bottom.
+        return (Math.abs(vertical) > Math.abs(horizontal) ? vertical : horizontal)
+          || leftIndex - rightIndex;
       }
 
       function getLibraryV2ComponentPosition(component, symbolNodes) {
