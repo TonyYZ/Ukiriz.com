@@ -11707,7 +11707,7 @@
             break;
           case 270:
             x = symLeft + dotOffsetYData[symbol.elemId] * symbolScale - 10;
-            y = symBottom - (symbolWidth / 2 + dotOffsetXData[symbol.elemId]) * symbolScale - 7;
+            y = symBottom - (symbolWidth / 2 + dotOffsetXData[symbol.elemId]) * symbolScale - 10;
             break;
         }
 
@@ -12642,6 +12642,7 @@
                 interpText,
                 { alreadySent: knownSent = false } = {},
               ) {
+                if (card.querySelector('.expr-juxtapose')) return;
                 const zh = currentLang === 'zh';
                 // Clear any explicit height from a prior resize so the card expands to fit
                 card.style.height = '';
@@ -12830,6 +12831,8 @@
                   overlay.removeEventListener('pointermove', onMove);
                   overlay.removeEventListener('pointerup', onUp);
                   if (!moved) {
+                    if (card.classList.contains('revealed') || card._revealing) return;
+                    card._revealing = true;
                     // Await the prefetch so a quick tap never races against the DB query.
                     const interp =
                       _myPreviousInterp !== null
