@@ -22357,7 +22357,14 @@
       function renderLibraryTreeView() {
         if (!libraryTreeSurface || !libraryTreeSvg) return;
 
-        libraryTreeSurface.querySelectorAll('.library-tree-card').forEach((el) => el.remove());
+        const openInterpNodeIds = new Set();
+        libraryTreeSurface.querySelectorAll('.library-tree-card').forEach((el) => {
+          const section = el.querySelector('.library-tree-interps');
+          if (section && section.style.display !== 'none') {
+            openInterpNodeIds.add(el.dataset.nodeId);
+          }
+          el.remove();
+        });
         libraryTreeSvg.innerHTML = '';
 
         const allNodes = nodes.get();
@@ -22598,7 +22605,11 @@
               interpsSection.appendChild(summaryContainer);
             }
 
-            let interpOpen = false;
+            let interpOpen = openInterpNodeIds.has(String(node.id));
+            if (interpOpen) {
+              interpsSection.style.display = 'flex';
+              toggle.textContent = zh ? '收起' : 'Collapse';
+            }
             toggle.addEventListener('click', () => {
               interpOpen = !interpOpen;
               interpsSection.style.display = interpOpen ? 'flex' : 'none';
