@@ -12,18 +12,66 @@
     />
     <title>Welcome!</title>
     <style>
-      @property --sky-base   { syntax: '<color>'; inherits: true; initial-value: #fff8c0; }
-      @property --sky-g0     { syntax: '<color>'; inherits: true; initial-value: #fffef0; }
-      @property --sky-g1     { syntax: '<color>'; inherits: true; initial-value: #fff9c9; }
-      @property --sky-g2     { syntax: '<color>'; inherits: true; initial-value: #fff3aa; }
-      @property --sky-spot1  { syntax: '<color>'; inherits: true; initial-value: rgba(255,255,246,0.92); }
-      @property --sky-spot2  { syntax: '<color>'; inherits: true; initial-value: rgba(255,248,188,0.36); }
-      @property --sky-text   { syntax: '<color>'; inherits: true; initial-value: rgba(0,0,0,0.88); }
-      @property --sky-border { syntax: '<color>'; inherits: true; initial-value: rgba(0,0,0,0.13); }
-      @property --sky-shadow { syntax: '<color>'; inherits: true; initial-value: rgba(72,56,20,0.16); }
-      @property --sky-grid   { syntax: '<color>'; inherits: true; initial-value: rgba(0,0,0,0.11); }
-      @property --sky-grid90 { syntax: '<color>'; inherits: true; initial-value: rgba(0,0,0,0.09); }
-      @property --sky-glass  { syntax: '<color>'; inherits: true; initial-value: rgba(255,249,201,0.62); }
+      @property --sky-base {
+        syntax: '<color>';
+        inherits: true;
+        initial-value: #fff8c0;
+      }
+      @property --sky-g0 {
+        syntax: '<color>';
+        inherits: true;
+        initial-value: #fffef0;
+      }
+      @property --sky-g1 {
+        syntax: '<color>';
+        inherits: true;
+        initial-value: #fff9c9;
+      }
+      @property --sky-g2 {
+        syntax: '<color>';
+        inherits: true;
+        initial-value: #fff3aa;
+      }
+      @property --sky-spot1 {
+        syntax: '<color>';
+        inherits: true;
+        initial-value: rgba(255, 255, 246, 0.92);
+      }
+      @property --sky-spot2 {
+        syntax: '<color>';
+        inherits: true;
+        initial-value: rgba(255, 248, 188, 0.36);
+      }
+      @property --sky-text {
+        syntax: '<color>';
+        inherits: true;
+        initial-value: rgba(0, 0, 0, 0.88);
+      }
+      @property --sky-border {
+        syntax: '<color>';
+        inherits: true;
+        initial-value: rgba(0, 0, 0, 0.13);
+      }
+      @property --sky-shadow {
+        syntax: '<color>';
+        inherits: true;
+        initial-value: rgba(72, 56, 20, 0.16);
+      }
+      @property --sky-grid {
+        syntax: '<color>';
+        inherits: true;
+        initial-value: rgba(0, 0, 0, 0.11);
+      }
+      @property --sky-grid90 {
+        syntax: '<color>';
+        inherits: true;
+        initial-value: rgba(0, 0, 0, 0.09);
+      }
+      @property --sky-glass {
+        syntax: '<color>';
+        inherits: true;
+        initial-value: rgba(255, 249, 201, 0.62);
+      }
 
       body {
         --qi-hue: 48;
@@ -35,18 +83,18 @@
         color: var(--sky-text);
         overflow: hidden;
         transition:
-          --sky-base   90s linear,
-          --sky-g0     90s linear,
-          --sky-g1     90s linear,
-          --sky-g2     90s linear,
-          --sky-spot1  90s linear,
-          --sky-spot2  90s linear,
-          --sky-text   90s linear,
+          --sky-base 90s linear,
+          --sky-g0 90s linear,
+          --sky-g1 90s linear,
+          --sky-g2 90s linear,
+          --sky-spot1 90s linear,
+          --sky-spot2 90s linear,
+          --sky-text 90s linear,
           --sky-border 90s linear,
           --sky-shadow 90s linear,
-          --sky-grid   90s linear,
+          --sky-grid 90s linear,
           --sky-grid90 90s linear,
-          --sky-glass  90s linear;
+          --sky-glass 90s linear;
       }
 
       body::before,
@@ -266,7 +314,11 @@
         inset: 0;
         border-radius: inherit;
         background:
-          linear-gradient(135deg, hsla(var(--window-hue), 54%, 70%, 0.12), rgba(255,255,255,0.03)),
+          linear-gradient(
+            135deg,
+            hsla(var(--window-hue), 54%, 70%, 0.12),
+            rgba(255, 255, 255, 0.03)
+          ),
           var(--sky-glass);
         pointer-events: none;
         z-index: 0;
@@ -285,7 +337,11 @@
 
       .window.dragging .window-glass {
         background:
-          linear-gradient(135deg, hsla(var(--window-hue), 48%, 70%, 0.18), rgba(255,255,255,0.06)),
+          linear-gradient(
+            135deg,
+            hsla(var(--window-hue), 48%, 70%, 0.18),
+            rgba(255, 255, 255, 0.06)
+          ),
           var(--sky-glass);
       }
 
@@ -399,7 +455,11 @@
         .window .window-glass,
         .window.dragging .window-glass {
           background:
-            linear-gradient(135deg, hsla(var(--window-hue), 42%, 70%, 0.14), rgba(255,255,255,0.04)),
+            linear-gradient(
+              135deg,
+              hsla(var(--window-hue), 42%, 70%, 0.14),
+              rgba(255, 255, 255, 0.04)
+            ),
             var(--sky-glass);
         }
 
@@ -510,7 +570,7 @@
         {
           title: 'Ete',
           description: 'The automated scribe for conlang Ítí',
-          image: './icons/ete.png',
+          image: './icons/ete_new.png',
           scale: 70,
           link: 'ete.html',
           hue: 222,
@@ -772,27 +832,205 @@
         // Night→pre-dawn (0,240,300,1320) keep their hue; all others are desaturated toward luminance gray.
         const KF = [
           // min   base           g0             g1             g2            text                   border                  shadow                   grid                   grid90
-          [    0, [22,22,22],    [28,28,28],    [20,20,20],    [14,14,14],  [240,240,240,0.80],    [255,255,255,0.12],    [0,0,0,0.50],            [255,255,255,0.55],    [255,255,255,0.45]  ],
-          [  240, [14,13,34],    [19,17,46],    [13,12,33],    [9,8,24],    [240,235,218,0.82],    [255,255,255,0.12],    [0,0,20,0.45],           [255,255,255,0.55],    [255,255,255,0.45]  ],
-          [  300, [24,15,50],    [36,22,68],    [28,18,58],    [17,8,40],   [232,222,245,0.82],    [255,255,255,0.13],    [20,0,30,0.44],          [255,255,255,0.58],    [255,255,255,0.48]  ],
-          [  360, [61,42,82],    [87,60,108],   [72,50,94],    [43,28,60],  [235,222,248,0.88],    [255,255,255,0.14],    [30,0,50,0.42],          [255,255,255,0.62],    [255,255,255,0.52]  ],
-          [  390, [155,90,110],  [189,128,144], [169,105,122], [125,64,84], [255,232,240,0.90],    [255,255,255,0.14],    [50,0,20,0.40],          [255,255,255,0.62],    [255,255,255,0.52]  ],
-          [  420, [182,131,106], [213,171,144], [196,148,121], [151,92,72], [255,240,228,0.90],    [255,255,255,0.13],    [60,20,0,0.38],          [255,255,255,0.60],    [255,255,255,0.50]  ],
-          [  450, [222,182,104], [245,218,165], [230,196,124], [194,155,88],[25,10,0,0.88],         [0,0,0,0.12],          [80,54,8,0.18],          [0,0,0,0.09],          [0,0,0,0.07]        ],
-          [  480, [255,240,168], [255,253,220], [255,248,190], [255,234,142],[0,0,0,0.88],          [0,0,0,0.13],          [72,56,20,0.15],         [0,0,0,0.11],          [0,0,0,0.09]        ],
-          [  720, [255,248,192], [255,254,240], [255,249,201], [255,243,170],[0,0,0,0.88],          [0,0,0,0.13],          [72,56,20,0.16],         [0,0,0,0.11],          [0,0,0,0.09]        ],
-          [  960, [255,230,150], [255,250,198], [255,235,152], [255,214,110],[0,0,0,0.88],          [0,0,0,0.13],          [72,52,10,0.16],         [0,0,0,0.11],          [0,0,0,0.09]        ],
-          [ 1050, [218,170,107], [241,213,162], [226,184,122], [190,139,81],[22,6,0,0.88],          [0,0,0,0.13],          [72,46,8,0.18],          [0,0,0,0.09],          [0,0,0,0.07]        ],
-          [ 1110, [177,108,80],  [203,151,127], [188,129,101], [148,94,60], [255,235,225,0.90],    [255,255,255,0.13],    [45,12,0,0.40],          [255,255,255,0.60],    [255,255,255,0.50]  ],
-          [ 1170, [119,53,62],   [160,84,103],  [134,69,79],   [89,37,44],  [255,226,232,0.90],    [255,255,255,0.13],    [42,0,12,0.42],          [255,255,255,0.62],    [255,255,255,0.52]  ],
-          [ 1230, [49,27,63],    [84,48,95],    [63,37,77],    [30,17,42],  [234,220,248,0.88],    [255,255,255,0.13],    [22,0,42,0.44],          [255,255,255,0.60],    [255,255,255,0.50]  ],
-          [ 1320, [18,14,38],    [26,20,52],    [21,15,44],    [13,9,30],   [240,235,218,0.83],    [255,255,255,0.12],    [0,0,20,0.45],           [255,255,255,0.55],    [255,255,255,0.45]  ],
-          [ 1440, [22,22,22],    [28,28,28],    [20,20,20],    [14,14,14],  [240,240,240,0.80],    [255,255,255,0.12],    [0,0,0,0.50],            [255,255,255,0.55],    [255,255,255,0.45]  ],
+          [
+            0,
+            [22, 22, 22],
+            [28, 28, 28],
+            [20, 20, 20],
+            [14, 14, 14],
+            [240, 240, 240, 0.8],
+            [255, 255, 255, 0.12],
+            [0, 0, 0, 0.5],
+            [255, 255, 255, 0.55],
+            [255, 255, 255, 0.45],
+          ],
+          [
+            240,
+            [14, 13, 34],
+            [19, 17, 46],
+            [13, 12, 33],
+            [9, 8, 24],
+            [240, 235, 218, 0.82],
+            [255, 255, 255, 0.12],
+            [0, 0, 20, 0.45],
+            [255, 255, 255, 0.55],
+            [255, 255, 255, 0.45],
+          ],
+          [
+            300,
+            [24, 15, 50],
+            [36, 22, 68],
+            [28, 18, 58],
+            [17, 8, 40],
+            [232, 222, 245, 0.82],
+            [255, 255, 255, 0.13],
+            [20, 0, 30, 0.44],
+            [255, 255, 255, 0.58],
+            [255, 255, 255, 0.48],
+          ],
+          [
+            360,
+            [61, 42, 82],
+            [87, 60, 108],
+            [72, 50, 94],
+            [43, 28, 60],
+            [235, 222, 248, 0.88],
+            [255, 255, 255, 0.14],
+            [30, 0, 50, 0.42],
+            [255, 255, 255, 0.62],
+            [255, 255, 255, 0.52],
+          ],
+          [
+            390,
+            [155, 90, 110],
+            [189, 128, 144],
+            [169, 105, 122],
+            [125, 64, 84],
+            [255, 232, 240, 0.9],
+            [255, 255, 255, 0.14],
+            [50, 0, 20, 0.4],
+            [255, 255, 255, 0.62],
+            [255, 255, 255, 0.52],
+          ],
+          [
+            420,
+            [182, 131, 106],
+            [213, 171, 144],
+            [196, 148, 121],
+            [151, 92, 72],
+            [255, 240, 228, 0.9],
+            [255, 255, 255, 0.13],
+            [60, 20, 0, 0.38],
+            [255, 255, 255, 0.6],
+            [255, 255, 255, 0.5],
+          ],
+          [
+            450,
+            [222, 182, 104],
+            [245, 218, 165],
+            [230, 196, 124],
+            [194, 155, 88],
+            [25, 10, 0, 0.88],
+            [0, 0, 0, 0.12],
+            [80, 54, 8, 0.18],
+            [0, 0, 0, 0.09],
+            [0, 0, 0, 0.07],
+          ],
+          [
+            480,
+            [255, 240, 168],
+            [255, 253, 220],
+            [255, 248, 190],
+            [255, 234, 142],
+            [0, 0, 0, 0.88],
+            [0, 0, 0, 0.13],
+            [72, 56, 20, 0.15],
+            [0, 0, 0, 0.11],
+            [0, 0, 0, 0.09],
+          ],
+          [
+            720,
+            [255, 248, 192],
+            [255, 254, 240],
+            [255, 249, 201],
+            [255, 243, 170],
+            [0, 0, 0, 0.88],
+            [0, 0, 0, 0.13],
+            [72, 56, 20, 0.16],
+            [0, 0, 0, 0.11],
+            [0, 0, 0, 0.09],
+          ],
+          [
+            960,
+            [255, 230, 150],
+            [255, 250, 198],
+            [255, 235, 152],
+            [255, 214, 110],
+            [0, 0, 0, 0.88],
+            [0, 0, 0, 0.13],
+            [72, 52, 10, 0.16],
+            [0, 0, 0, 0.11],
+            [0, 0, 0, 0.09],
+          ],
+          [
+            1050,
+            [218, 170, 107],
+            [241, 213, 162],
+            [226, 184, 122],
+            [190, 139, 81],
+            [22, 6, 0, 0.88],
+            [0, 0, 0, 0.13],
+            [72, 46, 8, 0.18],
+            [0, 0, 0, 0.09],
+            [0, 0, 0, 0.07],
+          ],
+          [
+            1110,
+            [177, 108, 80],
+            [203, 151, 127],
+            [188, 129, 101],
+            [148, 94, 60],
+            [255, 235, 225, 0.9],
+            [255, 255, 255, 0.13],
+            [45, 12, 0, 0.4],
+            [255, 255, 255, 0.6],
+            [255, 255, 255, 0.5],
+          ],
+          [
+            1170,
+            [119, 53, 62],
+            [160, 84, 103],
+            [134, 69, 79],
+            [89, 37, 44],
+            [255, 226, 232, 0.9],
+            [255, 255, 255, 0.13],
+            [42, 0, 12, 0.42],
+            [255, 255, 255, 0.62],
+            [255, 255, 255, 0.52],
+          ],
+          [
+            1230,
+            [49, 27, 63],
+            [84, 48, 95],
+            [63, 37, 77],
+            [30, 17, 42],
+            [234, 220, 248, 0.88],
+            [255, 255, 255, 0.13],
+            [22, 0, 42, 0.44],
+            [255, 255, 255, 0.6],
+            [255, 255, 255, 0.5],
+          ],
+          [
+            1320,
+            [18, 14, 38],
+            [26, 20, 52],
+            [21, 15, 44],
+            [13, 9, 30],
+            [240, 235, 218, 0.83],
+            [255, 255, 255, 0.12],
+            [0, 0, 20, 0.45],
+            [255, 255, 255, 0.55],
+            [255, 255, 255, 0.45],
+          ],
+          [
+            1440,
+            [22, 22, 22],
+            [28, 28, 28],
+            [20, 20, 20],
+            [14, 14, 14],
+            [240, 240, 240, 0.8],
+            [255, 255, 255, 0.12],
+            [0, 0, 0, 0.5],
+            [255, 255, 255, 0.55],
+            [255, 255, 255, 0.45],
+          ],
         ];
 
-        function lerp(a, b, t) { return a + (b - a) * t; }
+        function lerp(a, b, t) {
+          return a + (b - a) * t;
+        }
         function lerpRgb(c0, c1, t) {
-          return [0,1,2].map(i => Math.round(lerp(c0[i], c1[i], t)));
+          return [0, 1, 2].map((i) => Math.round(lerp(c0[i], c1[i], t)));
         }
         function lerpRgba(c0, c1, t) {
           return [
@@ -802,54 +1040,69 @@
             +lerp(c0[3], c1[3], t).toFixed(3),
           ];
         }
-        function toHex([r,g,b]) {
-          return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
+        function toHex([r, g, b]) {
+          return '#' + [r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('');
         }
-        function toRgba([r,g,b,a]) { return `rgba(${r},${g},${b},${a})`; }
-        function lighten([r,g,b], amt) {
-          return [Math.round(r+(255-r)*amt), Math.round(g+(255-g)*amt), Math.round(b+(255-b)*amt)];
+        function toRgba([r, g, b, a]) {
+          return `rgba(${r},${g},${b},${a})`;
+        }
+        function lighten([r, g, b], amt) {
+          return [
+            Math.round(r + (255 - r) * amt),
+            Math.round(g + (255 - g) * amt),
+            Math.round(b + (255 - b) * amt),
+          ];
         }
 
         function applySkyTheme(instant, minuteOverride) {
           const now = new Date();
-          const m = minuteOverride !== undefined
-            ? minuteOverride
-            : now.getHours()*60 + now.getMinutes() + now.getSeconds()/60;
-          let k0 = KF[KF.length-2], k1 = KF[KF.length-1];
-          for (let i = 0; i < KF.length-1; i++) {
-            if (m >= KF[i][0] && m < KF[i+1][0]) { k0 = KF[i]; k1 = KF[i+1]; break; }
+          const m =
+            minuteOverride !== undefined
+              ? minuteOverride
+              : now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
+          let k0 = KF[KF.length - 2],
+            k1 = KF[KF.length - 1];
+          for (let i = 0; i < KF.length - 1; i++) {
+            if (m >= KF[i][0] && m < KF[i + 1][0]) {
+              k0 = KF[i];
+              k1 = KF[i + 1];
+              break;
+            }
           }
           const span = k1[0] - k0[0];
           const t = span > 0 ? (m - k0[0]) / span : 0;
 
-          const skyBase = lerpRgb(k0[1],  k1[1],  t);
-          const skyG0   = lerpRgb(k0[2],  k1[2],  t);
-          const skyG1   = lerpRgb(k0[3],  k1[3],  t);
-          const skyG2   = lerpRgb(k0[4],  k1[4],  t);
-          const skyTxt  = lerpRgba(k0[5], k1[5],  t);
-          const skyBor  = lerpRgba(k0[6], k1[6],  t);
-          const skySha  = lerpRgba(k0[7], k1[7],  t);
-          const skyGr   = lerpRgba(k0[8], k1[8],  t);
-          const skyGr90 = lerpRgba(k0[9], k1[9],  t);
+          const skyBase = lerpRgb(k0[1], k1[1], t);
+          const skyG0 = lerpRgb(k0[2], k1[2], t);
+          const skyG1 = lerpRgb(k0[3], k1[3], t);
+          const skyG2 = lerpRgb(k0[4], k1[4], t);
+          const skyTxt = lerpRgba(k0[5], k1[5], t);
+          const skyBor = lerpRgba(k0[6], k1[6], t);
+          const skySha = lerpRgba(k0[7], k1[7], t);
+          const skyGr = lerpRgba(k0[8], k1[8], t);
+          const skyGr90 = lerpRgba(k0[9], k1[9], t);
 
           const spot1 = lighten(skyG0, 0.28);
           const spot2 = lighten(skyG1, 0.12);
 
           const b = document.body;
           if (instant) b.style.transition = 'none';
-          b.style.setProperty('--sky-base',   toHex(skyBase));
-          b.style.setProperty('--sky-g0',     toHex(skyG0));
-          b.style.setProperty('--sky-g1',     toHex(skyG1));
-          b.style.setProperty('--sky-g2',     toHex(skyG2));
-          b.style.setProperty('--sky-spot1',  toRgba([...spot1, 0.92]));
-          b.style.setProperty('--sky-spot2',  toRgba([...spot2, 0.36]));
-          b.style.setProperty('--sky-text',   toRgba(skyTxt));
+          b.style.setProperty('--sky-base', toHex(skyBase));
+          b.style.setProperty('--sky-g0', toHex(skyG0));
+          b.style.setProperty('--sky-g1', toHex(skyG1));
+          b.style.setProperty('--sky-g2', toHex(skyG2));
+          b.style.setProperty('--sky-spot1', toRgba([...spot1, 0.92]));
+          b.style.setProperty('--sky-spot2', toRgba([...spot2, 0.36]));
+          b.style.setProperty('--sky-text', toRgba(skyTxt));
           b.style.setProperty('--sky-border', toRgba(skyBor));
           b.style.setProperty('--sky-shadow', toRgba(skySha));
-          b.style.setProperty('--sky-grid',   toRgba(skyGr));
+          b.style.setProperty('--sky-grid', toRgba(skyGr));
           b.style.setProperty('--sky-grid90', toRgba(skyGr90));
-          b.style.setProperty('--sky-glass',  toRgba([...skyG1, 0.62]));
-          if (instant) { void b.offsetHeight; b.style.transition = ''; }
+          b.style.setProperty('--sky-glass', toRgba([...skyG1, 0.62]));
+          if (instant) {
+            void b.offsetHeight;
+            b.style.transition = '';
+          }
         }
 
         applySkyTheme(true);
@@ -858,30 +1111,39 @@
         // Theme preview selector (hidden — set display:block to reveal)
         const skyThemes = [
           ['⏱ Current time', -1],
-          ['🌑 Midnight  0:00',   0],
+          ['🌑 Midnight  0:00', 0],
           ['🌑 Deep night  4:00', 240],
-          ['🌒 Pre-dawn  5:00',   300],
-          ['🌒 Dawn  6:00',       360],
-          ['🌅 Sunrise  6:30',    390],
+          ['🌒 Pre-dawn  5:00', 300],
+          ['🌒 Dawn  6:00', 360],
+          ['🌅 Sunrise  6:30', 390],
           ['🌅 Warm sunrise  7:00', 420],
           ['🌄 Golden morning  7:30', 450],
-          ['☀️ Morning  8:00',    480],
-          ['☀️ Midday  12:00',    720],
+          ['☀️ Morning  8:00', 480],
+          ['☀️ Midday  12:00', 720],
           ['🌤 Late afternoon  4pm', 960],
           ['🌇 Golden hour  5:30pm', 1050],
-          ['🌆 Dusk  6:30pm',     1110],
-          ['🌇 Sunset  7:30pm',   1170],
-          ['🌃 Evening  8:30pm',  1230],
-          ['🌙 Night  10:00pm',   1320],
+          ['🌆 Dusk  6:30pm', 1110],
+          ['🌇 Sunset  7:30pm', 1170],
+          ['🌃 Evening  8:30pm', 1230],
+          ['🌙 Night  10:00pm', 1320],
         ];
 
         const skySel = document.createElement('select');
         skySel.id = 'sky-debug-sel';
         skySel.style.cssText = [
-          'display:none', 'position:fixed', 'bottom:14px', 'right:14px', 'z-index:9999',
-          'padding:5px 9px', 'border-radius:8px', 'border:1px solid rgba(255,255,255,0.18)',
-          'background:rgba(10,8,28,0.72)', 'color:rgba(255,255,255,0.88)',
-          'font-size:12px', 'cursor:pointer', 'max-width:200px',
+          'display:none',
+          'position:fixed',
+          'bottom:14px',
+          'right:14px',
+          'z-index:9999',
+          'padding:5px 9px',
+          'border-radius:8px',
+          'border:1px solid rgba(255,255,255,0.18)',
+          'background:rgba(10,8,28,0.72)',
+          'color:rgba(255,255,255,0.88)',
+          'font-size:12px',
+          'cursor:pointer',
+          'max-width:200px',
         ].join(';');
 
         skyThemes.forEach(([label, min]) => {
