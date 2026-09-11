@@ -22467,6 +22467,7 @@
                   librarySummaryCache.set(String(node.id), { claims, interpCount: cnt });
                   saveSummaryCache();
                   renderSummaryClaims(claims, summaryContainer, zh);
+                  window._sfxSummaryGenerated?.();
                   summaryBtn.textContent = zh ? '重新生成' : 'Regenerate';
                   summaryBtn.disabled = false;
                 } catch (_err) {
@@ -22813,6 +22814,7 @@
         e.preventDefault();
         if (isTutorialLibraryModeToggleLocked?.()) return;
         const next = libraryViewMode === 'network' ? 'tree' : 'network';
+        window._sfxLibraryViewSwitch?.();
         setLibraryViewMode(next);
       });
       setLibraryModeButtonIcon();
@@ -24978,6 +24980,98 @@
           n2.start(now);
           env2.triggerAttackRelease(dur * 0.45, now);
           setTimeout(() => _dispose(nodes), 900);
+        };
+
+        // Library view switch: swept bandpass noise + brief sine — a quick lens-flip.
+        window._sfxLibraryViewSwitch = async function () {
+          if (!(await _sfxEnsureRunning())) return;
+          const nodes = [];
+          const track = (...ns) => { nodes.push(...ns); return ns; };
+          const rev = new Tone.Reverb({ decay: 0.32 });
+          rev.wet.value = 0.09;
+          await rev.ready;
+          const now = Tone.now();
+          const vol = new Tone.Volume(-13);
+          rev.connect(vol);
+          vol.toDestination();
+          track(rev, vol);
+          const bpf = new Tone.Filter({ frequency: 480, type: 'bandpass', Q: 1.4 });
+          bpf.frequency.setValueAtTime(480, now);
+          bpf.frequency.exponentialRampToValueAtTime(2800, now + 0.09);
+          bpf.connect(rev);
+          track(bpf);
+          const [noise, nenv, ng] = track(
+            new Tone.Noise('pink'),
+            new Tone.AmplitudeEnvelope({ attack: 0.003, decay: 0.075, sustain: 0, release: 0.025 }),
+            new Tone.Gain(0.42),
+          );
+          noise.connect(nenv);
+          nenv.connect(ng);
+          ng.connect(bpf);
+          noise.start(now);
+          nenv.triggerAttackRelease(0.075, now);
+          const [osc, oenv] = track(
+            new Tone.Oscillator({ type: 'triangle', frequency: 560 }),
+            new Tone.AmplitudeEnvelope({ attack: 0.002, decay: 0.055, sustain: 0, release: 0.03 }),
+          );
+          osc.connect(oenv);
+          oenv.connect(rev);
+          osc.frequency.setValueAtTime(560, now);
+          osc.frequency.exponentialRampToValueAtTime(880, now + 0.055);
+          osc.start(now);
+          oenv.triggerAttackRelease(0.055, now);
+          setTimeout(() => _dispose(nodes), 1400);
+        };
+
+        // Summary generated: three staggered rising sines — fluid like the Eye/Insight sfx.
+        window._sfxSummaryGenerated = async function () {
+          if (!(await _sfxEnsureRunning())) return;
+          const nodes = [];
+          const track = (...ns) => { nodes.push(...ns); return ns; };
+          const rev = new Tone.Reverb({ decay: 2.0 });
+          rev.wet.value = 0.52 * 0.82;
+          await rev.ready;
+          const now = Tone.now();
+          const dur = 0.34;
+          const filt = new Tone.Filter({ frequency: 3400, type: 'lowpass' });
+          const vol = new Tone.Volume(-13);
+          filt.connect(rev);
+          rev.connect(vol);
+          vol.toDestination();
+          track(rev, filt, vol);
+          // Three voices stagger in, each gliding up a perfect fifth
+          [[1, 0, 0.38], [1.26, 0.09, 0.30], [1.587, 0.18, 0.22]].forEach(([startRatio, offset, gain], i) => {
+            const freqLo = 330 * startRatio;
+            const freqHi = freqLo * 1.498;
+            const t = now + offset;
+            const [osc, env, g] = track(
+              new Tone.Oscillator({ type: 'sine', frequency: freqLo }),
+              new Tone.AmplitudeEnvelope({
+                attack: 0.018 + i * 0.008,
+                decay: dur * 0.65,
+                sustain: 0.12,
+                release: dur * 0.35,
+              }),
+              new Tone.Gain(gain),
+            );
+            osc.frequency.setValueAtTime(freqLo, t);
+            osc.frequency.exponentialRampToValueAtTime(freqHi, t + dur * 0.7);
+            osc.connect(env); env.connect(g); g.connect(filt);
+            osc.start(t); env.triggerAttackRelease(dur, t);
+          });
+          // Airy descending-HPF pink noise (same texture as Eye sfx)
+          const hpf = track(new Tone.Filter({ frequency: 4420, type: 'highpass' }))[0];
+          hpf.frequency.setValueAtTime(4420, now);
+          hpf.frequency.exponentialRampToValueAtTime(1496, now + dur * 0.85);
+          hpf.connect(filt);
+          const [noise, nenv, ng] = track(
+            new Tone.Noise('pink'),
+            new Tone.AmplitudeEnvelope({ attack: dur * 0.15, decay: dur * 0.5, sustain: 0.08, release: dur * 0.35 }),
+            new Tone.Gain(0.09),
+          );
+          noise.connect(nenv); nenv.connect(ng); ng.connect(hpf);
+          noise.start(now); nenv.triggerAttackRelease(dur, now);
+          setTimeout(() => _dispose(nodes), 340 + 2.0 * 4200 + 1800);
         };
       })();
     </script>
