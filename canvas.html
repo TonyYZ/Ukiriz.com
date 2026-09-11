@@ -22379,7 +22379,11 @@
               const targetLang = zh ? 'zh' : 'en';
               const interpId = interp.id;
               const interpLang = inferExpressionLang(originalText, '');
-              const savedTranslation = interpTranslatedState.get(interpId);
+              const savedEntry = interpTranslatedState.get(interpId);
+              // Only restore a cached translation if it was made for the current target language.
+              const savedTranslation =
+                savedEntry && savedEntry.lang === targetLang ? savedEntry.text : null;
+              if (savedEntry && savedEntry.lang !== targetLang) interpTranslatedState.delete(interpId);
               let translated = savedTranslation != null;
               txtEl.textContent = translated ? savedTranslation : originalText;
               const translateBtn = document.createElement('button');
@@ -22423,7 +22427,7 @@
                   const translatedText = result.word || result.explanation || originalText;
                   txtEl.textContent = translatedText;
                   translated = true;
-                  interpTranslatedState.set(interpId, translatedText);
+                  interpTranslatedState.set(interpId, { text: translatedText, lang: targetLang });
                   translateBtn.textContent = zh ? '显示原文' : 'Show original';
                 } catch {
                   translateBtn.textContent = zh ? '翻译失败' : 'Failed';
