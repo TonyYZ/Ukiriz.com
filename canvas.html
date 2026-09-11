@@ -8409,7 +8409,7 @@
         container.appendChild(summaryEl);
       }
 
-      async function generateInterpretationSummary(word, interps) {
+      async function generateInterpretationSummary(word, definition, interps) {
         // Send each interpretation with its island so the server can group them —
         // a word can be posted on multiple islands each with a different question,
         // and interpretations must be read against their own island's question.
@@ -8448,6 +8448,7 @@
             uid: currentUser?.uid || null,
             lang: currentLang,
             word,
+            definition: definition || '',
             interpretations: interpPayload,
             islandContexts,
           }),
@@ -22480,7 +22481,7 @@
                 summaryBtn.disabled = true;
                 summaryBtn.textContent = zh ? '生成中…' : 'Generating…';
                 try {
-                  const claims = await generateInterpretationSummary(word, interps);
+                  const claims = await generateInterpretationSummary(word, definition, interps);
                   librarySummaryCache.set(String(node.id), { claims, interpCount: cnt });
                   saveSummaryCache();
                   renderSummaryClaims(claims, summaryContainer, zh);
