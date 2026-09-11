@@ -8444,6 +8444,7 @@
 
       // ── Interpretation data for the current user's library cards ────────
       const libraryInterpretationsCache = new Map(); // word → [{id,interpretation_text,created_at}]
+      const librarySummaryCache = new Map(); // nodeId → { claims, interpCount }
 
       async function loadLibraryInterpretations() {
         if (!currentUser?.uid) return;
@@ -8687,6 +8688,34 @@
           .update({ seen_by_author: true })
           .in('id', ids)
           .catch(console.error);
+      }
+
+      function renderSummaryClaims(claims, container, zh) {
+        container.innerHTML = '';
+        const summaryEl = document.createElement('div');
+        summaryEl.className = 'library-tree-interp-summary';
+        for (const { claim } of claims) {
+          const claimP = document.createElement('p');
+          claimP.className = 'library-tree-interp-summary-claim';
+          claimP.textContent = '• ' + claim;
+          summaryEl.appendChild(claimP);
+        }
+        const feedbackEl = document.createElement('div');
+        feedbackEl.className = 'library-tree-interp-feedback';
+        const fbLabels = zh
+          ? ['感觉准确', '基本准确', '不太准确', '编辑']
+          : ['This feels accurate', 'Somewhat', 'Not accurate', 'Edit'];
+        for (const lbl of fbLabels) {
+          const fbBtn = document.createElement('button');
+          fbBtn.textContent = lbl;
+          fbBtn.addEventListener('click', () => {
+            feedbackEl.querySelectorAll('button').forEach((b) => b.classList.remove('active'));
+            fbBtn.classList.add('active');
+          });
+          feedbackEl.appendChild(fbBtn);
+        }
+        summaryEl.appendChild(feedbackEl);
+        container.appendChild(summaryEl);
       }
 
       async function generateInterpretationSummary(word, interps) {
@@ -22555,46 +22584,28 @@
               interpsSection.appendChild(item);
             }
 
-            // Pattern summary button shown when 3+ interpretations exist (lowered from 10 for debugging)
+            // Pattern summary button shown when 3+ interpretations exist
             if (cnt >= 3) {
               const summaryBtn = document.createElement('button');
               summaryBtn.className = 'library-tree-interp-summary-btn';
-              summaryBtn.textContent = zh ? '生成解读模式摘要' : 'Generate pattern summary';
               const summaryContainer = document.createElement('div');
+
+              const cached = librarySummaryCache.get(String(node.id));
+              if (cached && cached.interpCount === cnt) {
+                renderSummaryClaims(cached.claims, summaryContainer, zh);
+                summaryBtn.textContent = zh ? '重新生成' : 'Regenerate';
+              } else {
+                summaryBtn.textContent = zh ? '生成解读模式摘要' : 'Generate pattern summary';
+              }
 
               summaryBtn.addEventListener('click', async () => {
                 if (summaryBtn.disabled) return;
                 summaryBtn.disabled = true;
                 summaryBtn.textContent = zh ? '生成中…' : 'Generating…';
-                summaryContainer.innerHTML = '';
                 try {
                   const claims = await generateInterpretationSummary(word, interps);
-                  const summaryEl = document.createElement('div');
-                  summaryEl.className = 'library-tree-interp-summary';
-                  for (const { claim } of claims) {
-                    const claimP = document.createElement('p');
-                    claimP.className = 'library-tree-interp-summary-claim';
-                    claimP.textContent = '• ' + claim;
-                    summaryEl.appendChild(claimP);
-                  }
-                  const feedbackEl = document.createElement('div');
-                  feedbackEl.className = 'library-tree-interp-feedback';
-                  const fbLabels = zh
-                    ? ['感觉准确', '基本准确', '不太准确', '编辑']
-                    : ['This feels accurate', 'Somewhat', 'Not accurate', 'Edit'];
-                  for (const lbl of fbLabels) {
-                    const fbBtn = document.createElement('button');
-                    fbBtn.textContent = lbl;
-                    fbBtn.addEventListener('click', () => {
-                      feedbackEl
-                        .querySelectorAll('button')
-                        .forEach((b) => b.classList.remove('active'));
-                      fbBtn.classList.add('active');
-                    });
-                    feedbackEl.appendChild(fbBtn);
-                  }
-                  summaryEl.appendChild(feedbackEl);
-                  summaryContainer.appendChild(summaryEl);
+                  librarySummaryCache.set(String(node.id), { claims, interpCount: cnt });
+                  renderSummaryClaims(claims, summaryContainer, zh);
                   summaryBtn.textContent = zh ? '重新生成' : 'Regenerate';
                   summaryBtn.disabled = false;
                 } catch (_err) {
@@ -22616,6 +22627,9 @@
               interpOpen = !interpOpen;
               interpsSection.style.display = interpOpen ? 'flex' : 'none';
               toggle.textContent = interpOpen ? (zh ? '收起' : 'Collapse') : toggleTextCollapsed();
+              if (!interpOpen) {
+                card.style.minHeight = `${estimateLibraryTreeCardSize(node).height}px`;
+              }
               if (interpOpen && currentUser?.uid) {
                 const ids = interps.map((i) => i.id);
                 (async () => {
