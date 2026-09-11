@@ -8444,7 +8444,18 @@
 
       // ── Interpretation data for the current user's library cards ────────
       const libraryInterpretationsCache = new Map(); // word → [{id,interpretation_text,created_at}]
-      const librarySummaryCache = new Map(); // nodeId → { claims, interpCount }
+      const librarySummaryCache = (() => {
+        try {
+          const raw = localStorage.getItem('librarySummaryCache');
+          if (raw) return new Map(Object.entries(JSON.parse(raw)));
+        } catch {}
+        return new Map();
+      })();
+      function saveSummaryCache() {
+        try {
+          localStorage.setItem('librarySummaryCache', JSON.stringify(Object.fromEntries(librarySummaryCache)));
+        } catch {}
+      }
 
       async function loadLibraryInterpretations() {
         if (!currentUser?.uid) return;
@@ -22605,6 +22616,7 @@
                 try {
                   const claims = await generateInterpretationSummary(word, interps);
                   librarySummaryCache.set(String(node.id), { claims, interpCount: cnt });
+                  saveSummaryCache();
                   renderSummaryClaims(claims, summaryContainer, zh);
                   summaryBtn.textContent = zh ? '重新生成' : 'Regenerate';
                   summaryBtn.disabled = false;
