@@ -870,7 +870,7 @@
         margin-top: 3px;
         font-size: 9px;
         font-family: inherit;
-        color: rgba(53, 40, 168, 0.50);
+        color: rgba(53, 40, 168, 0.5);
         cursor: pointer;
         display: block;
         text-align: right;
@@ -1487,123 +1487,6 @@
         user-select: none;
         -webkit-user-select: none;
         transform-origin: top left;
-      }
-
-      #libraryReadingsView {
-        position: absolute;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        left: 0;
-        display: none;
-        overflow-y: auto;
-        overflow-x: hidden;
-        background: transparent;
-        box-sizing: border-box;
-      }
-      .readings-panel {
-        padding: 168px 18px 48px;
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-      }
-      .readings-title {
-        font-size: 14px;
-        font-weight: 600;
-        margin: 0 0 1px;
-        line-height: 1.3;
-      }
-      .readings-subtitle {
-        font-size: 11.5px;
-        opacity: 0.5;
-        margin: 0 0 4px;
-      }
-      .readings-empty {
-        font-size: 12px;
-        opacity: 0.5;
-        line-height: 1.6;
-        margin: 0;
-      }
-      .readings-word-group {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-      }
-      .readings-word-label {
-        font-size: 10.5px;
-        font-weight: 600;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        opacity: 0.45;
-        margin: 0;
-      }
-      .readings-interp-item {
-        font-size: 12.5px;
-        line-height: 1.55;
-        padding: 6px 10px;
-        background: rgba(128, 128, 128, 0.07);
-        border-radius: 6px;
-        margin: 0;
-      }
-      .readings-divider {
-        border: none;
-        border-top: 1px solid rgba(128, 128, 128, 0.15);
-        margin: 4px 0;
-      }
-      .readings-pattern-section {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-      }
-      .readings-pattern-label {
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        opacity: 0.45;
-        margin: 0;
-      }
-      .readings-generate-btn {
-        align-self: flex-start;
-        padding: 6px 16px;
-        border-radius: 20px;
-        border: 1.5px solid rgba(91, 79, 207, 0.5);
-        background: transparent;
-        color: inherit;
-        font-size: 12px;
-        cursor: pointer;
-        transition: opacity 0.15s;
-      }
-      .readings-generate-btn:hover {
-        opacity: 0.7;
-      }
-      .readings-generate-btn:disabled {
-        opacity: 0.35;
-        cursor: default;
-      }
-      .readings-claims {
-        display: flex;
-        flex-direction: column;
-        gap: 7px;
-      }
-      .readings-claim {
-        font-size: 12.5px;
-        line-height: 1.55;
-        padding: 7px 10px;
-        background: rgba(91, 79, 207, 0.06);
-        border-radius: 6px;
-        border-left: 2px solid rgba(91, 79, 207, 0.28);
-        margin: 0;
-      }
-      .readings-meta {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-      }
-      .readings-meta-line {
-        font-size: 11px;
-        opacity: 0.4;
-        margin: 0;
       }
 
       #libraryTreeSurface {
@@ -8447,7 +8330,10 @@
       })();
       function saveSummaryCache() {
         try {
-          localStorage.setItem('librarySummaryCache', JSON.stringify(Object.fromEntries(librarySummaryCache)));
+          localStorage.setItem(
+            'librarySummaryCache',
+            JSON.stringify(Object.fromEntries(librarySummaryCache)),
+          );
         } catch {}
       }
 
@@ -8465,191 +8351,6 @@
           if (!libraryInterpretationsCache.has(w)) libraryInterpretationsCache.set(w, []);
           libraryInterpretationsCache.get(w).push(row);
         }
-      }
-
-      // Interpretations SENT by the current user (for readings view)
-      let sentInterpretationsList = []; // [{id, expr_word, interpretation_text, created_at}]
-
-      async function loadSentInterpretations() {
-        if (!currentUser?.uid) return;
-        const { data, error } = await supabase
-          .from('interpretations')
-          .select('id, expr_word, interpretation_text, created_at')
-          .eq('interpreter_uid', currentUser.uid)
-          .order('created_at', { ascending: false });
-        if (error || !data) return;
-        sentInterpretationsList = data;
-      }
-
-      async function generateReadingsPatternSummary() {
-        const interpTexts = sentInterpretationsList.map((i) => i.interpretation_text);
-        const response = await fetch('https://hooks.ukiriz.com/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'interpretation-summary',
-            uid: currentUser?.uid || null,
-            word: 'my readings',
-            interpretations: interpTexts,
-          }),
-        });
-        const data = await response.json();
-        if (!data.ok) throw new Error(data.message || 'Pattern generation failed');
-        if (!Array.isArray(data.summary)) throw new Error('Invalid summary format');
-        return data.summary;
-      }
-
-      function renderReadingsView() {
-        if (!libraryReadingsView) return;
-        const zh = currentLang === 'zh';
-        const total = sentInterpretationsList.length;
-
-        let cached = null;
-        try {
-          cached = JSON.parse(localStorage.getItem(LIBRARY_PATTERNS_KEY) || 'null');
-        } catch {}
-
-        libraryReadingsView.innerHTML = '';
-        const panel = document.createElement('div');
-        panel.className = 'readings-panel';
-
-        // Header
-        const title = document.createElement('p');
-        title.className = 'readings-title';
-        title.textContent = zh ? '我的解读中涌现的模式' : 'Patterns emerging in my readings';
-        panel.appendChild(title);
-
-        const subtitle = document.createElement('p');
-        subtitle.className = 'readings-subtitle';
-        subtitle.textContent = zh
-          ? `基于你发送的 ${total} 条解读`
-          : `Based on ${total} interpretation${total !== 1 ? 's' : ''} you've sent`;
-        panel.appendChild(subtitle);
-
-        if (total === 0) {
-          const empty = document.createElement('p');
-          empty.className = 'readings-empty';
-          empty.textContent = zh
-            ? '你还没有发送过解读。在聊天中解读他人的表达，便可在这里发现你的阅读模式。'
-            : "You haven't sent any interpretations yet. Interpret other people's expressions in chat to discover patterns in how you read.";
-          panel.appendChild(empty);
-          libraryReadingsView.appendChild(panel);
-          return;
-        }
-
-        // Interpretations list grouped by word
-        const byWord = new Map();
-        for (const item of sentInterpretationsList) {
-          const w = item.expr_word || '?';
-          if (!byWord.has(w)) byWord.set(w, []);
-          byWord.get(w).push(item);
-        }
-        for (const [word, items] of byWord) {
-          const group = document.createElement('div');
-          group.className = 'readings-word-group';
-          const label = document.createElement('p');
-          label.className = 'readings-word-label';
-          label.textContent = word;
-          group.appendChild(label);
-          for (const item of items) {
-            const p = document.createElement('p');
-            p.className = 'readings-interp-item';
-            p.textContent = item.interpretation_text;
-            group.appendChild(p);
-          }
-          panel.appendChild(group);
-        }
-
-        // Divider before pattern section
-        panel.appendChild(
-          Object.assign(document.createElement('hr'), { className: 'readings-divider' }),
-        );
-
-        // Pattern section
-        const patternSection = document.createElement('div');
-        patternSection.className = 'readings-pattern-section';
-
-        const patternLabel = document.createElement('p');
-        patternLabel.className = 'readings-pattern-label';
-        patternLabel.textContent = zh ? '模式' : 'Patterns';
-        patternSection.appendChild(patternLabel);
-
-        if (cached?.claims?.length) {
-          const claimsEl = document.createElement('div');
-          claimsEl.className = 'readings-claims';
-          for (const { claim } of cached.claims) {
-            const p = document.createElement('p');
-            p.className = 'readings-claim';
-            p.textContent = claim;
-            claimsEl.appendChild(p);
-          }
-          patternSection.appendChild(claimsEl);
-
-          const meta = document.createElement('div');
-          meta.className = 'readings-meta';
-          const dateStr = new Date(cached.generatedAt).toLocaleDateString(zh ? 'zh-CN' : 'en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          });
-          const line1 = document.createElement('p');
-          line1.className = 'readings-meta-line';
-          line1.textContent = (zh ? '上次生成：' : 'Last generated: ') + dateStr;
-          meta.appendChild(line1);
-          const newSince = Math.max(0, total - (cached.countAtGeneration || 0));
-          if (newSince > 0) {
-            const line2 = document.createElement('p');
-            line2.className = 'readings-meta-line';
-            line2.textContent = zh
-              ? `此后新增 ${newSince} 条解读`
-              : `${newSince} new interpretation${newSince !== 1 ? 's' : ''} since then`;
-            meta.appendChild(line2);
-          }
-          patternSection.appendChild(meta);
-        }
-
-        if (total >= 3) {
-          const btn = document.createElement('button');
-          btn.className = 'readings-generate-btn';
-          btn.textContent = cached?.claims?.length
-            ? zh
-              ? '重新生成'
-              : 'Regenerate'
-            : zh
-              ? '发现模式'
-              : 'Discover patterns';
-          btn.addEventListener('click', async () => {
-            if (btn.disabled) return;
-            btn.disabled = true;
-            btn.textContent = zh ? '生成中…' : 'Finding patterns…';
-            try {
-              const summary = await generateReadingsPatternSummary();
-              const record = {
-                claims: summary,
-                generatedAt: new Date().toISOString(),
-                countAtGeneration: total,
-              };
-              try {
-                localStorage.setItem(LIBRARY_PATTERNS_KEY, JSON.stringify(record));
-              } catch {}
-              renderReadingsView();
-            } catch (_) {
-              btn.disabled = false;
-              btn.textContent = zh ? '生成失败，请重试' : 'Failed — tap to retry';
-            }
-          });
-          patternSection.appendChild(btn);
-        } else {
-          const hint = document.createElement('p');
-          hint.className = 'readings-empty';
-          hint.textContent = zh
-            ? `再发送 ${3 - total} 条解读即可生成模式`
-            : `Send ${3 - total} more interpretation${3 - total !== 1 ? 's' : ''} to unlock pattern discovery`;
-          patternSection.appendChild(hint);
-        }
-
-        panel.appendChild(patternSection);
-        libraryReadingsView.appendChild(panel);
       }
 
       async function checkInterpretationNotifications() {
@@ -12529,7 +12230,10 @@
               const _imgSyms = [...grp].filter((s) => s?.isConnected && s.querySelector?.('svg'));
               if (_imgSyms.length) {
                 const _ir = 49.92 / (symbolWidth * symbolScale);
-                let _lx = Infinity, _rx = -Infinity, _ity = Infinity, _iby = -Infinity;
+                let _lx = Infinity,
+                  _rx = -Infinity,
+                  _ity = Infinity,
+                  _iby = -Infinity;
                 for (const s of _imgSyms) {
                   const r = s.getBoundingClientRect();
                   if (r.left < _lx) _lx = r.left;
@@ -12545,7 +12249,9 @@
                   }
                 }
                 // SVG filter for symbols that rely on CSS drop-shadow for their black outline
-                const _hasOutline = _imgSyms.some((s) => s.classList.contains('white-fill-outline'));
+                const _hasOutline = _imgSyms.some((s) =>
+                  s.classList.contains('white-fill-outline'),
+                );
                 const _defs = _hasOutline
                   ? '<defs><filter id="wo" color-interpolation-filters="sRGB">' +
                     '<feMorphology in="SourceAlpha" operator="dilate" radius="1" result="d"/>' +
@@ -12559,13 +12265,29 @@
                   const r = s.getBoundingClientRect();
                   let _stx, _sty;
                   switch (s.angle) {
-                    case 0: _stx = r.left; _sty = r.top; break;
-                    case 90: _stx = r.right; _sty = r.top; break;
-                    case 180: _stx = r.right; _sty = r.bottom; break;
-                    case 270: _stx = r.left; _sty = r.bottom; break;
-                    default: _stx = r.left; _sty = r.top;
+                    case 0:
+                      _stx = r.left;
+                      _sty = r.top;
+                      break;
+                    case 90:
+                      _stx = r.right;
+                      _sty = r.top;
+                      break;
+                    case 180:
+                      _stx = r.right;
+                      _sty = r.bottom;
+                      break;
+                    case 270:
+                      _stx = r.left;
+                      _sty = r.bottom;
+                      break;
+                    default:
+                      _stx = r.left;
+                      _sty = r.top;
                   }
-                  const _flt = s.classList.contains('white-fill-outline') ? ' filter="url(#wo)"' : '';
+                  const _flt = s.classList.contains('white-fill-outline')
+                    ? ' filter="url(#wo)"'
+                    : '';
                   _svgi +=
                     `<g${_flt} transform="translate(${(_stx - _lx) * _ir},${(_sty - _ity) * _ir}) rotate(${s.angle})">` +
                     s.querySelector('svg').innerHTML +
@@ -12578,7 +12300,8 @@
                       '</g>';
                   }
                 }
-                const _iw = (_rx - _lx) * _ir, _ih = (_iby - _ity) * _ir;
+                const _iw = (_rx - _lx) * _ir,
+                  _ih = (_iby - _ity) * _ir;
                 const _rawSvg =
                   `<svg width="${_iw}" height="${_ih}" viewBox="0 0 ${_iw} ${_ih}" xmlns="http://www.w3.org/2000/svg">` +
                   _defs +
@@ -14136,7 +13859,9 @@
         const top = parseFloat(nextSymbol.style.top) || 0;
         const newLeft = left + anchorPoint.x - nextPoint.x;
         const newTop = top + anchorPoint.y - nextPoint.y;
-        console.log(`[snap] anchor(e${anchorSymbol.elemId}a${anchorSymbol.angle}) side${anchorSide} aP.y=${anchorPoint.y.toFixed(2)} | next(e${nextSymbol.elemId}a${nextSymbol.angle}) side${nextSide} nP.y=${nextPoint.y.toFixed(2)} | anchor.top=${parseFloat(anchorSymbol.style.top).toFixed(2)} next.top: ${top.toFixed(2)}->${newTop.toFixed(2)}`);
+        console.log(
+          `[snap] anchor(e${anchorSymbol.elemId}a${anchorSymbol.angle}) side${anchorSide} aP.y=${anchorPoint.y.toFixed(2)} | next(e${nextSymbol.elemId}a${nextSymbol.angle}) side${nextSide} nP.y=${nextPoint.y.toFixed(2)} | anchor.top=${parseFloat(anchorSymbol.style.top).toFixed(2)} next.top: ${top.toFixed(2)}->${newTop.toFixed(2)}`,
+        );
         nextSymbol.style.left = `${newLeft}px`;
         nextSymbol.style.top = `${newTop}px`;
 
@@ -18221,7 +17946,7 @@
                 : 'Validating your reading\nof the symbols, please\nwait....';
             el.style.left = `${rightMost + 5}px`;
             el.style.top = `${parseFloat(textarea.style.top) - 10 + textarea.scrollHeight}px`;
-            el.offsetX = (rightMost + 5) - parentLeft;
+            el.offsetX = rightMost + 5 - parentLeft;
             inputParent.thinkingEl = el;
             if (canvas === craftCanvas()) appendToCraftCanvas(el);
             else appendToChatCanvas(el);
@@ -19254,8 +18979,12 @@
                     target,
                     first.x,
                     first.y,
-                    getDir(active) === 1 ? targetCoord.x + calXRendered : targetCoord.x - calXRendered,
-                    getDir(active) === 1 ? targetCoord.y + calXRendered : targetCoord.y - calXRendered,
+                    getDir(active) === 1
+                      ? targetCoord.x + calXRendered
+                      : targetCoord.x - calXRendered,
+                    getDir(active) === 1
+                      ? targetCoord.y + calXRendered
+                      : targetCoord.y - calXRendered,
                     Side.START,
                     Side.START,
                     '始',
@@ -19279,7 +19008,8 @@
                       target,
                       second.x,
                       second.y,
-                      targetCoord.x + (active.angle === 270 ? calInvY - calXRendered : calXRendered),
+                      targetCoord.x +
+                        (active.angle === 270 ? calInvY - calXRendered : calXRendered),
                       targetCoord.y + calXRendered,
                       Side.END,
                       Side.START,
@@ -19293,10 +19023,16 @@
                     fourth.y,
                     getDir(active) === 0
                       ? active.angle === 0
-                        ? (target.angle === 270 ? targetCoord.x + calInvY : targetCoord.x)
-                        : (target.angle === 270 ? targetCoord.x + calCan2 + (calInvY - calXRendered) : targetCoord.x - (calCan1 - calCan2))
+                        ? target.angle === 270
+                          ? targetCoord.x + calInvY
+                          : targetCoord.x
+                        : target.angle === 270
+                          ? targetCoord.x + calCan2 + (calInvY - calXRendered)
+                          : targetCoord.x - (calCan1 - calCan2)
                       : targetCoord.x,
-                    getDir(active) === 1 ? targetCoord.y + (calXRendered - calCan2) : targetCoord.y,
+                    getDir(active) === 1
+                      ? targetCoord.y + (calXRendered - calCan2)
+                      : targetCoord.y,
                     Side.MID_BOT,
                     Side.START,
                     '始',
@@ -19325,7 +19061,9 @@
                       first.x,
                       first.y,
                       targetCoord.x + calXRendered,
-                      getDir(active) === 1 ? targetCoord.y + calXRendered : targetCoord.y + calYRendered,
+                      getDir(active) === 1
+                        ? targetCoord.y + calXRendered
+                        : targetCoord.y + calYRendered,
                       Side.START,
                       Side.END,
                       '末',
@@ -19336,7 +19074,8 @@
                       target,
                       first.x,
                       first.y,
-                      targetCoord.x - (target.angle === 270 ? calInvY - calXRendered : calXRendered),
+                      targetCoord.x -
+                        (target.angle === 270 ? calInvY - calXRendered : calXRendered),
                       targetCoord.y - calXRendered,
                       Side.START,
                       Side.END,
@@ -19351,7 +19090,9 @@
                     getDir(active) === 1
                       ? targetCoord.x + calXRendered
                       : targetCoord.x - calXRendered,
-                    getDir(active) === 1 ? targetCoord.y + calXRendered : targetCoord.y - calXRendered,
+                    getDir(active) === 1
+                      ? targetCoord.y + calXRendered
+                      : targetCoord.y - calXRendered,
                     Side.END,
                     Side.END,
                     '末',
@@ -19408,10 +19149,14 @@
                     activeJunctions[0].y,
                     getDir(active) === 1
                       ? active.angle === 270
-                        ? targetCoord.x - (target.angle === 180 ? calCan2 : calCan1) - (calInvY - calXRendered)
+                        ? targetCoord.x -
+                          (target.angle === 180 ? calCan2 : calCan1) -
+                          (calInvY - calXRendered)
                         : targetCoord.x + calCan1 - (target.angle === 180 ? calCan2 : calCan1)
                       : targetCoord.x,
-                    getDir(active) === 0 ? targetCoord.y - (calXRendered - calCan2) : targetCoord.y,
+                    getDir(active) === 0
+                      ? targetCoord.y - (calXRendered - calCan2)
+                      : targetCoord.y,
                     Side.START,
                     Side.MID_BOT,
                     '下',
@@ -19811,7 +19556,9 @@
           return;
         }
 
-        console.log(`[snap] ${msg} active(e${active.elemId}a${active.angle}) side${activeSide} aX=${activeX.toFixed(1)} aY=${activeY.toFixed(1)} | target(e${target.elemId}a${target.angle}) side${targetSide} tX=${targetX.toFixed(1)} tY=${targetY.toFixed(1)} | dx=${dx.toFixed(1)} dy=${dy.toFixed(1)}`);
+        console.log(
+          `[snap] ${msg} active(e${active.elemId}a${active.angle}) side${activeSide} aX=${activeX.toFixed(1)} aY=${activeY.toFixed(1)} | target(e${target.elemId}a${target.angle}) side${targetSide} tX=${targetX.toFixed(1)} tY=${targetY.toFixed(1)} | dx=${dx.toFixed(1)} dy=${dy.toFixed(1)}`,
+        );
         registerPendingSnapCandidate({
           active,
           target,
@@ -19841,10 +19588,8 @@
       let basicNodeIds = new Set();
       let basicNodeIdByElemIdTrue = new Map();
       const LIBRARY_VIEW_MODE_KEY = 'libraryViewMode';
-      const LIBRARY_PATTERNS_KEY = 'libraryReadingsPatterns';
       let libraryViewMode = 'network';
       let libraryTreeView = null;
-      let libraryReadingsView = null;
       let libraryTreeSurface = null;
       let libraryTreeSvg = null;
       let libraryTreeContextMenu = null;
@@ -19907,7 +19652,6 @@
       const LIBRARY_NETWORK_ICON = "url('./icons/network.png')";
       const LIBRARY_TREE_ICON = "url('./icons/techtree.png')";
       const LIBRARY_ARRANGE_ICON = "url('./icons/organize.png')";
-      const LIBRARY_READINGS_ICON = "url('./icons/star_needle.png')";
 
       function loadSavedLibraryViewMode() {
         try {
@@ -19929,17 +19673,9 @@
       function setLibraryModeButtonIcon() {
         if (!modeNodeButton) return;
         modeNodeButton.style.backgroundImage =
-          libraryViewMode === 'network'
-            ? LIBRARY_NETWORK_ICON
-            : libraryViewMode === 'tree'
-              ? LIBRARY_TREE_ICON
-              : LIBRARY_READINGS_ICON;
+          libraryViewMode === 'network' ? LIBRARY_NETWORK_ICON : LIBRARY_TREE_ICON;
         modeNodeButton.title =
-          libraryViewMode === 'network'
-            ? 'Switch to tree view'
-            : libraryViewMode === 'tree'
-              ? 'Patterns in my readings'
-              : 'Switch to network view';
+          libraryViewMode === 'network' ? 'Switch to tree view' : 'Switch to network view';
       }
 
       function computeLibraryTreeLevels() {
@@ -20098,24 +19834,26 @@
       };
 
       const libraryV2VowelSignature = (text) => [...text].sort().join('');
-      const LIBRARY_V2_COMPOUND_SPELLINGS = new Map([
-        ['áóé', 'ȟ'],
-        ['aoe', 'ȡ'],
-        ['áé', 'ẻ'],
-        ['óé', 'ț'],
-        ['éí', 'ỉ'],
-        ['óí', 'ȍ'],
-        ['áó', 'ỏ'],
-        ['óú', 'ủ'],
-        ['éú', 'ứ'],
-        ['ei', 'ĩ'],
-        ['oi', 'ị'],
-        ['oe', 'ẹ'],
-        ['ae', 'ẽ'],
-        ['eu', 'ư'],
-        ['ou', 'ũ'],
-        ['oa', 'õ'],
-      ].map(([vowels, compound]) => [libraryV2VowelSignature(vowels), compound]));
+      const LIBRARY_V2_COMPOUND_SPELLINGS = new Map(
+        [
+          ['áóé', 'ȟ'],
+          ['aoe', 'ȡ'],
+          ['áé', 'ẻ'],
+          ['óé', 'ț'],
+          ['éí', 'ỉ'],
+          ['óí', 'ȍ'],
+          ['áó', 'ỏ'],
+          ['óú', 'ủ'],
+          ['éú', 'ứ'],
+          ['ei', 'ĩ'],
+          ['oi', 'ị'],
+          ['oe', 'ẹ'],
+          ['ae', 'ẽ'],
+          ['eu', 'ư'],
+          ['ou', 'ũ'],
+          ['oa', 'õ'],
+        ].map(([vowels, compound]) => [libraryV2VowelSignature(vowels), compound]),
+      );
 
       function getLibraryV2Graph(node) {
         const layoutNodes = Array.isArray(node?.layout?.nodes) ? node.layout.nodes : null;
@@ -20212,8 +19950,10 @@
         const horizontal = left.left - right.left;
         const vertical = left.top - right.top;
         // Read along the pair's dominant axis: left-to-right or top-to-bottom.
-        return (Math.abs(vertical) > Math.abs(horizontal) ? vertical : horizontal)
-          || leftIndex - rightIndex;
+        return (
+          (Math.abs(vertical) > Math.abs(horizontal) ? vertical : horizontal) ||
+          leftIndex - rightIndex
+        );
       }
 
       function getLibraryV2ComponentPosition(component, symbolNodes) {
@@ -20356,10 +20096,8 @@
         // must not silently turn just that member into a longer branch.
         //
         // For example, b ∥ z with z--f is (b ∥ z)--f, not b ∥ (z--f).
-        const parallelGroups = getLibraryV2Components(
-          graph.nodes.length,
-          graph.links,
-          (link) => isFuseauConnection(link.fromSide, link.toSide),
+        const parallelGroups = getLibraryV2Components(graph.nodes.length, graph.links, (link) =>
+          isFuseauConnection(link.fromSide, link.toSide),
         );
 
         const groupByNode = new Map();
@@ -20460,14 +20198,16 @@
       }
 
       function compactLibraryV2Vowels(text) {
-        const lengths = [...new Set(
-          [...LIBRARY_V2_COMPOUND_SPELLINGS.keys()].map((vowels) => vowels.length),
-        )].sort((left, right) => right - left);
+        const lengths = [
+          ...new Set([...LIBRARY_V2_COMPOUND_SPELLINGS.keys()].map((vowels) => vowels.length)),
+        ].sort((left, right) => right - left);
         let result = '';
         for (let index = 0; index < text.length; ) {
-          const length = lengths.find((size) => LIBRARY_V2_COMPOUND_SPELLINGS.has(
-            libraryV2VowelSignature(text.slice(index, index + size)),
-          ));
+          const length = lengths.find((size) =>
+            LIBRARY_V2_COMPOUND_SPELLINGS.has(
+              libraryV2VowelSignature(text.slice(index, index + size)),
+            ),
+          );
           if (!length) {
             result += text[index++];
           } else {
@@ -20708,11 +20448,12 @@
             serializeLibraryV2CompactSeries(branch, index === 1),
           );
           const [opening, firstBranch] = foldLibraryV2BranchOrientation(
-            'e', branches[0], compact[0],
+            'e',
+            branches[0],
+            compact[0],
           );
           compact[0] = firstBranch;
-          const sharesNestedBoundary =
-            compact[0].endsWith("'") && compact[1].startsWith("'");
+          const sharesNestedBoundary = compact[0].endsWith("'") && compact[1].startsWith("'");
           const middle = sharesNestedBoundary
             ? compact[0] + compact[1].slice(1)
             : compact[0] + compact[1];
@@ -20730,16 +20471,18 @@
           );
           const firstIsOriented = libraryV2OrientedFirstElement(branches[0]);
           const [structuralOpening, firstBranch] = foldLibraryV2BranchOrientation(
-            'e', branches[0], compact[0],
+            'e',
+            branches[0],
+            compact[0],
           );
           compact[0] = firstBranch;
           const opening =
-            omitOpening && !framed && safelyCompact && !firstIsOriented
-              ? ''
-              : structuralOpening;
+            omitOpening && !framed && safelyCompact && !firstIsOriented ? '' : structuralOpening;
           const closing = omitClosing && !framed && safelyCompact ? '' : 'o';
           const [separator, thirdBranch] = foldLibraryV2BranchOrientation(
-            'o', branches[2], compact[2],
+            'o',
+            branches[2],
+            compact[2],
           );
           compact[2] = thirdBranch;
           return `${opening}${compact[0]}${compact[1]}${separator}${compact[2]}${closing}`;
@@ -20750,33 +20493,41 @@
         );
         const firstIsOriented = libraryV2OrientedFirstElement(branches[0]);
         const [structuralOpening, firstBranch] = foldLibraryV2BranchOrientation(
-          'e', branches[0], rendered[0],
+          'e',
+          branches[0],
+          rendered[0],
         );
         const opening =
-          omitOpening && !framed && safelyCompact && !firstIsOriented
-            ? ''
-            : structuralOpening;
+          omitOpening && !framed && safelyCompact && !firstIsOriented ? '' : structuralOpening;
         rendered[0] = firstBranch;
         const middle = [];
         for (let index = 1; index < branches.length - 2; index += 1) {
           const [branchOpening, branchText] = foldLibraryV2BranchOrientation(
-            'e', branches[index], rendered[index],
+            'e',
+            branches[index],
+            rendered[index],
           );
           rendered[index] = branchText;
           middle.push(branchOpening, branchText, 'o');
         }
         const [penultimateSeparator, penultimateBranch] = foldLibraryV2BranchOrientation(
-          'o', branches.at(-2), rendered.at(-2),
+          'o',
+          branches.at(-2),
+          rendered.at(-2),
         );
         middle[middle.length - 1] = penultimateSeparator;
         rendered[rendered.length - 2] = penultimateBranch;
         const [finalSeparator, finalBranch] = foldLibraryV2BranchOrientation(
-          'o', branches.at(-1), rendered.at(-1),
+          'o',
+          branches.at(-1),
+          rendered.at(-1),
         );
         const closing =
           omitOpening && omitClosing && !followedByFuseau && !framed && safelyCompact ? '' : 'o';
-        return `${opening}${rendered[0]}${middle.join('')}`
-          + `${penultimateBranch}${finalSeparator}${finalBranch}${closing}`;
+        return (
+          `${opening}${rendered[0]}${middle.join('')}` +
+          `${penultimateBranch}${finalSeparator}${finalBranch}${closing}`
+        );
       }
 
       function serializeLibraryV2Node(node) {
@@ -21354,7 +21105,8 @@
         let _savedCardWidth = null;
         if (card.classList.contains('spawned-expression-meta')) {
           const _wt = card.querySelector('.library-tree-card-word')?.textContent?.trim() || '';
-          const _dt = card.querySelector('.library-tree-card-definition')?.textContent?.trim() || '';
+          const _dt =
+            card.querySelector('.library-tree-card-definition')?.textContent?.trim() || '';
           const _st = Array.from(card.querySelectorAll('.library-tree-card-serialization'))
             .map((el) => el.textContent?.replace(/\s+/g, ' ').trim())
             .join(' ');
@@ -21378,44 +21130,102 @@
         }
 
         // Always hide interps first to measure content-only height (for image centering)
+        // Also clear minHeight so the measurement reflects true text height, not the
+        // inflated value set when the user collapses interps.
+        const savedMinHeight = card.style.minHeight;
+        card.style.minHeight = '';
         if (interpsSection) interpsSection.style.display = 'none';
         if (interpsToggle) interpsToggle.style.display = 'none';
         if (juxtaSection) juxtaSection.style.display = 'none';
         const contentRect = card.getBoundingClientRect();
         const contentHeight = Math.max(1, Math.ceil(contentRect.height / cssZoom));
 
-        // If including interps, show the section and measure full height + section start offset
-        const INTERP_HEADER_H = 40; // space for separator line + label above items
-        let interpsOffsetY = contentHeight;
+        // If including interps, show the section and measure full height
+        let interpsOffsetY = contentHeight + 18;
         if (includeInterps && interpsSection) {
           interpsSection.style.display = 'flex';
-          const cardRectFull = card.getBoundingClientRect();
           const sectionRect = interpsSection.getBoundingClientRect();
-          interpsOffsetY =
-            Math.round((sectionRect.top - cardRectFull.top) / cssZoom) + INTERP_HEADER_H;
+          const firstItem = interpsSection.querySelector('.library-tree-interp-item');
+          const firstItemRect = firstItem?.getBoundingClientRect();
+          if (firstItemRect) {
+            interpsOffsetY = Math.round((firstItemRect.top - contentRect.top) / cssZoom);
+          } else {
+            interpsOffsetY = Math.round((sectionRect.top - contentRect.top) / cssZoom) + 18;
+          }
         } else if (includeInterps && juxtaSection) {
           juxtaSection.style.display = savedJuxtaDisplay ?? '';
-          const cardRectFull = card.getBoundingClientRect();
-          const sectionRect = juxtaSection.getBoundingClientRect();
-          interpsOffsetY =
-            Math.round((sectionRect.top - cardRectFull.top) / cssZoom) + INTERP_HEADER_H;
         }
         const rect =
           includeInterps && (interpsSection || juxtaSection)
             ? card.getBoundingClientRect()
             : contentRect;
         const width = Math.max(1, Math.ceil(rect.width / cssZoom));
-        const height =
-          Math.max(1, Math.ceil(rect.height / cssZoom)) +
-          (includeInterps && (interpsSection || juxtaSection) ? INTERP_HEADER_H : 0);
+
+        // Compute fontFamily early — needed for item height pre-measurement below.
+        const fontFamily =
+          getComputedStyle(card.querySelector('.library-tree-card-word') || card).fontFamily ||
+          "'UkirizSarasaUiSC', 'Sarasa UI SC', Consolas, monospace";
+
+        // Add vertical clearance for the separator + label that we draw between content
+        // text and interp items. The toggle button provides this gap in the live DOM but
+        // is hidden during PNG export, so we recreate it by shifting items down.
+        const INTERP_LABEL_CLEARANCE = 40;
+        if (includeInterps && (interpsSection || juxtaSection)) {
+          interpsOffsetY += INTERP_LABEL_CLEARANCE;
+        }
+
+        // Pre-measure interp item heights so we can size the canvas exactly — avoids
+        // the 30+ px of dead space that the DOM bottom-padding would otherwise leave.
+        let preItemsH = 0;
+        if (includeInterps && interpsSection) {
+          const _pc = document.createElement('canvas').getContext('2d');
+          const _piW = width - 40; // innerW (same as itemW-12 used in drawing loop)
+          let _first = true;
+          for (const _item of interpsSection.querySelectorAll('.library-tree-interp-item')) {
+            const _wrap = (text, font) => {
+              _pc.font = font;
+              const _toks = String(text || '').match(/[　-鿿＀-￯]|[^\s]+|\s+/gu) || [];
+              let _l = '', _n = 0;
+              for (const _t of _toks) {
+                if (/^\s+$/u.test(_t)) { if (_l) _l += ' '; continue; }
+                const _nx = _l ? _l + _t : _t;
+                if (_pc.measureText(_nx).width <= _piW || !_l) { _l = _nx; }
+                else { _n++; _l = _t; }
+              }
+              return _n + (_l ? 1 : 0);
+            };
+            const _dt = _item.querySelector('.library-tree-interp-date')?.textContent?.trim() || '';
+            const _bt = _item.querySelector('p')?.textContent?.trim() || '';
+            const _dH = _wrap(_dt, `400 9px ${fontFamily}`) * 11;
+            const _bH = _wrap(_bt, `400 11px ${fontFamily}`) * 15.4;
+            const _g = _dt && _bt ? 2 : 0;
+            if (!_first) preItemsH += 4; // gap between items
+            preItemsH += 4 + _dH + _g + _bH + 4;
+            _first = false;
+          }
+        }
+
+        const height = includeInterps && interpsSection && preItemsH > 0
+          ? Math.round(interpsOffsetY + preItemsH + 16)
+          : Math.max(1, Math.ceil(rect.height / cssZoom)) +
+            (includeInterps && (interpsSection || juxtaSection) ? INTERP_LABEL_CLEARANCE : 0);
 
         // Restore DOM state
+        card.style.minHeight = savedMinHeight;
         if (interpsSection) interpsSection.style.display = savedSectionDisplay;
         if (interpsToggle) interpsToggle.style.display = savedToggleDisplay;
         if (juxtaSection) juxtaSection.style.display = savedJuxtaDisplay;
-        if (_tempExprImg) { _tempExprImg.remove(); _tempExprImg = null; }
-        if (_savedCardWidth !== null) { card.style.width = _savedCardWidth; _savedCardWidth = null; }
-        if (_savedDisplay !== null) { card.style.display = _savedDisplay; }
+        if (_tempExprImg) {
+          _tempExprImg.remove();
+          _tempExprImg = null;
+        }
+        if (_savedCardWidth !== null) {
+          card.style.width = _savedCardWidth;
+          _savedCardWidth = null;
+        }
+        if (_savedDisplay !== null) {
+          card.style.display = _savedDisplay;
+        }
 
         await document.fonts?.ready?.catch?.(() => {});
 
@@ -21473,9 +21283,6 @@
           }
         }
 
-        const fontFamily =
-          getComputedStyle(card.querySelector('.library-tree-card-word') || card).fontFamily ||
-          "'UkirizSarasaUiSC', 'Sarasa UI SC', Consolas, monospace";
         const textX = 86;
         const textWidth = Math.max(40, width - textX - 14);
         let y = 20;
@@ -21537,8 +21344,8 @@
             interpsSection.querySelectorAll('.library-tree-interp-item'),
           );
           if (interpItems.length) {
-            // Separator line + label anchored below content area
-            const sepY = contentHeight - 10;
+            // Separator anchored to end of content text, clamped to stay above first item
+            const sepY = Math.min(y + 16, interpsOffsetY - 15);
             ctx.strokeStyle = 'rgba(0,0,0,0.12)';
             ctx.lineWidth = 0.5;
             ctx.beginPath();
@@ -21605,7 +21412,7 @@
             juxtaSection.querySelectorAll('.expr-juxtapose-section'),
           );
           if (juxtaSections.length) {
-            const sepY = contentHeight - 10;
+            const sepY = Math.min(y + 16, interpsOffsetY - 15);
             ctx.strokeStyle = 'rgba(0,0,0,0.12)';
             ctx.lineWidth = 0.5;
             ctx.beginPath();
@@ -22582,8 +22389,12 @@
                 translateBtn.hidden = true;
               }
               translateBtn.textContent = translated
-                ? (zh ? '显示原文' : 'Show original')
-                : (zh ? '翻译' : 'Translate');
+                ? zh
+                  ? '显示原文'
+                  : 'Show original'
+                : zh
+                  ? '翻译'
+                  : 'Translate';
               translateBtn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 if (translateBtn.disabled) return;
@@ -22616,7 +22427,9 @@
                   translateBtn.textContent = zh ? '显示原文' : 'Show original';
                 } catch {
                   translateBtn.textContent = zh ? '翻译失败' : 'Failed';
-                  setTimeout(() => { translateBtn.textContent = zh ? '翻译' : 'Translate'; }, 1800);
+                  setTimeout(() => {
+                    translateBtn.textContent = zh ? '翻译' : 'Translate';
+                  }, 1800);
                 } finally {
                   translateBtn.disabled = false;
                 }
@@ -22638,7 +22451,7 @@
                 renderSummaryClaims(cached.claims, summaryContainer, zh);
                 summaryBtn.textContent = zh ? '重新生成' : 'Regenerate';
               } else {
-                summaryBtn.textContent = zh ? '生成解读模式摘要' : 'Generate pattern summary';
+                summaryBtn.textContent = zh ? '总结解读规律' : 'Summarize interpretation patterns';
               }
 
               summaryBtn.addEventListener('click', async () => {
@@ -22963,22 +22776,15 @@
       libraryTreeView.appendChild(libraryTreeSurface);
       tab2.appendChild(libraryTreeView);
 
-      libraryReadingsView = document.createElement('div');
-      libraryReadingsView.id = 'libraryReadingsView';
-      tab2.appendChild(libraryReadingsView);
-
       function setLibraryViewMode(mode) {
-        libraryViewMode = mode === 'tree' ? 'tree' : mode === 'readings' ? 'readings' : 'network';
+        libraryViewMode = mode === 'tree' ? 'tree' : 'network';
         saveLibraryViewMode();
         setLibraryModeButtonIcon();
 
         const showTree = libraryViewMode === 'tree';
-        const showReadings = libraryViewMode === 'readings';
-        container.style.display = showTree || showReadings ? 'none' : 'block';
+        container.style.display = showTree ? 'none' : 'block';
         libraryTreeView.style.display = showTree ? 'block' : 'none';
-        if (libraryReadingsView)
-          libraryReadingsView.style.display = showReadings ? 'block' : 'none';
-        organizeNodeButton.style.display = showTree || showReadings ? 'none' : 'block';
+        organizeNodeButton.style.display = showTree ? 'none' : 'block';
         if (!showTree && libraryTreeSurface) libraryTreeSurface.style.zoom = '1';
 
         if (showTree) {
@@ -22990,10 +22796,6 @@
             requestAnimationFrame(() => refreshLibraryViewport?.());
           }
           emitTutorialEvent?.('library_tree_view');
-        } else if (showReadings) {
-          loadSentInterpretations()
-            .then(() => renderReadingsView())
-            .catch(console.error);
         } else if (network) {
           setTimeout(() => {
             refreshLibraryViewport?.();
@@ -23307,7 +23109,9 @@
           }
         });
 
-        const hasOutlineSymbol = [...components].some((s) => s.classList?.contains('white-fill-outline'));
+        const hasOutlineSymbol = [...components].some((s) =>
+          s.classList?.contains('white-fill-outline'),
+        );
         const outlineDefs = hasOutlineSymbol
           ? '<defs><filter id="wo" color-interpolation-filters="sRGB">' +
             '<feMorphology in="SourceAlpha" operator="dilate" radius="1" result="d"/>' +
