@@ -863,6 +863,25 @@
         color: rgba(0, 0, 0, 0.68);
         line-height: 1.4;
       }
+      .library-tree-interp-translate {
+        background: none;
+        border: none;
+        padding: 0;
+        margin-top: 3px;
+        font-size: 9px;
+        font-family: inherit;
+        color: rgba(53, 40, 168, 0.50);
+        cursor: pointer;
+        display: block;
+        text-align: right;
+        line-height: 1;
+      }
+      .library-tree-interp-translate[hidden] {
+        display: none;
+      }
+      .library-tree-interp-translate:hover {
+        color: rgba(53, 40, 168, 0.9);
+      }
       .library-tree-interp-summary-btn {
         background: none;
         border: 1px dashed rgba(53, 40, 168, 0.38);
@@ -898,32 +917,6 @@
         color: rgba(0, 0, 0, 0.72);
         margin: 0;
         line-height: 1.4;
-      }
-      .library-tree-interp-feedback {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-        margin-top: 2px;
-      }
-      .library-tree-interp-feedback button {
-        background: rgba(255, 255, 255, 0.8);
-        border: 1px solid rgba(0, 0, 0, 0.13);
-        border-radius: 10px;
-        font: inherit;
-        font-size: 9px;
-        color: rgba(0, 0, 0, 0.55);
-        padding: 2px 7px;
-        cursor: pointer;
-        touch-action: manipulation;
-        transition:
-          background 0.12s,
-          border-color 0.12s;
-      }
-      .library-tree-interp-feedback button.active,
-      .library-tree-interp-feedback button:hover {
-        background: rgba(53, 40, 168, 0.15);
-        border-color: rgba(53, 40, 168, 0.45);
-        color: rgba(53, 40, 168, 0.9);
       }
 
       /* ── Home copyright ───────────────────────────────────────────── */
@@ -8444,6 +8437,7 @@
 
       // ── Interpretation data for the current user's library cards ────────
       const libraryInterpretationsCache = new Map(); // word → [{id,interpretation_text,created_at}]
+      const interpTranslatedState = new Map(); // interpId → translatedText (null = showing original)
       const librarySummaryCache = (() => {
         try {
           const raw = localStorage.getItem('librarySummaryCache');
@@ -8711,21 +8705,6 @@
           claimP.textContent = '• ' + claim;
           summaryEl.appendChild(claimP);
         }
-        const feedbackEl = document.createElement('div');
-        feedbackEl.className = 'library-tree-interp-feedback';
-        const fbLabels = zh
-          ? ['感觉准确', '基本准确', '不太准确', '编辑']
-          : ['This feels accurate', 'Somewhat', 'Not accurate', 'Edit'];
-        for (const lbl of fbLabels) {
-          const fbBtn = document.createElement('button');
-          fbBtn.textContent = lbl;
-          fbBtn.addEventListener('click', () => {
-            feedbackEl.querySelectorAll('button').forEach((b) => b.classList.remove('active'));
-            fbBtn.classList.add('active');
-          });
-          feedbackEl.appendChild(fbBtn);
-        }
-        summaryEl.appendChild(feedbackEl);
         container.appendChild(summaryEl);
       }
 
@@ -22589,9 +22568,62 @@
               const islandStr = interp.island_id || '';
               dateEl.textContent = islandStr ? `${dateStr} · ${islandStr}` : dateStr;
               const txtEl = document.createElement('p');
-              txtEl.textContent = interp.interpretation_text;
+              const originalText = interp.interpretation_text;
+              const targetLang = zh ? 'zh' : 'en';
+              const interpId = interp.id;
+              const interpLang = inferExpressionLang(originalText, '');
+              const savedTranslation = interpTranslatedState.get(interpId);
+              let translated = savedTranslation != null;
+              txtEl.textContent = translated ? savedTranslation : originalText;
+              const translateBtn = document.createElement('button');
+              translateBtn.className = 'library-tree-interp-translate';
+              // Hide button if the interp is already in the current UI language
+              if (interpLang && interpLang === currentLang) {
+                translateBtn.hidden = true;
+              }
+              translateBtn.textContent = translated
+                ? (zh ? '显示原文' : 'Show original')
+                : (zh ? '翻译' : 'Translate');
+              translateBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                if (translateBtn.disabled) return;
+                if (translated) {
+                  txtEl.textContent = originalText;
+                  translated = false;
+                  interpTranslatedState.delete(interpId);
+                  translateBtn.textContent = zh ? '翻译' : 'Translate';
+                  // Let the card shrink back to natural content height
+                  card.style.minHeight = '';
+                  requestAnimationFrame(() => {
+                    const h = card.scrollHeight || card.offsetHeight;
+                    if (h) card.style.minHeight = `${h}px`;
+                  });
+                  return;
+                }
+                translateBtn.disabled = true;
+                translateBtn.textContent = zh ? '翻译中…' : 'Translating…';
+                try {
+                  const result = await requestCardTranslation({
+                    word: originalText,
+                    why: '',
+                    sourceLang: '',
+                    targetLang,
+                  });
+                  const translatedText = result.word || result.explanation || originalText;
+                  txtEl.textContent = translatedText;
+                  translated = true;
+                  interpTranslatedState.set(interpId, translatedText);
+                  translateBtn.textContent = zh ? '显示原文' : 'Show original';
+                } catch {
+                  translateBtn.textContent = zh ? '翻译失败' : 'Failed';
+                  setTimeout(() => { translateBtn.textContent = zh ? '翻译' : 'Translate'; }, 1800);
+                } finally {
+                  translateBtn.disabled = false;
+                }
+              });
               item.appendChild(dateEl);
               item.appendChild(txtEl);
+              item.appendChild(translateBtn);
               interpsSection.appendChild(item);
             }
 
