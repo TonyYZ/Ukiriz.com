@@ -8710,6 +8710,7 @@
           body: JSON.stringify({
             type: 'interpretation-summary',
             uid: currentUser?.uid || null,
+            lang: currentLang,
             word,
             interpretations: interpTexts,
           }),
@@ -8726,8 +8727,9 @@
             '| total:',
             (input_tokens ?? 0) + (output_tokens ?? 0),
           );
-        } else {
-          console.log('[summary] no usage field in response (backend may not expose it yet)');
+        }
+        if (typeof data.used === 'number' && typeof data.limit === 'number') {
+          updateQuotaBadge(data.used, data.limit, data.paidBalance);
         }
 
         if (!data.ok) throw new Error(data.message || 'Summary generation failed');
