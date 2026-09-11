@@ -914,9 +914,10 @@
       }
       .library-tree-interp-summary-claim {
         font-size: 11px;
+        font-style: italic;
         color: rgba(0, 0, 0, 0.72);
         margin: 0;
-        line-height: 1.4;
+        line-height: 1.5;
       }
 
       /* ── Home copyright ───────────────────────────────────────────── */
@@ -8403,7 +8404,7 @@
         for (const { claim } of claims) {
           const claimP = document.createElement('p');
           claimP.className = 'library-tree-interp-summary-claim';
-          claimP.textContent = '• ' + claim;
+          claimP.textContent = claim;
           summaryEl.appendChild(claimP);
         }
         container.appendChild(summaryEl);
@@ -22488,6 +22489,11 @@
                   window._sfxSummaryGenerated?.();
                   summaryBtn.textContent = zh ? '重新生成' : 'Regenerate';
                   summaryBtn.disabled = false;
+                  card.style.minHeight = '';
+                  requestAnimationFrame(() => {
+                    const h = card.scrollHeight || card.offsetHeight;
+                    if (h) card.style.minHeight = `${h}px`;
+                  });
                 } catch (_err) {
                   summaryBtn.textContent = zh ? '生成失败，重试？' : 'Failed — retry?';
                   summaryBtn.disabled = false;
