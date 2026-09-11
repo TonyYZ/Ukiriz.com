@@ -8410,14 +8410,30 @@
       }
 
       async function generateInterpretationSummary(word, interps) {
-        const interpTexts = interps.map((i) => i.interpretation_text);
-        const inputChars = word.length + interpTexts.reduce((s, t) => s + t.length, 0);
+        // Send each interpretation with its island so the server can group them —
+        // a word can be posted on multiple islands each with a different question,
+        // and interpretations must be read against their own island's question.
+        const interpPayload = interps.map((i) => ({
+          text: i.interpretation_text,
+          island: i.island_id || null,
+        }));
+
+        const islandIds = [...new Set(interps.map((i) => i.island_id).filter(Boolean))];
+        const islandContexts = islandIds.map((id) => {
+          const q = ISLAND_CHAT_QUESTIONS[id];
+          return q ? { island: id, question: q[currentLang] || q.en } : { island: id };
+        });
+
+        const inputChars =
+          word.length + interpPayload.reduce((s, i) => s + i.text.length, 0);
         const estInputTokens = Math.ceil(inputChars / 4);
         console.log(
           '[summary] sending request — word:',
           word,
           '| interpretations:',
-          interpTexts.length,
+          interpPayload.length,
+          '| islands:',
+          islandIds.join(', ') || '(none)',
           '| est. input chars:',
           inputChars,
           '| rough input token estimate:',
@@ -8432,7 +8448,8 @@
             uid: currentUser?.uid || null,
             lang: currentLang,
             word,
-            interpretations: interpTexts,
+            interpretations: interpPayload,
+            islandContexts,
           }),
         });
         const data = await response.json();
