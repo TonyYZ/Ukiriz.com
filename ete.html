@@ -3008,24 +3008,21 @@
             turtle.forward(UNIT * (1 - 1 / SCALE));
           }
           if ('pb'.includes(char)) {
-            // Match the 离 primitive: one-unit transparent margins around a
-            // three-unit base with one-unit arms, forming an outward-facing U.
+            // Match canvas.html's full-width 离 primitive.
             turtle.penup();
-            turtle.forward(UNIT / SCALE);
             turtle.right(90 * alter);
             turtle.forward(UNIT / SCALE);
             turtle.left(180);
             turtle.pendown();
             turtle.forward(UNIT / SCALE);
             turtle.right(90 * alter);
-            turtle.forward(UNIT * (1 - 2 / SCALE));
+            turtle.forward(UNIT);
             turtle.right(90 * alter);
             turtle.forward(UNIT / SCALE);
             turtle.penup();
             turtle.left(180);
             turtle.forward(UNIT / SCALE);
             turtle.right(90 * alter);
-            turtle.forward(UNIT / SCALE);
             turtle.pendown();
           }
           if ('td'.includes(char)) {
