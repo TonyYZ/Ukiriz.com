@@ -2741,17 +2741,17 @@
             : requestedNormalDir;
         }
 
-        function elementAlter(char, requestedAlter) {
-          // Every successive symbol alternates its perpendicular ornament
-          // side. The s/z/f/v primitives use the opposite sign convention
-          // from the other consonants, so normalize them at this boundary.
-          return 'szfv'.includes(char) ? -requestedAlter : requestedAlter;
+        function peekElementDrawAlter(state, mirroredBranch) {
+          return state.nextDrawAlter ?? (mirroredBranch ? state.alter : -1);
         }
 
-        function elementDrawAlter(char, requestedAlter, inFuseau) {
-          // A fuseau branch side is already a physical mirror; applying the
-          // ordinary s/z/f/v normalization again turns its ornament inward.
-          return inFuseau ? requestedAlter : elementAlter(char, requestedAlter);
+        function takeElementDrawAlter(state, mirroredBranch) {
+          // A serial centerline starts upward and then alternates visibly.
+          // Fuseau side branches instead begin on their allocated side.
+          const alter = peekElementDrawAlter(state, mirroredBranch);
+          state.nextDrawAlter = -alter;
+          state.alter *= -1;
+          return alter;
         }
 
         function fuseauOrnamentFacesBack(char, alter) {
@@ -3230,7 +3230,7 @@
           return extra || base;
         }
 
-        function allocateFuseauWidths(ordered, direction) {
+        function allocateFuseauWidths(ordered, direction, stemDrawAlter = -1) {
           const widths = [0];
           ordered.forEach((entry, drawIndex) => {
             const components =
@@ -3249,7 +3249,10 @@
             if (drawIndex > 0) {
               const first = components[0];
               if (first?.type === 'element' && first.orientation === direction) {
-                widths[drawIndex] = (widths[drawIndex] || 0) + UNIT / SCALE;
+                const gap = 'şç'.includes(first.char)
+                  ? centeredRadius / 2
+                  : UNIT / SCALE;
+                widths[drawIndex] = (widths[drawIndex] || 0) + gap;
               }
               if (centeredRadius) widths[drawIndex] = (widths[drawIndex] || 0) + centeredRadius;
             }
@@ -3270,12 +3273,15 @@
               } else sameCombo = false;
             });
 
-            let alter = 1;
+            let alter = drawIndex === 0 ? stemDrawAlter : 1;
             components.forEach((component, index) => {
               const same = component.type === 'element' && component.orientation === direction;
               if (same) {
                 const measured = perpendicularMeasure(component, direction);
-                const facesBack = fuseauOrnamentFacesBack(component.char, alter);
+                const facesBack =
+                  drawIndex === 0
+                    ? alter === -1
+                    : fuseauOrnamentFacesBack(component.char, alter);
                 if (
                   measured > offMax &&
                   !facesBack &&
@@ -3321,7 +3327,7 @@
           return widths.slice(0, ordered.length);
         }
 
-        function planFuseau(node, currentDirection, dimensions = 2) {
+        function planFuseau(node, currentDirection, dimensions = 2, stemDrawAlter = -1) {
           const direction =
             dimensions === 3
               ? chooseFuseauDirection3D(node, currentDirection)
@@ -3351,7 +3357,7 @@
             direction,
             stem,
             ordered,
-            widths: allocateFuseauWidths(ordered, direction),
+            widths: allocateFuseauWidths(ordered, direction, stemDrawAlter),
           };
         }
 
@@ -3434,10 +3440,9 @@
               node.orientation,
               requestedNormalDir,
             );
-            const drawAlter = elementDrawAlter(
-              node.char,
-              state.alter,
-              Boolean(state.fuseauContext),
+            const drawAlter = takeElementDrawAlter(
+              state,
+              Boolean(state.fuseauContext?.mirroredBranch),
             );
             const facesAgainstRoute = normalDir !== requestedNormalDir;
             let routeEnd = null;
@@ -3485,7 +3490,6 @@
             if (componentBoxes) {
               componentBoxes.push(collisionBox(box));
             }
-            state.alter *= -1;
             state.direction = node.orientation;
             return { start, end: routeEnd || { x: turtle.x, y: turtle.y } };
           }
@@ -3516,10 +3520,12 @@
             node,
             state.direction,
             2,
+            peekElementDrawAlter(state, Boolean(state.fuseauContext?.mirroredBranch)),
           );
           const origin = { x: turtle.x, y: turtle.y };
           let side = 1;
           let stemEnd = origin;
+          let stemNextDrawAlter = null;
 
           ordered.forEach((entry, drawIndex) => {
             const branchSide = side;
@@ -3543,11 +3549,13 @@
               ...state,
               direction,
               alter: branchSide,
+              nextDrawAlter: drawIndex ? null : state.nextDrawAlter,
               normalDir: state.normalDir,
               fuseauContext: {
                 direction,
                 side: branchSide,
                 parentNormalDir: state.normalDir,
+                mirroredBranch: drawIndex > 0,
               },
             };
             const branchParent = drawingLayer;
@@ -3572,7 +3580,10 @@
                 state.normalDir,
               );
             }
-            if (!drawIndex) stemEnd = { x: turtle.x, y: turtle.y };
+            if (!drawIndex) {
+              stemEnd = { x: turtle.x, y: turtle.y };
+              stemNextDrawAlter = branchState.nextDrawAlter;
+            }
             side *= -1;
           });
           turtle.penup();
@@ -3580,7 +3591,7 @@
           calibrate(turtle, direction, state.normalDir);
           turtle.pendown();
           state.direction = direction;
-          state.alter *= -1;
+          state.nextDrawAlter = stemNextDrawAlter;
           return { start: origin, end: stemEnd };
         }
 
@@ -4531,10 +4542,9 @@
             node.orientation,
             requestedNormalDir,
           );
-          const drawAlter = elementDrawAlter(
-            node.char,
-            state.alter,
-            Boolean(state.fuseauContext),
+          const drawAlter = takeElementDrawAlter(
+            state,
+            Boolean(state.fuseauContext?.mirroredBranch),
           );
           const facesAgainstRoute = normalDir !== requestedNormalDir;
           const turtle = new GeometryTurtle(0, 0, 0);
@@ -4602,7 +4612,6 @@
               dynamic: localAnchor.dynamic,
             });
           }
-          state.alter *= -1;
           state.direction = node.orientation;
           scene3d.elementCount++;
           if (componentBoxes) {
@@ -4639,7 +4648,13 @@
         function buildNode3D(
           node,
           start,
-          state = { direction: 0, normalDir: 1, alter: 1, fuseauContext: null },
+          state = {
+            direction: 0,
+            normalDir: 1,
+            alter: 1,
+            nextDrawAlter: -1,
+            fuseauContext: null,
+          },
           boundaryStart = false,
           boundaryEnd = false,
           componentBoxes = null,
@@ -4673,6 +4688,7 @@
             node,
             state.direction,
             3,
+            peekElementDrawAlter(state, Boolean(state.fuseauContext?.mirroredBranch)),
           );
           const routeTurtle = new GeometryTurtle(0, 0, 0);
           calibrate(routeTurtle, direction, state.normalDir);
@@ -4680,6 +4696,7 @@
             mapGlyphVector3D(routeTurtle.vector(1), direction),
           );
           let side = 1;
+          let stemNextDrawAlter = null;
           const placements = ordered.map((entry, drawIndex) => {
             const branchSide = side;
             const offset = fuseauBranchOffset(
@@ -4702,10 +4719,12 @@
               ...state,
               direction,
               alter: branchSide,
+              nextDrawAlter: drawIndex ? null : state.nextDrawAlter,
               fuseauContext: {
                 direction,
                 side: branchSide,
                 parentNormalDir: state.normalDir,
+                mirroredBranch: drawIndex > 0,
               },
             };
             const branchEnd = buildNode3D(
@@ -4716,11 +4735,12 @@
               true,
               componentBoxes,
             );
+            if (!drawIndex) stemNextDrawAlter = branchState.nextDrawAlter;
             side *= -1;
             return { branchStart, branchEnd };
           });
           state.direction = direction;
-          state.alter *= -1;
+          state.nextDrawAlter = stemNextDrawAlter;
           return placements[0]?.branchEnd || start;
         }
 
@@ -4986,7 +5006,13 @@
           let sentenceOrigin = point3(0, 0, 0);
           let lastEnd = sentenceOrigin;
           let occupiedBoxes = [];
-          const state = { direction: 0, normalDir: 1, alter: 1, fuseauContext: null };
+          const state = {
+            direction: 0,
+            normalDir: 1,
+            alter: 1,
+            nextDrawAlter: -1,
+            fuseauContext: null,
+          };
           if (mazeMode) {
             const maze = renderMazePassage3D(documentTree, sentenceOrigin, state);
             lastEnd = maze.end;
@@ -5350,7 +5376,12 @@
             // Read ordinary series in screen order: horizontal paths advance
             // left-to-right and vertical paths advance top-to-bottom.
             const turtle = new SvgTurtle(0, 0, 0);
-            const drawingState = { direction: 0, normalDir: 1, alter: 1 };
+            const drawingState = {
+              direction: 0,
+              normalDir: 1,
+              alter: 1,
+              nextDrawAlter: -1,
+            };
             if (mazeMode) {
               renderMazePassage(documentTree, turtle, drawingState);
             } else {
