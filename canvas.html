@@ -8425,8 +8425,7 @@
           return q ? { island: id, question: q[currentLang] || q.en } : { island: id };
         });
 
-        const inputChars =
-          word.length + interpPayload.reduce((s, i) => s + i.text.length, 0);
+        const inputChars = word.length + interpPayload.reduce((s, i) => s + i.text.length, 0);
         const estInputTokens = Math.ceil(inputChars / 4);
         console.log(
           '[summary] sending request — word:',
@@ -21204,16 +21203,25 @@
             const _wrap = (text, font) => {
               _pc.font = font;
               const _toks = String(text || '').match(/[　-鿿＀-￯]|[^\s]+|\s+/gu) || [];
-              let _l = '', _n = 0;
+              let _l = '',
+                _n = 0;
               for (const _t of _toks) {
-                if (/^\s+$/u.test(_t)) { if (_l) _l += ' '; continue; }
+                if (/^\s+$/u.test(_t)) {
+                  if (_l) _l += ' ';
+                  continue;
+                }
                 const _nx = _l ? _l + _t : _t;
-                if (_pc.measureText(_nx).width <= _piW || !_l) { _l = _nx; }
-                else { _n++; _l = _t; }
+                if (_pc.measureText(_nx).width <= _piW || !_l) {
+                  _l = _nx;
+                } else {
+                  _n++;
+                  _l = _t;
+                }
               }
               return _n + (_l ? 1 : 0);
             };
-            const _dt = _item.querySelector('.library-tree-interp-date')?.textContent?.trim() || '';
+            const _dt =
+              _item.querySelector('.library-tree-interp-date')?.textContent?.trim() || '';
             const _bt = _item.querySelector('p')?.textContent?.trim() || '';
             const _dH = _wrap(_dt, `400 9px ${fontFamily}`) * 11;
             const _bH = _wrap(_bt, `400 11px ${fontFamily}`) * 15.4;
@@ -21224,10 +21232,11 @@
           }
         }
 
-        const height = includeInterps && interpsSection && preItemsH > 0
-          ? Math.round(interpsOffsetY + preItemsH + 16)
-          : Math.max(1, Math.ceil(rect.height / cssZoom)) +
-            (includeInterps && (interpsSection || juxtaSection) ? INTERP_LABEL_CLEARANCE : 0);
+        const height =
+          includeInterps && interpsSection && preItemsH > 0
+            ? Math.round(interpsOffsetY + preItemsH + 16)
+            : Math.max(1, Math.ceil(rect.height / cssZoom)) +
+              (includeInterps && (interpsSection || juxtaSection) ? INTERP_LABEL_CLEARANCE : 0);
 
         // Restore DOM state
         card.style.minHeight = savedMinHeight;
@@ -22402,7 +22411,8 @@
               // Only restore a cached translation if it was made for the current target language.
               const savedTranslation =
                 savedEntry && savedEntry.lang === targetLang ? savedEntry.text : null;
-              if (savedEntry && savedEntry.lang !== targetLang) interpTranslatedState.delete(interpId);
+              if (savedEntry && savedEntry.lang !== targetLang)
+                interpTranslatedState.delete(interpId);
               let translated = savedTranslation != null;
               txtEl.textContent = translated ? savedTranslation : originalText;
               const translateBtn = document.createElement('button');
@@ -22472,22 +22482,22 @@
               const cached = librarySummaryCache.get(String(node.id));
               if (cached && cached.interpCount === cnt) {
                 renderSummaryClaims(cached.claims, summaryContainer, zh);
-                summaryBtn.textContent = zh ? '重新生成' : 'Regenerate';
+                summaryBtn.textContent = zh ? '重新感通' : 'Re-attune';
               } else {
-                summaryBtn.textContent = zh ? '总结解读规律' : 'Summarize interpretation patterns';
+                summaryBtn.textContent = zh ? '感通' : 'Attune';
               }
 
               summaryBtn.addEventListener('click', async () => {
                 if (summaryBtn.disabled) return;
                 summaryBtn.disabled = true;
-                summaryBtn.textContent = zh ? '生成中…' : 'Generating…';
+                summaryBtn.textContent = zh ? '感通中...' : 'Attuning...';
                 try {
                   const claims = await generateInterpretationSummary(word, definition, interps);
                   librarySummaryCache.set(String(node.id), { claims, interpCount: cnt });
                   saveSummaryCache();
                   renderSummaryClaims(claims, summaryContainer, zh);
                   window._sfxSummaryGenerated?.();
-                  summaryBtn.textContent = zh ? '重新生成' : 'Regenerate';
+                  summaryBtn.textContent = zh ? '重新感通' : 'Re-attune';
                   summaryBtn.disabled = false;
                   card.style.minHeight = '';
                   requestAnimationFrame(() => {
@@ -22495,7 +22505,7 @@
                     if (h) card.style.minHeight = `${h}px`;
                   });
                 } catch (_err) {
-                  summaryBtn.textContent = zh ? '生成失败，重试？' : 'Failed — retry?';
+                  summaryBtn.textContent = zh ? '感通失败，重试？' : 'Attuning failed...retry?';
                   summaryBtn.disabled = false;
                 }
               });
@@ -25010,7 +25020,10 @@
         window._sfxLibraryViewSwitch = async function () {
           if (!(await _sfxEnsureRunning())) return;
           const nodes = [];
-          const track = (...ns) => { nodes.push(...ns); return ns; };
+          const track = (...ns) => {
+            nodes.push(...ns);
+            return ns;
+          };
           const rev = new Tone.Reverb({ decay: 0.32 });
           rev.wet.value = 0.09;
           await rev.ready;
@@ -25026,7 +25039,12 @@
           track(bpf);
           const [noise, nenv, ng] = track(
             new Tone.Noise('pink'),
-            new Tone.AmplitudeEnvelope({ attack: 0.003, decay: 0.075, sustain: 0, release: 0.025 }),
+            new Tone.AmplitudeEnvelope({
+              attack: 0.003,
+              decay: 0.075,
+              sustain: 0,
+              release: 0.025,
+            }),
             new Tone.Gain(0.42),
           );
           noise.connect(nenv);
@@ -25051,7 +25069,10 @@
         window._sfxSummaryGenerated = async function () {
           if (!(await _sfxEnsureRunning())) return;
           const nodes = [];
-          const track = (...ns) => { nodes.push(...ns); return ns; };
+          const track = (...ns) => {
+            nodes.push(...ns);
+            return ns;
+          };
           const rev = new Tone.Reverb({ decay: 2.0 });
           rev.wet.value = 0.52 * 0.82;
           await rev.ready;
@@ -25064,7 +25085,11 @@
           vol.toDestination();
           track(rev, filt, vol);
           // Three voices stagger in, each gliding up a perfect fifth
-          [[1, 0, 0.38], [1.26, 0.09, 0.30], [1.587, 0.18, 0.22]].forEach(([startRatio, offset, gain], i) => {
+          [
+            [1, 0, 0.38],
+            [1.26, 0.09, 0.3],
+            [1.587, 0.18, 0.22],
+          ].forEach(([startRatio, offset, gain], i) => {
             const freqLo = 330 * startRatio;
             const freqHi = freqLo * 1.498;
             const t = now + offset;
@@ -25080,8 +25105,11 @@
             );
             osc.frequency.setValueAtTime(freqLo, t);
             osc.frequency.exponentialRampToValueAtTime(freqHi, t + dur * 0.7);
-            osc.connect(env); env.connect(g); g.connect(filt);
-            osc.start(t); env.triggerAttackRelease(dur, t);
+            osc.connect(env);
+            env.connect(g);
+            g.connect(filt);
+            osc.start(t);
+            env.triggerAttackRelease(dur, t);
           });
           // Airy descending-HPF pink noise (same texture as Eye sfx)
           const hpf = track(new Tone.Filter({ frequency: 4420, type: 'highpass' }))[0];
@@ -25090,11 +25118,19 @@
           hpf.connect(filt);
           const [noise, nenv, ng] = track(
             new Tone.Noise('pink'),
-            new Tone.AmplitudeEnvelope({ attack: dur * 0.15, decay: dur * 0.5, sustain: 0.08, release: dur * 0.35 }),
+            new Tone.AmplitudeEnvelope({
+              attack: dur * 0.15,
+              decay: dur * 0.5,
+              sustain: 0.08,
+              release: dur * 0.35,
+            }),
             new Tone.Gain(0.09),
           );
-          noise.connect(nenv); nenv.connect(ng); ng.connect(hpf);
-          noise.start(now); nenv.triggerAttackRelease(dur, now);
+          noise.connect(nenv);
+          nenv.connect(ng);
+          ng.connect(hpf);
+          noise.start(now);
+          nenv.triggerAttackRelease(dur, now);
           setTimeout(() => _dispose(nodes), 340 + 2.0 * 4200 + 1800);
         };
       })();
