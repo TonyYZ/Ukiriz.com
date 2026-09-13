@@ -905,8 +905,6 @@
       }
       .library-tree-interp-summary {
         margin-top: 6px;
-        background: rgba(53, 40, 168, 0.06);
-        border-radius: 5px;
         padding: 7px 9px;
         display: flex;
         flex-direction: column;
@@ -21094,7 +21092,7 @@
         return `${safeWord || 'word'}-card.png`;
       }
 
-      async function renderLibraryTreeCardToPngBlob(card, { includeInterps = false } = {}) {
+      async function renderLibraryTreeCardToPngBlob(card, { includeInterps = false, includeSummary = false, nodeId = null } = {}) {
         if (!card) return null;
 
         const interpsSection = card.querySelector('.library-tree-interps');
@@ -21188,6 +21186,7 @@
         // text and interp items. The toggle button provides this gap in the live DOM but
         // is hidden during PNG export, so we recreate it by shifting items down.
         const INTERP_LABEL_CLEARANCE = 40;
+        const SUMMARY_LABEL_CLEARANCE = 36;
         if (includeInterps && (interpsSection || juxtaSection)) {
           interpsOffsetY += INTERP_LABEL_CLEARANCE;
         }
@@ -21232,9 +21231,36 @@
           }
         }
 
+        let preSummaryH = 0;
+        if (includeSummary) {
+          const _sc = librarySummaryCache.get(String(nodeId));
+          if (_sc?.claims?.length) {
+            preSummaryH += SUMMARY_LABEL_CLEARANCE;
+            const _pc3 = document.createElement('canvas').getContext('2d');
+            const _sw = width - 32;
+            let _sfirst = true;
+            for (const { claim } of _sc.claims) {
+              _pc3.font = `italic 11px ${fontFamily}`;
+              const _toks = String(claim || '').match(/[　-鿿＀-￯]|[^\s]+|\s+/gu) || [];
+              let _l = '', _n = 0;
+              for (const _t of _toks) {
+                if (/^\s+$/u.test(_t)) { if (_l) _l += ' '; continue; }
+                const _nx = _l ? _l + _t : _t;
+                if (_pc3.measureText(_nx).width <= _sw || !_l) { _l = _nx; }
+                else { _n++; _l = _t; }
+              }
+              _n += _l ? 1 : 0;
+              if (!_sfirst) preSummaryH += 8;
+              preSummaryH += _n * 15;
+              _sfirst = false;
+            }
+            preSummaryH += 8;
+          }
+        }
+
         const height =
           includeInterps && interpsSection && preItemsH > 0
-            ? Math.round(interpsOffsetY + preItemsH + 16)
+            ? Math.round(interpsOffsetY + preItemsH + preSummaryH + 16)
             : Math.max(1, Math.ceil(rect.height / cssZoom)) +
               (includeInterps && (interpsSection || juxtaSection) ? INTERP_LABEL_CLEARANCE : 0);
 
@@ -21367,6 +21393,7 @@
           drawWrappedText(line, `400 12px ${fontFamily}`, 'rgba(0,0,0,0.82)', 15.5, 5),
         );
 
+        let afterInterpsY = y + 8;
         if (includeInterps && interpsSection) {
           const interpItems = Array.from(
             interpsSection.querySelectorAll('.library-tree-interp-item'),
@@ -21432,6 +21459,7 @@
               }
               iy += itemH + 4;
             }
+            afterInterpsY = iy;
           }
         }
 
@@ -21496,6 +21524,40 @@
                 }
               }
               iy += itemH + 4;
+            }
+            afterInterpsY = iy;
+          }
+        }
+
+        if (includeSummary) {
+          const _sc = librarySummaryCache.get(String(nodeId));
+          if (_sc?.claims?.length) {
+            const sumSepY = afterInterpsY + 8;
+            ctx.strokeStyle = 'rgba(0,0,0,0.10)';
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.moveTo(14, sumSepY);
+            ctx.lineTo(width - 14, sumSepY);
+            ctx.stroke();
+            const sumLabel = currentLang === 'zh' ? '感通' : 'Attuned';
+            ctx.font = `400 9px ${fontFamily}`;
+            ctx.fillStyle = 'rgba(0,0,0,0.36)';
+            ctx.textBaseline = 'top';
+            ctx.fillText(sumLabel, 14, sumSepY + 4);
+            let sy = sumSepY + SUMMARY_LABEL_CLEARANCE - 8;
+            const claimFont = `italic 11px ${fontFamily}`;
+            let _sfirst = true;
+            for (const { claim } of _sc.claims) {
+              if (!_sfirst) sy += 8;
+              const claimLines = wrapCanvasText(claim, width - 32, claimFont);
+              ctx.font = claimFont;
+              ctx.fillStyle = 'rgba(0,0,0,0.72)';
+              ctx.textBaseline = 'top';
+              for (const l of claimLines) {
+                ctx.fillText(l, 16, sy);
+                sy += 15;
+              }
+              _sfirst = false;
             }
           }
         }
@@ -21562,7 +21624,7 @@
         const shareWithInterpsButton = document.createElement('button');
         shareWithInterpsButton.type = 'button';
         shareWithInterpsButton.textContent =
-          currentLang === 'zh' ? '下载图片（含解读）' : 'Download with interpretations';
+          currentLang === 'zh' ? '下载图片（含感通解读）' : 'Download with attuned interpretations';
         shareWithInterpsButton.addEventListener('click', async (e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -21570,6 +21632,8 @@
           hideLibraryTreeContextMenu();
           const blob = await renderLibraryTreeCardToPngBlob(target?.card || null, {
             includeInterps: true,
+            includeSummary: true,
+            nodeId: target?.nodeId,
           });
           if (!blob) return;
           const filename = getLibraryTreeCardShareFilename(target?.card || null);
@@ -21609,7 +21673,7 @@
           buttons[1].textContent = currentLang === 'zh' ? '下载图片' : 'Download image';
         if (buttons[2]) {
           buttons[2].textContent =
-            currentLang === 'zh' ? '下载图片（含解读）' : 'Download with interpretations';
+            currentLang === 'zh' ? '下载图片（含感通解读）' : 'Download with attuned interpretations';
           const hasInterps = !!(
             card &&
             (card.querySelector('.library-tree-interp-item') ||
