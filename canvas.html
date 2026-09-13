@@ -2184,6 +2184,7 @@
           line-height: 1.55;
         }
 
+
         #home-content p,
         #home-content li {
           max-width: 34em;
@@ -2983,7 +2984,7 @@
           homeHTML: `
                   <h1 style="text-align:center;">Ítí 岛</h1>
 
-                  <p>
+                  <p style="margin-top:5rem;">
                   欢迎！<br>
                   你有没有想过：占卜为什么能“看透事物的奥秘”？<br>
                   甲骨的裂纹、星宿的排列、纸牌的花色、硬币的正反……这些现象看似随机，占卜师却能从中发现丰富的意蕴。
@@ -21092,7 +21093,10 @@
         return `${safeWord || 'word'}-card.png`;
       }
 
-      async function renderLibraryTreeCardToPngBlob(card, { includeInterps = false, includeSummary = false, nodeId = null } = {}) {
+      async function renderLibraryTreeCardToPngBlob(
+        card,
+        { includeInterps = false, includeSummary = false, nodeId = null } = {},
+      ) {
         if (!card) return null;
 
         const interpsSection = card.querySelector('.library-tree-interps');
@@ -21242,12 +21246,20 @@
             for (const { claim } of _sc.claims) {
               _pc3.font = `italic 11px ${fontFamily}`;
               const _toks = String(claim || '').match(/[　-鿿＀-￯]|[^\s]+|\s+/gu) || [];
-              let _l = '', _n = 0;
+              let _l = '',
+                _n = 0;
               for (const _t of _toks) {
-                if (/^\s+$/u.test(_t)) { if (_l) _l += ' '; continue; }
+                if (/^\s+$/u.test(_t)) {
+                  if (_l) _l += ' ';
+                  continue;
+                }
                 const _nx = _l ? _l + _t : _t;
-                if (_pc3.measureText(_nx).width <= _sw || !_l) { _l = _nx; }
-                else { _n++; _l = _t; }
+                if (_pc3.measureText(_nx).width <= _sw || !_l) {
+                  _l = _nx;
+                } else {
+                  _n++;
+                  _l = _t;
+                }
               }
               _n += _l ? 1 : 0;
               if (!_sfirst) preSummaryH += 8;
@@ -21624,7 +21636,9 @@
         const shareWithInterpsButton = document.createElement('button');
         shareWithInterpsButton.type = 'button';
         shareWithInterpsButton.textContent =
-          currentLang === 'zh' ? '下载图片（含感通解读）' : 'Download with attuned interpretations';
+          currentLang === 'zh'
+            ? '下载图片（含感通解读）'
+            : 'Download with attuned interpretations';
         shareWithInterpsButton.addEventListener('click', async (e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -21673,7 +21687,9 @@
           buttons[1].textContent = currentLang === 'zh' ? '下载图片' : 'Download image';
         if (buttons[2]) {
           buttons[2].textContent =
-            currentLang === 'zh' ? '下载图片（含感通解读）' : 'Download with attuned interpretations';
+            currentLang === 'zh'
+              ? '下载图片（含感通解读）'
+              : 'Download with attuned interpretations';
           const hasInterps = !!(
             card &&
             (card.querySelector('.library-tree-interp-item') ||
