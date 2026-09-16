@@ -311,7 +311,7 @@
         border: 1px solid var(--sky-border);
         color: inherit;
         box-shadow:
-          var(--win-sx, 0px) var(--win-sy, 22px) 52px var(--sky-shadow),
+          var(--win-sx, 0px) var(--win-sy, 36px) 18px rgba(0, 0, 0, 0.22),
           inset 0 1px 0 rgba(255, 255, 255, 0.58);
         cursor: default;
         user-select: none;
@@ -355,7 +355,7 @@
       .window.dragging {
         cursor: grabbing;
         box-shadow:
-          var(--win-sx, 0px) var(--win-sy, 28px) 60px hsla(var(--window-hue), 40%, 20%, 0.28),
+          var(--win-sx, 0px) var(--win-sy, 36px) 18px rgba(0, 0, 0, 0.28),
           inset 0 1px 0 rgba(255, 255, 255, 0.62);
       }
 
@@ -749,7 +749,7 @@
         const dist = Math.sqrt(cx * cx + cy * cy);
         const nx = dist > 1 ? cx / dist : 0;
         const ny = dist > 1 ? cy / dist : 1;
-        const off = 22;
+        const off = 36;
         win.style.setProperty('--win-sx', `${(nx * off).toFixed(1)}px`);
         win.style.setProperty('--win-sy', `${(ny * off).toFixed(1)}px`);
         // Gradient angle: direction from viewport origin toward window center
