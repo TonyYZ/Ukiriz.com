@@ -12256,22 +12256,25 @@
               const _imgSyms = [...grp].filter((s) => s?.isConnected && s.querySelector?.('svg'));
               if (_imgSyms.length) {
                 const _ir = 49.92 / (symbolWidth * symbolScale);
+                // BCR values are in viewport pixels (= CSS px × chatCanvasZoom).
+                // Divide by zoom to work in CSS pixel space throughout.
+                const _cz = chatCanvasZoom || 1;
                 let _lx = Infinity,
                   _rx = -Infinity,
                   _ity = Infinity,
                   _iby = -Infinity;
                 for (const s of _imgSyms) {
                   const r = s.getBoundingClientRect();
-                  if (r.left < _lx) _lx = r.left;
-                  if (r.right > _rx) _rx = r.right;
-                  if (r.top < _ity) _ity = r.top;
-                  if (r.bottom > _iby) _iby = r.bottom;
+                  if (r.left / _cz < _lx) _lx = r.left / _cz;
+                  if (r.right / _cz > _rx) _rx = r.right / _cz;
+                  if (r.top / _cz < _ity) _ity = r.top / _cz;
+                  if (r.bottom / _cz > _iby) _iby = r.bottom / _cz;
                   if (s.dot) {
                     const dr = s.dot.getBoundingClientRect();
-                    if (dr.left < _lx) _lx = dr.left;
-                    if (dr.top < _ity) _ity = dr.top;
-                    if (dr.left + 10 / _ir > _rx) _rx = dr.left + 10 / _ir;
-                    if (dr.top + 10 / _ir > _iby) _iby = dr.top + 10 / _ir;
+                    if (dr.left / _cz < _lx) _lx = dr.left / _cz;
+                    if (dr.top / _cz < _ity) _ity = dr.top / _cz;
+                    if (dr.left / _cz + 10 / _ir > _rx) _rx = dr.left / _cz + 10 / _ir;
+                    if (dr.top / _cz + 10 / _ir > _iby) _iby = dr.top / _cz + 10 / _ir;
                   }
                 }
                 // SVG filter for symbols that rely on CSS drop-shadow for their black outline
@@ -12289,39 +12292,31 @@
                 let _svgi = '';
                 for (const s of _imgSyms) {
                   const r = s.getBoundingClientRect();
-                  let _stx, _sty;
-                  switch (s.angle) {
-                    case 0:
-                      _stx = r.left;
-                      _sty = r.top;
-                      break;
-                    case 90:
-                      _stx = r.right;
-                      _sty = r.top;
-                      break;
-                    case 180:
-                      _stx = r.right;
-                      _sty = r.bottom;
-                      break;
-                    case 270:
-                      _stx = r.left;
-                      _sty = r.bottom;
-                      break;
-                    default:
-                      _stx = r.left;
-                      _sty = r.top;
-                  }
+                  // Use element center for correct CSS transform-origin: 50% 50% matching.
+                  // elemId=0 (Kun) uses scaleY(-1) at 180° and scaleX(-1) rotate(90deg) at 270°
+                  // instead of a plain rotate — handled as special cases below.
+                  const _cx = ((r.left + r.right) / (2 * _cz) - _lx) * _ir;
+                  const _cy = ((r.top + r.bottom) / (2 * _cz) - _ity) * _ir;
+                  const _halfW = (symbolWidth * symbolScale * _ir) / 2;
+                  const _halfH = (symbolHeight * symbolScale * _ir) / 2;
                   const _flt = s.classList.contains('white-fill-outline')
                     ? ' filter="url(#wo)"'
                     : '';
-                  _svgi +=
-                    `<g${_flt} transform="translate(${(_stx - _lx) * _ir},${(_sty - _ity) * _ir}) rotate(${s.angle})">` +
-                    s.querySelector('svg').innerHTML +
-                    '</g>';
+                  let _gt;
+                  if (s.elemId === 0 && s.angle === 180) {
+                    // CSS: scaleY(-1) around center (vertical flip)
+                    _gt = `translate(${_cx},${_cy}) scale(1,-1) translate(${-_halfW},${-_halfH})`;
+                  } else if (s.elemId === 0 && s.angle === 270) {
+                    // CSS: scaleX(-1) rotate(90deg) around center
+                    _gt = `translate(${_cx},${_cy}) scale(-1,1) rotate(90) translate(${-_halfW},${-_halfH})`;
+                  } else {
+                    _gt = `translate(${_cx},${_cy}) rotate(${s.angle}) translate(${-_halfW},${-_halfH})`;
+                  }
+                  _svgi += `<g${_flt} transform="${_gt}">` + s.querySelector('svg').innerHTML + '</g>';
                   if (s.dot) {
                     const dr = s.dot.getBoundingClientRect();
                     _svgi +=
-                      `<g transform="translate(${(dr.left - _lx) * _ir},${(dr.top - _ity) * _ir})">` +
+                      `<g transform="translate(${(dr.left / _cz - _lx) * _ir},${(dr.top / _cz - _ity) * _ir})">` +
                       dotDataMini +
                       '</g>';
                   }
@@ -21116,11 +21111,6 @@
         const juxtaSection = !interpsSection ? card.querySelector('.expr-juxtapose') : null;
         const savedJuxtaDisplay = juxtaSection ? juxtaSection.style.display : null;
 
-        // Spawned expression cards live inside the chat canvas which has its own CSS zoom
-        const cssZoom = card.classList.contains('spawned-expression-meta')
-          ? chatCanvasZoom || 1
-          : libraryContentZoom || 1;
-
         // updateSpawnedExpressionMetaCardsPosition sets display:'block' to show/hide cards,
         // overriding the CSS display:flex. Restore flex during measurement so the image and
         // text columns sit side-by-side rather than stacking vertically.
@@ -21158,13 +21148,6 @@
           card.prepend(_tempExprImg);
         }
 
-        // Temporarily set the canvas zoom to 1 so getBoundingClientRect() returns
-        // true CSS pixel values — no cssZoom division is needed for any measurement.
-        const _zoomCanvas = card.classList.contains('spawned-expression-meta')
-          ? document.getElementById('chatCanvas') : null;
-        const _savedCanvasZoom = _zoomCanvas ? _zoomCanvas.style.zoom : null;
-        if (_zoomCanvas) _zoomCanvas.style.zoom = '1';
-
         // Always hide interps first to measure content-only height (for image centering)
         // Also clear minHeight so the measurement reflects true text height, not the
         // inflated value set when the user collapses interps.
@@ -21173,29 +21156,24 @@
         if (interpsSection) interpsSection.style.display = 'none';
         if (interpsToggle) interpsToggle.style.display = 'none';
         if (juxtaSection) juxtaSection.style.display = 'none';
-        const contentRect = card.getBoundingClientRect();
-        const contentHeight = Math.max(1, Math.ceil(contentRect.height));
+        // offsetWidth/offsetHeight return the element's own CSS pixel dimensions,
+        // unaffected by ancestor CSS zoom — giving zoom-invariant measurements.
+        const contentHeight = Math.max(1, card.offsetHeight);
 
         // If including interps, show the section and measure full height
         let interpsOffsetY = contentHeight + 18;
         if (includeInterps && interpsSection) {
           interpsSection.style.display = 'flex';
-          const sectionRect = interpsSection.getBoundingClientRect();
           const firstItem = interpsSection.querySelector('.library-tree-interp-item');
-          const firstItemRect = firstItem?.getBoundingClientRect();
-          if (firstItemRect) {
-            interpsOffsetY = Math.round(firstItemRect.top - contentRect.top);
+          if (firstItem) {
+            interpsOffsetY = Math.round(firstItem.offsetTop);
           } else {
-            interpsOffsetY = Math.round(sectionRect.top - contentRect.top) + 18;
+            interpsOffsetY = Math.round(interpsSection.offsetTop) + 18;
           }
         } else if (includeInterps && juxtaSection) {
           juxtaSection.style.display = savedJuxtaDisplay ?? '';
         }
-        const rect =
-          includeInterps && (interpsSection || juxtaSection)
-            ? card.getBoundingClientRect()
-            : contentRect;
-        const width = Math.max(1, Math.ceil(rect.width));
+        const width = Math.max(1, card.offsetWidth);
 
         // Compute fontFamily early — needed for item height pre-measurement below.
         const fontFamily =
@@ -21289,11 +21267,10 @@
         const height =
           includeInterps && interpsSection && preItemsH > 0
             ? Math.round(interpsOffsetY + preItemsH + preSummaryH + 16)
-            : Math.max(1, Math.ceil(rect.height)) +
+            : Math.max(1, card.offsetHeight) +
               (includeInterps && (interpsSection || juxtaSection) ? INTERP_LABEL_CLEARANCE : 0);
 
-        // Restore DOM state (including canvas zoom — must happen before any async await)
-        if (_zoomCanvas && _savedCanvasZoom !== null) _zoomCanvas.style.zoom = _savedCanvasZoom;
+        // Restore DOM state
         card.style.minHeight = savedMinHeight;
         if (interpsSection) interpsSection.style.display = savedSectionDisplay;
         if (interpsToggle) interpsToggle.style.display = savedToggleDisplay;
