@@ -2639,11 +2639,19 @@
       body.playground-mode #craftMinimap {
         display: none !important;
       }
+      body.playground-mode #chat-question {
+        opacity: 0;
+        transition: opacity 400ms ease 800ms;
+      }
+      body.playground-mode.pg-chat-ready #chat-question {
+        opacity: 1;
+      }
       body.playground-mode .content {
         margin-right: 0 !important;
         padding: 0 !important;
       }
-      body.playground-mode #craftCanvas {
+      body.playground-mode #craftCanvas,
+      body.playground-mode #chatCanvas {
         background-image: none !important;
         background-color: var(--pg-bg, #f4f4f9);
       }
@@ -25223,19 +25231,39 @@
     </div>
     <script>
       (function () {
-        if (!new URLSearchParams(location.search).has('playground')) return;
+        const params = new URLSearchParams(location.search);
+        const hasCraft = params.has('playground') && params.get('playground') !== 'chat';
+        const hasChat = params.has('playground-chat') || params.get('playground') === 'chat';
+        if (!hasCraft && !hasChat) return;
+        const isChat = hasChat;
+        const pgTabIndex = isChat ? 4 : 1;
+        const canvasId = isChat ? 'chatCanvas' : 'craftCanvas';
         document.body.classList.add('playground-mode');
-        // Switch to craft canvas tab and lock navigation there
+        // Switch to the target tab and lock navigation there
         window.addEventListener('load', function () {
-          window.showTab?.(1);
+          if (isChat) {
+            // showTab(4) early-returns unless tab-header4 has display:block,
+            // which showChatTabForIsland() normally sets. Force it here.
+            const savedIslandId = localStorage.getItem('lastIslandId');
+            if (savedIslandId && typeof showChatTabForIsland === 'function') {
+              showChatTabForIsland(savedIslandId);
+            } else {
+              const h = document.getElementById('tab-header4');
+              if (h) h.style.display = 'block';
+            }
+          }
+          window.showTab?.(pgTabIndex);
           const orig = window.showTab;
           window.showTab = function (i) {
-            if (i === 1) orig(1);
+            if (i === pgTabIndex) orig(pgTabIndex);
           };
+          if (isChat) {
+            setTimeout(() => document.body.classList.add('pg-chat-ready'), 1200);
+          }
         });
         // Wire color picker to canvas background
         const input = document.getElementById('pg-color-input');
-        const canvas = document.getElementById('craftCanvas');
+        const canvas = document.getElementById(canvasId);
         const saved = localStorage.getItem('pg-bg');
         if (saved) {
           input.value = saved;
