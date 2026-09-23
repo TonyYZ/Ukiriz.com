@@ -1597,11 +1597,11 @@
       }
 
       .library-tree-context-menu.open {
-        display: block;
+        display: inline-flex;
+        flex-direction: column;
       }
 
       .library-tree-context-menu button {
-        width: 100%;
         border: none;
         border-radius: 8px;
         background: transparent;
@@ -1610,6 +1610,7 @@
         font: inherit;
         color: #111;
         cursor: pointer;
+        white-space: nowrap;
       }
 
       .library-tree-context-menu button:hover {
@@ -21157,6 +21158,13 @@
           card.prepend(_tempExprImg);
         }
 
+        // Temporarily set the canvas zoom to 1 so getBoundingClientRect() returns
+        // true CSS pixel values — no cssZoom division is needed for any measurement.
+        const _zoomCanvas = card.classList.contains('spawned-expression-meta')
+          ? document.getElementById('chatCanvas') : null;
+        const _savedCanvasZoom = _zoomCanvas ? _zoomCanvas.style.zoom : null;
+        if (_zoomCanvas) _zoomCanvas.style.zoom = '1';
+
         // Always hide interps first to measure content-only height (for image centering)
         // Also clear minHeight so the measurement reflects true text height, not the
         // inflated value set when the user collapses interps.
@@ -21166,7 +21174,7 @@
         if (interpsToggle) interpsToggle.style.display = 'none';
         if (juxtaSection) juxtaSection.style.display = 'none';
         const contentRect = card.getBoundingClientRect();
-        const contentHeight = Math.max(1, Math.ceil(contentRect.height / cssZoom));
+        const contentHeight = Math.max(1, Math.ceil(contentRect.height));
 
         // If including interps, show the section and measure full height
         let interpsOffsetY = contentHeight + 18;
@@ -21176,9 +21184,9 @@
           const firstItem = interpsSection.querySelector('.library-tree-interp-item');
           const firstItemRect = firstItem?.getBoundingClientRect();
           if (firstItemRect) {
-            interpsOffsetY = Math.round((firstItemRect.top - contentRect.top) / cssZoom);
+            interpsOffsetY = Math.round(firstItemRect.top - contentRect.top);
           } else {
-            interpsOffsetY = Math.round((sectionRect.top - contentRect.top) / cssZoom) + 18;
+            interpsOffsetY = Math.round(sectionRect.top - contentRect.top) + 18;
           }
         } else if (includeInterps && juxtaSection) {
           juxtaSection.style.display = savedJuxtaDisplay ?? '';
@@ -21187,7 +21195,7 @@
           includeInterps && (interpsSection || juxtaSection)
             ? card.getBoundingClientRect()
             : contentRect;
-        const width = Math.max(1, Math.ceil(rect.width / cssZoom));
+        const width = Math.max(1, Math.ceil(rect.width));
 
         // Compute fontFamily early — needed for item height pre-measurement below.
         const fontFamily =
@@ -21281,10 +21289,11 @@
         const height =
           includeInterps && interpsSection && preItemsH > 0
             ? Math.round(interpsOffsetY + preItemsH + preSummaryH + 16)
-            : Math.max(1, Math.ceil(rect.height / cssZoom)) +
+            : Math.max(1, Math.ceil(rect.height)) +
               (includeInterps && (interpsSection || juxtaSection) ? INTERP_LABEL_CLEARANCE : 0);
 
-        // Restore DOM state
+        // Restore DOM state (including canvas zoom — must happen before any async await)
+        if (_zoomCanvas && _savedCanvasZoom !== null) _zoomCanvas.style.zoom = _savedCanvasZoom;
         card.style.minHeight = savedMinHeight;
         if (interpsSection) interpsSection.style.display = savedSectionDisplay;
         if (interpsToggle) interpsToggle.style.display = savedToggleDisplay;
@@ -21618,7 +21627,7 @@
 
         const shareButton = document.createElement('button');
         shareButton.type = 'button';
-        shareButton.textContent = currentLang === 'zh' ? '下载图片' : 'Download image';
+        shareButton.textContent = currentLang === 'zh' ? '导出闪卡' : 'Export flashcard';
         shareButton.addEventListener('click', async (e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -21645,8 +21654,8 @@
         shareWithInterpsButton.type = 'button';
         shareWithInterpsButton.textContent =
           currentLang === 'zh'
-            ? '下载图片（含感通解读）'
-            : 'Download with attuned interpretations';
+            ? '导出闪卡（含感通解读）'
+            : 'Export with interpretations';
         shareWithInterpsButton.addEventListener('click', async (e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -21692,12 +21701,12 @@
         const buttons = menu.querySelectorAll('button');
         if (buttons[0]) buttons[0].textContent = currentLang === 'zh' ? '复制' : 'Copy';
         if (buttons[1])
-          buttons[1].textContent = currentLang === 'zh' ? '下载图片' : 'Download image';
+          buttons[1].textContent = currentLang === 'zh' ? '导出闪卡' : 'Export flashcard';
         if (buttons[2]) {
           buttons[2].textContent =
             currentLang === 'zh'
-              ? '下载图片（含感通解读）'
-              : 'Download with attuned interpretations';
+              ? '导出闪卡（含感通解读）'
+              : 'Export with interpretations';
           const hasInterps = !!(
             card &&
             (card.querySelector('.library-tree-interp-item') ||
