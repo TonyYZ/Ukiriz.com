@@ -75,6 +75,8 @@
 
       body {
         --qi-hue: 48;
+        --sun-x: 8%;
+        --sun-y: 4%;
         margin: 0;
         padding: 2rem;
         height: 100vh;
@@ -109,7 +111,7 @@
         z-index: 0;
         opacity: 0.92;
         background:
-          radial-gradient(circle at 8% 4%, var(--sky-spot1), transparent 34%),
+          radial-gradient(circle at var(--sun-x) var(--sun-y), var(--sky-spot1), transparent 34%),
           radial-gradient(circle at 38% 22%, var(--sky-spot2), transparent 38%),
           linear-gradient(135deg, var(--sky-g0) 0%, var(--sky-g1) 46%, var(--sky-g2) 100%);
         transform: translateZ(0);
@@ -448,7 +450,7 @@
         body::before {
           inset: -8%;
           background:
-            radial-gradient(circle at 10% 3%, var(--sky-spot1), transparent 38%),
+            radial-gradient(circle at var(--sun-x) var(--sun-y), var(--sky-spot1), transparent 38%),
             linear-gradient(145deg, var(--sky-g0) 0%, var(--sky-g1) 52%, var(--sky-g2) 100%);
         }
 
@@ -704,6 +706,10 @@
       }
 
       const placedRects = [];
+      const buoyWindows = new Set();
+      const buoyState = new WeakMap();
+      // Sun position in body::before percentage space — kept in sync by applySkyTheme.
+      let _sunXPct = 8, _sunYPct = 4;
 
       projects.forEach((project) => {
         const win = document.createElement('div');
@@ -724,7 +730,7 @@
           win.style.transition = 'opacity 180ms ease, transform 180ms ease';
           win.style.opacity = '0';
           win.style.transform = 'scale(0.92)';
-          setTimeout(() => win.remove(), 200);
+          setTimeout(() => { buoyWindows.delete(win); win.remove(); }, 200);
         });
 
         makeDraggable(win);
@@ -739,22 +745,160 @@
         win.style.top = `${pos.y}px`;
         win.style.visibility = 'visible';
         updateWindowShadow(win);
+        initBuoy(win);
+        buoyWindows.add(win);
         placedRects.push(getRectAt(pos.x, pos.y, winW, winH, 12));
       });
+
+      // ── Buoy physics ──────────────────────────────────────────────────────────
+      // Slowly evolving 2D flow field — gives gentle, non-repeating drift.
+      function buoyFlow(x, y, t) {
+        // Spatial base: ~700 px per cycle — shows 1-2 full cycles across the viewport.
+        // Temporal: each harmonic has its own phase driven by two incommensurate
+        // oscillators (never synchronise, never exactly repeat), so the field wanders
+        // quasi-randomly through all directions at a natural, unhurried pace.
+        const sx = x * 0.009, sy = y * 0.009;
+        const p1 = sx * 0.7  + sy       + Math.sin(t * 0.031) * 5.1 + Math.sin(t * 0.0071) * 3.3;
+        const p2 = sx * 1.6  - sy * 0.9 + Math.sin(t * 0.019) * 4.7 + Math.sin(t * 0.0413) * 2.8;
+        const p3 =-sx * 0.5  + sy * 2.0 + Math.sin(t * 0.023) * 5.9 + Math.sin(t * 0.0131) * 2.2;
+        const p4 = sx        + sy * 0.8 + Math.sin(t * 0.027) * 4.9 + Math.sin(t * 0.0091) * 3.6;
+        const p5 =-sx * 0.8  + sy * 1.5 + Math.sin(t * 0.017) * 5.4 + Math.sin(t * 0.0373) * 2.1;
+        const p6 = sx * 2.0  + sy * 0.4 + Math.sin(t * 0.043) * 4.2 + Math.sin(t * 0.0113) * 3.1;
+        return {
+          vx: (Math.sin(p1) + 0.65 * Math.sin(p2) + 0.35 * Math.sin(p3)) * 3.5,
+          vy: (Math.cos(p4) + 0.65 * Math.cos(p5) + 0.35 * Math.cos(p6)) * 3.5,
+        };
+      }
+
+      function initBuoy(win) {
+        buoyState.set(win, {
+          x: parseFloat(win.style.left) || 0,
+          y: parseFloat(win.style.top)  || 0,
+          vx: 0,
+          vy: 0,
+          friction: 1.2 + Math.random() * 1.0,
+        });
+      }
+
+      // Flow-field canvas overlay
+      const _fieldCanvas = (() => {
+        const c = document.createElement('canvas');
+        c.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;';
+        document.body.appendChild(c);
+        const resize = () => { c.width = window.innerWidth; c.height = window.innerHeight; };
+        resize();
+        window.addEventListener('resize', resize);
+        return c;
+      })();
+
+      function _drawFlowField(tSec) {
+        const ctx = _fieldCanvas.getContext('2d');
+        ctx.clearRect(0, 0, _fieldCanvas.width, _fieldCanvas.height);
+
+        // Negate the current background colour so arrows always contrast it.
+        const bgRaw = getComputedStyle(document.body).backgroundColor;
+        const cm = bgRaw.match(/\d+/g);
+        const nr = cm ? 255 - +cm[0] : 100;
+        const ng = cm ? 255 - +cm[1] : 160;
+        const nb = cm ? 255 - +cm[2] : 220;
+
+        const step = 72;
+        const halfStep = step * 0.38;
+        for (let gx = step / 2; gx < _fieldCanvas.width; gx += step) {
+          for (let gy = step / 2; gy < _fieldCanvas.height; gy += step) {
+            const f = buoyFlow(gx, gy, tSec);
+            const len = Math.hypot(f.vx, f.vy);
+            if (len < 0.01) continue;
+            const nx = f.vx / len, ny = f.vy / len;
+            const dl = Math.min(len * 2.5, halfStep);
+            const sx = gx - nx * dl * 0.5, sy = gy - ny * dl * 0.5;
+            const ex = gx + nx * dl * 0.5, ey = gy + ny * dl * 0.5;
+            // Line
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(ex, ey);
+            ctx.strokeStyle = `rgba(${nr},${ng},${nb},0.32)`;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            // Arrowhead dot
+            ctx.beginPath();
+            ctx.arc(ex, ey, 1.8, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(${nr},${ng},${nb},0.55)`;
+            ctx.fill();
+          }
+        }
+      }
+
+      let _buoyPrevT = null;
+      (function startBuoyLoop() {
+        function loop(t) {
+          const dt = _buoyPrevT != null ? Math.min((t - _buoyPrevT) / 1000, 0.05) : 0.016;
+          _buoyPrevT = t;
+          const tSec = t / 1000;
+          _drawFlowField(tSec);
+          for (const win of buoyWindows) {
+            if (!document.contains(win)) { buoyWindows.delete(win); continue; }
+            if (win.classList.contains('dragging')) continue;
+            const s = buoyState.get(win);
+            if (!s) continue;
+
+            // Flow field accelerates window
+            const f = buoyFlow(s.x, s.y, tSec);
+            s.vx += f.vx * dt;
+            s.vy += f.vy * dt;
+
+            // Exponential friction (per-window rate)
+            const damp = Math.exp(-s.friction * dt);
+            s.vx *= damp;
+            s.vy *= damp;
+
+            // Speed cap
+            const spd = Math.hypot(s.vx, s.vy);
+            if (spd > 400) { s.vx = s.vx / spd * 400; s.vy = s.vy / spd * 400; }
+
+            // Soft-wall repulsion near viewport edges
+            const winW = win.offsetWidth || 250, winH = win.offsetHeight || 200;
+            const pad = 24, k = 15;
+            const maxX = window.innerWidth  - winW - pad;
+            const maxY = window.innerHeight - winH - pad;
+            if (s.x < pad)   s.vx += (pad  - s.x)  * k * dt;
+            if (s.x > maxX)  s.vx -= (s.x  - maxX) * k * dt;
+            if (s.y < pad)   s.vy += (pad  - s.y)   * k * dt;
+            if (s.y > maxY)  s.vy -= (s.y  - maxY)  * k * dt;
+
+            // Integrate position
+            s.x += s.vx * dt;
+            s.y += s.vy * dt;
+
+            win.style.left = s.x.toFixed(1) + 'px';
+            win.style.top  = s.y.toFixed(1) + 'px';
+
+            win.style.transform = '';
+            updateWindowShadow(win);
+          }
+          requestAnimationFrame(loop);
+        }
+        requestAnimationFrame(loop);
+      })();
 
       function updateWindowShadow(win) {
         const rect = win.getBoundingClientRect();
         const cx = rect.left + rect.width / 2;
         const cy = rect.top + rect.height / 2;
-        const dist = Math.sqrt(cx * cx + cy * cy);
-        const nx = dist > 1 ? cx / dist : 0;
-        const ny = dist > 1 ? cy / dist : 1;
+        // Convert sun percentage (body::before space, inset: -18%) to viewport pixels.
+        const IF = 0.18, scale = 1 + 2 * IF;
+        const sunVpX = (-IF + _sunXPct / 100 * scale) * window.innerWidth;
+        const sunVpY = (-IF + _sunYPct / 100 * scale) * window.innerHeight;
+        // Shadow falls in the direction from the sun toward the window.
+        const dx = cx - sunVpX, dy = cy - sunVpY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const nx = dist > 1 ? dx / dist : 0;
+        const ny = dist > 1 ? dy / dist : 1;
         const off = 36;
         win.style.setProperty('--win-sx', `${(nx * off).toFixed(1)}px`);
         win.style.setProperty('--win-sy', `${(ny * off).toFixed(1)}px`);
-        // Gradient angle: direction from viewport origin toward window center
-        // atan2(cx, -cy) gives CSS clockwise-from-top angle for vector (cx, cy)
-        const angle = dist > 10 ? Math.atan2(cx, -cy) * 180 / Math.PI : 148;
+        // Glass gradient flows sun→window; bright face (0%) faces the sun.
+        const angle = dist > 10 ? Math.atan2(dx, -dy) * 180 / Math.PI : 148;
         win.style.setProperty('--win-ga', `${angle.toFixed(1)}deg`);
       }
 
@@ -770,6 +914,7 @@
         let baseTop = 0;
         let lastX = 0;
         let lastY = 0;
+        const velBuf = [];
         let pendingQiEvent = null;
         let qiFrame = 0;
         let lastTrailAt = 0;
@@ -881,6 +1026,8 @@
             dragLeft = e.clientX - offsetX;
             dragTop = e.clientY - offsetY;
             el.style.transform = `translate3d(${dragLeft - baseLeft}px, ${dragTop - baseTop}px, 0)`;
+            velBuf.push({ x: dragLeft, y: dragTop, t: performance.now() });
+            if (velBuf.length > 12) velBuf.shift();
             updateWindowShadow(el);
             leaveQiTrail(e);
             scheduleQiField(e);
@@ -894,6 +1041,20 @@
             el.style.top = `${dragTop}px`;
             el.style.transform = '';
             updateWindowShadow(el);
+            // Feed drag velocity into buoy state
+            const s = buoyState.get(el);
+            if (s) {
+              s.x = dragLeft;
+              s.y = dragTop;
+              const now = performance.now();
+              const recent = velBuf.filter(p => now - p.t < 100);
+              if (recent.length >= 2) {
+                const a = recent[0], b = recent[recent.length - 1];
+                const dtMs = b.t - a.t;
+                if (dtMs > 4) { s.vx = (b.x - a.x) / (dtMs / 1000); s.vy = (b.y - a.y) / (dtMs / 1000); }
+              }
+              velBuf.length = 0;
+            }
           }
           isDragging = false;
           pendingQiEvent = null;
@@ -1205,8 +1366,29 @@
           const spot1 = lighten(skyG0, 0.28);
           const spot2 = lighten(skyG1, 0.12);
 
+          // Sun arc: rises at left horizon (6 AM), peaks at top-centre (noon), sets at right (6 PM).
+          // x sweeps 2 %→98 %; y follows a sine arc from 40 % (horizon) down to 2 % (zenith).
+          const SUNRISE = 360, SUNSET = 1080;
+          let sunXN, sunYN;
+          if (m >= SUNRISE && m <= SUNSET) {
+            const frac = (m - SUNRISE) / (SUNSET - SUNRISE);
+            sunXN = 2 + frac * 96;
+            sunYN = 40 - 38 * Math.sin(frac * Math.PI);
+          } else {
+            sunXN = m < SUNRISE ? 2 : 98;
+            sunYN = 55;
+          }
+          _sunXPct = sunXN;
+          _sunYPct = sunYN;
+          // Refresh shadows on every sky update (minute cadence matches sun movement).
+          buoyWindows.forEach(updateWindowShadow);
+          const sunX = sunXN.toFixed(1) + '%';
+          const sunY = sunYN.toFixed(1) + '%';
+
           const b = document.body;
           if (instant) b.style.transition = 'none';
+          b.style.setProperty('--sun-x', sunX);
+          b.style.setProperty('--sun-y', sunY);
           b.style.setProperty('--sky-base', toHex(skyBase));
           b.style.setProperty('--sky-g0', toHex(skyG0));
           b.style.setProperty('--sky-g1', toHex(skyG1));
