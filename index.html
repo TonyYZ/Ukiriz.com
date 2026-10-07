@@ -865,6 +865,29 @@
             ctx.restore();
           }
         }
+        // Arrows at centers of 2×2 character groups
+        ctx.lineWidth = 1.5;
+        for (let gx = step; gx < window.innerWidth; gx += step) {
+          for (let gy = step; gy < window.innerHeight; gy += step) {
+            const f = buoyFlow(gx, gy, tSec);
+            const len = Math.hypot(f.vx, f.vy);
+            if (len < 0.01) continue;
+            const angle = Math.atan2(f.vy, f.vx);
+            const aLen = 20, hLen = 7, hAng = Math.PI / 6;
+            ctx.save();
+            ctx.translate(gx, gy);
+            ctx.rotate(angle);
+            ctx.strokeStyle = `rgba(${nr},${ng},${nb},0.65)`;
+            ctx.beginPath();
+            ctx.moveTo(-aLen / 2, 0);
+            ctx.lineTo(aLen / 2, 0);
+            ctx.lineTo(aLen / 2 - hLen * Math.cos(hAng), -hLen * Math.sin(hAng));
+            ctx.moveTo(aLen / 2, 0);
+            ctx.lineTo(aLen / 2 - hLen * Math.cos(hAng), hLen * Math.sin(hAng));
+            ctx.stroke();
+            ctx.restore();
+          }
+        }
       }
 
       // Ripple canvas — separate from flow-field canvas so clearing doesn't interfere.
@@ -1179,71 +1202,71 @@
             [255, 255, 255, 0.52],
           ],
           [
+            391,
+            [155, 90, 110],
+            [189, 128, 144],
+            [169, 105, 122],
+            [125, 64, 84],
+            [0, 0, 0, 0.92],
+            [0, 0, 0, 0.12],
+            [40, 0, 12, 0.32],
+            [0, 0, 0, 0.09],
+            [0, 0, 0, 0.07],
+          ],
+          [
             420,
-            [192, 138, 48],
-            [228, 178, 88],
-            [200, 148, 55],
-            [142, 88, 24],
-            [255, 242, 210, 0.92],
-            [255, 255, 230, 0.14],
-            [48, 36, 0, 0.38],
-            [255, 248, 180, 0.55],
-            [255, 248, 180, 0.45],
+            [250, 232, 162],
+            [255, 250, 210],
+            [252, 238, 175],
+            [242, 215, 138],
+            [0, 0, 0, 1],
+            [0, 0, 0, 0.12],
+            [60, 45, 8, 0.16],
+            [0, 0, 0, 0.10],
+            [0, 0, 0, 0.08],
           ],
           [
-            437,
-            [202, 157, 105],
-            [229, 195, 155],
-            [213, 172, 123],
-            [173, 124, 80],
-            [25, 10, 0, 0.9],
-            [0, 0, 0, 0.12],
-            [70, 37, 4, 0.28],
-            [0, 0, 0, 0.09],
-            [0, 0, 0, 0.07],
-          ],
-          [
-            450,
-            [222, 182, 104],
-            [245, 218, 165],
-            [230, 196, 124],
-            [194, 155, 88],
-            [25, 10, 0, 0.88],
-            [0, 0, 0, 0.12],
-            [80, 54, 8, 0.18],
-            [0, 0, 0, 0.09],
-            [0, 0, 0, 0.07],
+            455,
+            [168, 202, 232],
+            [205, 225, 246],
+            [172, 206, 236],
+            [115, 168, 218],
+            [0, 0, 0, 1],
+            [0, 0, 0, 0.10],
+            [0, 28, 60, 0.12],
+            [0, 0, 0, 0.10],
+            [0, 0, 0, 0.08],
           ],
           [
             480,
-            [255, 240, 168],
-            [255, 253, 220],
-            [255, 248, 190],
-            [255, 234, 142],
+            [148, 196, 232],
+            [188, 222, 248],
+            [152, 202, 238],
+            [98, 162, 215],
             [0, 0, 0, 0.88],
-            [0, 0, 0, 0.13],
-            [72, 56, 20, 0.15],
-            [0, 0, 0, 0.11],
-            [0, 0, 0, 0.09],
+            [0, 0, 0, 0.10],
+            [0, 28, 60, 0.12],
+            [0, 0, 0, 0.10],
+            [0, 0, 0, 0.08],
           ],
           [
             720,
-            [255, 248, 192],
-            [255, 254, 240],
-            [255, 249, 201],
-            [255, 243, 170],
+            [112, 178, 225],
+            [162, 210, 242],
+            [118, 184, 230],
+            [75, 148, 208],
             [0, 0, 0, 0.88],
-            [0, 0, 0, 0.13],
-            [72, 56, 20, 0.16],
+            [0, 0, 0, 0.10],
+            [0, 28, 60, 0.14],
             [0, 0, 0, 0.11],
             [0, 0, 0, 0.09],
           ],
           [
             960,
-            [255, 230, 150],
-            [255, 250, 198],
-            [255, 235, 152],
-            [255, 214, 110],
+            [238, 208, 128],
+            [252, 238, 178],
+            [242, 218, 138],
+            [218, 188, 98],
             [0, 0, 0, 0.88],
             [0, 0, 0, 0.13],
             [72, 52, 10, 0.16],
@@ -1252,10 +1275,10 @@
           ],
           [
             1050,
-            [248, 174, 42],
-            [255, 215, 78],
-            [252, 184, 50],
-            [205, 128, 18],
+            [222, 178, 78],
+            [252, 220, 118],
+            [232, 185, 88],
+            [178, 128, 38],
             [22, 6, 0, 0.88],
             [0, 0, 0, 0.12],
             [62, 44, 0, 0.18],
@@ -1268,9 +1291,33 @@
             [230, 195, 152],
             [215, 168, 116],
             [178, 126, 75],
-            [255, 235, 225, 0.9],
+            [22, 6, 0, 0.88],
+            [0, 0, 0, 0.12],
+            [64, 36, 6, 0.18],
+            [0, 0, 0, 0.09],
+            [0, 0, 0, 0.07],
+          ],
+          [
+            1106,
+            [168, 90, 108],
+            [202, 130, 128],
+            [172, 100, 118],
+            [124, 57, 82],
+            [22, 6, 0, 0.88],
+            [0, 0, 0, 0.12],
+            [50, 0, 18, 0.35],
+            [0, 0, 0, 0.09],
+            [0, 0, 0, 0.07],
+          ],
+          [
+            1108,
+            [165, 88, 108],
+            [200, 128, 128],
+            [170, 98, 118],
+            [122, 55, 82],
+            [255, 235, 238, 0.9],
             [255, 255, 255, 0.13],
-            [64, 36, 6, 0.24],
+            [50, 0, 18, 0.40],
             [255, 255, 255, 0.6],
             [255, 255, 255, 0.5],
           ],
@@ -1497,11 +1544,58 @@
           if (val === -1) {
             applySkyTheme(true);
             skyInterval = setInterval(applySkyTheme, 60000);
+            skySlider.value = new Date().getHours() * 60 + new Date().getMinutes();
           } else {
             applySkyTheme(true, val);
+            skySlider.value = val;
           }
         });
 
+        // Continuous time slider
+        const fmtMin = m => `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
+
+        const skySliderLabel = document.createElement('div');
+        skySliderLabel.style.cssText = [
+          'position:fixed',
+          'bottom:68px',
+          'right:14px',
+          'z-index:9999',
+          'color:rgba(255,255,255,0.88)',
+          'font-size:12px',
+          'font-family:monospace',
+          'text-align:right',
+          'pointer-events:none',
+          'text-shadow:0 1px 3px rgba(0,0,0,0.6)',
+        ].join(';');
+
+        const skySlider = document.createElement('input');
+        skySlider.type = 'range';
+        skySlider.min = 0;
+        skySlider.max = 1439;
+        skySlider.step = 1;
+        skySlider.value = new Date().getHours() * 60 + new Date().getMinutes();
+        skySliderLabel.textContent = fmtMin(parseInt(skySlider.value));
+        skySlider.style.cssText = [
+          'display:block',
+          'position:fixed',
+          'bottom:44px',
+          'right:14px',
+          'z-index:9999',
+          'width:200px',
+          'accent-color:rgba(255,255,255,0.72)',
+          'cursor:pointer',
+        ].join(';');
+
+        skySlider.addEventListener('input', () => {
+          const m = parseInt(skySlider.value);
+          skySliderLabel.textContent = fmtMin(m);
+          clearInterval(skyInterval);
+          skySel.value = -1;
+          applySkyTheme(true, m);
+        });
+
+        document.body.appendChild(skySliderLabel);
+        document.body.appendChild(skySlider);
         document.body.appendChild(skySel);
       })();
     </script>
