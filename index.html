@@ -72,6 +72,11 @@
         inherits: true;
         initial-value: rgba(255, 249, 201, 0.62);
       }
+      @property --sky-selection {
+        syntax: '<color>';
+        inherits: true;
+        initial-value: rgba(200, 180, 60, 0.45);
+      }
 
       body {
         --qi-hue: 48;
@@ -96,7 +101,12 @@
           --sky-shadow 90s linear,
           --sky-grid 90s linear,
           --sky-grid90 90s linear,
-          --sky-glass 90s linear;
+          --sky-glass 90s linear,
+          --sky-selection 90s linear;
+      }
+
+      ::selection {
+        background: var(--sky-selection);
       }
 
       body::before,
@@ -125,69 +135,13 @@
       }
 
       .qi-orb {
-        position: fixed;
-        left: 0;
-        top: 0;
-        width: 64vmin;
-        height: 64vmin;
-        border-radius: 50%;
-        z-index: 0;
-        pointer-events: none;
-        opacity: 0;
-        transform: translate3d(-50%, -50%, 0) scale(0.9);
-        background: radial-gradient(circle, hsla(var(--qi-hue), 54%, 78%, 0.48), transparent 68%);
-        mix-blend-mode: multiply;
-        transition:
-          opacity 160ms ease,
-          background 160ms ease;
-        will-change: transform, opacity;
+        display: none;
       }
 
-      body.qi-dragging .qi-orb {
-        opacity: 0.82;
-      }
-
-      .qi-trail {
-        position: fixed;
-        left: var(--trail-x, 0px);
-        top: var(--trail-y, 0px);
-        width: 20vmin;
-        height: 20vmin;
-        border-radius: 50%;
-        z-index: 2;
-        pointer-events: none;
-        opacity: 0;
-        transform: translate3d(-50%, -50%, 0) scale(0.56);
-        background: radial-gradient(
-          circle,
-          hsla(var(--trail-hue), 58%, 70%, 0.34),
-          transparent 72%
-        );
-        mix-blend-mode: normal;
-        will-change: transform, opacity;
-      }
-
-      .qi-trail.visible {
-        animation: qiTrailFade 800ms ease-out forwards;
-      }
-
-      @keyframes qiTrailFade {
-        0% {
-          opacity: 0.5;
-          transform: translate3d(-50%, -50%, 0) scale(0.72);
-        }
-        62% {
-          opacity: 0.22;
-        }
-        100% {
-          opacity: 0;
-          transform: translate3d(-50%, -50%, 0) scale(1.38);
-        }
-      }
 
       header {
         position: relative;
-        z-index: 1;
+        z-index: 3;
       }
 
       header .hero {
@@ -459,8 +413,7 @@
           opacity: 0.075;
         }
 
-        .qi-orb,
-        .qi-trail {
+        .qi-orb {
           display: none;
         }
 
@@ -710,6 +663,10 @@
       const buoyState = new WeakMap();
       // Sun position in body::before percentage space — kept in sync by applySkyTheme.
       let _sunXPct = 8, _sunYPct = 4;
+      // Background base RGB — kept in sync by applySkyTheme for canvas drawing.
+      let _skyBaseRgb = [255, 248, 192];
+      // Active ripples: {x, y, t0}
+      const _ripples = [];
 
       projects.forEach((project) => {
         const win = document.createElement('div');
@@ -764,10 +721,26 @@
         const p4 = sx        + sy * 0.8 + Math.sin(t * 0.027) * 4.9 + Math.sin(t * 0.0091) * 3.6;
         const p5 =-sx * 0.8  + sy * 1.5 + Math.sin(t * 0.017) * 5.4 + Math.sin(t * 0.0373) * 2.1;
         const p6 = sx * 2.0  + sy * 0.4 + Math.sin(t * 0.043) * 4.2 + Math.sin(t * 0.0113) * 3.1;
-        return {
-          vx: (Math.sin(p1) + 0.65 * Math.sin(p2) + 0.35 * Math.sin(p3)) * 3.5,
-          vy: (Math.cos(p4) + 0.65 * Math.cos(p5) + 0.35 * Math.cos(p6)) * 3.5,
-        };
+        let vx = (Math.sin(p1) + 0.65 * Math.sin(p2) + 0.35 * Math.sin(p3)) * 3.5;
+        let vy = (Math.cos(p4) + 0.65 * Math.cos(p5) + 0.35 * Math.cos(p6)) * 3.5;
+
+        // Ripple disturbance: a radial Gaussian pulse that sweeps outward with the wave.
+        // Windows experience a smooth acceleration as the wave front passes — no sudden jerk.
+        for (const rp of _ripples) {
+          const age = (t * 1000 - rp.t0) / 4000;
+          if (age <= 0 || age >= 1) continue;
+          const dx = x - rp.x, dy = y - rp.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < 1) continue;
+          const sigma = rp.maxR * 0.12;
+          const d = dist - age * rp.maxR;
+          const g = Math.exp(-(d * d) / (2 * sigma * sigma));
+          const strength = 130 * (1 - age);
+          vx += (dx / dist) * g * strength;
+          vy += (dy / dist) * g * strength;
+        }
+
+        return { vx, vy };
       }
 
       function initBuoy(win) {
@@ -780,12 +753,60 @@
         });
       }
 
+      // Character pool for flow-field glyphs — all 214 Kangxi radicals + selected
+      // letters from Greek, French, Vietnamese, Turkish, and Irish Gaelic.
+      const _FLOW_CHARS = [
+        // Greek lowercase
+        'α','β','γ','δ','ε','ζ','η','θ','ι','κ','λ','μ','ν','ξ','π','ρ','σ','τ','φ','χ','ψ','ω',
+        // Greek uppercase (visually distinct from Latin)
+        'Γ','Δ','Θ','Λ','Ξ','Π','Σ','Φ','Ψ','Ω',
+        // French accented (includes ç shared with Turkish)
+        'à','â','é','è','ê','î','ô','û','ç','œ','æ','á','í','ó','ú',
+        // Vietnamese
+        'ắ','ổ','ị','ừ','ế','ẫ','ộ','ứ','ẹ','ở','ữ','ẩ','ằ','ẻ','ỉ','ọ','ủ',
+        // Turkish (ç already above)
+        'ğ','ı','ş',
+        // Irish Gaelic dotted consonants (lenition)
+        'ḃ','ċ','ḋ','ḟ','ġ','ṁ','ṗ','ṡ','ṫ',
+        // All 214 Kangxi radicals — traditional Chinese
+        '一','丨','丿','丶','乙','亅','二','亠','人','儿','入','八','冂','冖','冫','几','凵',
+        '刀','力','勹','匕','匚','匸','十','卜','卩','厂','厶','又','口','囗','土','士','夂',
+        '夊','夕','大','女','子','宀','寸','小','尢','尸','屮','山','巛','工','己','巾','干',
+        '幺','广','廴','廾','弋','弓','彐','彡','彳','心','戈','戶','手','支','攴','文','斗',
+        '斤','方','无','日','曰','月','木','欠','止','歹','殳','毋','比','毛','氏','气','水',
+        '火','爪','父','爻','爿','片','牙','牛','犬','玄','玉','瓜','瓦','甘','生','用','田',
+        '疋','疒','癶','白','皮','皿','目','矛','矢','石','示','禸','禾','穴','立','竹','米',
+        '糸','缶','网','羊','羽','老','而','耒','耳','聿','肉','臣','自','至','臼','舌','舛',
+        '舟','艮','色','艸','虍','虫','血','行','衣','襾','見','角','言','谷','豆','豕','豸',
+        '貝','赤','走','足','身','車','辛','辰','辵','邑','酉','釆','里','金','長','門','阜',
+        '隶','隹','雨','青','非','面','革','韋','韭','音','頁','風','飛','食','首','香','馬',
+        '骨','高','髟','鬥','鬯','鬲','鬼','魚','鳥','鹵','鹿','麥','麻','黃','黍','黑','黹',
+        '黽','鼎','鼓','鼠','鼻','齊','齒','龍','龜','龠',
+      ];
+
+      // Shuffled cell→char assignment rebuilt whenever the grid dimensions change.
+      let _cellCharMap = null, _cellMapCols = 0, _cellMapRows = 0;
+      function _rebuildCellMap(cols, rows) {
+        const total = cols * rows;
+        const arr = new Uint16Array(total);
+        for (let i = 0; i < total; i++) arr[i] = i % _FLOW_CHARS.length;
+        let s = 0x9e3779b9 | 0;
+        for (let i = total - 1; i > 0; i--) {
+          s = Math.imul(s ^ (s >>> 16), 0x45d9f3b);
+          s = Math.imul(s ^ (s >>> 16), 0x45d9f3b);
+          s ^= s >>> 16;
+          const j = (s >>> 0) % (i + 1);
+          const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+        }
+        _cellCharMap = arr; _cellMapCols = cols; _cellMapRows = rows;
+      }
+
       // Flow-field canvas overlay
       const _fieldCanvas = (() => {
         const c = document.createElement('canvas');
         c.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;';
         document.body.appendChild(c);
-        const resize = () => { c.width = window.innerWidth; c.height = window.innerHeight; };
+        const resize = () => { const dpr = window.devicePixelRatio || 1; c.width = window.innerWidth * dpr; c.height = window.innerHeight * dpr; };
         resize();
         window.addEventListener('resize', resize);
         return c;
@@ -793,41 +814,105 @@
 
       function _drawFlowField(tSec) {
         const ctx = _fieldCanvas.getContext('2d');
-        ctx.clearRect(0, 0, _fieldCanvas.width, _fieldCanvas.height);
+        const dpr = window.devicePixelRatio || 1;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
 
-        // Negate the current background colour so arrows always contrast it.
+        // HSL hue-complement of the background: rotate hue 180°, push lightness
+        // to contrast, and boost saturation slightly so it reads as a real colour.
         const bgRaw = getComputedStyle(document.body).backgroundColor;
         const cm = bgRaw.match(/\d+/g);
-        const nr = cm ? 255 - +cm[0] : 100;
-        const ng = cm ? 255 - +cm[1] : 160;
-        const nb = cm ? 255 - +cm[2] : 220;
+        let nr = 100, ng = 160, nb = 220;
+        if (cm) {
+          const r = +cm[0]/255, g = +cm[1]/255, b = +cm[2]/255;
+          const max = Math.max(r,g,b), min = Math.min(r,g,b), l = (max+min)/2;
+          const d = max - min;
+          let h = 0, s = d > 0 ? (l > 0.5 ? d/(2-max-min) : d/(max+min)) : 0;
+          if (d > 0) { if (max===r) h=((g-b)/d+(g<b?6:0))/6; else if (max===g) h=((b-r)/d+2)/6; else h=((r-g)/d+4)/6; }
+          const ch = (h + 0.5) % 1;
+          const cl = l > 0.5 ? Math.max(0.12, l - 0.50) : Math.min(0.88, l + 0.50);
+          const cs = Math.min(0.90, s + 0.15);
+          const q = cl < 0.5 ? cl*(1+cs) : cl+cs-cl*cs, p = 2*cl - q;
+          const h2r = t => { t=((t%1)+1)%1; return t<1/6?p+(q-p)*6*t:t<0.5?q:t<2/3?p+(q-p)*(2/3-t)*6:p; };
+          nr = Math.round(h2r(ch+1/3)*255);
+          ng = Math.round(h2r(ch)*255);
+          nb = Math.round(h2r(ch-1/3)*255);
+        }
 
-        const step = 72;
-        const halfStep = step * 0.38;
-        for (let gx = step / 2; gx < _fieldCanvas.width; gx += step) {
-          for (let gy = step / 2; gy < _fieldCanvas.height; gy += step) {
+        const step = 80;
+        const cols = Math.ceil(window.innerWidth / step) + 1;
+        const rows = Math.ceil(window.innerHeight / step) + 1;
+        if (!_cellCharMap || _cellMapCols !== cols || _cellMapRows !== rows) {
+          _rebuildCellMap(cols, rows);
+        }
+        ctx.font = '15px "UkirizWenKai","LXGW WenKai",KaiTi,serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        let ci = 0;
+        for (let gx = step / 2; gx < window.innerWidth; gx += step, ci++) {
+          let cj = 0;
+          for (let gy = step / 2; gy < window.innerHeight; gy += step, cj++) {
             const f = buoyFlow(gx, gy, tSec);
             const len = Math.hypot(f.vx, f.vy);
             if (len < 0.01) continue;
-            const nx = f.vx / len, ny = f.vy / len;
-            const dl = Math.min(len * 2.5, halfStep);
-            const sx = gx - nx * dl * 0.5, sy = gy - ny * dl * 0.5;
-            const ex = gx + nx * dl * 0.5, ey = gy + ny * dl * 0.5;
-            // Line
-            ctx.beginPath();
-            ctx.moveTo(sx, sy);
-            ctx.lineTo(ex, ey);
-            ctx.strokeStyle = `rgba(${nr},${ng},${nb},0.32)`;
-            ctx.lineWidth = 1;
-            ctx.stroke();
-            // Arrowhead dot
-            ctx.beginPath();
-            ctx.arc(ex, ey, 1.8, 0, Math.PI * 2);
+            const ch = _FLOW_CHARS[_cellCharMap[cj * _cellMapCols + ci]];
+            const angle = Math.atan2(f.vy, f.vx);
+            ctx.save();
+            ctx.translate(gx, gy);
+            ctx.rotate(angle - Math.PI / 2);
             ctx.fillStyle = `rgba(${nr},${ng},${nb},0.55)`;
-            ctx.fill();
+            ctx.fillText(ch, 0, 0);
+            ctx.restore();
           }
         }
       }
+
+      // Ripple canvas — separate from flow-field canvas so clearing doesn't interfere.
+      const _rippleCanvas = (() => {
+        const c = document.createElement('canvas');
+        c.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;';
+        document.body.appendChild(c);
+        const resize = () => { const dpr = window.devicePixelRatio || 1; c.width = window.innerWidth * dpr; c.height = window.innerHeight * dpr; };
+        resize();
+        window.addEventListener('resize', resize);
+        return c;
+      })();
+
+      function _drawRipples(tMs) {
+        const ctx = _rippleCanvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+        if (!_ripples.length) return;
+        // Darken on light backgrounds, lighten on dark ones.
+        const _rl = (_skyBaseRgb[0]*299 + _skyBaseRgb[1]*587 + _skyBaseRgb[2]*114) / 1000;
+        const [br, bg, bb] = _rl < 100
+          ? _skyBaseRgb.map(v => Math.min(255, Math.round(v + (255 - v) * 0.55)))
+          : _skyBaseRgb.map(v => Math.round(v * 0.50));
+        const DUR = 4000;
+        for (let i = _ripples.length - 1; i >= 0; i--) {
+          const rp = _ripples[i];
+          const age = (tMs - rp.t0) / DUR;
+          if (age >= 1) { _ripples.splice(i, 1); continue; }
+          // Three concentric rings staggered in phase (inner rings lag).
+          for (let k = 0; k < 3; k++) {
+            const phase = Math.max(0, age - k * 0.18);
+            if (phase <= 0) continue;
+            const radius = phase * rp.maxR;
+            const alpha = (1 - phase) * (1 - k * 0.28) * 0.28;
+            ctx.beginPath();
+            ctx.arc(rp.x, rp.y, radius, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(${br},${bg},${bb},${alpha.toFixed(3)})`;
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+          }
+        }
+      }
+
+      function _spawnRipple(x, y, maxR) {
+        _ripples.push({ x, y, maxR, t0: performance.now() });
+      }
+
 
       let _buoyPrevT = null;
       (function startBuoyLoop() {
@@ -836,6 +921,7 @@
           _buoyPrevT = t;
           const tSec = t / 1000;
           _drawFlowField(tSec);
+          _drawRipples(t);
           for (const win of buoyWindows) {
             if (!document.contains(win)) { buoyWindows.delete(win); continue; }
             if (win.classList.contains('dragging')) continue;
@@ -915,12 +1001,7 @@
         let lastX = 0;
         let lastY = 0;
         const velBuf = [];
-        let pendingQiEvent = null;
-        let qiFrame = 0;
-        let lastTrailAt = 0;
-        let trailIndex = 0;
-        const trailEls = [];
-        const qiOrb = document.querySelector('.qi-orb');
+        let lastRippleAt = 0;
 
         function bringToFront() {
           topWindowZ += 1;
@@ -935,61 +1016,20 @@
           };
         }
 
-        function updateQiField(e) {
-          const center = getDragCenter();
-          if (qiOrb) {
-            qiOrb.style.transform = `translate3d(${center.x}px, ${center.y}px, 0) translate(-50%, -50%)`;
-          }
-
+        function trackCursor(e) {
           lastX = e.clientX;
           lastY = e.clientY;
         }
 
-        function ensureTrailEls() {
-          if (trailEls.length) return trailEls;
-          for (let i = 0; i < 8; i++) {
-            const trail = document.createElement('div');
-            trail.className = 'qi-trail';
-            document.body.appendChild(trail);
-            trailEls.push(trail);
-          }
-          return trailEls;
-        }
-
-        function leaveQiTrail(e) {
+        function leaveRipple(e) {
           const now = performance.now();
           const dx = e.clientX - lastX;
           const dy = e.clientY - lastY;
-          const dist = Math.hypot(dx, dy);
-          if (now - lastTrailAt < 70 && dist < 16) return;
-
-          const hue = el.style.getPropertyValue('--window-hue') || 48;
-          const trails = ensureTrailEls();
-          const trail = trails[trailIndex % trails.length];
-          trailIndex += 1;
-          lastTrailAt = now;
-
-          trail.classList.remove('visible');
-          trail.style.animation = 'none';
+          if (now - lastRippleAt < 350 && Math.hypot(dx, dy) < 60) return;
+          lastRippleAt = now;
           const center = getDragCenter();
-          const ux = dist > 0 ? dx / dist : 0;
-          const uy = dist > 0 ? dy / dist : 0;
-          trail.style.setProperty('--trail-x', `${center.x - ux * 90}px`);
-          trail.style.setProperty('--trail-y', `${center.y - uy * 90}px`);
-          trail.style.setProperty('--trail-hue', hue);
-          void trail.offsetHeight;
-          trail.style.animation = '';
-          trail.classList.add('visible');
-        }
-
-        function scheduleQiField(e) {
-          pendingQiEvent = e;
-          if (qiFrame) return;
-          qiFrame = requestAnimationFrame(() => {
-            qiFrame = 0;
-            if (pendingQiEvent) updateQiField(pendingQiEvent);
-            pendingQiEvent = null;
-          });
+          const maxR = Math.hypot(el.offsetWidth, el.offsetHeight) * 1.4;
+          _spawnRipple(center.x, center.y, maxR);
         }
 
         el.addEventListener('mousedown', (e) => {
@@ -1008,14 +1048,9 @@
           offsetX = e.clientX - baseLeft;
           offsetY = e.clientY - baseTop;
           el.classList.add('dragging');
-          document.body.classList.add('qi-dragging');
-          document.body.style.setProperty(
-            '--qi-hue',
-            el.style.getPropertyValue('--window-hue') || 48,
-          );
           bringToFront();
-          lastTrailAt = 0;
-          updateQiField(e);
+          lastRippleAt = 0;
+          trackCursor(e);
         });
 
         document.addEventListener('mousemove', (e) => {
@@ -1029,8 +1064,8 @@
             velBuf.push({ x: dragLeft, y: dragTop, t: performance.now() });
             if (velBuf.length > 12) velBuf.shift();
             updateWindowShadow(el);
-            leaveQiTrail(e);
-            scheduleQiField(e);
+            leaveRipple(e);
+            trackCursor(e);
           }
         });
 
@@ -1057,13 +1092,7 @@
             }
           }
           isDragging = false;
-          pendingQiEvent = null;
-          if (qiFrame) {
-            cancelAnimationFrame(qiFrame);
-            qiFrame = 0;
-          }
           el.classList.remove('dragging');
-          document.body.classList.remove('qi-dragging');
           setTimeout(() => {
             didDrag = false;
           }, 0);
@@ -1151,15 +1180,15 @@
           ],
           [
             420,
-            [182, 131, 106],
-            [213, 171, 144],
-            [196, 148, 121],
-            [151, 92, 72],
-            [255, 240, 228, 0.9],
-            [255, 255, 255, 0.13],
-            [60, 20, 0, 0.38],
-            [255, 255, 255, 0.6],
-            [255, 255, 255, 0.5],
+            [192, 138, 48],
+            [228, 178, 88],
+            [200, 148, 55],
+            [142, 88, 24],
+            [255, 242, 210, 0.92],
+            [255, 255, 230, 0.14],
+            [48, 36, 0, 0.38],
+            [255, 248, 180, 0.55],
+            [255, 248, 180, 0.45],
           ],
           [
             437,
@@ -1223,15 +1252,15 @@
           ],
           [
             1050,
-            [218, 170, 107],
-            [241, 213, 162],
-            [226, 184, 122],
-            [190, 139, 81],
+            [248, 174, 42],
+            [255, 215, 78],
+            [252, 184, 50],
+            [205, 128, 18],
             [22, 6, 0, 0.88],
-            [0, 0, 0, 0.13],
-            [72, 46, 8, 0.18],
-            [0, 0, 0, 0.09],
-            [0, 0, 0, 0.07],
+            [0, 0, 0, 0.12],
+            [62, 44, 0, 0.18],
+            [0, 0, 0, 0.10],
+            [0, 0, 0, 0.08],
           ],
           [
             1068,
@@ -1247,13 +1276,13 @@
           ],
           [
             1110,
-            [177, 108, 80],
-            [203, 151, 127],
-            [188, 129, 101],
-            [148, 94, 60],
-            [255, 235, 225, 0.9],
+            [165, 88, 108],
+            [200, 128, 128],
+            [170, 98, 118],
+            [122, 55, 82],
+            [255, 235, 238, 0.9],
             [255, 255, 255, 0.13],
-            [45, 12, 0, 0.4],
+            [50, 0, 18, 0.40],
             [255, 255, 255, 0.6],
             [255, 255, 255, 0.5],
           ],
@@ -1327,6 +1356,9 @@
         function toRgba([r, g, b, a]) {
           return `rgba(${r},${g},${b},${a})`;
         }
+        function darken([r, g, b], amt) {
+          return [Math.round(r * (1 - amt)), Math.round(g * (1 - amt)), Math.round(b * (1 - amt))];
+        }
         function lighten([r, g, b], amt) {
           return [
             Math.round(r + (255 - r) * amt),
@@ -1354,6 +1386,7 @@
           const t = span > 0 ? (m - k0[0]) / span : 0;
 
           const skyBase = lerpRgb(k0[1], k1[1], t);
+          _skyBaseRgb = skyBase;
           const skyG0 = lerpRgb(k0[2], k1[2], t);
           const skyG1 = lerpRgb(k0[3], k1[3], t);
           const skyG2 = lerpRgb(k0[4], k1[4], t);
@@ -1365,6 +1398,8 @@
 
           const spot1 = lighten(skyG0, 0.28);
           const spot2 = lighten(skyG1, 0.12);
+          const skyLuma = (skyBase[0]*299 + skyBase[1]*587 + skyBase[2]*114) / 1000;
+          const selColor = skyLuma < 100 ? lighten(skyBase, 0.45) : darken(skyBase, 0.38);
 
           // Sun arc: rises at left horizon (6 AM), peaks at top-centre (noon), sets at right (6 PM).
           // x sweeps 2 %→98 %; y follows a sine arc from 40 % (horizon) down to 2 % (zenith).
@@ -1401,6 +1436,7 @@
           b.style.setProperty('--sky-grid', toRgba(skyGr));
           b.style.setProperty('--sky-grid90', toRgba(skyGr90));
           b.style.setProperty('--sky-glass', toRgba([...skyG1, 0.62]));
+          b.style.setProperty('--sky-selection', toRgba([...selColor, 0.45]));
           if (instant) {
             void b.offsetHeight;
             b.style.transition = '';
@@ -1433,7 +1469,7 @@
         const skySel = document.createElement('select');
         skySel.id = 'sky-debug-sel';
         skySel.style.cssText = [
-          'display:none',
+          'display:block',
           'position:fixed',
           'bottom:14px',
           'right:14px',
