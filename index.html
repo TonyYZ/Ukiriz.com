@@ -721,8 +721,8 @@
         const p4 = sx        + sy * 0.8 + Math.sin(t * 0.027) * 4.9 + Math.sin(t * 0.0091) * 3.6;
         const p5 =-sx * 0.8  + sy * 1.5 + Math.sin(t * 0.017) * 5.4 + Math.sin(t * 0.0373) * 2.1;
         const p6 = sx * 2.0  + sy * 0.4 + Math.sin(t * 0.043) * 4.2 + Math.sin(t * 0.0113) * 3.1;
-        let vx = (Math.sin(p1) + 0.65 * Math.sin(p2) + 0.35 * Math.sin(p3)) * 3.5;
-        let vy = (Math.cos(p4) + 0.65 * Math.cos(p5) + 0.35 * Math.cos(p6)) * 3.5;
+        let vx = (Math.sin(p1) + 0.65 * Math.sin(p2) + 0.35 * Math.sin(p3)) * 5.0;
+        let vy = (Math.cos(p4) + 0.65 * Math.cos(p5) + 0.35 * Math.cos(p6)) * 5.0;
 
         // Ripple disturbance: a radial Gaussian pulse that sweeps outward with the wave.
         // Windows experience a smooth acceleration as the wave front passes — no sudden jerk.
@@ -753,35 +753,63 @@
         });
       }
 
-      // Character pool for flow-field glyphs — all 214 Kangxi radicals + selected
-      // letters from Greek, French, Vietnamese, Turkish, and Irish Gaelic.
+      // Character pool for flow-field glyphs — Latin (with diacritics) + GF 0014-2009 set.
       const _FLOW_CHARS = [
+        // Latin lowercase base
+        'a','b','c','d','e','f','g','h','i','j','k','l','m',
+        'n','o','p','q','r','s','t','u','v','w','x','y','z',
+        // French / cedilla / ligatures
+        'à','â','ä','é','è','ê','ë','î','ï','ô','ù','û','ü','ç','œ','æ',
+        // Spanish / Portuguese additions
+        'á','ã','õ','ñ',
+        // German / Nordic
+        'ß','å','ø',
+        // Vietnamese — ă compounds
+        'ắ','ằ','ẳ','ẵ','ặ',
+        // Vietnamese — â compounds (beyond plain â)
+        'ấ','ầ','ẩ','ẫ','ậ',
+        // Vietnamese — ê compounds
+        'ế','ề','ể','ễ','ệ',
+        // Vietnamese — ô and ơ compounds
+        'ổ','ồ','ỗ','ộ','ờ','ớ','ở','ỡ','ợ',
+        // Vietnamese — ư compounds
+        'ừ','ứ','ử','ữ','ự',
+        // Vietnamese — remaining tonal
+        'ị','ỉ','ĩ','ọ','ủ','ụ','ỳ','ỷ','ỹ','ỵ','đ',
+        // Turkish
+        'ğ','ı','ş',
+        // Irish dotted consonants (lenition)
+        'ḃ','ċ','ḋ','ḟ','ġ','ṁ','ṗ','ṡ','ṫ',
         // Greek lowercase
-        'α','β','γ','δ','ε','ζ','η','θ','ι','κ','λ','μ','ν','ξ','π','ρ','σ','τ','φ','χ','ψ','ω',
+        'α','β','γ','δ','ε','ζ','η','θ','ι','κ','λ','μ',
+        'ν','ξ','ο','π','ρ','σ','τ','υ','φ','χ','ψ','ω',
         // Greek uppercase (visually distinct from Latin)
         'Γ','Δ','Θ','Λ','Ξ','Π','Σ','Φ','Ψ','Ω',
-        // French accented (includes ç shared with Turkish)
-        'à','â','é','è','ê','î','ô','û','ç','œ','æ','á','í','ó','ú',
-        // Vietnamese
-        'ắ','ổ','ị','ừ','ế','ẫ','ộ','ứ','ẹ','ở','ữ','ẩ','ằ','ẻ','ỉ','ọ','ủ',
-        // Turkish (ç already above)
-        'ğ','ı','ş',
-        // Irish Gaelic dotted consonants (lenition)
-        'ḃ','ċ','ḋ','ḟ','ġ','ṁ','ṗ','ṡ','ṫ',
-        // All 214 Kangxi radicals — traditional Chinese
-        '一','丨','丿','丶','乙','亅','二','亠','人','儿','入','八','冂','冖','冫','几','凵',
-        '刀','力','勹','匕','匚','匸','十','卜','卩','厂','厶','又','口','囗','土','士','夂',
-        '夊','夕','大','女','子','宀','寸','小','尢','尸','屮','山','巛','工','己','巾','干',
-        '幺','广','廴','廾','弋','弓','彐','彡','彳','心','戈','戶','手','支','攴','文','斗',
-        '斤','方','无','日','曰','月','木','欠','止','歹','殳','毋','比','毛','氏','气','水',
-        '火','爪','父','爻','爿','片','牙','牛','犬','玄','玉','瓜','瓦','甘','生','用','田',
-        '疋','疒','癶','白','皮','皿','目','矛','矢','石','示','禸','禾','穴','立','竹','米',
-        '糸','缶','网','羊','羽','老','而','耒','耳','聿','肉','臣','自','至','臼','舌','舛',
-        '舟','艮','色','艸','虍','虫','血','行','衣','襾','見','角','言','谷','豆','豕','豸',
-        '貝','赤','走','足','身','車','辛','辰','辵','邑','酉','釆','里','金','長','門','阜',
-        '隶','隹','雨','青','非','面','革','韋','韭','音','頁','風','飛','食','首','香','馬',
-        '骨','高','髟','鬥','鬯','鬲','鬼','魚','鳥','鹵','鹿','麥','麻','黃','黍','黑','黹',
-        '黽','鼎','鼓','鼠','鼻','齊','齒','龍','龜','龠',
+        // Numbers / orientation
+        '一','二','三','四','五','六','七','八','九','十','廿','卅',
+        '上','下','中','大','小','入','出','方','正','生','立','亦','非',
+        // Heaven / earth / nature
+        '日','月','夕','山','川','巛','水','火','土','石','雨','云','气',
+        '田','井','穴','谷','屮','艸','木','禾','竹','米','黍',
+        // Body / person
+        '人','儿','女','子','母','父','夫','尸','身','首','面','目','耳',
+        '自','口','舌','齒','心','手','又','爪','足','止','毛','肉','歺','骨','血','頁',
+        // Animals
+        '牛','羊','犬','豕','馬','鹿','象','虎','兔','鳥','烏','隹',
+        '魚','貝','虫','龜','龍','鳳','豸','鼠','角','羽',
+        // Tools / vessels / crafts
+        '刀','匕','力','弓','矢','戈','戉','斤','矛','干','工','斗',
+        '鼎','豆','鬲','缶','臼','皿','冊','聿','舟','車','网','糸','衣','巾','革','皮',
+        // Architecture / enclosures
+        '門','戶','宀','广','厂','囗','凵','匚','冂','冖',
+        // Motion / movement radicals
+        '行','彳','走','步','辵','廴','夂','夊','癶','攴','殳','支','寸','勹','廾',
+        // Divination / ritual / matter
+        '卜','兆','爻','示','言','食','酉','甘','辛','丹','玉','金','文','彡','臣','耒','用',
+        // Heavenly stems & earthly branches
+        '甲','乙','丙','丁','戊','己','庚','壬','癸','丑','寅','卯','辰','巳','午','未','申','戌','亥',
+        // Radicals / components
+        '亻','扌','忄','氵','氺','灬','犭','礻','衤','艹','纟','钅','饣','刂','辶','爫','罒','⺮',
       ];
 
       // Shuffled cell→char assignment rebuilt whenever the grid dimensions change.
@@ -860,7 +888,7 @@
             ctx.save();
             ctx.translate(gx, gy);
             ctx.rotate(angle - Math.PI / 2);
-            ctx.fillStyle = `rgba(${nr},${ng},${nb},0.55)`;
+            ctx.fillStyle = `rgba(${nr},${ng},${nb},0.28)`;
             ctx.fillText(ch, 0, 0);
             ctx.restore();
           }
@@ -877,7 +905,7 @@
             ctx.save();
             ctx.translate(gx, gy);
             ctx.rotate(angle);
-            ctx.strokeStyle = `rgba(${nr},${ng},${nb},0.65)`;
+            ctx.strokeStyle = `rgba(${nr},${ng},${nb},0.32)`;
             ctx.beginPath();
             ctx.moveTo(-aLen / 2, 0);
             ctx.lineTo(aLen / 2, 0);
@@ -1449,17 +1477,15 @@
           const selColor = skyLuma < 100 ? lighten(skyBase, 0.45) : darken(skyBase, 0.38);
 
           // Sun arc: rises at left horizon (6 AM), peaks at top-centre (noon), sets at right (6 PM).
-          // x sweeps 2 %→98 %; y follows a sine arc from 40 % (horizon) down to 2 % (zenith).
-          const SUNRISE = 360, SUNSET = 1080;
-          let sunXN, sunYN;
-          if (m >= SUNRISE && m <= SUNSET) {
-            const frac = (m - SUNRISE) / (SUNSET - SUNRISE);
-            sunXN = 2 + frac * 96;
-            sunYN = 40 - 38 * Math.sin(frac * Math.PI);
-          } else {
-            sunXN = m < SUNRISE ? 2 : 98;
-            sunYN = 55;
-          }
+          // Full 24-hour arc: sun traces an ellipse, going below the screen at night.
+          // θ=0 at sunrise (6:00=360min), θ=π at sunset (18:00=1080min),
+          // θ=3π/2 at midnight — sun is at bottom center, well below the viewport.
+          const theta = (((m - 360) + 1440) % 1440) / 1440 * 2 * Math.PI;
+          const sinT = Math.sin(theta);
+          const sunXN = 50 - 48 * Math.cos(theta);
+          const sunYN = sinT >= 0
+            ? 40 - 38 * sinT        // above horizon: 40 % → 2 % → 40 %
+            : 40 + 90 * (-sinT);    // below horizon: curves down to ~130 % at midnight
           _sunXPct = sunXN;
           _sunYPct = sunYN;
           // Refresh shadows on every sky update (minute cadence matches sun movement).
@@ -1516,7 +1542,7 @@
         const skySel = document.createElement('select');
         skySel.id = 'sky-debug-sel';
         skySel.style.cssText = [
-          'display:block',
+          'display:none',
           'position:fixed',
           'bottom:14px',
           'right:14px',
@@ -1538,65 +1564,124 @@
           skySel.appendChild(opt);
         });
 
+        // Circular dial — defined before skySel.change so the handler can call _dialSync
+        const fmtMin = m => `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
+        const DIAL_PX = 164;
+        const dialCanvas = document.createElement('canvas');
+        let _dialMin = new Date().getHours() * 60 + new Date().getMinutes();
+
+        function _drawDial(minutes) {
+          const dpr = window.devicePixelRatio || 1;
+          const S = DIAL_PX * dpr;
+          dialCanvas.width = S; dialCanvas.height = S;
+          const ctx = dialCanvas.getContext('2d');
+          const cx = S/2, cy = S/2;
+          const R  = S/2 - 1.5*dpr;
+
+          ctx.clearRect(0, 0, S, S);
+
+          const minToA = m => (m / 1440) * 2*Math.PI + Math.PI/2;
+
+          // Pie-slice sections — muted game-dial palette
+          const sections = [
+            { from: 0,    to: 240,  fill: '#06071a' },
+            { from: 240,  to: 381,  fill: '#28164a' },
+            { from: 381,  to: 960,  fill: '#3e7fa8' },
+            { from: 960,  to: 1110, fill: '#9c5e28' },
+            { from: 1110, to: 1260, fill: '#461525' },
+            { from: 1260, to: 1440, fill: '#06071a' },
+          ];
+
+          sections.forEach(({ from, to, fill }) => {
+            const a1 = minToA(from), a2 = minToA(to);
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.arc(cx, cy, R, a1, a2);
+            ctx.closePath();
+            ctx.fillStyle = fill;
+            ctx.fill();
+          });
+
+          // Outer bezel
+          ctx.beginPath(); ctx.arc(cx, cy, R, 0, 2*Math.PI);
+          ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+          ctx.lineWidth = dpr; ctx.stroke();
+
+          // Hand — leaf/lance shape: sharp tip at rim, tapers to a point at center
+          const na   = minToA(minutes);
+          const tipR = R - 4*dpr;
+          const midR = R * 0.52;
+          const maxW = 2.6*dpr;
+          const cosA = Math.cos(na), sinA = Math.sin(na);
+          const px   = Math.cos(na + Math.PI/2), py = Math.sin(na + Math.PI/2);
+          ctx.beginPath();
+          ctx.moveTo(cx + tipR*cosA, cy + tipR*sinA);
+          ctx.quadraticCurveTo(
+            cx + midR*cosA + maxW*px, cy + midR*sinA + maxW*py,
+            cx, cy
+          );
+          ctx.quadraticCurveTo(
+            cx + midR*cosA - maxW*px, cy + midR*sinA - maxW*py,
+            cx + tipR*cosA, cy + tipR*sinA
+          );
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(228,218,196,0.88)';
+          ctx.fill();
+        }
+
+        function _dialSync(m) {
+          _dialMin = m; _drawDial(m);
+        }
+
+        function _dialPosToMin(ex, ey) {
+          const rect = dialCanvas.getBoundingClientRect();
+          let a = Math.atan2(ey - (rect.top + DIAL_PX/2), ex - (rect.left + DIAL_PX/2)) - Math.PI/2;
+          if (a < 0) a += 2*Math.PI;
+          return Math.round((a / (2*Math.PI)) * 1440) % 1440;
+        }
+
+        let _dialDragging = false;
+        dialCanvas.addEventListener('pointerdown', e => {
+          _dialDragging = true; dialCanvas.setPointerCapture(e.pointerId);
+          const m = _dialPosToMin(e.clientX, e.clientY);
+          _dialSync(m); clearInterval(skyInterval); skySel.value = -1; applySkyTheme(true, m);
+        });
+        dialCanvas.addEventListener('pointermove', e => {
+          if (!_dialDragging) return;
+          const m = _dialPosToMin(e.clientX, e.clientY);
+          _dialSync(m); clearInterval(skyInterval); skySel.value = -1; applySkyTheme(true, m);
+        });
+        dialCanvas.addEventListener('pointerup', () => { _dialDragging = false; });
+        dialCanvas.addEventListener('pointercancel', () => { _dialDragging = false; });
+
+        dialCanvas.style.cssText = `display:none;width:${DIAL_PX}px;height:${DIAL_PX}px;position:fixed;bottom:52px;right:8px;z-index:9999;cursor:pointer;touch-action:none;`;
+        _drawDial(_dialMin);
+
         skySel.addEventListener('change', () => {
           const val = parseInt(skySel.value);
           clearInterval(skyInterval);
           if (val === -1) {
             applySkyTheme(true);
             skyInterval = setInterval(applySkyTheme, 60000);
-            skySlider.value = new Date().getHours() * 60 + new Date().getMinutes();
+            _dialSync(new Date().getHours() * 60 + new Date().getMinutes());
           } else {
             applySkyTheme(true, val);
-            skySlider.value = val;
+            _dialSync(val);
           }
         });
 
-        // Continuous time slider
-        const fmtMin = m => `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
-
-        const skySliderLabel = document.createElement('div');
-        skySliderLabel.style.cssText = [
-          'position:fixed',
-          'bottom:68px',
-          'right:14px',
-          'z-index:9999',
-          'color:rgba(255,255,255,0.88)',
-          'font-size:12px',
-          'font-family:monospace',
-          'text-align:right',
-          'pointer-events:none',
-          'text-shadow:0 1px 3px rgba(0,0,0,0.6)',
-        ].join(';');
-
-        const skySlider = document.createElement('input');
-        skySlider.type = 'range';
-        skySlider.min = 0;
-        skySlider.max = 1439;
-        skySlider.step = 1;
-        skySlider.value = new Date().getHours() * 60 + new Date().getMinutes();
-        skySliderLabel.textContent = fmtMin(parseInt(skySlider.value));
-        skySlider.style.cssText = [
-          'display:block',
-          'position:fixed',
-          'bottom:44px',
-          'right:14px',
-          'z-index:9999',
-          'width:200px',
-          'accent-color:rgba(255,255,255,0.72)',
-          'cursor:pointer',
-        ].join(';');
-
-        skySlider.addEventListener('input', () => {
-          const m = parseInt(skySlider.value);
-          skySliderLabel.textContent = fmtMin(m);
-          clearInterval(skyInterval);
-          skySel.value = -1;
-          applySkyTheme(true, m);
-        });
-
-        document.body.appendChild(skySliderLabel);
-        document.body.appendChild(skySlider);
+        document.body.appendChild(dialCanvas);
         document.body.appendChild(skySel);
+
+        document.addEventListener('dragstart', e => e.preventDefault());
+
+        document.addEventListener('keydown', e => {
+          if (e.key === 't' || e.key === 'T') {
+            const show = dialCanvas.style.display === 'none';
+            dialCanvas.style.display = show ? 'block' : 'none';
+            skySel.style.display     = show ? 'block' : 'none';
+          }
+        });
       })();
     </script>
   </body>
