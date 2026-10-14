@@ -2185,7 +2185,6 @@
           line-height: 1.55;
         }
 
-
         #home-content p,
         #home-content li {
           max-width: 34em;
@@ -12312,7 +12311,8 @@
                   } else {
                     _gt = `translate(${_cx},${_cy}) rotate(${s.angle}) translate(${-_halfW},${-_halfH})`;
                   }
-                  _svgi += `<g${_flt} transform="${_gt}">` + s.querySelector('svg').innerHTML + '</g>';
+                  _svgi +=
+                    `<g${_flt} transform="${_gt}">` + s.querySelector('svg').innerHTML + '</g>';
                   if (s.dot) {
                     const dr = s.dot.getBoundingClientRect();
                     _svgi +=
@@ -12380,7 +12380,7 @@
 
               const label = document.createElement('div');
               label.className = 'expr-mystery-label';
-              label.textContent = currentLang === 'zh' ? '点击揭晓' : 'Reveal / 揭晓';
+              label.textContent = currentLang === 'zh' ? '点击揭晓' : 'Click to Reveal';
               overlay.appendChild(label);
 
               const hideBtn = document.createElement('button');
@@ -21630,9 +21630,7 @@
         const shareWithInterpsButton = document.createElement('button');
         shareWithInterpsButton.type = 'button';
         shareWithInterpsButton.textContent =
-          currentLang === 'zh'
-            ? '导出闪卡（含感通解读）'
-            : 'Export with interpretations';
+          currentLang === 'zh' ? '导出闪卡（含感通解读）' : 'Export with interpretations';
         shareWithInterpsButton.addEventListener('click', async (e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -21681,9 +21679,7 @@
           buttons[1].textContent = currentLang === 'zh' ? '导出闪卡' : 'Export flashcard';
         if (buttons[2]) {
           buttons[2].textContent =
-            currentLang === 'zh'
-              ? '导出闪卡（含感通解读）'
-              : 'Export with interpretations';
+            currentLang === 'zh' ? '导出闪卡（含感通解读）' : 'Export with interpretations';
           const hasInterps = !!(
             card &&
             (card.querySelector('.library-tree-interp-item') ||
