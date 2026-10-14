@@ -12399,8 +12399,14 @@
               function restoreOverlayDefault() {
                 overlay.className = 'expr-mystery-overlay';
                 overlay.innerHTML = '';
-                overlay.appendChild(glyph);
-                overlay.appendChild(label);
+                const rGlyph = document.createElement('div');
+                rGlyph.className = 'expr-mystery-glyph';
+                rGlyph.textContent = '✦';
+                overlay.appendChild(rGlyph);
+                const rLabel = document.createElement('div');
+                rLabel.className = 'expr-mystery-label';
+                rLabel.textContent = currentLang === 'zh' ? '点击揭晓' : 'Click to Reveal';
+                overlay.appendChild(rLabel);
               }
 
               async function showJuxtaposition(
@@ -12409,9 +12415,10 @@
               ) {
                 if (card.querySelector('.expr-juxtapose')) return;
                 const zh = currentLang === 'zh';
-                // Clear any explicit height from a prior resize so the card expands to fit
+                // Clear explicit height set by the SE-corner resize handle so the card can expand.
+                // minHeight is not cleared — a layout-set minHeight doesn't block expansion
+                // and clearing it would cause the card to shrink after a subsequent hide.
                 card.style.height = '';
-                card.style.minHeight = '';
                 const juxtaEl = document.createElement('div');
                 juxtaEl.className = 'expr-juxtapose';
 
@@ -12620,14 +12627,21 @@
               hideBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                // Remove juxtaposition panel if present
+                // Reset so the next tap on the veil triggers a new reveal.
+                card._revealing = false;
+                // Remove juxtaposition panel and restore card height BEFORE showing overlay,
+                // so min-height:155px is active when the overlay's flex layout is computed.
                 card.querySelector('.expr-juxtapose')?.remove();
-                restoreOverlayDefault();
-                overlay.style.display = '';
                 card.classList.remove('revealed');
-                requestAnimationFrame(() =>
-                  requestAnimationFrame(() => overlay.classList.remove('hiding')),
-                );
+                restoreOverlayDefault();
+                // One rAF lets the browser apply the restored min-height before the overlay
+                // becomes visible, so justify-content:center resolves to the right height.
+                requestAnimationFrame(() => {
+                  overlay.style.display = '';
+                  // scrollTop must be reset after display:'' re-establishes the layout box;
+                  // resetting it while display:none is a no-op in every browser.
+                  overlay.scrollTop = 0;
+                });
               });
 
               card.appendChild(overlay);
