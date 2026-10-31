@@ -215,7 +215,7 @@
         flex: 0 1 420px;
         margin-top: 2.2rem;
         margin-left: auto;
-        font-size: 0.82rem;
+        font-size: 0.8rem;
         line-height: 1.55;
         user-select: text;
         text-align: right;
@@ -577,15 +577,23 @@
         flex: 0 1 420px;
         margin-top: 2.2rem;
         margin-left: auto;
-        font-size: 0.82rem;
+        font-size: 0.8rem;
         line-height: 1.55;
         user-select: text;
         text-align: right;
-        opacity: 0.82;
         color: var(--sky-text);
       }
       body.academic-mode .acad-bio {
         display: block;
+      }
+      .acad-bio p {
+        color: var(--sky-text);
+        font-size: inherit;
+        margin: 0 0 0.7em;
+        text-wrap: pretty;
+      }
+      .acad-bio p:last-child {
+        margin-bottom: 0;
       }
 
       /* Academic project tag badge */
@@ -645,8 +653,26 @@
           </div>
         </div>
         <div class="acad-bio" aria-label="Academic bio">
-          Grounded conceptual representation, computational models of meaning, semantic
-          generalization, colexification, and language and embodied cognition.
+          <p>Tony is interested in how language can be traced back to perceptual experience.</p>
+
+          <p>
+            His work sits at the intersection of computational cognitive science, cognitive
+            semantics, and grounded AI. He is especially interested in how concepts emerge from
+            embodied interaction with the world, how structural relations in perception are
+            preserved and transformed into reusable conceptual structure, and how language comes to
+            express them.
+          </p>
+
+          <p>
+            He approaches this question through computational and experimental methods. He is also
+            drawn to phenomena and frameworks involving spatial and event concepts, image schemas,
+            iconic gesture, colexification, program induction, and grounded language models.
+          </p>
+
+          <p>
+            He is currently looking toward a PhD at the intersection of computational cognitive
+            science, language, and embodied AI.
+          </p>
         </div>
         <div class="artist-bio" aria-label="Artist bio">
           <p>Tony explores the idea of the “living script.”</p>
@@ -2190,29 +2216,33 @@
           tag: 'Research',
           description:
             'Probabilistic concept-learning model using a Language of Thought and Metropolis–Hastings inference over structured visual events.',
-          link: 'https://github.com/TonyYZ/Embodied-LoT',
-          linkLabel: 'GitHub →',
+          footnote:
+            '<a href="https://github.com/TonyYZ/Embodied-LoT" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline">GitHub Repository ↗</a>',
           hue: 220,
         },
         {
           title: 'Multimodal Meaning',
           tag: 'Research · current',
           description:
-            'Human and VLM reasoning over inferences conveyed through animations, gestures, and emoji. LSCP / Institut Jean Nicod with Yair Lakretz and Philippe Schlenker.',
+            'Human and VLM making inferences based on animations, gestures, and emoji. LSCP / Institut Jean Nicod with Yair Lakretz and Philippe Schlenker.',
+          footnote:
+            '<a href="https://github.com/TonyYZ/multimodal-vlm-inference" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline">GitHub Repository ↗</a>',
           hue: 160,
         },
         {
           title: 'Bilingual Priming',
           tag: 'Research',
           description:
-            'How bilingual context in English and Mandarin influences production and comprehension-based syntactic priming. With Ming Xiang at UChicago. Manuscript in preparation.',
+            'How bilingual context in English and Mandarin influences production and comprehension-based syntactic priming. With Ming Xiang at UChicago.',
+          footnote:
+            '<a href="https://ugradresearchsymposium2025.omeka.net/items/show/92" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline">2025 URS Poster ↗</a><br>Manuscript in preparation',
           hue: 35,
         },
         {
           title: 'Infant Phonology',
           tag: 'Research',
           description:
-            'Online paradigm for infant phonological discrimination; webcam gaze pipeline. With Sho Tsuji at LSCP.',
+            'Online asynchronous paradigm for infant phonological discrimination; webcam gaze pipeline. With Sho Tsuji at LSCP.',
           hue: 290,
         },
         {
@@ -2220,8 +2250,8 @@
           tag: 'Project',
           description:
             'Multilingual vocabulary dataset of ~2,000 words across 22 languages. Cross-linguistic vector-space analyses of phonetic–semantic correspondences.',
-          link: 'https://github.com/TonyYZ/Nguasach',
-          linkLabel: 'GitHub →',
+          footnote:
+            '<a href="https://github.com/TonyYZ/Nguasach" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline">GitHub Repository ↗</a>',
           hue: 30,
         },
       ];
@@ -2257,9 +2287,9 @@
           win.className = 'window';
           win.style.setProperty('--window-hue', proj.hue ?? 48);
           const bodyHtml = isAcad
-            ? `<h3>${proj.title}</h3>
+            ? `<h3>${proj.link ? `<a href="${proj.link}" style="color:inherit;text-decoration:none;" target="_blank" draggable="false">${proj.title}</a>` : proj.title}</h3>
                <p>${proj.description}</p>
-               ${proj.link ? `<p><a href="${proj.link}" target="_blank" rel="noopener noreferrer" style="font-size:0.88em;opacity:0.72">${proj.linkLabel}</a></p>` : ''}`
+               ${proj.footnote ? `<p style="font-size:0.82em;opacity:0.65;margin-top:0.3em">${proj.footnote}</p>` : ''}`
             : `<h3><a href="${proj.link}" style="color:inherit;text-decoration:none;" target="_blank" draggable="false">${proj.title}</a></h3>
                <p>${proj.description}</p>
                <img src="${proj.image}" draggable="false" style="width:${proj.scale}%;" alt="${proj.title}" />`;
