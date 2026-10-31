@@ -138,7 +138,6 @@
         display: none;
       }
 
-
       header {
         position: relative;
         z-index: 3;
@@ -214,7 +213,7 @@
 
       .artist-bio {
         flex: 0 1 420px;
-        margin-top: 0.25rem;
+        margin-top: 2.2rem;
         margin-left: auto;
         font-size: 0.82rem;
         line-height: 1.55;
@@ -404,7 +403,11 @@
         body::before {
           inset: -8%;
           background:
-            radial-gradient(circle at var(--sun-x) var(--sun-y), var(--sky-spot1), transparent 38%),
+            radial-gradient(
+              circle at var(--sun-x) var(--sun-y),
+              var(--sky-spot1),
+              transparent 38%
+            ),
             linear-gradient(145deg, var(--sky-g0) 0%, var(--sky-g1) 52%, var(--sky-g2) 100%);
         }
 
@@ -517,6 +520,85 @@
           padding: 12px;
         }
       }
+
+      /* ── Mode toggle ──────────────────────────────────────────── */
+      #mode-toggle {
+        position: fixed;
+        top: 1.05rem;
+        right: 1.35rem;
+        z-index: 200;
+        padding: 6px 14px;
+        border: 1px solid var(--sky-border);
+        border-radius: 20px;
+        background: var(--sky-glass);
+        color: var(--sky-text);
+        font-family: 'UkirizWenKai', KaiTi, serif;
+        font-size: 18px;
+        line-height: 1.6;
+        cursor: pointer;
+        opacity: 0.48;
+        transition: opacity 140ms ease;
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+      }
+      #mode-toggle:hover {
+        opacity: 0.9;
+      }
+      #mode-toggle:disabled {
+        opacity: 0.25;
+        cursor: default;
+      }
+
+      /* Academic identity (hidden until academic-mode) */
+      .acad-identity {
+        display: none;
+      }
+      .acad-identity h1 {
+        color: var(--sky-text);
+      }
+      .acad-position {
+        margin: 0.2rem 0 0.65rem;
+        font-size: 0.88rem;
+        opacity: 0.58;
+        color: var(--sky-text);
+      }
+      body.academic-mode .art-identity {
+        display: none;
+      }
+      body.academic-mode .acad-identity {
+        display: block;
+      }
+      body.academic-mode .artist-bio {
+        display: none;
+      }
+      /* Academic bio — right column, mirrors .artist-bio */
+      .acad-bio {
+        display: none;
+        flex: 0 1 420px;
+        margin-top: 2.2rem;
+        margin-left: auto;
+        font-size: 0.82rem;
+        line-height: 1.55;
+        user-select: text;
+        text-align: right;
+        opacity: 0.82;
+        color: var(--sky-text);
+      }
+      body.academic-mode .acad-bio {
+        display: block;
+      }
+
+      /* Academic project tag badge */
+      .acad-tag {
+        display: block;
+        font-size: 9px;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        opacity: 0.42;
+        margin-bottom: 1px;
+        font-family: 'UkirizSarasaUiSC', system-ui, sans-serif;
+        color: var(--sky-text);
+      }
     </style>
   </head>
   <body>
@@ -525,7 +607,7 @@
     <!-- Static name and contact info -->
     <header>
       <div class="hero">
-        <div class="identity">
+        <div class="identity art-identity">
           <h1>
             Tony Zhou <br />
             周雨桐 <br />
@@ -544,6 +626,27 @@
               >afdian.com/a/ukiriz</a
             >
           </div>
+        </div>
+        <div class="identity acad-identity">
+          <h1>
+            Tony Zhou <br />
+            周雨桐 <br />
+            うきり
+          </h1>
+          <p class="acad-position">M2 Cognitive Science · ENS-PSL</p>
+
+          <div class="contact-info">
+            <b>Email</b> <a href="mailto:zhouyt.tony2018@gmail.com">zhouyt.tony2018@gmail.com</a
+            ><br />
+            <b>GitHub</b>
+            <a href="https://github.com/TonyYZ" target="_blank" rel="noopener noreferrer"
+              >github.com/TonyYZ</a
+            >
+          </div>
+        </div>
+        <div class="acad-bio" aria-label="Academic bio">
+          Grounded conceptual representation, computational models of meaning, semantic
+          generalization, colexification, and language and embodied cognition.
         </div>
         <div class="artist-bio" aria-label="Artist bio">
           <p>Tony explores the idea of the “living script.”</p>
@@ -569,6 +672,7 @@
         </div>
       </div>
     </header>
+    <button id="mode-toggle" title="Academic profile">◐</button>
 
     <script>
       let topWindowZ = 10;
@@ -662,7 +766,8 @@
       const buoyWindows = new Set();
       const buoyState = new WeakMap();
       // Sun position in body::before percentage space — kept in sync by applySkyTheme.
-      let _sunXPct = 8, _sunYPct = 4;
+      let _sunXPct = 8,
+        _sunYPct = 4;
       // Background base RGB — kept in sync by applySkyTheme for canvas drawing.
       let _skyBaseRgb = [255, 248, 192];
       // Active ripples: {x, y, t0}
@@ -687,7 +792,10 @@
           win.style.transition = 'opacity 180ms ease, transform 180ms ease';
           win.style.opacity = '0';
           win.style.transform = 'scale(0.92)';
-          setTimeout(() => { buoyWindows.delete(win); win.remove(); }, 200);
+          setTimeout(() => {
+            buoyWindows.delete(win);
+            win.remove();
+          }, 200);
         });
 
         makeDraggable(win);
@@ -714,13 +822,14 @@
         // Temporal: each harmonic has its own phase driven by two incommensurate
         // oscillators (never synchronise, never exactly repeat), so the field wanders
         // quasi-randomly through all directions at a natural, unhurried pace.
-        const sx = x * 0.009, sy = y * 0.009;
-        const p1 = sx * 0.7  + sy       + Math.sin(t * 0.031) * 5.1 + Math.sin(t * 0.0071) * 3.3;
-        const p2 = sx * 1.6  - sy * 0.9 + Math.sin(t * 0.019) * 4.7 + Math.sin(t * 0.0413) * 2.8;
-        const p3 =-sx * 0.5  + sy * 2.0 + Math.sin(t * 0.023) * 5.9 + Math.sin(t * 0.0131) * 2.2;
-        const p4 = sx        + sy * 0.8 + Math.sin(t * 0.027) * 4.9 + Math.sin(t * 0.0091) * 3.6;
-        const p5 =-sx * 0.8  + sy * 1.5 + Math.sin(t * 0.017) * 5.4 + Math.sin(t * 0.0373) * 2.1;
-        const p6 = sx * 2.0  + sy * 0.4 + Math.sin(t * 0.043) * 4.2 + Math.sin(t * 0.0113) * 3.1;
+        const sx = x * 0.009,
+          sy = y * 0.009;
+        const p1 = sx * 0.7 + sy + Math.sin(t * 0.031) * 5.1 + Math.sin(t * 0.0071) * 3.3;
+        const p2 = sx * 1.6 - sy * 0.9 + Math.sin(t * 0.019) * 4.7 + Math.sin(t * 0.0413) * 2.8;
+        const p3 = -sx * 0.5 + sy * 2.0 + Math.sin(t * 0.023) * 5.9 + Math.sin(t * 0.0131) * 2.2;
+        const p4 = sx + sy * 0.8 + Math.sin(t * 0.027) * 4.9 + Math.sin(t * 0.0091) * 3.6;
+        const p5 = -sx * 0.8 + sy * 1.5 + Math.sin(t * 0.017) * 5.4 + Math.sin(t * 0.0373) * 2.1;
+        const p6 = sx * 2.0 + sy * 0.4 + Math.sin(t * 0.043) * 4.2 + Math.sin(t * 0.0113) * 3.1;
         let vx = (Math.sin(p1) + 0.65 * Math.sin(p2) + 0.35 * Math.sin(p3)) * 5.0;
         let vy = (Math.cos(p4) + 0.65 * Math.cos(p5) + 0.35 * Math.cos(p6)) * 5.0;
 
@@ -729,7 +838,8 @@
         for (const rp of _ripples) {
           const age = (t * 1000 - rp.t0) / 4000;
           if (age <= 0 || age >= 1) continue;
-          const dx = x - rp.x, dy = y - rp.y;
+          const dx = x - rp.x,
+            dy = y - rp.y;
           const dist = Math.hypot(dx, dy);
           if (dist < 1) continue;
           const sigma = rp.maxR * 0.12;
@@ -746,7 +856,7 @@
       function initBuoy(win) {
         buoyState.set(win, {
           x: parseFloat(win.style.left) || 0,
-          y: parseFloat(win.style.top)  || 0,
+          y: parseFloat(win.style.top) || 0,
           vx: 0,
           vy: 0,
           friction: 1.2 + Math.random() * 1.0,
@@ -756,64 +866,377 @@
       // Character pool for flow-field glyphs — Latin (with diacritics) + GF 0014-2009 set.
       const _FLOW_CHARS = [
         // Latin lowercase base
-        'a','b','c','d','e','f','g','h','i','j','k','l','m',
-        'n','o','p','q','r','s','t','u','v','w','x','y','z',
+        'a',
+        'b',
+        'c',
+        'd',
+        'e',
+        'f',
+        'g',
+        'h',
+        'i',
+        'j',
+        'k',
+        'l',
+        'm',
+        'n',
+        'o',
+        'p',
+        'q',
+        'r',
+        's',
+        't',
+        'u',
+        'v',
+        'w',
+        'x',
+        'y',
+        'z',
         // French / cedilla / ligatures
-        'à','â','ä','é','è','ê','ë','î','ï','ô','ù','û','ü','ç','œ','æ',
+        'à',
+        'â',
+        'ä',
+        'é',
+        'è',
+        'ê',
+        'ë',
+        'î',
+        'ï',
+        'ô',
+        'ù',
+        'û',
+        'ü',
+        'ç',
+        'œ',
+        'æ',
         // Spanish / Portuguese additions
-        'á','ã','õ','ñ',
+        'á',
+        'ã',
+        'õ',
+        'ñ',
         // German / Nordic
-        'ß','å','ø',
+        'ß',
+        'å',
+        'ø',
         // Vietnamese — ă compounds
-        'ắ','ằ','ẳ','ẵ','ặ',
+        'ắ',
+        'ằ',
+        'ẳ',
+        'ẵ',
+        'ặ',
         // Vietnamese — â compounds (beyond plain â)
-        'ấ','ầ','ẩ','ẫ','ậ',
+        'ấ',
+        'ầ',
+        'ẩ',
+        'ẫ',
+        'ậ',
         // Vietnamese — ê compounds
-        'ế','ề','ể','ễ','ệ',
+        'ế',
+        'ề',
+        'ể',
+        'ễ',
+        'ệ',
         // Vietnamese — ô and ơ compounds
-        'ổ','ồ','ỗ','ộ','ờ','ớ','ở','ỡ','ợ',
+        'ổ',
+        'ồ',
+        'ỗ',
+        'ộ',
+        'ờ',
+        'ớ',
+        'ở',
+        'ỡ',
+        'ợ',
         // Vietnamese — ư compounds
-        'ừ','ứ','ử','ữ','ự',
+        'ừ',
+        'ứ',
+        'ử',
+        'ữ',
+        'ự',
         // Vietnamese — remaining tonal
-        'ị','ỉ','ĩ','ọ','ủ','ụ','ỳ','ỷ','ỹ','ỵ','đ',
+        'ị',
+        'ỉ',
+        'ĩ',
+        'ọ',
+        'ủ',
+        'ụ',
+        'ỳ',
+        'ỷ',
+        'ỹ',
+        'ỵ',
+        'đ',
         // Turkish
-        'ğ','ı','ş',
+        'ğ',
+        'ı',
+        'ş',
         // Irish dotted consonants (lenition)
-        'ḃ','ċ','ḋ','ḟ','ġ','ṁ','ṗ','ṡ','ṫ',
+        'ḃ',
+        'ċ',
+        'ḋ',
+        'ḟ',
+        'ġ',
+        'ṁ',
+        'ṗ',
+        'ṡ',
+        'ṫ',
         // Greek lowercase
-        'α','β','γ','δ','ε','ζ','η','θ','ι','κ','λ','μ',
-        'ν','ξ','ο','π','ρ','σ','τ','υ','φ','χ','ψ','ω',
+        'α',
+        'β',
+        'γ',
+        'δ',
+        'ε',
+        'ζ',
+        'η',
+        'θ',
+        'ι',
+        'κ',
+        'λ',
+        'μ',
+        'ν',
+        'ξ',
+        'ο',
+        'π',
+        'ρ',
+        'σ',
+        'τ',
+        'υ',
+        'φ',
+        'χ',
+        'ψ',
+        'ω',
         // Greek uppercase (visually distinct from Latin)
-        'Γ','Δ','Θ','Λ','Ξ','Π','Σ','Φ','Ψ','Ω',
+        'Γ',
+        'Δ',
+        'Θ',
+        'Λ',
+        'Ξ',
+        'Π',
+        'Σ',
+        'Φ',
+        'Ψ',
+        'Ω',
         // Numbers / orientation
-        '一','二','三','四','五','六','七','八','九','十','廿','卅',
-        '上','下','中','大','小','入','出','方','正','生','立','亦','非',
+        '一',
+        '二',
+        '三',
+        '四',
+        '五',
+        '六',
+        '七',
+        '八',
+        '九',
+        '十',
+        '廿',
+        '卅',
+        '上',
+        '下',
+        '中',
+        '大',
+        '小',
+        '入',
+        '出',
+        '方',
+        '正',
+        '生',
+        '立',
+        '亦',
+        '非',
         // Heaven / earth / nature
-        '日','月','夕','山','川','巛','水','火','土','石','雨','云','气',
-        '田','井','穴','谷','屮','艸','木','禾','竹','米','黍',
+        '日',
+        '月',
+        '夕',
+        '山',
+        '川',
+        '巛',
+        '水',
+        '火',
+        '土',
+        '石',
+        '雨',
+        '云',
+        '气',
+        '田',
+        '井',
+        '穴',
+        '谷',
+        '屮',
+        '艸',
+        '木',
+        '禾',
+        '竹',
+        '米',
+        '黍',
         // Body / person
-        '人','儿','女','子','母','父','夫','尸','身','首','面','目','耳',
-        '自','口','舌','齒','心','手','又','爪','足','止','毛','肉','歺','骨','血','頁',
+        '人',
+        '儿',
+        '女',
+        '子',
+        '母',
+        '父',
+        '夫',
+        '尸',
+        '身',
+        '首',
+        '面',
+        '目',
+        '耳',
+        '自',
+        '口',
+        '舌',
+        '齒',
+        '心',
+        '手',
+        '又',
+        '爪',
+        '足',
+        '止',
+        '毛',
+        '肉',
+        '歺',
+        '骨',
+        '血',
+        '頁',
         // Animals
-        '牛','羊','犬','豕','馬','鹿','象','虎','兔','鳥','烏','隹',
-        '魚','貝','虫','龜','龍','鳳','豸','鼠','角','羽',
+        '牛',
+        '羊',
+        '犬',
+        '豕',
+        '馬',
+        '鹿',
+        '象',
+        '虎',
+        '兔',
+        '鳥',
+        '烏',
+        '隹',
+        '魚',
+        '貝',
+        '虫',
+        '龜',
+        '龍',
+        '鳳',
+        '豸',
+        '鼠',
+        '角',
+        '羽',
         // Tools / vessels / crafts
-        '刀','匕','力','弓','矢','戈','戉','斤','矛','干','工','斗',
-        '鼎','豆','鬲','缶','臼','皿','冊','聿','舟','車','网','糸','衣','巾','革','皮',
+        '刀',
+        '匕',
+        '力',
+        '弓',
+        '矢',
+        '戈',
+        '戉',
+        '斤',
+        '矛',
+        '干',
+        '工',
+        '斗',
+        '鼎',
+        '豆',
+        '鬲',
+        '缶',
+        '臼',
+        '皿',
+        '冊',
+        '聿',
+        '舟',
+        '車',
+        '网',
+        '糸',
+        '衣',
+        '巾',
+        '革',
+        '皮',
         // Architecture / enclosures
-        '門','戶','宀','广','厂','囗','凵','匚','冂','冖',
+        '門',
+        '戶',
+        '宀',
+        '广',
+        '厂',
+        '囗',
+        '凵',
+        '匚',
+        '冂',
+        '冖',
         // Motion / movement radicals
-        '行','彳','走','步','辵','廴','夂','夊','癶','攴','殳','支','寸','勹','廾',
+        '行',
+        '彳',
+        '走',
+        '步',
+        '辵',
+        '廴',
+        '夂',
+        '夊',
+        '癶',
+        '攴',
+        '殳',
+        '支',
+        '寸',
+        '勹',
+        '廾',
         // Divination / ritual / matter
-        '卜','兆','爻','示','言','食','酉','甘','辛','丹','玉','金','文','彡','臣','耒','用',
+        '卜',
+        '兆',
+        '爻',
+        '示',
+        '言',
+        '食',
+        '酉',
+        '甘',
+        '辛',
+        '丹',
+        '玉',
+        '金',
+        '文',
+        '彡',
+        '臣',
+        '耒',
+        '用',
         // Heavenly stems & earthly branches
-        '甲','乙','丙','丁','戊','己','庚','壬','癸','丑','寅','卯','辰','巳','午','未','申','戌','亥',
+        '甲',
+        '乙',
+        '丙',
+        '丁',
+        '戊',
+        '己',
+        '庚',
+        '壬',
+        '癸',
+        '丑',
+        '寅',
+        '卯',
+        '辰',
+        '巳',
+        '午',
+        '未',
+        '申',
+        '戌',
+        '亥',
         // Radicals / components
-        '亻','扌','忄','氵','氺','灬','犭','礻','衤','艹','纟','钅','饣','刂','辶','爫','罒','⺮',
+        '亻',
+        '扌',
+        '忄',
+        '氵',
+        '氺',
+        '灬',
+        '犭',
+        '礻',
+        '衤',
+        '艹',
+        '纟',
+        '钅',
+        '饣',
+        '刂',
+        '辶',
+        '爫',
+        '罒',
+        '⺮',
       ];
 
       // Shuffled cell→char assignment rebuilt whenever the grid dimensions change.
-      let _cellCharMap = null, _cellMapCols = 0, _cellMapRows = 0;
+      let _cellCharMap = null,
+        _cellMapCols = 0,
+        _cellMapRows = 0;
       function _rebuildCellMap(cols, rows) {
         const total = cols * rows;
         const arr = new Uint16Array(total);
@@ -824,17 +1247,26 @@
           s = Math.imul(s ^ (s >>> 16), 0x45d9f3b);
           s ^= s >>> 16;
           const j = (s >>> 0) % (i + 1);
-          const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+          const t = arr[i];
+          arr[i] = arr[j];
+          arr[j] = t;
         }
-        _cellCharMap = arr; _cellMapCols = cols; _cellMapRows = rows;
+        _cellCharMap = arr;
+        _cellMapCols = cols;
+        _cellMapRows = rows;
       }
 
       // Flow-field canvas overlay
       const _fieldCanvas = (() => {
         const c = document.createElement('canvas');
-        c.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;';
+        c.style.cssText =
+          'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;';
         document.body.appendChild(c);
-        const resize = () => { const dpr = window.devicePixelRatio || 1; c.width = window.innerWidth * dpr; c.height = window.innerHeight * dpr; };
+        const resize = () => {
+          const dpr = window.devicePixelRatio || 1;
+          c.width = window.innerWidth * dpr;
+          c.height = window.innerHeight * dpr;
+        };
         resize();
         window.addEventListener('resize', resize);
         return c;
@@ -850,21 +1282,42 @@
         // to contrast, and boost saturation slightly so it reads as a real colour.
         const bgRaw = getComputedStyle(document.body).backgroundColor;
         const cm = bgRaw.match(/\d+/g);
-        let nr = 100, ng = 160, nb = 220;
+        let nr = 100,
+          ng = 160,
+          nb = 220;
         if (cm) {
-          const r = +cm[0]/255, g = +cm[1]/255, b = +cm[2]/255;
-          const max = Math.max(r,g,b), min = Math.min(r,g,b), l = (max+min)/2;
+          const r = +cm[0] / 255,
+            g = +cm[1] / 255,
+            b = +cm[2] / 255;
+          const max = Math.max(r, g, b),
+            min = Math.min(r, g, b),
+            l = (max + min) / 2;
           const d = max - min;
-          let h = 0, s = d > 0 ? (l > 0.5 ? d/(2-max-min) : d/(max+min)) : 0;
-          if (d > 0) { if (max===r) h=((g-b)/d+(g<b?6:0))/6; else if (max===g) h=((b-r)/d+2)/6; else h=((r-g)/d+4)/6; }
+          let h = 0,
+            s = d > 0 ? (l > 0.5 ? d / (2 - max - min) : d / (max + min)) : 0;
+          if (d > 0) {
+            if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+            else if (max === g) h = ((b - r) / d + 2) / 6;
+            else h = ((r - g) / d + 4) / 6;
+          }
           const ch = (h + 0.5) % 1;
-          const cl = l > 0.5 ? Math.max(0.12, l - 0.50) : Math.min(0.88, l + 0.50);
-          const cs = Math.min(0.90, s + 0.15);
-          const q = cl < 0.5 ? cl*(1+cs) : cl+cs-cl*cs, p = 2*cl - q;
-          const h2r = t => { t=((t%1)+1)%1; return t<1/6?p+(q-p)*6*t:t<0.5?q:t<2/3?p+(q-p)*(2/3-t)*6:p; };
-          nr = Math.round(h2r(ch+1/3)*255);
-          ng = Math.round(h2r(ch)*255);
-          nb = Math.round(h2r(ch-1/3)*255);
+          const cl = l > 0.5 ? Math.max(0.12, l - 0.5) : Math.min(0.88, l + 0.5);
+          const cs = Math.min(0.9, s + 0.15);
+          const q = cl < 0.5 ? cl * (1 + cs) : cl + cs - cl * cs,
+            p = 2 * cl - q;
+          const h2r = (t) => {
+            t = ((t % 1) + 1) % 1;
+            return t < 1 / 6
+              ? p + (q - p) * 6 * t
+              : t < 0.5
+                ? q
+                : t < 2 / 3
+                  ? p + (q - p) * (2 / 3 - t) * 6
+                  : p;
+          };
+          nr = Math.round(h2r(ch + 1 / 3) * 255);
+          ng = Math.round(h2r(ch) * 255);
+          nb = Math.round(h2r(ch - 1 / 3) * 255);
         }
 
         const step = 80;
@@ -901,7 +1354,9 @@
             const len = Math.hypot(f.vx, f.vy);
             if (len < 0.01) continue;
             const angle = Math.atan2(f.vy, f.vx);
-            const aLen = 20, hLen = 7, hAng = Math.PI / 6;
+            const aLen = 20,
+              hLen = 7,
+              hAng = Math.PI / 6;
             ctx.save();
             ctx.translate(gx, gy);
             ctx.rotate(angle);
@@ -921,9 +1376,14 @@
       // Ripple canvas — separate from flow-field canvas so clearing doesn't interfere.
       const _rippleCanvas = (() => {
         const c = document.createElement('canvas');
-        c.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;';
+        c.style.cssText =
+          'position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;';
         document.body.appendChild(c);
-        const resize = () => { const dpr = window.devicePixelRatio || 1; c.width = window.innerWidth * dpr; c.height = window.innerHeight * dpr; };
+        const resize = () => {
+          const dpr = window.devicePixelRatio || 1;
+          c.width = window.innerWidth * dpr;
+          c.height = window.innerHeight * dpr;
+        };
         resize();
         window.addEventListener('resize', resize);
         return c;
@@ -936,15 +1396,19 @@
         ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
         if (!_ripples.length) return;
         // Darken on light backgrounds, lighten on dark ones.
-        const _rl = (_skyBaseRgb[0]*299 + _skyBaseRgb[1]*587 + _skyBaseRgb[2]*114) / 1000;
-        const [br, bg, bb] = _rl < 100
-          ? _skyBaseRgb.map(v => Math.min(255, Math.round(v + (255 - v) * 0.55)))
-          : _skyBaseRgb.map(v => Math.round(v * 0.50));
+        const _rl = (_skyBaseRgb[0] * 299 + _skyBaseRgb[1] * 587 + _skyBaseRgb[2] * 114) / 1000;
+        const [br, bg, bb] =
+          _rl < 100
+            ? _skyBaseRgb.map((v) => Math.min(255, Math.round(v + (255 - v) * 0.55)))
+            : _skyBaseRgb.map((v) => Math.round(v * 0.5));
         const DUR = 4000;
         for (let i = _ripples.length - 1; i >= 0; i--) {
           const rp = _ripples[i];
           const age = (tMs - rp.t0) / DUR;
-          if (age >= 1) { _ripples.splice(i, 1); continue; }
+          if (age >= 1) {
+            _ripples.splice(i, 1);
+            continue;
+          }
           // Three concentric rings staggered in phase (inner rings lag).
           for (let k = 0; k < 3; k++) {
             const phase = Math.max(0, age - k * 0.18);
@@ -964,7 +1428,6 @@
         _ripples.push({ x, y, maxR, t0: performance.now() });
       }
 
-
       let _buoyPrevT = null;
       (function startBuoyLoop() {
         function loop(t) {
@@ -974,7 +1437,10 @@
           _drawFlowField(tSec);
           _drawRipples(t);
           for (const win of buoyWindows) {
-            if (!document.contains(win)) { buoyWindows.delete(win); continue; }
+            if (!document.contains(win)) {
+              buoyWindows.delete(win);
+              continue;
+            }
             if (win.classList.contains('dragging')) continue;
             const s = buoyState.get(win);
             if (!s) continue;
@@ -991,24 +1457,29 @@
 
             // Speed cap
             const spd = Math.hypot(s.vx, s.vy);
-            if (spd > 400) { s.vx = s.vx / spd * 400; s.vy = s.vy / spd * 400; }
+            if (spd > 400) {
+              s.vx = (s.vx / spd) * 400;
+              s.vy = (s.vy / spd) * 400;
+            }
 
             // Soft-wall repulsion near viewport edges
-            const winW = win.offsetWidth || 250, winH = win.offsetHeight || 200;
-            const pad = 24, k = 15;
-            const maxX = window.innerWidth  - winW - pad;
+            const winW = win.offsetWidth || 250,
+              winH = win.offsetHeight || 200;
+            const pad = 24,
+              k = 15;
+            const maxX = window.innerWidth - winW - pad;
             const maxY = window.innerHeight - winH - pad;
-            if (s.x < pad)   s.vx += (pad  - s.x)  * k * dt;
-            if (s.x > maxX)  s.vx -= (s.x  - maxX) * k * dt;
-            if (s.y < pad)   s.vy += (pad  - s.y)   * k * dt;
-            if (s.y > maxY)  s.vy -= (s.y  - maxY)  * k * dt;
+            if (s.x < pad) s.vx += (pad - s.x) * k * dt;
+            if (s.x > maxX) s.vx -= (s.x - maxX) * k * dt;
+            if (s.y < pad) s.vy += (pad - s.y) * k * dt;
+            if (s.y > maxY) s.vy -= (s.y - maxY) * k * dt;
 
             // Integrate position
             s.x += s.vx * dt;
             s.y += s.vy * dt;
 
             win.style.left = s.x.toFixed(1) + 'px';
-            win.style.top  = s.y.toFixed(1) + 'px';
+            win.style.top = s.y.toFixed(1) + 'px';
 
             win.style.transform = '';
             updateWindowShadow(win);
@@ -1023,11 +1494,13 @@
         const cx = rect.left + rect.width / 2;
         const cy = rect.top + rect.height / 2;
         // Convert sun percentage (body::before space, inset: -18%) to viewport pixels.
-        const IF = 0.18, scale = 1 + 2 * IF;
-        const sunVpX = (-IF + _sunXPct / 100 * scale) * window.innerWidth;
-        const sunVpY = (-IF + _sunYPct / 100 * scale) * window.innerHeight;
+        const IF = 0.18,
+          scale = 1 + 2 * IF;
+        const sunVpX = (-IF + (_sunXPct / 100) * scale) * window.innerWidth;
+        const sunVpY = (-IF + (_sunYPct / 100) * scale) * window.innerHeight;
         // Shadow falls in the direction from the sun toward the window.
-        const dx = cx - sunVpX, dy = cy - sunVpY;
+        const dx = cx - sunVpX,
+          dy = cy - sunVpY;
         const dist = Math.sqrt(dx * dx + dy * dy);
         const nx = dist > 1 ? dx / dist : 0;
         const ny = dist > 1 ? dy / dist : 1;
@@ -1035,7 +1508,7 @@
         win.style.setProperty('--win-sx', `${(nx * off).toFixed(1)}px`);
         win.style.setProperty('--win-sy', `${(ny * off).toFixed(1)}px`);
         // Glass gradient flows sun→window; bright face (0%) faces the sun.
-        const angle = dist > 10 ? Math.atan2(dx, -dy) * 180 / Math.PI : 148;
+        const angle = dist > 10 ? (Math.atan2(dx, -dy) * 180) / Math.PI : 148;
         win.style.setProperty('--win-ga', `${angle.toFixed(1)}deg`);
       }
 
@@ -1133,11 +1606,15 @@
               s.x = dragLeft;
               s.y = dragTop;
               const now = performance.now();
-              const recent = velBuf.filter(p => now - p.t < 100);
+              const recent = velBuf.filter((p) => now - p.t < 100);
               if (recent.length >= 2) {
-                const a = recent[0], b = recent[recent.length - 1];
+                const a = recent[0],
+                  b = recent[recent.length - 1];
                 const dtMs = b.t - a.t;
-                if (dtMs > 4) { s.vx = (b.x - a.x) / (dtMs / 1000); s.vy = (b.y - a.y) / (dtMs / 1000); }
+                if (dtMs > 4) {
+                  s.vx = (b.x - a.x) / (dtMs / 1000);
+                  s.vy = (b.y - a.y) / (dtMs / 1000);
+                }
               }
               velBuf.length = 0;
             }
@@ -1250,7 +1727,7 @@
             [0, 0, 0, 1],
             [0, 0, 0, 0.12],
             [60, 45, 8, 0.16],
-            [0, 0, 0, 0.10],
+            [0, 0, 0, 0.1],
             [0, 0, 0, 0.08],
           ],
           [
@@ -1260,9 +1737,9 @@
             [172, 206, 236],
             [115, 168, 218],
             [0, 0, 0, 1],
-            [0, 0, 0, 0.10],
+            [0, 0, 0, 0.1],
             [0, 28, 60, 0.12],
-            [0, 0, 0, 0.10],
+            [0, 0, 0, 0.1],
             [0, 0, 0, 0.08],
           ],
           [
@@ -1272,9 +1749,9 @@
             [152, 202, 238],
             [98, 162, 215],
             [0, 0, 0, 0.88],
-            [0, 0, 0, 0.10],
+            [0, 0, 0, 0.1],
             [0, 28, 60, 0.12],
-            [0, 0, 0, 0.10],
+            [0, 0, 0, 0.1],
             [0, 0, 0, 0.08],
           ],
           [
@@ -1284,7 +1761,7 @@
             [118, 184, 230],
             [75, 148, 208],
             [0, 0, 0, 0.88],
-            [0, 0, 0, 0.10],
+            [0, 0, 0, 0.1],
             [0, 28, 60, 0.14],
             [0, 0, 0, 0.11],
             [0, 0, 0, 0.09],
@@ -1310,7 +1787,7 @@
             [22, 6, 0, 0.88],
             [0, 0, 0, 0.12],
             [62, 44, 0, 0.18],
-            [0, 0, 0, 0.10],
+            [0, 0, 0, 0.1],
             [0, 0, 0, 0.08],
           ],
           [
@@ -1345,7 +1822,7 @@
             [122, 55, 82],
             [255, 235, 238, 0.9],
             [255, 255, 255, 0.13],
-            [50, 0, 18, 0.40],
+            [50, 0, 18, 0.4],
             [255, 255, 255, 0.6],
             [255, 255, 255, 0.5],
           ],
@@ -1357,7 +1834,7 @@
             [122, 55, 82],
             [255, 235, 238, 0.9],
             [255, 255, 255, 0.13],
-            [50, 0, 18, 0.40],
+            [50, 0, 18, 0.4],
             [255, 255, 255, 0.6],
             [255, 255, 255, 0.5],
           ],
@@ -1473,19 +1950,20 @@
 
           const spot1 = lighten(skyG0, 0.28);
           const spot2 = lighten(skyG1, 0.12);
-          const skyLuma = (skyBase[0]*299 + skyBase[1]*587 + skyBase[2]*114) / 1000;
+          const skyLuma = (skyBase[0] * 299 + skyBase[1] * 587 + skyBase[2] * 114) / 1000;
           const selColor = skyLuma < 100 ? lighten(skyBase, 0.45) : darken(skyBase, 0.38);
 
           // Sun arc: rises at left horizon (6 AM), peaks at top-centre (noon), sets at right (6 PM).
           // Full 24-hour arc: sun traces an ellipse, going below the screen at night.
           // θ=0 at sunrise (6:00=360min), θ=π at sunset (18:00=1080min),
           // θ=3π/2 at midnight — sun is at bottom center, well below the viewport.
-          const theta = (((m - 360) + 1440) % 1440) / 1440 * 2 * Math.PI;
+          const theta = (((m - 360 + 1440) % 1440) / 1440) * 2 * Math.PI;
           const sinT = Math.sin(theta);
           const sunXN = 50 - 48 * Math.cos(theta);
-          const sunYN = sinT >= 0
-            ? 40 - 38 * sinT        // above horizon: 40 % → 2 % → 40 %
-            : 40 + 90 * (-sinT);    // below horizon: curves down to ~130 % at midnight
+          const sunYN =
+            sinT >= 0
+              ? 40 - 38 * sinT // above horizon: 40 % → 2 % → 40 %
+              : 40 + 90 * -sinT; // below horizon: curves down to ~130 % at midnight
           _sunXPct = sunXN;
           _sunYPct = sunYN;
           // Refresh shadows on every sky update (minute cadence matches sun movement).
@@ -1565,7 +2043,8 @@
         });
 
         // Circular dial — defined before skySel.change so the handler can call _dialSync
-        const fmtMin = m => `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
+        const fmtMin = (m) =>
+          `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
         const DIAL_PX = 164;
         const dialCanvas = document.createElement('canvas');
         let _dialMin = new Date().getHours() * 60 + new Date().getMinutes();
@@ -1573,27 +2052,30 @@
         function _drawDial(minutes) {
           const dpr = window.devicePixelRatio || 1;
           const S = DIAL_PX * dpr;
-          dialCanvas.width = S; dialCanvas.height = S;
+          dialCanvas.width = S;
+          dialCanvas.height = S;
           const ctx = dialCanvas.getContext('2d');
-          const cx = S/2, cy = S/2;
-          const R  = S/2 - 1.5*dpr;
+          const cx = S / 2,
+            cy = S / 2;
+          const R = S / 2 - 1.5 * dpr;
 
           ctx.clearRect(0, 0, S, S);
 
-          const minToA = m => (m / 1440) * 2*Math.PI + Math.PI/2;
+          const minToA = (m) => (m / 1440) * 2 * Math.PI + Math.PI / 2;
 
           // Pie-slice sections — muted game-dial palette
           const sections = [
-            { from: 0,    to: 240,  fill: '#06071a' },
-            { from: 240,  to: 381,  fill: '#28164a' },
-            { from: 381,  to: 960,  fill: '#3e7fa8' },
-            { from: 960,  to: 1110, fill: '#9c5e28' },
+            { from: 0, to: 240, fill: '#06071a' },
+            { from: 240, to: 381, fill: '#28164a' },
+            { from: 381, to: 960, fill: '#3e7fa8' },
+            { from: 960, to: 1110, fill: '#9c5e28' },
             { from: 1110, to: 1260, fill: '#461525' },
             { from: 1260, to: 1440, fill: '#06071a' },
           ];
 
           sections.forEach(({ from, to, fill }) => {
-            const a1 = minToA(from), a2 = minToA(to);
+            const a1 = minToA(from),
+              a2 = minToA(to);
             ctx.beginPath();
             ctx.moveTo(cx, cy);
             ctx.arc(cx, cy, R, a1, a2);
@@ -1603,26 +2085,29 @@
           });
 
           // Outer bezel
-          ctx.beginPath(); ctx.arc(cx, cy, R, 0, 2*Math.PI);
+          ctx.beginPath();
+          ctx.arc(cx, cy, R, 0, 2 * Math.PI);
           ctx.strokeStyle = 'rgba(255,255,255,0.10)';
-          ctx.lineWidth = dpr; ctx.stroke();
+          ctx.lineWidth = dpr;
+          ctx.stroke();
 
           // Hand — leaf/lance shape: sharp tip at rim, tapers to a point at center
-          const na   = minToA(minutes);
-          const tipR = R - 4*dpr;
+          const na = minToA(minutes);
+          const tipR = R - 4 * dpr;
           const midR = R * 0.52;
-          const maxW = 2.6*dpr;
-          const cosA = Math.cos(na), sinA = Math.sin(na);
-          const px   = Math.cos(na + Math.PI/2), py = Math.sin(na + Math.PI/2);
+          const maxW = 2.6 * dpr;
+          const cosA = Math.cos(na),
+            sinA = Math.sin(na);
+          const px = Math.cos(na + Math.PI / 2),
+            py = Math.sin(na + Math.PI / 2);
           ctx.beginPath();
-          ctx.moveTo(cx + tipR*cosA, cy + tipR*sinA);
+          ctx.moveTo(cx + tipR * cosA, cy + tipR * sinA);
+          ctx.quadraticCurveTo(cx + midR * cosA + maxW * px, cy + midR * sinA + maxW * py, cx, cy);
           ctx.quadraticCurveTo(
-            cx + midR*cosA + maxW*px, cy + midR*sinA + maxW*py,
-            cx, cy
-          );
-          ctx.quadraticCurveTo(
-            cx + midR*cosA - maxW*px, cy + midR*sinA - maxW*py,
-            cx + tipR*cosA, cy + tipR*sinA
+            cx + midR * cosA - maxW * px,
+            cy + midR * sinA - maxW * py,
+            cx + tipR * cosA,
+            cy + tipR * sinA,
           );
           ctx.closePath();
           ctx.fillStyle = 'rgba(228,218,196,0.88)';
@@ -1630,29 +2115,43 @@
         }
 
         function _dialSync(m) {
-          _dialMin = m; _drawDial(m);
+          _dialMin = m;
+          _drawDial(m);
         }
 
         function _dialPosToMin(ex, ey) {
           const rect = dialCanvas.getBoundingClientRect();
-          let a = Math.atan2(ey - (rect.top + DIAL_PX/2), ex - (rect.left + DIAL_PX/2)) - Math.PI/2;
-          if (a < 0) a += 2*Math.PI;
-          return Math.round((a / (2*Math.PI)) * 1440) % 1440;
+          let a =
+            Math.atan2(ey - (rect.top + DIAL_PX / 2), ex - (rect.left + DIAL_PX / 2)) -
+            Math.PI / 2;
+          if (a < 0) a += 2 * Math.PI;
+          return Math.round((a / (2 * Math.PI)) * 1440) % 1440;
         }
 
         let _dialDragging = false;
-        dialCanvas.addEventListener('pointerdown', e => {
-          _dialDragging = true; dialCanvas.setPointerCapture(e.pointerId);
+        dialCanvas.addEventListener('pointerdown', (e) => {
+          _dialDragging = true;
+          dialCanvas.setPointerCapture(e.pointerId);
           const m = _dialPosToMin(e.clientX, e.clientY);
-          _dialSync(m); clearInterval(skyInterval); skySel.value = -1; applySkyTheme(true, m);
+          _dialSync(m);
+          clearInterval(skyInterval);
+          skySel.value = -1;
+          applySkyTheme(true, m);
         });
-        dialCanvas.addEventListener('pointermove', e => {
+        dialCanvas.addEventListener('pointermove', (e) => {
           if (!_dialDragging) return;
           const m = _dialPosToMin(e.clientX, e.clientY);
-          _dialSync(m); clearInterval(skyInterval); skySel.value = -1; applySkyTheme(true, m);
+          _dialSync(m);
+          clearInterval(skyInterval);
+          skySel.value = -1;
+          applySkyTheme(true, m);
         });
-        dialCanvas.addEventListener('pointerup', () => { _dialDragging = false; });
-        dialCanvas.addEventListener('pointercancel', () => { _dialDragging = false; });
+        dialCanvas.addEventListener('pointerup', () => {
+          _dialDragging = false;
+        });
+        dialCanvas.addEventListener('pointercancel', () => {
+          _dialDragging = false;
+        });
 
         dialCanvas.style.cssText = `display:none;width:${DIAL_PX}px;height:${DIAL_PX}px;position:fixed;bottom:52px;right:8px;z-index:9999;cursor:pointer;touch-action:none;`;
         _drawDial(_dialMin);
@@ -1673,16 +2172,166 @@
         document.body.appendChild(dialCanvas);
         document.body.appendChild(skySel);
 
-        document.addEventListener('dragstart', e => e.preventDefault());
+        document.addEventListener('dragstart', (e) => e.preventDefault());
 
-        document.addEventListener('keydown', e => {
+        document.addEventListener('keydown', (e) => {
           if (e.key === 't' || e.key === 'T') {
             const show = dialCanvas.style.display === 'none';
             dialCanvas.style.display = show ? 'block' : 'none';
-            skySel.style.display     = show ? 'block' : 'none';
+            skySel.style.display = show ? 'block' : 'none';
           }
         });
       })();
+
+      // ── Academic mode ─────────────────────────────────────────────────────────
+      const academicProjects = [
+        {
+          title: 'Embodied LoT',
+          tag: 'Research',
+          description:
+            'Probabilistic concept-learning model using a Language of Thought and Metropolis–Hastings inference over structured visual events.',
+          link: 'https://github.com/TonyYZ/Embodied-LoT',
+          linkLabel: 'GitHub →',
+          hue: 220,
+        },
+        {
+          title: 'Multimodal Meaning',
+          tag: 'Research · current',
+          description:
+            'Human and VLM reasoning over inferences conveyed through animations, gestures, and emoji. LSCP / Institut Jean Nicod with Yair Lakretz and Philippe Schlenker.',
+          hue: 160,
+        },
+        {
+          title: 'Bilingual Priming',
+          tag: 'Research',
+          description:
+            'How bilingual context in English and Mandarin influences production and comprehension-based syntactic priming. With Ming Xiang at UChicago. Manuscript in preparation.',
+          hue: 35,
+        },
+        {
+          title: 'Infant Phonology',
+          tag: 'Research',
+          description:
+            'Online paradigm for infant phonological discrimination; webcam gaze pipeline. With Sho Tsuji at LSCP.',
+          hue: 290,
+        },
+        {
+          title: 'Language Iconicity',
+          tag: 'Project',
+          description:
+            'Multilingual vocabulary dataset of ~2,000 words across 22 languages. Cross-linguistic vector-space analyses of phonetic–semantic correspondences.',
+          link: 'https://github.com/TonyYZ/Nguasach',
+          linkLabel: 'GitHub →',
+          hue: 30,
+        },
+      ];
+
+      let _acadMode = false;
+
+      function _flipWinsOut(wins, cb) {
+        if (!wins.length) {
+          cb();
+          return;
+        }
+        wins.forEach((win) => buoyWindows.delete(win));
+        wins.forEach((win, i) => {
+          setTimeout(() => {
+            win.style.transition = 'transform 0.15s ease-in, opacity 0.15s ease-in';
+            win.style.transform = 'perspective(900px) rotateY(90deg) scale(0.95)';
+            win.style.opacity = '0';
+          }, i * 28);
+        });
+        setTimeout(
+          () => {
+            wins.forEach((w) => w.remove());
+            placedRects.length = 0;
+            cb();
+          },
+          wins.length * 28 + 180,
+        );
+      }
+
+      function _flipWinsIn(dataList, isAcad) {
+        dataList.forEach((proj, i) => {
+          const win = document.createElement('div');
+          win.className = 'window';
+          win.style.setProperty('--window-hue', proj.hue ?? 48);
+          const bodyHtml = isAcad
+            ? `<h3>${proj.title}</h3>
+               <p>${proj.description}</p>
+               ${proj.link ? `<p><a href="${proj.link}" target="_blank" rel="noopener noreferrer" style="font-size:0.88em;opacity:0.72">${proj.linkLabel}</a></p>` : ''}`
+            : `<h3><a href="${proj.link}" style="color:inherit;text-decoration:none;" target="_blank" draggable="false">${proj.title}</a></h3>
+               <p>${proj.description}</p>
+               <img src="${proj.image}" draggable="false" style="width:${proj.scale}%;" alt="${proj.title}" />`;
+          win.innerHTML = `
+            <div class="window-glass"></div>
+            <button class="window-close" aria-label="Close" tabindex="-1"></button>
+            <div class="window-body">${bodyHtml}</div>
+          `;
+          win.querySelector('.window-close').addEventListener('click', (e) => {
+            e.stopPropagation();
+            win.style.transition = 'opacity 180ms ease, transform 180ms ease';
+            win.style.opacity = '0';
+            win.style.transform = 'scale(0.92)';
+            setTimeout(() => {
+              buoyWindows.delete(win);
+              win.remove();
+            }, 200);
+          });
+          makeDraggable(win);
+          document.body.appendChild(win);
+          // Measure + place while rotated out of view
+          win.style.opacity = '0';
+          win.style.transform = 'perspective(900px) rotateY(-90deg) scale(0.95)';
+          win.style.transition = 'none';
+          const winW = win.offsetWidth || 250;
+          const winH = win.offsetHeight || 180;
+          const pos = pickWindowPosition(winW, winH, placedRects);
+          win.style.left = `${pos.x}px`;
+          win.style.top = `${pos.y}px`;
+          placedRects.push(getRectAt(pos.x, pos.y, winW, winH, 12));
+          updateWindowShadow(win);
+          initBuoy(win);
+          // Staggered flip-in; add to buoy loop only after animation finishes
+          setTimeout(() => {
+            win.style.transition = 'transform 0.18s ease-out, opacity 0.18s ease-out';
+            win.style.transform = 'none';
+            win.style.opacity = '1';
+            setTimeout(() => {
+              win.style.transition = '';
+              win.style.transform = '';
+              win.style.opacity = '';
+              buoyWindows.add(win);
+            }, 210);
+          }, i * 55);
+        });
+      }
+
+      function _toggleMode() {
+        _acadMode = !_acadMode;
+        const btn = document.getElementById('mode-toggle');
+        if (btn) btn.disabled = true;
+        const currentWins = [...document.querySelectorAll('.window')];
+        _flipWinsOut(currentWins, () => {
+          document.body.classList.toggle('academic-mode', _acadMode);
+          if (btn) {
+            btn.textContent = _acadMode ? '◑' : '◐';
+            btn.title = _acadMode ? 'Artistic profile' : 'Academic profile';
+          }
+          _flipWinsIn(_acadMode ? academicProjects : projects, _acadMode);
+          const reenable = currentWins.length * 28 + 180 + academicProjects.length * 55 + 250;
+          setTimeout(() => {
+            if (btn) btn.disabled = false;
+          }, reenable);
+        });
+      }
+
+      document.getElementById('mode-toggle').addEventListener('click', _toggleMode);
+
+      // Auto-activate academic mode when ?mode=academic is in the URL
+      if (new URLSearchParams(location.search).get('mode') === 'academic') {
+        _toggleMode();
+      }
     </script>
   </body>
 </html>
